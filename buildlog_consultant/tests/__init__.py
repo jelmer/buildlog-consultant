@@ -1,6 +1,5 @@
 #!/usr/bin/python
-# Copyright (C) 2019-2021 Jelmer Vernooij <jelmer@jelmer.uk>
-# encoding: utf-8
+# Copyright (C) 2019 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,3 +14,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+from __future__ import absolute_import
+
+import unittest
+
+
+def test_suite():
+    names = [
+        'sbuild',
+        ]
+    module_names = [__name__ + '.test_' + name for name in names]
+    loader = unittest.TestLoader()
+    return loader.loadTestsFromNames(module_names)
