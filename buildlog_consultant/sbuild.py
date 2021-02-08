@@ -27,6 +27,8 @@ import yaml
 
 import logging
 
+from . import Problem
+
 __all__ = [
     'SbuildFailure',
     'parse_sbuild_log',
@@ -64,12 +66,6 @@ SBUILD_FOCUS_SECTION = {
     'arch-check': 'check architectures',
     'check-space': 'cleanup',
 }
-
-
-class Problem(object):
-
-    kind: str
-    is_global: bool = False
 
 
 class DpkgSourceLocalChanges(Problem):
@@ -3706,4 +3702,3 @@ def find_apt_get_update_failure(paragraphs):
     lines = paragraphs.get(focus_section, [])
     offset, line, error = find_apt_get_failure(lines)
     return focus_section, offset, line, error
-
