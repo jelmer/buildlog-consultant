@@ -1,4 +1,4 @@
-buildlog-consultant (0.0.1~git20210205.7134c35-1) UNRELEASED; urgency=low
+buildlog-consultant (0.0.1~git20210205.7134c35-1) unstable; urgency=low
 
   * Initial release. Closes: #982271
 
