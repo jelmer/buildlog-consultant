@@ -6,7 +6,10 @@ Priority: optional
 Section: python
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
 
-Package: python3-python-buildlog-consultant
+Package: python3-buildlog-consultant
 Architecture: all
 Depends: ${misc:Depends}, ${python3:Depends}
-Description: buildlog parser and analyser
+Description: build log parser and analyser
+ buildlog-consultant can parse build logs and highlight and extract the key
+ error lines. This can be used to extract a snippet from a build log with the
+ core problem.
