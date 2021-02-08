@@ -15,23 +15,30 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from buildlog_consultant.sbuild import (
+from ..sbuild import (
+    parse_brz_error,
+    InconsistentSourceFormat,
+    )
+from ..apt import (
     AptFetchFailure,
     AptMissingReleaseFile,
+    find_apt_get_failure,
+    )
+from ..autopkgtest import (
     AutopkgtestTestbedFailure,
     AutopkgtestDepsUnsatisfiable,
     AutopkgtestDepChrootDisappeared,
     AutopkgtestTimedOut,
     AutopkgtestStderrFailure,
-    CMakeFilesMissing,
-    find_apt_get_failure,
     find_autopkgtest_failure_description,
+    )
+from ..common import (
+    CMakeFilesMissing,
     find_build_failure_description,
     CcacheError,
     DebhelperPatternNotFound,
     DuplicateDHCompatLevel,
     DhLinkDestinationIsDirectory,
-    InconsistentSourceFormat,
     MissingConfigure,
     MissingJavaScriptRuntime,
     MissingJVM,
@@ -68,7 +75,6 @@ from buildlog_consultant.sbuild import (
     FailedGoTest,
     UpstartFilePresent,
     DirectoryNonExistant,
-    parse_brz_error,
     )
 import unittest
 
