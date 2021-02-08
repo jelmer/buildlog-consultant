@@ -1,5 +1,5 @@
-python-buildlog-consultant (0.0.1~git20210205.7134c35-1) UNRELEASED; urgency=low
+buildlog-consultant (0.0.1~git20210205.7134c35-1) UNRELEASED; urgency=low
 
-  * Initial release.
+  * Initial release. Closes: #982271
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 08 Feb 2021 00:55:19 +0000

@@ -1,7 +1,7 @@
 Rules-Requires-Root: no
 Standards-Version: 4.5.1
-Build-Depends: debhelper-compat (= 12), dh-sequence-python3
-Source: python-buildlog-consultant
+Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all
+Source: buildlog-consultant
 Priority: optional
 Section: python
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
