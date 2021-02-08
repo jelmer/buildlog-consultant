@@ -8,5 +8,5 @@ Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
 
 Package: python3-python-buildlog-consultant
 Architecture: all
-Depends: ${misc:Depends}
+Depends: ${misc:Depends}, ${python3:Depends}
 Description: buildlog parser and analyser
