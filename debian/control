@@ -5,4 +5,5 @@ Source: python-buildlog-consultant
 
 Package: python3-python-buildlog-consultant
 Architecture: all
+Depends: ${misc:Depends}
 Description: buildlog parser and analyser
