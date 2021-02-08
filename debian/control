@@ -3,6 +3,7 @@ Standards-Version: 4.5.1
 Build-Depends: debhelper-compat (= 12), dh-sequence-python3
 Source: python-buildlog-consultant
 Priority: optional
+Section: python
 
 Package: python3-python-buildlog-consultant
 Architecture: all
