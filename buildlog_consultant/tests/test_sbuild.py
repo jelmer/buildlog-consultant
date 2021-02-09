@@ -19,11 +19,6 @@ from ..sbuild import (
     parse_brz_error,
     InconsistentSourceFormat,
     )
-from ..apt import (
-    AptFetchFailure,
-    AptMissingReleaseFile,
-    find_apt_get_failure,
-    )
 from ..autopkgtest import (
     AutopkgtestTestbedFailure,
     AutopkgtestDepsUnsatisfiable,
@@ -949,42 +944,6 @@ arch:all and the other not)""".splitlines(), 1)
             ' ' * 40 +
             '^----^ SC2086: '
             'Double quote to prevent globbing and word splitting.'], 1, None)
-
-
-class FindAptGetFailureDescriptionTests(unittest.TestCase):
-
-    def run_test(self, lines, lineno, err=None):
-        (offset, actual_line, actual_err) = find_apt_get_failure(
-            lines)
-        if lineno is not None:
-            self.assertEqual(actual_line, lines[lineno-1])
-            self.assertEqual(lineno, offset)
-        else:
-            self.assertIs(actual_line, None)
-            self.assertIs(offset, None)
-        if err:
-            self.assertEqual(actual_err, err)
-        else:
-            self.assertIs(None, actual_err)
-
-    def test_make_missing_rule(self):
-        self.run_test(["""\
-E: Failed to fetch http://janitor.debian.net/blah/Packages.xz  \
-File has unexpected size (3385796 != 3385720). Mirror sync in progress? [IP]\
-"""], 1, AptFetchFailure(
-            'http://janitor.debian.net/blah/Packages.xz',
-            'File has unexpected size (3385796 != 3385720). '
-            'Mirror sync in progress? [IP]'))
-
-    def test_missing_release_file(self):
-        self.run_test(["""\
-E: The repository 'https://janitor.debian.net blah/ Release' \
-does not have a Release file.\
-"""], 1, AptMissingReleaseFile(
-            'http://janitor.debian.net/ blah/ Release'))
-
-    def test_vague(self):
-        self.run_test(["E: Stuff is broken"], 1, None)
 
 
 class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
