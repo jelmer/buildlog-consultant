@@ -25,7 +25,7 @@ from ..autopkgtest import (
     AutopkgtestStderrFailure,
     find_autopkgtest_failure_description,
     )
-from ..common import MissingCommand
+from ..common import MissingCommand, MissingFile
 
 
 class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
