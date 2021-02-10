@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class ChrootNotFound(Problem):
 
-    kind = 'chroot-not-found'
+    kind = "chroot-not-found"
 
     def __init__(self, chroot):
         self.chroot = chroot
@@ -47,7 +47,7 @@ class ChrootNotFound(Problem):
 
 class AutopkgtestDepsUnsatisfiable(Problem):
 
-    kind = 'badpkg'
+    kind = "badpkg"
 
     def __init__(self, args):
         self.args = args
@@ -55,21 +55,20 @@ class AutopkgtestDepsUnsatisfiable(Problem):
     @classmethod
     def from_blame_line(cls, line):
         args = []
-        entries = line[len('blame: '):].rstrip('\n').split(' ')
+        entries = line[len("blame: ") :].rstrip("\n").split(" ")
         for entry in entries:
             try:
-                (kind, arg) = entry.split(':', 1)
+                (kind, arg) = entry.split(":", 1)
             except ValueError:
                 kind = None
                 arg = entry
             args.append((kind, arg))
-            if kind not in ('deb', 'arg', 'dsc', None):
-                logger.warn('unknown entry %s on badpkg line', entry)
+            if kind not in ("deb", "arg", "dsc", None):
+                logger.warn("unknown entry %s on badpkg line", entry)
         return cls(args)
 
     def __eq__(self, other):
-        return type(self) == type(other) and \
-               self.args == other.args
+        return type(self) == type(other) and self.args == other.args
 
     def __repr__(self):
         return "%s(args=%r)" % (type(self).__name__, self.args)
@@ -77,7 +76,7 @@ class AutopkgtestDepsUnsatisfiable(Problem):
 
 class AutopkgtestTimedOut(Problem):
 
-    kind = 'timed-out'
+    kind = "timed-out"
 
     def __init__(self):
         pass
@@ -94,7 +93,7 @@ class AutopkgtestTimedOut(Problem):
 
 class AutopkgtestTestbedFailure(Problem):
 
-    kind = 'testbed-failure'
+    kind = "testbed-failure"
 
     def __init__(self, reason):
         self.reason = reason
@@ -111,7 +110,7 @@ class AutopkgtestTestbedFailure(Problem):
 
 class AutopkgtestDepChrootDisappeared(Problem):
 
-    kind = 'testbed-chroot-disappeared'
+    kind = "testbed-chroot-disappeared"
 
     def __init__(self):
         pass
@@ -128,7 +127,7 @@ class AutopkgtestDepChrootDisappeared(Problem):
 
 class AutopkgtestErroneousPackage(Problem):
 
-    kind = 'erroneous-package'
+    kind = "erroneous-package"
 
     def __init__(self, reason):
         self.reason = reason
@@ -145,14 +144,13 @@ class AutopkgtestErroneousPackage(Problem):
 
 class AutopkgtestStderrFailure(Problem):
 
-    kind = 'stderr-output'
+    kind = "stderr-output"
 
     def __init__(self, stderr_line):
         self.stderr_line = stderr_line
 
     def __eq__(self, other):
-        return (isinstance(self, type(other)) and
-                self.stderr_line == other.stderr_line)
+        return isinstance(self, type(other)) and self.stderr_line == other.stderr_line
 
     def __repr__(self):
         return "%s(%r)" % (type(self).__name__, self.stderr_line)
@@ -161,50 +159,74 @@ class AutopkgtestStderrFailure(Problem):
         return "output on stderr: %s" % self.stderr_line
 
 
-def parse_autopgktest_line(line: str) -> Union[
-        str, Tuple[str, Union[Tuple[str, ...]]]]:
-    m = re.match(r'autopkgtest \[([0-9:]+)\]: (.*)', line)
+def parse_autopgktest_line(line: str) -> Union[str, Tuple[str, Union[Tuple[str, ...]]]]:
+    m = re.match(r"autopkgtest \[([0-9:]+)\]: (.*)", line)
     if not m:
         return line
     timestamp = m.group(1)
     message = m.group(2)
-    if message.startswith('@@@@@@@@@@@@@@@@@@@@ source '):
-        return (timestamp, ('source', ))
-    elif message.startswith('@@@@@@@@@@@@@@@@@@@@ summary'):
-        return (timestamp, ('summary', ))
-    elif message.startswith('test '):
-        (testname, test_status) = message[len('test '):].rstrip(
-                '\n').split(': ', 1)
-        if test_status == '[-----------------------':
-            return (timestamp, ('test', testname, 'begin output', ))
-        elif test_status == '-----------------------]':
-            return (timestamp, ('test', testname, 'end output', ))
-        elif test_status == (
-                ' - - - - - - - - - - results - - - - - - - - - -'):
-            return (timestamp, ('test', testname, 'results', ))
-        elif test_status == (
-                ' - - - - - - - - - - stderr - - - - - - - - - -'):
-            return (timestamp, ('test', testname, 'stderr', ))
-        elif test_status == 'preparing testbed':
-            return (timestamp, ('test', testname, 'prepare testbed'))
+    if message.startswith("@@@@@@@@@@@@@@@@@@@@ source "):
+        return (timestamp, ("source",))
+    elif message.startswith("@@@@@@@@@@@@@@@@@@@@ summary"):
+        return (timestamp, ("summary",))
+    elif message.startswith("test "):
+        (testname, test_status) = message[len("test ") :].rstrip("\n").split(": ", 1)
+        if test_status == "[-----------------------":
+            return (
+                timestamp,
+                (
+                    "test",
+                    testname,
+                    "begin output",
+                ),
+            )
+        elif test_status == "-----------------------]":
+            return (
+                timestamp,
+                (
+                    "test",
+                    testname,
+                    "end output",
+                ),
+            )
+        elif test_status == (" - - - - - - - - - - results - - - - - - - - - -"):
+            return (
+                timestamp,
+                (
+                    "test",
+                    testname,
+                    "results",
+                ),
+            )
+        elif test_status == (" - - - - - - - - - - stderr - - - - - - - - - -"):
+            return (
+                timestamp,
+                (
+                    "test",
+                    testname,
+                    "stderr",
+                ),
+            )
+        elif test_status == "preparing testbed":
+            return (timestamp, ("test", testname, "prepare testbed"))
         else:
-            return (timestamp, ('test', testname, test_status))
-    elif message.startswith('ERROR:'):
-        return (timestamp, ('error', message[len('ERROR: '):]))
+            return (timestamp, ("test", testname, test_status))
+    elif message.startswith("ERROR:"):
+        return (timestamp, ("error", message[len("ERROR: ") :]))
     else:
-        return (timestamp, (message, ))
+        return (timestamp, (message,))
 
 
 def parse_autopkgtest_summary(lines):
     i = 0
     while i < len(lines):
         line = lines[i]
-        m = re.match('([^ ]+)(?:[ ]+)PASS', line)
+        m = re.match("([^ ]+)(?:[ ]+)PASS", line)
         if m:
-            yield i, m.group(1), 'PASS', None, []
+            yield i, m.group(1), "PASS", None, []
             i += 1
             continue
-        m = re.match('([^ ]+)(?:[ ]+)(FAIL|PASS|SKIP) (.+)', line)
+        m = re.match("([^ ]+)(?:[ ]+)(FAIL|PASS|SKIP) (.+)", line)
         if not m:
             i += 1
             continue
@@ -213,11 +235,11 @@ def parse_autopkgtest_summary(lines):
         reason = m.group(3)
         offset = i
         extra = []
-        if reason == 'badpkg':
-            while (i+1 < len(lines) and (
-                    lines[i+1].startswith('badpkg:') or
-                    lines[i+1].startswith('blame:'))):
-                extra.append(lines[i+1])
+        if reason == "badpkg":
+            while i + 1 < len(lines) and (
+                lines[i + 1].startswith("badpkg:") or lines[i + 1].startswith("blame:")
+            ):
+                extra.append(lines[i + 1])
                 i += 1
         yield offset, testname, result, reason, extra
         i += 1
@@ -225,7 +247,7 @@ def parse_autopkgtest_summary(lines):
 
 class AutopkgtestTestbedSetupFailure(Problem):
 
-    kind = 'testbed-setup-failure'
+    kind = "testbed-setup-failure"
 
     def __init__(self, command, exit_status, error):
         self.command = command
@@ -234,30 +256,37 @@ class AutopkgtestTestbedSetupFailure(Problem):
 
     def __str__(self):
         return "Error setting up testbed %r failed (%d): %s" % (
-            self.command, self.exit_status, self.error)
+            self.command,
+            self.exit_status,
+            self.error,
+        )
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
-            type(self).__name__, self.command, self.exit_status, self.error)
+            type(self).__name__,
+            self.command,
+            self.exit_status,
+            self.error,
+        )
 
     def __eq__(self, other):
         return (
-            isinstance(other, type(self)) and
-            self.command == other.command and
-            self.exit_status == other.exit_status and
-            self.error == other.error)
+            isinstance(other, type(self))
+            and self.command == other.command
+            and self.exit_status == other.exit_status
+            and self.error == other.error
+        )
 
 
 def find_autopkgtest_failure_description(
-        lines: List[str]) -> Tuple[
-                Optional[int], Optional[str], Optional['Problem'],
-                Optional[str]]:
+    lines: List[str],
+) -> Tuple[Optional[int], Optional[str], Optional["Problem"], Optional[str]]:
     """Find the autopkgtest failure in output.
 
     Returns:
       tuple with (line offset, testname, error, description)
     """
-    error: Optional['Problem']
+    error: Optional["Problem"]
     test_output: Dict[Tuple[str, ...], List[str]] = {}
     test_output_offset: Dict[Tuple[str, ...], int] = {}
     current_field: Optional[Tuple[str, ...]] = None
@@ -268,24 +297,23 @@ def find_autopkgtest_failure_description(
         parsed = parse_autopgktest_line(line)
         if isinstance(parsed, tuple):
             (timestamp, content) = parsed
-            if content[0] == 'test':
-                if content[2] == 'end output':
+            if content[0] == "test":
+                if content[2] == "end output":
                     current_field = None
                     continue
-                elif content[2] == 'begin output':
-                    current_field = (content[1], 'output')
+                elif content[2] == "begin output":
+                    current_field = (content[1], "output")
                 else:
                     current_field = (content[1], content[2])
                 if current_field in test_output:
-                    logger.warn(
-                        'duplicate output fields for %r', current_field)
+                    logger.warn("duplicate output fields for %r", current_field)
                 test_output[current_field] = []
                 test_output_offset[current_field] = i + 1
-            elif content == ('summary', ):
-                current_field = ('summary', )
+            elif content == ("summary",):
+                current_field = ("summary",)
                 test_output[current_field] = []
                 test_output_offset[current_field] = i + 1
-            elif content[0] == 'error':
+            elif content[0] == "error":
                 if content[1].startswith('"') and content[1].count('"') == 1:
                     sublines = [content[1]]
                     while i < len(lines):
@@ -293,7 +321,7 @@ def find_autopkgtest_failure_description(
                         sublines += lines[i]
                         if lines[i].count('"') == 1:
                             break
-                    content = (content[0], ''.join(sublines))
+                    content = (content[0], "".join(sublines))
                 last_test: Optional[str]
                 if current_field is not None:
                     last_test = current_field[0]
@@ -304,75 +332,107 @@ def find_autopkgtest_failure_description(
                 if m:
                     stderr = m.group(2)
                     m = re.fullmatch(
-                        'W: (.*): '
-                        'Failed to stat file: No such file or directory',
-                        stderr)
+                        "W: (.*): " "Failed to stat file: No such file or directory",
+                        stderr,
+                    )
                     if m:
                         error = AutopkgtestDepChrootDisappeared()
                         return (i + 1, last_test, error, stderr)
-                m = re.fullmatch(r'testbed failure: (.*)', msg)
+                m = re.fullmatch(r"testbed failure: (.*)", msg)
                 if m:
                     testbed_failure_reason = m.group(1)
-                    if (current_field is not None and
-                            testbed_failure_reason ==
-                            'testbed auxverb failed with exit code 255'):
-                        field = (current_field[0], 'output')
-                        (offset, description, error) = (
-                            find_build_failure_description(test_output[field]))
+                    if (
+                        current_field is not None
+                        and testbed_failure_reason
+                        == "testbed auxverb failed with exit code 255"
+                    ):
+                        field = (current_field[0], "output")
+                        (offset, description, error) = find_build_failure_description(
+                            test_output[field]
+                        )
                         if error is not None:
                             assert offset is not None
                             return (
-                                test_output_offset[field] + offset, last_test,
-                                error, description)
+                                test_output_offset[field] + offset,
+                                last_test,
+                                error,
+                                description,
+                            )
 
-                    if (testbed_failure_reason ==
-                            "sent `auxverb_debug_fail', got `copy-failed', "
-                            "expected `ok...'"):
-                        (offset, description, error) = (
-                            find_build_failure_description(lines))
+                    if (
+                        testbed_failure_reason
+                        == "sent `auxverb_debug_fail', got `copy-failed', "
+                        "expected `ok...'"
+                    ):
+                        (offset, description, error) = find_build_failure_description(
+                            lines
+                        )
                         if error is not None:
                             assert offset is not None
                             return (offset, last_test, error, description)
 
-                    if (testbed_failure_reason ==
-                            'cannot send to testbed: [Errno 32] Broken pipe'):
+                    if (
+                        testbed_failure_reason
+                        == "cannot send to testbed: [Errno 32] Broken pipe"
+                    ):
                         offset, line, error = find_testbed_setup_failure(lines)
                         if error and offset:
                             return (offset, last_test, error, line)
-                    if (testbed_failure_reason ==
-                            'apt repeatedly failed to download packages'):
+                    if (
+                        testbed_failure_reason
+                        == "apt repeatedly failed to download packages"
+                    ):
                         offset, line, error = find_apt_get_failure(lines)
                         if error and offset:
                             return (offset, last_test, error, line)
-                        return (i + 1, last_test,
-                                AptFetchFailure(None, testbed_failure_reason),
-                                None)
-                    return (i + 1, last_test,
-                            AutopkgtestTestbedFailure(testbed_failure_reason),
-                            None)
-                m = re.fullmatch(r'erroneous package: (.*)', msg)
+                        return (
+                            i + 1,
+                            last_test,
+                            AptFetchFailure(None, testbed_failure_reason),
+                            None,
+                        )
+                    return (
+                        i + 1,
+                        last_test,
+                        AutopkgtestTestbedFailure(testbed_failure_reason),
+                        None,
+                    )
+                m = re.fullmatch(r"erroneous package: (.*)", msg)
                 if m:
-                    (offset, description, error) = (
-                        find_build_failure_description(lines[:i]))
+                    (offset, description, error) = find_build_failure_description(
+                        lines[:i]
+                    )
                     if error:
                         return (offset, last_test, error, description)
-                    return (i + 1, last_test,
-                            AutopkgtestErroneousPackage(m.group(1)), None)
+                    return (
+                        i + 1,
+                        last_test,
+                        AutopkgtestErroneousPackage(m.group(1)),
+                        None,
+                    )
                 if current_field is not None:
                     offset, line, error = find_apt_get_failure(
-                        test_output[current_field])
-                    if (error is not None and offset is not None and
-                            current_field in test_output_offset):
-                        return (test_output_offset[current_field] + offset,
-                                last_test, error, line)
+                        test_output[current_field]
+                    )
+                    if (
+                        error is not None
+                        and offset is not None
+                        and current_field in test_output_offset
+                    ):
+                        return (
+                            test_output_offset[current_field] + offset,
+                            last_test,
+                            error,
+                            line,
+                        )
                 return (i + 1, last_test, None, msg)
         else:
             if current_field:
                 test_output[current_field].append(line)
 
     try:
-        summary_lines = test_output[('summary', )]
-        summary_offset = test_output_offset[('summary', )]
+        summary_lines = test_output[("summary",)]
+        summary_offset = test_output_offset[("summary",)]
     except KeyError:
         while lines and not lines[-1].strip():
             lines.pop(-1)
@@ -381,26 +441,27 @@ def find_autopkgtest_failure_description(
         else:
             return (len(lines), lines[-1], None, None)
     else:
-        for (lineno, testname, result, reason,
-             extra) in parse_autopkgtest_summary(summary_lines):
-            if result in ('PASS', 'SKIP'):
+        for (lineno, testname, result, reason, extra) in parse_autopkgtest_summary(
+            summary_lines
+        ):
+            if result in ("PASS", "SKIP"):
                 continue
-            assert result == 'FAIL'
-            if reason == 'timed out':
+            assert result == "FAIL"
+            if reason == "timed out":
                 error = AutopkgtestTimedOut()
-                return (summary_offset+lineno+1, testname, error, reason)
-            elif reason.startswith('stderr: '):
-                output = reason[len('stderr: '):]
-                stderr_lines = test_output.get((testname, 'stderr'), [])
-                stderr_offset = test_output_offset.get((testname, 'stderr'))
+                return (summary_offset + lineno + 1, testname, error, reason)
+            elif reason.startswith("stderr: "):
+                output = reason[len("stderr: ") :]
+                stderr_lines = test_output.get((testname, "stderr"), [])
+                stderr_offset = test_output_offset.get((testname, "stderr"))
                 if stderr_lines:
-                    (offset, description, error) = (
-                        find_build_failure_description(stderr_lines))
+                    (offset, description, error) = find_build_failure_description(
+                        stderr_lines
+                    )
                     if offset is not None and stderr_offset is not None:
                         offset += stderr_offset - 1
                 else:
-                    (_, description, error) = find_build_failure_description(
-                        [output])
+                    (_, description, error) = find_build_failure_description([output])
                     offset = None
                 if offset is None:
                     offset = summary_offset + lineno
@@ -408,66 +469,65 @@ def find_autopkgtest_failure_description(
                     error = AutopkgtestStderrFailure(output)
                     if description is None:
                         description = (
-                            'Test %s failed due to '
-                            'unauthorized stderr output: %s' % (
-                                testname, error.stderr_line))
+                            "Test %s failed due to "
+                            "unauthorized stderr output: %s"
+                            % (testname, error.stderr_line)
+                        )
                 return offset + 1, testname, error, description
-            elif reason == 'badpkg':
-                output_lines = test_output.get(
-                    (testname, 'prepare testbed'), [])
-                output_offset = test_output_offset.get(
-                    (testname, 'prepare testbed'))
+            elif reason == "badpkg":
+                output_lines = test_output.get((testname, "prepare testbed"), [])
+                output_offset = test_output_offset.get((testname, "prepare testbed"))
                 if output_lines and output_offset:
                     offset, line, error = find_apt_get_failure(output_lines)
                     if error and offset:
-                        return (offset + output_offset + 1, testname, error,
-                                None)
+                        return (offset + output_offset + 1, testname, error, None)
                 badpkg = None
                 blame = None
                 for line in extra:
-                    if line.startswith('badpkg: '):
-                        badpkg = line[len('badpkg: '):]
-                    if line.startswith('blame: '):
+                    if line.startswith("badpkg: "):
+                        badpkg = line[len("badpkg: ") :]
+                    if line.startswith("blame: "):
                         blame = line
                 if badpkg is not None:
-                    description = 'Test %s failed: %s' % (
-                        testname, badpkg.rstrip('\n'))
+                    description = "Test %s failed: %s" % (testname, badpkg.rstrip("\n"))
                 else:
-                    description = 'Test %s failed' % testname
+                    description = "Test %s failed" % testname
 
                 error = AutopkgtestDepsUnsatisfiable.from_blame_line(blame)
-                return (summary_offset + lineno + 1, testname, error,
-                        description)
+                return (summary_offset + lineno + 1, testname, error, description)
             else:
-                output_lines = test_output.get((testname, 'output'), [])
-                output_offset = test_output_offset.get((testname, 'output'))
-                (error_offset, description, error) = (
-                    find_build_failure_description(output_lines))
+                output_lines = test_output.get((testname, "output"), [])
+                output_offset = test_output_offset.get((testname, "output"))
+                (error_offset, description, error) = find_build_failure_description(
+                    output_lines
+                )
                 if error_offset is None or output_offset is None:
                     offset = summary_offset + lineno
                 else:
                     offset = error_offset + output_offset
                 if description is None:
-                    description = 'Test %s failed: %s' % (testname, reason)
-                return offset+1, testname, error, description  # type: ignore
+                    description = "Test %s failed: %s" % (testname, reason)
+                return offset + 1, testname, error, description  # type: ignore
 
     return None, None, None, None
 
 
 def find_testbed_setup_failure(lines):
-    for i in range(len(lines)-1, 0, -1):
+    for i in range(len(lines) - 1, 0, -1):
         line = lines[i]
         m = re.fullmatch(
-            r'\[(.*)\] failed \(exit status ([0-9]+), stderr \'(.*)\'\)\n',
-            line)
+            r"\[(.*)\] failed \(exit status ([0-9]+), stderr \'(.*)\'\)\n", line
+        )
         if m:
             command = m.group(1)
             status_code = int(m.group(2))
             stderr = m.group(3)
-            m = re.fullmatch(r'E: (.*): Chroot not found\\n', stderr)
+            m = re.fullmatch(r"E: (.*): Chroot not found\\n", stderr)
             if m:
                 return (i + 1, line, ChrootNotFound(m.group(1)))
             return (
-                i + 1, line,
-                AutopkgtestTestbedSetupFailure(command, status_code, stderr))
+                i + 1,
+                line,
+                AutopkgtestTestbedSetupFailure(command, status_code, stderr),
+            )
     return None, None, None

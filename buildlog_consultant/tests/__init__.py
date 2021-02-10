@@ -22,11 +22,11 @@ import unittest
 
 def test_suite():
     names = [
-        'apt',
-        'autopkgtest',
-        'common',
-        'sbuild',
-        ]
-    module_names = [__name__ + '.test_' + name for name in names]
+        "apt",
+        "autopkgtest",
+        "common",
+        "sbuild",
+    ]
+    module_names = [__name__ + ".test_" + name for name in names]
     loader = unittest.TestLoader()
     return loader.loadTestsFromNames(module_names)

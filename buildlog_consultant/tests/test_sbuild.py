@@ -20,16 +20,18 @@ import unittest
 from ..sbuild import (
     parse_brz_error,
     InconsistentSourceFormat,
-    )
+)
 
 
 class ParseBrzErrorTests(unittest.TestCase):
-
     def test_inconsistent_source_format(self):
         self.assertEqual(
-            (InconsistentSourceFormat(),
-                'Inconsistent source format between version and source '
-                'format'),
+            (
+                InconsistentSourceFormat(),
+                "Inconsistent source format between version and source " "format",
+            ),
             parse_brz_error(
-                'Inconsistency between source format and version: version '
-                'is not native, format is native.'))
+                "Inconsistency between source format and version: version "
+                "is not native, format is native."
+            ),
+        )
