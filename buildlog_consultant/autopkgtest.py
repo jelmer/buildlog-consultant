@@ -278,7 +278,7 @@ class AutopkgtestTestbedSetupFailure(Problem):
         )
 
 
-def find_autopkgtest_failure_description(
+def find_autopkgtest_failure_description(  # noqa: C901
     lines: List[str],
 ) -> Tuple[Optional[int], Optional[str], Optional["Problem"], Optional[str]]:
     """Find the autopkgtest failure in output.

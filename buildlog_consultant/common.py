@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import logging
+import os
 import posixpath
 from typing import List, Optional, Tuple
 import re
@@ -1274,7 +1275,7 @@ class SingleLineMatcher(Matcher):
 class HaskellMissingDependencyMatcher(Matcher):
 
     regexp = re.compile(
-        "hlibrary\.setup: Encountered missing or private dependencies:\n"
+        r"hlibrary\.setup: Encountered missing or private dependencies:\n"
     )
 
     def match(self, lines, i):
@@ -1570,7 +1571,7 @@ build_failure_regexps = [
     ),
     ("✖ \x1b\\[31mERROR:\x1b\\[39m Cannot find module '(.*)'", node_module_missing),
     ('\\[31mError: No test files found: "(.*)"\\[39m', None),
-    ('\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
+    (r'\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
     (r"\s*Error: Cannot find module \'(.*)\'", node_module_missing),
     (r">> Error: Cannot find module \'(.*)\'", node_module_missing),
     (
@@ -1634,7 +1635,7 @@ build_failure_regexps = [
     ),
     (
         r"configure: error: No C\# compiler found. You need to install either "
-        "mono \(>=(.*)\) or \.Net",
+        r"mono \(>=(.*)\) or \.Net",
         c_sharp_compiler_missing,
     ),
     (r"configure: error: gmcs Not found", c_sharp_compiler_missing),
@@ -2449,7 +2450,7 @@ compiled_secondary_build_failure_regexps = [
 ]
 
 
-def find_build_failure_description(
+def find_build_failure_description(  # noqa: C901
     lines: List[str],
 ) -> Tuple[Optional[int], Optional[str], Optional["Problem"]]:
     """Find the key failure line in build output.

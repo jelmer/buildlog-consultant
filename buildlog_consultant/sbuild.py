@@ -16,17 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-import posixpath
 import re
 from typing import List, Tuple, Iterator, BinaryIO, Optional, Union
-import textwrap
 
 import logging
 
 from . import Problem
 from .apt import (
-    find_apt_get_failure,
     find_apt_get_update_failure,
     find_install_deps_failure_description,
 )
@@ -505,7 +501,7 @@ def find_creation_session_error(lines):
     return ret
 
 
-def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:
+def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
     paragraphs = {}
     for title, offsets, lines in parse_sbuild_log(f):
         if title is not None:
