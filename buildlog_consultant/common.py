@@ -2461,7 +2461,7 @@ class SingleLineMatch(object):
 
     @classmethod
     def from_lines(cls, lines, lineno):
-        return cls(lineno, lines[lineno-1].rstrip("\n"))
+        return cls(lineno, lines[lineno-1])
 
 
 def find_build_failure_description(  # noqa: C901
@@ -2558,7 +2558,7 @@ def find_build_failure_description(  # noqa: C901
     for lineno in range(max(0, len(lines) - OFFSET), len(lines)):
         line = lines[lineno].strip("\n")
         for regexp in compiled_secondary_build_failure_regexps:
-            m = regexp.fullmatch(line.rstrip("\n"))
+            m = regexp.fullmatch(line)
             if m:
                 return SingleLineMatch.from_lines(lines, lineno + 1), None
     return None, None

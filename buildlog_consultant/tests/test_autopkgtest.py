@@ -278,7 +278,7 @@ Exiting with 16
                 7,
                 "command2",
                 MissingFile("/usr/share/php/Pimple/autoload.php"),
-                'Cannot open file "/usr/share/php/Pimple/autoload.php".',
+                'Cannot open file "/usr/share/php/Pimple/autoload.php".\n',
             ),
             find_autopkgtest_failure_description(
                 """\
@@ -368,7 +368,7 @@ Exiting with 4
                 7,
                 "unit-tests-3",
                 None,
-                "builtins.OverflowError: mktime argument out of range",
+                "builtins.OverflowError: mktime argument out of range\n",
             ),
             find_autopkgtest_failure_description(
                 """\

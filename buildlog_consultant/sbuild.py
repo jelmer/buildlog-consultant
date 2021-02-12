@@ -566,7 +566,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         )
         if error:
             description = str(error)
-        elif line:
+        elif match:
             if line.startswith("E: "):
                 description = line[3:]
             else:
