@@ -534,9 +534,6 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             context = ("build",)
         elif match:
             description = match.line
-            offset = match.lineno
-        else:
-            offset = None
     if failed_stage == "autopkgtest":
         section_lines = strip_useless_build_tail(section_lines)
         (
