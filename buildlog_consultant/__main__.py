@@ -61,10 +61,10 @@ def main(argv=None):
     if failed_stage in ("build", "autopkgtest"):
         lines = section_lines.get(focus_section, [])
         lines = strip_useless_build_tail(lines)
-        offset, line, error = find_build_failure_description(lines)
-        if offset:
-            print("Failed line: %d:" % (section_offsets[focus_section][0] + offset))
-            print(line)
+        match, error = find_build_failure_description(lines)
+        if match:
+            print("Failed line: %d:" % (section_offsets[focus_section][0] + match.lineno))
+            print(match.line)
         if error:
             print("Error: %s" % error)
     if failed_stage == "apt-get-update":

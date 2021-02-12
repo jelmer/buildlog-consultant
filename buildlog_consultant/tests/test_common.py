@@ -64,13 +64,12 @@ import unittest
 
 class FindBuildFailureDescriptionTests(unittest.TestCase):
     def run_test(self, lines, lineno, err=None):
-        (offset, actual_line, actual_err) = find_build_failure_description(lines)
-        if lineno is not None:
-            self.assertEqual(actual_line, lines[lineno - 1])
-            self.assertEqual(lineno, offset)
+        (match, actual_err) = find_build_failure_description(lines)
+        if match is not None:
+            self.assertEqual(match.line, lines[lineno - 1])
+            self.assertEqual(lineno, match.lineno)
         else:
-            self.assertIs(actual_line, None)
-            self.assertIs(offset, None)
+            self.assertIs(match, None)
         if err:
             self.assertEqual(actual_err, err)
         else:

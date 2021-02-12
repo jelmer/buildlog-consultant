@@ -1310,7 +1310,7 @@ def cmake_package_config_file_missing(m):
 
 def cmake_compiler_failure(m):
     compiler_output = textwrap.dedent(m.group(3))
-    offset, description, error = find_build_failure_description(
+    match, error = find_build_failure_description(
         compiler_output.splitlines(True)
     )
     return error
@@ -2453,13 +2453,24 @@ compiled_secondary_build_failure_regexps = [
 ]
 
 
+class SingleLineMatch(object):
+
+    def __init__(self, lineno: int, line: str):
+        self.lineno = lineno
+        self.line = line
+
+    @classmethod
+    def from_lines(cls, lines, lineno):
+        return cls(lineno, lines[lineno-1].rstrip("\n"))
+
+
 def find_build_failure_description(  # noqa: C901
     lines: List[str],
-) -> Tuple[Optional[int], Optional[str], Optional["Problem"]]:
+) -> Tuple[Optional[SingleLineMatch], Optional["Problem"]]:
     """Find the key failure line in build output.
 
     Returns:
-      tuple with (line offset, line, error object)
+      tuple with (match object, error object)
     """
     OFFSET = 150
     # Is this cmake-specific, or rather just kf5 / qmake ?
@@ -2475,7 +2486,7 @@ def find_build_failure_description(  # noqa: C901
             linenos, err = matcher.match(lines, lineno)
             if linenos:
                 lineno = linenos[-1]  # For now
-                return lineno + 1, lines[lineno].rstrip("\n"), err
+                return SingleLineMatch.from_lines(lines, lineno + 1), err
 
     # TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
     if cmake:
@@ -2492,23 +2503,28 @@ def find_build_failure_description(  # noqa: C901
         )
         # Urgh, multi-line regexes---
         for lineno in range(len(lines)):
-            m = re.fullmatch(binary_pat, lines[lineno].rstrip("\n"))
+            line = lines[lineno].rstrip("\n")
+            m = re.fullmatch(binary_pat, line)
             if m:
-                return (lineno + 1, lines[lineno], MissingCommand(m.group(1).lower()))
-            m = re.fullmatch(missing_file_pat, lines[lineno].rstrip("\n"))
+                return (
+                    SingleLineMatch.from_lines(lines, lineno + 1),
+                    MissingCommand(m.group(1).lower()))
+            m = re.fullmatch(missing_file_pat, line)
             if m:
                 lineno += 1
-                while lineno < len(lines) and not lines[lineno].strip("\n"):
+                while lineno < len(lines) and not line:
                     lineno += 1
                 if lines[lineno + 2].startswith("  but this file does not exist."):
-                    m = re.fullmatch(r'\s*"(.*)"', lines[lineno].rstrip("\n"))
+                    m = re.fullmatch(r'\s*"(.*)"', line)
                     if m:
                         filename = m.group(1)
                     else:
-                        filename = lines[lineno].rstrip("\n")
-                    return lineno + 1, lines[lineno], MissingFile(filename)
+                        filename = line
+                    return (
+                        SingleLineMatch.from_lines(lines, lineno + 1),
+                        MissingFile(filename))
                 continue
-            m = re.fullmatch(conf_file_pat, lines[lineno].rstrip("\n"))
+            m = re.fullmatch(conf_file_pat, line)
             if m:
                 package = m.group(1)
                 m = re.match(
@@ -2518,11 +2534,13 @@ def find_build_failure_description(  # noqa: C901
                     logger.warn("expected version string in line %r", lines[lineno + 1])
                     continue
                 version = m.group(1)
-                return (lineno + 1, lines[lineno], MissingPkgConfig(package, version))
+                return (
+                    SingleLineMatch.from_lines(lines, lineno + 1),
+                    MissingPkgConfig(package, version))
             if lineno + 1 < len(lines):
                 m = re.fullmatch(
                     cmake_files_pat,
-                    lines[lineno].strip("\n")
+                    line
                     + " "
                     + lines[lineno + 1].lstrip(" ").strip("\n"),
                 )
@@ -2532,7 +2550,9 @@ def find_build_failure_description(  # noqa: C901
                     while lines[lineno + i].strip():
                         filenames.append(lines[lineno + i].strip())
                         i += 1
-                    return (lineno + 1, lines[lineno], CMakeFilesMissing(filenames))
+                    return (
+                        SingleLineMatch.from_lines(lines, lineno + 1),
+                        CMakeFilesMissing(filenames))
 
     # And forwards for vague ("secondary") errors.
     for lineno in range(max(0, len(lines) - OFFSET), len(lines)):
@@ -2540,5 +2560,5 @@ def find_build_failure_description(  # noqa: C901
         for regexp in compiled_secondary_build_failure_regexps:
             m = regexp.fullmatch(line.rstrip("\n"))
             if m:
-                return lineno + 1, line, None
-    return None, None, None
+                return SingleLineMatch.from_lines(lines, lineno + 1), None
+    return None, None

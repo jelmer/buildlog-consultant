@@ -347,16 +347,16 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         == "testbed auxverb failed with exit code 255"
                     ):
                         field = (current_field[0], "output")
-                        (offset, description, error) = find_build_failure_description(
+                        (match, error) = find_build_failure_description(
                             test_output[field]
                         )
                         if error is not None:
-                            assert offset is not None
+                            assert match is not None
                             return (
-                                test_output_offset[field] + offset,
+                                test_output_offset[field] + match.lineno,
                                 last_test,
                                 error,
-                                description,
+                                match.line,
                             )
 
                     if (
@@ -364,12 +364,12 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         == "sent `auxverb_debug_fail', got `copy-failed', "
                         "expected `ok...'"
                     ):
-                        (offset, description, error) = find_build_failure_description(
+                        (match, error) = find_build_failure_description(
                             lines
                         )
                         if error is not None:
-                            assert offset is not None
-                            return (offset, last_test, error, description)
+                            assert match is not None
+                            return (match.lineno, last_test, error, match.line)
 
                     if (
                         testbed_failure_reason
@@ -399,11 +399,11 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     )
                 m = re.fullmatch(r"erroneous package: (.*)", msg)
                 if m:
-                    (offset, description, error) = find_build_failure_description(
+                    (match, error) = find_build_failure_description(
                         lines[:i]
                     )
                     if error:
-                        return (offset, last_test, error, description)
+                        return (match.lineno, last_test, error, match.line)
                     return (
                         i + 1,
                         last_test,
@@ -454,15 +454,24 @@ def find_autopkgtest_failure_description(  # noqa: C901
                 output = reason[len("stderr: ") :]
                 stderr_lines = test_output.get((testname, "stderr"), [])
                 stderr_offset = test_output_offset.get((testname, "stderr"))
+                description: Optional[str]
                 if stderr_lines:
-                    (offset, description, error) = find_build_failure_description(
+                    (match, error) = find_build_failure_description(
                         stderr_lines
                     )
-                    if offset is not None and stderr_offset is not None:
-                        offset += stderr_offset - 1
+                    if match is not None and stderr_offset is not None:
+                        offset = match.lineno + stderr_offset - 1
+                        description = match.line
+                    else:
+                        offset = None
+                        description = None
                 else:
-                    (_, description, error) = find_build_failure_description([output])
+                    (match, error) = find_build_failure_description([output])
                     offset = None
+                    if match is not None:
+                        description = match.line
+                    else:
+                        description = None
                 if offset is None:
                     offset = summary_offset + lineno
                 if error is None:
@@ -498,15 +507,17 @@ def find_autopkgtest_failure_description(  # noqa: C901
             else:
                 output_lines = test_output.get((testname, "output"), [])
                 output_offset = test_output_offset.get((testname, "output"))
-                (error_offset, description, error) = find_build_failure_description(
+                (match, error) = find_build_failure_description(
                     output_lines
                 )
-                if error_offset is None or output_offset is None:
+                if match is None or output_offset is None:
                     offset = summary_offset + lineno
                 else:
-                    offset = error_offset + output_offset
-                if description is None:
+                    offset = match.lineno + output_offset
+                if match is None:
                     description = "Test %s failed: %s" % (testname, reason)
+                else:
+                    description = match.line
                 return offset + 1, testname, error, description  # type: ignore
 
     return None, None, None, None

@@ -528,10 +528,15 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             context = ("create-session",)
     if failed_stage == "build":
         section_lines = strip_useless_build_tail(section_lines)
-        offset, description, error = find_build_failure_description(section_lines)
+        match, error = find_build_failure_description(section_lines)
         if error:
             description = str(error)
             context = ("build",)
+        elif match:
+            description = match.line
+            offset = match.lineno
+        else:
+            offset = None
     if failed_stage == "autopkgtest":
         section_lines = strip_useless_build_tail(section_lines)
         (
@@ -624,13 +629,15 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
                     line,
                 )
                 if m:
-                    (_, description, error) = find_build_failure_description(
+                    (match, error) = find_build_failure_description(
                         [m.group(2)]
                     )
                     if error is None:
                         error = SourceFormatUnsupported(m.group(1))
-                    if description is None:
+                    if match is None:
                         description = m.group(2)
+                    else:
+                        description = match.line
                     break
                 m = re.match("dpkg-source: error: (.*)", line)
                 if m:
