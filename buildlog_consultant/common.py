@@ -2455,13 +2455,20 @@ compiled_secondary_build_failure_regexps = [
 
 class SingleLineMatch(object):
 
-    def __init__(self, lineno: int, line: str):
-        self.lineno = lineno
+    offset: int
+    line: str
+
+    def __init__(self, offset: int, line: str):
+        self.offset = offset
         self.line = line
 
+    @property
+    def lineno(self) -> int:
+        return self.offset + 1
+
     @classmethod
-    def from_lines(cls, lines, lineno):
-        return cls(lineno, lines[lineno-1])
+    def from_lines(cls, lines, offset):
+        return cls(offset, lines[offset])
 
 
 def find_build_failure_description(  # noqa: C901
@@ -2486,7 +2493,7 @@ def find_build_failure_description(  # noqa: C901
             linenos, err = matcher.match(lines, lineno)
             if linenos:
                 lineno = linenos[-1]  # For now
-                return SingleLineMatch.from_lines(lines, lineno + 1), err
+                return SingleLineMatch.from_lines(lines, lineno), err
 
     # TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
     if cmake:
@@ -2507,7 +2514,7 @@ def find_build_failure_description(  # noqa: C901
             m = re.fullmatch(binary_pat, line)
             if m:
                 return (
-                    SingleLineMatch.from_lines(lines, lineno + 1),
+                    SingleLineMatch.from_lines(lines, lineno),
                     MissingCommand(m.group(1).lower()))
             m = re.fullmatch(missing_file_pat, line)
             if m:
@@ -2521,7 +2528,7 @@ def find_build_failure_description(  # noqa: C901
                     else:
                         filename = line
                     return (
-                        SingleLineMatch.from_lines(lines, lineno + 1),
+                        SingleLineMatch.from_lines(lines, lineno),
                         MissingFile(filename))
                 continue
             m = re.fullmatch(conf_file_pat, line)
@@ -2535,7 +2542,7 @@ def find_build_failure_description(  # noqa: C901
                     continue
                 version = m.group(1)
                 return (
-                    SingleLineMatch.from_lines(lines, lineno + 1),
+                    SingleLineMatch.from_lines(lines, lineno),
                     MissingPkgConfig(package, version))
             if lineno + 1 < len(lines):
                 m = re.fullmatch(
@@ -2551,7 +2558,7 @@ def find_build_failure_description(  # noqa: C901
                         filenames.append(lines[lineno + i].strip())
                         i += 1
                     return (
-                        SingleLineMatch.from_lines(lines, lineno + 1),
+                        SingleLineMatch.from_lines(lines, lineno),
                         CMakeFilesMissing(filenames))
 
     # And forwards for vague ("secondary") errors.
@@ -2560,5 +2567,5 @@ def find_build_failure_description(  # noqa: C901
         for regexp in compiled_secondary_build_failure_regexps:
             m = regexp.fullmatch(line)
             if m:
-                return SingleLineMatch.from_lines(lines, lineno + 1), None
+                return SingleLineMatch.from_lines(lines, lineno), None
     return None, None
