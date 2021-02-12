@@ -68,20 +68,19 @@ def main(argv=None):
         if error:
             print("Error: %s" % error)
     if failed_stage == "apt-get-update":
-        focus_section, offset, line, error = find_apt_get_update_failure(section_lines)
-        if offset:
-            print("Failed line: %d:" % (section_offsets[focus_section][0] + offset))
-            print(line)
+        focus_section, match, error = find_apt_get_update_failure(section_lines)
+        if match:
+            print("Failed line: %d:" % (section_offsets[focus_section][0] + match.lineno))
+            print(match.line)
         if error:
             print("Error: %s" % error)
     if failed_stage == "install-deps":
-        (focus_section, offset, line, error) = find_install_deps_failure_description(
+        (focus_section, match, error) = find_install_deps_failure_description(
             section_lines
         )
-        if offset:
-            print("Failed line: %d:" % (section_offsets[focus_section][0] + offset))
-        if line:
-            print(line)
+        if match:
+            print("Failed line: %d:" % (section_offsets[focus_section][0] + match.lineno))
+            print(match.line)
         print(error)
 
 

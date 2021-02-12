@@ -23,7 +23,7 @@ from typing import List, Optional, Tuple, Callable, Union
 import re
 import textwrap
 
-from . import Problem
+from . import Problem, SingleLineMatch
 
 
 logger = logging.getLogger(__name__)
@@ -2451,24 +2451,6 @@ secondary_build_failure_regexps = [
 compiled_secondary_build_failure_regexps = [
     re.compile(regexp) for regexp in secondary_build_failure_regexps
 ]
-
-
-class SingleLineMatch(object):
-
-    offset: int
-    line: str
-
-    def __init__(self, offset: int, line: str):
-        self.offset = offset
-        self.line = line
-
-    @property
-    def lineno(self) -> int:
-        return self.offset + 1
-
-    @classmethod
-    def from_lines(cls, lines, offset):
-        return cls(offset, lines[offset])
 
 
 def find_build_failure_description(  # noqa: C901

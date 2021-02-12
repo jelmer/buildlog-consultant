@@ -26,13 +26,12 @@ from ..apt import (
 
 class FindAptGetFailureDescriptionTests(unittest.TestCase):
     def run_test(self, lines, lineno, err=None):
-        (offset, actual_line, actual_err) = find_apt_get_failure(lines)
+        (match, actual_err) = find_apt_get_failure(lines)
         if lineno is not None:
-            self.assertEqual(actual_line, lines[lineno - 1])
-            self.assertEqual(lineno, offset)
+            self.assertEqual(match.line, lines[lineno - 1])
+            self.assertEqual(match.lineno, lineno)
         else:
-            self.assertIs(actual_line, None)
-            self.assertIs(offset, None)
+            self.assertIs(match, None)
         if err:
             self.assertEqual(actual_err, err)
         else:

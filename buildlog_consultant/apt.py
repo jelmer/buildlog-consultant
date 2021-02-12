@@ -21,7 +21,7 @@ import re
 from debian.deb822 import PkgRelation
 import yaml
 
-from . import Problem
+from . import Problem, SingleLineMatch
 from .common import NoSpaceOnDevice
 
 
@@ -126,9 +126,9 @@ def find_apt_get_failure(lines):
     """Find the key failure line in apt-get-output.
 
     Returns:
-      tuple with (line offset, line, error object)
+      tuple with (match, error object)
     """
-    ret = (None, None, None)
+    ret = (None, None)
     OFFSET = 50
     for i in range(1, OFFSET):
         lineno = len(lines) - i
@@ -138,41 +138,40 @@ def find_apt_get_failure(lines):
         if line.startswith("E: Failed to fetch "):
             m = re.match("^E: Failed to fetch ([^ ]+)  (.*)", line)
             if m:
-                return lineno + 1, line, AptFetchFailure(m.group(1), m.group(2))
-            return lineno + 1, line, None
+                return SingleLineMatch.from_lines(lines, lineno), AptFetchFailure(m.group(1), m.group(2))
+            return SingleLineMatch.from_lines(lines, lineno), None
         if line in (
             "E: Broken packages",
             "E: Unable to correct problems, you have held broken " "packages.",
         ):
             error = AptBrokenPackages(lines[lineno - 1].strip())
-            return lineno, lines[lineno - 1].strip(), error
+            return SingleLineMatch.from_lines(lines, lineno), error
         m = re.match("E: The repository '([^']+)' does not have a Release file.", line)
         if m:
-            return lineno + 1, line, AptMissingReleaseFile(m.group(1))
+            return SingleLineMatch.from_lines(lines, lineno), AptMissingReleaseFile(m.group(1))
         m = re.match(
             "dpkg-deb: error: unable to write file '(.*)': " "No space left on device",
             line,
         )
         if m:
-            return lineno + 1, line, NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
         m = re.match(r"E: You don't have enough free space in (.*)\.", line)
         if m:
-            return lineno + 1, line, NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
         if line.startswith("E: ") and ret[0] is None:
-            ret = (lineno + 1, line, None)
+            ret = SingleLineMatch.from_lines(lines, lineno), None
         m = re.match(r"E: Unable to locate package (.*)", line)
         if m:
-            return lineno + 1, line, AptPackageUnknown(m.group(1))
+            return SingleLineMatch.from_lines(lines, lineno), AptPackageUnknown(m.group(1))
         m = re.match(r"dpkg: error: (.*)", line)
         if m:
             if m.group(1).endswith(": No space left on device"):
-                return lineno + 1, line, NoSpaceOnDevice()
-            return lineno + 1, line, DpkgError(m.group(1))
+                return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno), DpkgError(m.group(1))
         m = re.match(r"dpkg: error processing package (.*) \((.*)\):", line)
         if m:
             return (
-                lineno + 2,
-                lines[lineno + 1].strip(),
+                SingleLineMatch.from_lines(lines, lineno + 1),
                 DpkgError("processing package %s (%s)" % (m.group(1), m.group(2))),
             )
 
@@ -183,10 +182,10 @@ def find_apt_get_failure(lines):
             line,
         )
         if m:
-            return lineno + i, line, NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
         m = re.match(r" .*: No space left on device", line)
         if m:
-            return lineno + i, line, NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, i), NoSpaceOnDevice()
 
     return ret
 
@@ -194,8 +193,8 @@ def find_apt_get_failure(lines):
 def find_apt_get_update_failure(paragraphs):
     focus_section = "update chroot"
     lines = paragraphs.get(focus_section, [])
-    offset, line, error = find_apt_get_failure(lines)
-    return focus_section, offset, line, error
+    match, error = find_apt_get_failure(lines)
+    return focus_section, match, error
 
 
 def find_cudf_output(lines):
@@ -283,10 +282,10 @@ def find_install_deps_failure_description(paragraphs):
         if focus_section is None:
             continue
         if re.match("install (.*) build dependencies.*", focus_section):
-            offset, line, v_error = find_apt_get_failure(lines)
+            match, v_error = find_apt_get_failure(lines)
             if error is None:
                 error = v_error
-            if offset is not None:
-                return focus_section, offset, line, error
+            if match is not None:
+                return focus_section, match, error
 
-    return focus_section, None, None, error
+    return focus_section, None, error

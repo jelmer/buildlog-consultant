@@ -382,9 +382,9 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         testbed_failure_reason
                         == "apt repeatedly failed to download packages"
                     ):
-                        offset, line, error = find_apt_get_failure(lines)
-                        if error and offset:
-                            return (offset, last_test, error, line)
+                        match, error = find_apt_get_failure(lines)
+                        if error and match:
+                            return (match.lineno, last_test, error, match.line)
                         return (
                             i + 1,
                             last_test,
@@ -402,7 +402,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     (match, error) = find_build_failure_description(
                         lines[:i]
                     )
-                    if error:
+                    if error and match:
                         return (match.lineno, last_test, error, match.line)
                     return (
                         i + 1,
@@ -411,19 +411,19 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         None,
                     )
                 if current_field is not None:
-                    offset, line, error = find_apt_get_failure(
+                    match, error = find_apt_get_failure(
                         test_output[current_field]
                     )
                     if (
                         error is not None
-                        and offset is not None
+                        and match is not None
                         and current_field in test_output_offset
                     ):
                         return (
-                            test_output_offset[current_field] + offset,
+                            test_output_offset[current_field] + match.lineno,
                             last_test,
                             error,
-                            line,
+                            match.line,
                         )
                 return (i + 1, last_test, None, msg)
         else:
@@ -487,9 +487,9 @@ def find_autopkgtest_failure_description(  # noqa: C901
                 output_lines = test_output.get((testname, "prepare testbed"), [])
                 output_offset = test_output_offset.get((testname, "prepare testbed"))
                 if output_lines and output_offset:
-                    offset, line, error = find_apt_get_failure(output_lines)
-                    if error and offset:
-                        return (offset + output_offset + 1, testname, error, None)
+                    match, error = find_apt_get_failure(output_lines)
+                    if error and match:
+                        return (match.offset + output_offset + 1, testname, error, None)
                 badpkg = None
                 blame = None
                 for line in extra:

@@ -552,22 +552,26 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             offset = apt_offset
         context = ("autopkgtest", testname)
     if failed_stage == "apt-get-update":
-        focus_section, offset, description, error = find_apt_get_update_failure(
-            paragraphs
-        )
-        if error:
-            description = str(error)
-    if failed_stage in ("install-deps", "explain-bd-uninstallable"):
-        (focus_section, offset, line, error) = find_install_deps_failure_description(
+        focus_section, match, error = find_apt_get_update_failure(
             paragraphs
         )
         if error:
             description = str(error)
         elif match:
-            if line.startswith("E: "):
-                description = line[3:]
+            description = match.line
+        else:
+            description = None
+    if failed_stage in ("install-deps", "explain-bd-uninstallable"):
+        (focus_section, match, error) = find_install_deps_failure_description(
+            paragraphs
+        )
+        if error:
+            description = str(error)
+        elif match:
+            if match.line.startswith("E: "):
+                description = match.line[3:]
             else:
-                description = line
+                description = match.line
     if failed_stage == "arch-check":
         (offset, line, error) = find_arch_check_failure_description(section_lines)
         if error:

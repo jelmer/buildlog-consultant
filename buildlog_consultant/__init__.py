@@ -21,3 +21,24 @@ class Problem(object):
 
     kind: str
     is_global: bool = False
+
+
+class SingleLineMatch(object):
+
+    offset: int
+    line: str
+
+    def __init__(self, offset: int, line: str):
+        self.offset = offset
+        self.line = line
+
+    @property
+    def lineno(self) -> int:
+        return self.offset + 1
+
+    @classmethod
+    def from_lines(cls, lines, offset):
+        return cls(offset, lines[offset])
+
+
+
