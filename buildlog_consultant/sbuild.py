@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-from typing import List, Tuple, Iterator, BinaryIO, Optional, Union
+from typing import List, Tuple, Iterator, BinaryIO, Optional, Union, Dict
 
 import logging
 
@@ -42,8 +42,8 @@ class SbuildFailure(Exception):
 
     def __init__(
         self,
-        stage: str,
-        description: str,
+        stage: Optional[str],
+        description: Optional[str],
         error: Optional["Problem"] = None,
         context: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
     ):
@@ -62,7 +62,7 @@ class SbuildFailure(Exception):
         )
 
 
-SBUILD_FOCUS_SECTION = {
+SBUILD_FOCUS_SECTION: Dict[Optional[str], str] = {
     "build": "build",
     "run-post-build-commands": "post build commands",
     "post-build": "post build",
