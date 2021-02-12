@@ -16,4 +16,5 @@ setup(
         "Repository": "https://github.com/jelmer/buildlog-consultant.git",
     },
     test_suite="buildlog_consultant.tests.test_suite",
+    install_requires=['python_debian'],
 )
