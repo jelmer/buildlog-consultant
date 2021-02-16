@@ -1523,6 +1523,11 @@ build_failure_regexps: List[Union[
         r"\'(.*)\', needed by \'.*\'\.  Stop\.",
         file_not_found,
     ),
+    (
+        r"make: \*\*\* No rule to make target "
+        r"\'(.*)\'\.  Stop\.",
+        file_not_found,
+    ),
     (r"[^:]+:\d+: (.*): No such file or directory", file_not_found),
     (
         r"(distutils.errors.DistutilsError|error): "
