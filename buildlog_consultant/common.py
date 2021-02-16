@@ -2281,7 +2281,7 @@ for entry in build_failure_regexps:
             (regexp, cb) = entry
             matcher = SingleLineMatcher(regexp, cb)
         else:
-            matcher = entry
+            matcher = entry  # type: ignore
         compiled_build_failure_regexps.append(matcher)
     except re.error as e:
         raise Exception("Error in %s: %s" % (regexp, e))
