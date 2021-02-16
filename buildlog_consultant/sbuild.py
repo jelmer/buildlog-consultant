@@ -501,6 +501,18 @@ def find_creation_session_error(lines):
     return ret
 
 
+def find_brz_build_error(lines):
+    for i in range(len(lines) - 1, 0, -1):
+        line = lines[i]
+        if line.startswith("brz: ERROR: "):
+            rest = [line[len("brz: ERROR: ") :]]
+            for n in lines[i + 1 :]:
+                if n.startswith(" "):
+                    rest.append(n)
+            return parse_brz_error("".join(rest))
+    return (None, None)
+
+
 def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
     paragraphs = {}
     for title, offsets, lines in parse_sbuild_log(f):
@@ -533,7 +545,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             description = str(error)
             context = ("build",)
         elif match:
-            description = match.line
+            description = match.line.rstrip('\n')
     if failed_stage == "autopkgtest":
         section_lines = strip_useless_build_tail(section_lines)
         (
@@ -558,7 +570,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         if error:
             description = str(error)
         elif match:
-            description = match.line
+            description = match.line.rstrip('\n')
         else:
             description = None
     if failed_stage in ("install-deps", "explain-bd-uninstallable"):
@@ -569,9 +581,9 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             description = str(error)
         elif match:
             if match.line.startswith("E: "):
-                description = match.line[3:]
+                description = match.line[3:].rstrip('\n')
             else:
-                description = match.line
+                description = match.line.rstrip('\n')
     if failed_stage == "arch-check":
         (offset, line, error) = find_arch_check_failure_description(section_lines)
         if error:
@@ -638,7 +650,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
                     if match is None:
                         description = m.group(2)
                     else:
-                        description = match.line
+                        description = match.line.rstrip('\n')
                     break
                 m = re.match("dpkg-source: error: (.*)", line)
                 if m:
@@ -654,15 +666,11 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
                     description = "Revision %r is not present" % (error.revision)
                     break
             else:
-                for i in range(len(paragraphs[None]) - 1, 0, -1):
-                    line = paragraphs[None][i]
-                    if line.startswith("brz: ERROR: "):
-                        rest = [line[len("brz: ERROR: ") :]]
-                        for n in paragraphs[None][i + 1 :]:
-                            if n.startswith(" "):
-                                rest.append(n)
-                        (error, description) = parse_brz_error("".join(rest))
-                        break
+                (match, error) = find_build_failure_description(paragraphs[None])
+                if match is None:
+                    error, description = find_brz_build_error(paragraphs[None])
+                else:
+                    description = match.line.rstrip('\n')
 
     return SbuildFailure(failed_stage, description, error=error, context=context)
 
