@@ -39,6 +39,3 @@ class SingleLineMatch(object):
     @classmethod
     def from_lines(cls, lines, offset):
         return cls(offset, lines[offset])
-
-
-
