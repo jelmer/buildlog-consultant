@@ -19,7 +19,7 @@
 import logging
 import os
 import posixpath
-from typing import List, Optional, Tuple, Callable, Union
+from typing import List, Optional, Tuple
 import re
 import textwrap
 
@@ -1515,9 +1515,7 @@ class DuplicateDHCompatLevel(Problem):
         return isinstance(other, type(self)) and self.command == other.command
 
 
-build_failure_regexps: List[Union[
-        Tuple[str, Optional[Callable[[re.Match], Optional[Problem]]]],
-        Matcher]] = [
+build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
         r"\'(.*)\', needed by \'.*\'\.  Stop\.",
