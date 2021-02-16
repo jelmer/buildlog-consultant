@@ -1525,7 +1525,7 @@ build_failure_regexps: List[Union[
     ),
     (
         r"make: \*\*\* No rule to make target "
-        r"\'(.*)\'\.  Stop\.",
+        r"\'(\/.*)\'\.  Stop\.",
         file_not_found,
     ),
     (r"[^:]+:\d+: (.*): No such file or directory", file_not_found),
