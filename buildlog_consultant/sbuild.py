@@ -45,20 +45,20 @@ class SbuildFailure(Exception):
         stage: Optional[str],
         description: Optional[str],
         error: Optional["Problem"] = None,
-        context: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
+        phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
     ):
         self.stage = stage
         self.description = description
         self.error = error
-        self.context = context
+        self.phase = phase
 
     def __repr__(self):
-        return "%s(%r, %r, error=%r, context=%r)" % (
+        return "%s(%r, %r, error=%r, phase=%r)" % (
             type(self).__name__,
             self.stage,
             self.description,
             self.error,
-            self.context,
+            self.phase,
         )
 
 
@@ -531,19 +531,19 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         # command.
         failed_stage = "autopkgtest"
     description = None
-    context: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None
+    phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None
     error = None
     section_lines = paragraphs.get(focus_section, [])
     if failed_stage == "create-session":
         offset, description, error = find_creation_session_error(section_lines)
         if error:
-            context = ("create-session",)
+            phase = ("create-session",)
     if failed_stage == "build":
         section_lines = strip_useless_build_tail(section_lines)
         match, error = find_build_failure_description(section_lines)
         if error:
             description = str(error)
-            context = ("build",)
+            phase = ("build",)
         elif match:
             description = match.line.rstrip('\n')
     if failed_stage == "autopkgtest":
@@ -562,7 +562,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             description = apt_description
         if apt_offset is not None:
             offset = apt_offset
-        context = ("autopkgtest", testname)
+        phase = ("autopkgtest", testname)
     if failed_stage == "apt-get-update":
         focus_section, match, error = find_apt_get_update_failure(
             paragraphs
@@ -596,7 +596,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         description = "build failed stage %s" % failed_stage
     if description is None:
         description = "build failed"
-        context = ("buildenv",)
+        phase = ("buildenv",)
         if list(paragraphs.keys()) == [None]:
             for line in reversed(paragraphs[None]):
                 m = re.match("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
@@ -672,7 +672,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
                 else:
                     description = match.line.rstrip('\n')
 
-    return SbuildFailure(failed_stage, description, error=error, context=context)
+    return SbuildFailure(failed_stage, description, error=error, phase=phase)
 
 
 def parse_sbuild_log(
