@@ -1545,8 +1545,8 @@ build_failure_regexps = [
         r"Requirement.parse\(\'(.*)\'\)\)\!",
         python2_reqs_not_found,
     ),
-    ("ImportError: cannot import name '(.*)' from '(.*)'", python_module_not_found),
-    ("E   ImportError: cannot import name '(.*)' from '(.*)'", python_module_not_found),
+    ("ImportError: cannot import name '(.*)' from '(.*)'", None),
+    ("E   ImportError: cannot import name '(.*)' from '(.*)'", None),
     ("E   ImportError: cannot import name ([^']+)", python_module_not_found),
     (
         r"django.core.exceptions.ImproperlyConfigured: Error loading .* module: "
