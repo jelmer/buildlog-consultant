@@ -503,7 +503,7 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
                 "(/usr/lib/python3/dist-packages/msrest/polling/__init__.py)"
             ],
             1,
-            MissingPythonModule("msrest.polling"),
+            None,
         )
         self.run_test(
             ["/usr/bin/python3: No module named sphinx"],
