@@ -7,7 +7,7 @@ setup(
     packages=[
         "buildlog_consultant",
     ],
-    version="0.0.1",
+    version="0.0.3",
     author="Jelmer Vernooij",
     author_email="jelmer@jelmer.uk",
     url="https://github.com/jelmer/buildlog-consultant",
@@ -16,4 +16,5 @@ setup(
         "Repository": "https://github.com/jelmer/buildlog-consultant.git",
     },
     test_suite="buildlog_consultant.tests.test_suite",
+    install_requires=['python_debian', 'PyYAML'],
 )
