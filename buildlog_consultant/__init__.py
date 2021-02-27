@@ -15,3 +15,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+
+class Problem(object):
+
+    kind: str
+    is_global: bool = False
+
+
+class SingleLineMatch(object):
+
+    offset: int
+    line: str
+
+    def __init__(self, offset: int, line: str):
+        self.offset = offset
+        self.line = line
+
+    @property
+    def lineno(self) -> int:
+        return self.offset + 1
+
+    @classmethod
+    def from_lines(cls, lines, offset):
+        return cls(offset, lines[offset])

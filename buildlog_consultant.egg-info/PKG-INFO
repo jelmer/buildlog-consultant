@@ -1,0 +1,11 @@
+Metadata-Version: 1.2
+Name: buildlog-consultant
+Version: 0.0.3
+Summary: buildlog parser and analyser
+Home-page: https://github.com/jelmer/buildlog-consultant
+Author: Jelmer Vernooij
+Author-email: jelmer@jelmer.uk
+License: UNKNOWN
+Project-URL: Repository, https://github.com/jelmer/buildlog-consultant.git
+Description: UNKNOWN
+Platform: UNKNOWN
