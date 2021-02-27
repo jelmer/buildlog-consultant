@@ -1275,7 +1275,7 @@ class SingleLineMatcher(Matcher):
 class HaskellMissingDependencyMatcher(Matcher):
 
     regexp = re.compile(
-        r"hlibrary\.setup: Encountered missing or private dependencies:\n"
+        r"(.*): Encountered missing or private dependencies:\n"
     )
 
     def match(self, lines, i):
