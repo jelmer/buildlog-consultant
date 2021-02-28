@@ -1287,7 +1287,7 @@ class HaskellMissingDependencyMatcher(Matcher):
         for line in lines[i + 1 :]:
             if not line.strip("\n"):
                 break
-            deps.append(tuple(line.rstrip("\n").split(" ", 1)))
+            deps.extend([x.strip() for x in line.split(",", 1)])
             linenos.append(linenos[-1] + 1)
         return linenos, MissingHaskellDependencies(deps)
 
