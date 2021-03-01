@@ -17,6 +17,7 @@
 
 from ..common import (
     CMakeFilesMissing,
+    CMakeNeedExactVersion,
     find_build_failure_description,
     CcacheError,
     DebhelperPatternNotFound,
@@ -351,6 +352,15 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             CMakeFilesMissing(["sensor_msgsConfig.cmake", "sensor_msgs-config.cmake"]),
         )
+
+    def test_cmake_missing_exact_version(self):
+        self.run_test("""\
+CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
+  Could NOT find SignalProtocol: Found unsuitable version "2.3.3", but
+  required is exact version "2.3.2" (found
+  /usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so)
+""".splitlines(True), 4, CMakeNeedExactVersion(
+    'SignalProtocol', '2.3.3', '2.3.2', '/usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so'))
 
     def test_dh_compat_dupe(self):
         self.run_test(

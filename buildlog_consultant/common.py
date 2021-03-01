@@ -1322,6 +1322,40 @@ def cmake_compiler_missing(m):
     return None
 
 
+class CMakeNeedExactVersion(Problem):
+
+    kind = 'cmake-exact-version-missing'
+
+    def __init__(self, package, version_found, exact_version_needed, path):
+        self.package = package
+        self.version_found = version_found
+        self.exact_version_needed = exact_version_needed
+        self.path = path
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and (
+            self.package == other.package and
+            self.version_found == other.version_found and
+            self.exact_version_needed == other.exact_version_needed and
+            self.path == other.path)
+
+    def __repr__(self):
+        return "%s(%r, %r, %r, %r)" % (
+            type(self).__name__,
+            self.package, self.version_found,
+            self.exact_version_needed,
+            self.path)
+
+    def __str__(self):
+        return "CMake needs exact package %s, version %s" % (
+            self.package, self.exact_version_needed)
+
+
+def cmake_unsuitable_version(m):
+    return CMakeNeedExactVersion(
+        m.group(1), m.group(2), m.group(3), m.group(4))
+
+
 class CMakeErrorMatcher(Matcher):
 
     regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):\n")
@@ -1339,6 +1373,10 @@ class CMakeErrorMatcher(Matcher):
             r"CMake will not be able to correctly generate this project.\n$",
             cmake_compiler_failure,
         ),
+        (r"Could NOT find (.*): Found unsuitable version \"(.*)\", but\n"
+         r"required is exact version \"(.*)\" \(found\n(.*)\)",
+         cmake_unsuitable_version
+         ),
         (
             r'The imported target \"(.*)\" references the file\n\n\s*"(.*)"\n\n'
             r"but this file does not exist\.(.*)",
@@ -2346,6 +2384,7 @@ secondary_build_failure_regexps = [
     r"Original error was: (.*)",
     r"[^:]+: error: (.*)",
     r"[^:]+:[0-9]+: error: (.*)",
+    r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
     r"^FAILED \(.*\)",
     r"cat: (.*): No such file or directory",
     # Random Python errors
