@@ -429,6 +429,10 @@ def meson_pkg_config_too_low(m):
     return MissingPkgConfig(m.group(3), m.group(4))
 
 
+def meson_c_library_missing(m):
+    return MissingLibrary(m.group(3))
+
+
 def cmake_pkg_config_missing(m):
     return MissingPkgConfig(m.group(1))
 
@@ -1409,6 +1413,8 @@ class CMakeErrorMatcher(Matcher):
             lambda m: NoSpaceOnDevice(),
         ),
         (r'file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n', None),
+        (r'Could NOT find (.*) \(missing: (.*)\)', None),
+
     ]
 
     @classmethod
@@ -1599,7 +1605,7 @@ build_failure_regexps = [
     ),
     ("E   ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
     (r"/usr/bin/python3: No module named (.*)", python3_module_not_found),
-    ('.*: cannot find package "(.*)" in any of:', missing_go_package),
+    ('.*:[0-9]+:[0-9]+: cannot find package "(.*)" in any of:', missing_go_package),
     (
         r'ImportError: Error importing plugin ".*": No module named (.*)',
         python_module_not_found,
@@ -1697,6 +1703,10 @@ build_failure_regexps = [
         ".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
         "need '([^']+)' \\['>= ([^']+)'\\] found '([^']+)'\\.",
         meson_pkg_config_too_low,
+    ),
+    (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: C shared or static library '(.*)' not found",
+        meson_c_library_missing,
     ),
     (
         r"dh: Unknown sequence --(.*) "
