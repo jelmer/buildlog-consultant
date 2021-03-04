@@ -30,6 +30,7 @@ from ..common import (
     MissingCHeader,
     MissingDHCompatLevel,
     MissingJDKFile,
+    MissingJDK,
     MissingPythonModule,
     MissingPythonDistribution,
     MissingGoPackage,
@@ -592,6 +593,16 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingJDKFile("/usr/lib/jvm/java-8-openjdk-amd64", "tools.jar"),
         )
+
+    def test_missing_jdk(self):
+        self.run_test(
+            [
+                "> Kotlin could not find the required JDK tools in "
+                "the Java installation "
+                "'/usr/lib/jvm/java-8-openjdk-amd64/jre' used by Gradle. "
+                "Make sure Gradle is running on a JDK, not JRE.",
+            ], 1,
+            MissingJDK('/usr/lib/jvm/java-8-openjdk-amd64/jre'))
 
     def test_node_module_missing(self):
         self.run_test(

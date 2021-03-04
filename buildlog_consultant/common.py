@@ -206,8 +206,32 @@ class MissingJDKFile(Problem):
         return "%s(%r, %r)" % (type(self).__name__, self.jdk_path, self.filename)
 
 
+class MissingJDK(Problem):
+
+    kind = "missing-jdk"
+
+    def __init__(self, jdk_path):
+        self.jdk_path = jdk_path
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self))
+            and self.jdk_path == other.jdk_path
+        )
+
+    def __str__(self):
+        return "Missing JDK (JDK Path: %s)" % (self.jdk_path)
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.jdk_path)
+
+
 def jdk_file_missing(m):
     return MissingJDKFile(m.group(2), m.group(1))
+
+
+def jdk_missing(m):
+    return MissingJDK(m.group(1))
 
 
 def interpreter_missing(m):
@@ -1745,6 +1769,12 @@ build_failure_regexps = [
         r"> Could not find (.*). Please check that (.*) contains a valid JDK "
         r"installation.",
         jdk_file_missing,
+    ),
+    (
+        r"> Kotlin could not find the required JDK tools in the Java "
+        r"installation '(.*)' used by Gradle. Make sure Gradle is running "
+        "on a JDK, not JRE.",
+        jdk_missing,
     ),
     (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "
