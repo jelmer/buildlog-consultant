@@ -337,6 +337,39 @@ class DpkgSourcePackFailed(Problem):
             return "Packing source directory failed."
 
 
+class MissingDebcargoCrate(Problem):
+
+    kind = "debcargo-missing-crate"
+
+    def __init__(self, crate, version=None):
+        self.crate = crate
+        self.version = version
+
+    @classmethod
+    def from_string(cls, text):
+        text = text.strip()
+        if '=' in text:
+            (crate, version) = text.split('=')
+            return cls(crate.strip(), version.strip())
+        else:
+            return cls(text)
+
+    def __eq__(self, other):
+        return (isinstance(other, type(self)) and
+                other.crate == self.crate and
+                other.version == self.version)
+
+    def __repr__(self):
+        return "%s(%r, version=%r)" % (
+            type(self).__name__, self.crate, self.version)
+
+    def __str__(self):
+        ret = "debcargo can't find crate %s" % self.crate
+        if self.version:
+            ret += " (version: %s)" % self.version
+        return ret
+
+
 def find_preamble_failure_description(
     lines: List[str],
 ) -> Tuple[Optional[int], Optional[str], Optional[Problem]]:
@@ -421,57 +454,72 @@ def find_preamble_failure_description(
     return ret
 
 
+def _parse_debcargo_failure(m, pl):
+    if pl[-1] == ' Try `debcargo update` to update the crates.io index.\x1b[0m\n':
+        m = re.match(r'\x1b\[1;31mSomething failed: (.*)\n', pl[-2])
+        if m:
+            n = re.match(r'Couldn\'t find any crate matching (.*)', m.group(1))
+            if n:
+                return MissingDebcargoCrate.from_string(n.group(1))
+            else:
+                return DpkgSourcePackFailed(m.group(1))
+        else:
+            return DpkgSourcePackFailed(pl[-2])
+
+    return DebcargoFailure()
+
+
 BRZ_ERRORS = [
     (
         "Unable to find the needed upstream tarball for "
         "package (.*), version (.*)\\.",
-        lambda m: UnableToFindUpstreamTarball(m.group(1), m.group(2)),
+        lambda m, pl: UnableToFindUpstreamTarball(m.group(1), m.group(2)),
     ),
     (
         "Unknown mercurial extra fields in (.*): b'(.*)'.",
-        lambda m: UnknownMercurialExtraFields(m.group(2)),
+        lambda m, pl: UnknownMercurialExtraFields(m.group(2)),
     ),
     (
         "UScan failed to run: OpenPGP signature did not verify..",
-        lambda m: UpstreamPGPSignatureVerificationFailed(),
+        lambda m, pl: UpstreamPGPSignatureVerificationFailed(),
     ),
     (
         r"Inconsistency between source format and version: "
         r"version is( not)? native, format is( not)? native\.",
-        lambda m: InconsistentSourceFormat(),
+        lambda m, pl: InconsistentSourceFormat(),
     ),
     (
         r"UScan failed to run: In (.*) no matching hrefs "
         "for version (.*) in watch line",
-        lambda m: UScanRequestVersionMissing(m.group(2)),
+        lambda m, pl: UScanRequestVersionMissing(m.group(2)),
     ),
     (
         r"UScan failed to run: In directory ., downloading \s+" r"(.*) failed: (.*)",
-        lambda m: UScanFailed(m.group(1), m.group(2)),
+        lambda m, pl: UScanFailed(m.group(1), m.group(2)),
     ),
     (
         r"UScan failed to run: In watchfile debian/watch, "
         r"reading webpage\n  (.*) failed: (.*)",
-        lambda m: UScanFailed(m.group(1), m.group(2)),
+        lambda m, pl: UScanFailed(m.group(1), m.group(2)),
     ),
     (
         r"Unable to parse upstream metadata file (.*): (.*)",
-        lambda m: UpstreamMetadataFileParseError(m.group(1), m.group(2)),
+        lambda m, pl: UpstreamMetadataFileParseError(m.group(1), m.group(2)),
     ),
-    (r"Debcargo failed to run\.", lambda m: DebcargoFailure()),
+    (r"Debcargo failed to run\.", _parse_debcargo_failure),
 ]
 
 
 _BRZ_ERRORS = [(re.compile(r), fn) for (r, fn) in BRZ_ERRORS]
 
 
-def parse_brz_error(line: str) -> Tuple[Optional[Problem], str]:
+def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem], str]:
     error: Problem
     line = line.strip()
     for search_re, fn in _BRZ_ERRORS:
         m = search_re.match(line)
         if m:
-            error = fn(m)
+            error = fn(m, prior_lines)
             return (error, str(error))
     if line.startswith("UScan failed to run"):
         return (None, line)
@@ -509,7 +557,7 @@ def find_brz_build_error(lines):
             for n in lines[i + 1 :]:
                 if n.startswith(" "):
                     rest.append(n)
-            return parse_brz_error("".join(rest))
+            return parse_brz_error("".join(rest), lines[:i])
     return (None, None)
 
 
