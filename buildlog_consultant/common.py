@@ -1629,7 +1629,7 @@ build_failure_regexps = [
     ),
     ("E   ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
     (r"/usr/bin/python3: No module named (.*)", python3_module_not_found),
-    ('.*:[0-9]+:[0-9]+: cannot find package "(.*)" in any of:', missing_go_package),
+    ('.*:[0-9]+: cannot find package "(.*)" in any of:', missing_go_package),
     (
         r'ImportError: Error importing plugin ".*": No module named (.*)',
         python_module_not_found,

@@ -455,16 +455,27 @@ def find_preamble_failure_description(
 
 
 def _parse_debcargo_failure(m, pl):
-    if pl[-1] == ' Try `debcargo update` to update the crates.io index.\x1b[0m\n':
-        m = re.match(r'\x1b\[1;31mSomething failed: (.*)\n', pl[-2])
-        if m:
-            n = re.match(r'Couldn\'t find any crate matching (.*)', m.group(1))
+    MORE_TAIL = '\x1b[0m\n'
+    MORE_HEAD = '\x1b[1;31mSomething failed: '
+    if pl[-1].endswith(MORE_TAIL):
+        extra = [pl[-1][:-len(MORE_TAIL)]]
+        for line in reversed(pl[:-1]):
+            if line.startswith(MORE_HEAD):
+                extra.insert(0, line[len(MORE_HEAD):])
+                break
+            else:
+                extra.insert(0, line)
+        else:
+            extra = []
+        if extra and extra[-1] == (
+                ' Try `debcargo update` to update the crates.io index.'):
+            n = re.match(r'Couldn\'t find any crate matching (.*)', extra[-2])
             if n:
                 return MissingDebcargoCrate.from_string(n.group(1))
             else:
-                return DpkgSourcePackFailed(m.group(1))
+                return DpkgSourcePackFailed(extra[-2])
         else:
-            return DpkgSourcePackFailed(pl[-2])
+            return DpkgSourcePackFailed(''.join(extra))
 
     return DebcargoFailure()
 
