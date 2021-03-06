@@ -246,17 +246,20 @@ class DebcargoFailure(Problem):
 
     kind = "debcargo-failed"
 
-    def __init__(self):
-        pass
+    def __init__(self, reason):
+        self.reason = reason
 
     def __str__(self):
-        return "Debcargo failed"
+        if self.reason:
+            return "Debcargo failed: %s" % self.reason
+        else:
+            return "Debcargo failed"
 
     def __repr__(self):
         return "%s()" % type(self).__name__
 
     def __eq__(self, other):
-        return isinstance(other, type(self))
+        return isinstance(other, type(self)) and other.reason == self.reason
 
 
 class UScanFailed(Problem):
@@ -460,11 +463,10 @@ def _parse_debcargo_failure(m, pl):
     if pl[-1].endswith(MORE_TAIL):
         extra = [pl[-1][:-len(MORE_TAIL)]]
         for line in reversed(pl[:-1]):
-            if line.startswith(MORE_HEAD):
-                extra.insert(0, line[len(MORE_HEAD):])
+            if extra[0].startswith(MORE_HEAD):
+                extra[0] = extra[0][len(MORE_HEAD):]
                 break
-            else:
-                extra.insert(0, line)
+            extra.insert(0, line)
         else:
             extra = []
         if extra and extra[-1] == (
@@ -475,7 +477,7 @@ def _parse_debcargo_failure(m, pl):
             else:
                 return DpkgSourcePackFailed(extra[-2])
         else:
-            return DpkgSourcePackFailed(''.join(extra))
+            return DebcargoFailure(''.join(extra))
 
     return DebcargoFailure()
 
