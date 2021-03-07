@@ -1549,6 +1549,10 @@ def cargo_missing_requirement(m):
     return MissingCargoCrate(crate, requirement)
 
 
+def missing_lazyfont_file(m):
+    return MissingFile(m.group(1))
+
+
 class MissingDHCompatLevel(Problem):
 
     kind = "missing-dh-compat-level"
@@ -2349,6 +2353,11 @@ build_failure_regexps = [
         cargo_missing_requirement,
     ),
     (r"^Environment variable \$SOURCE_DATE_EPOCH: No digits were found: $", None),
+    (r'\[ERROR\] LazyFont - Failed to read font file (.*) '
+     r'\<java.io.FileNotFoundException: (.*) \(No such file or directory\)\>'
+     r'java.io.FileNotFoundException: (.*) \(No such file or directory\)',
+     missing_lazyfont_file,
+    ),
 ]
 
 
