@@ -462,6 +462,20 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             MissingPythonDistribution("configparser", None, "3.5"),
         )
 
+    def test_lazy_font(self):
+        self.run_test(
+            ['[ERROR] LazyFont - Failed to read font file '
+             '/usr/share/texlive/texmf-dist/fonts/opentype/public/'
+             'stix2-otf/STIX2Math.otf '
+             '<java.io.FileNotFoundException: /usr/share/texlive/texmf-dist/'
+             'fonts/opentype/public/stix2-otf/STIX2Math.otf '
+             '(No such file or directory)>java.io.FileNotFoundException: '
+             '/usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf'
+             '/STIX2Math.otf (No such file or directory)'], 1,
+            MissingFile(
+                '/usr/share/texlive/texmf-dist/fonts/opentype/'
+                'public/stix2-otf/STIX2Math.otf'))
+
     def test_pytest_import(self):
         self.run_test(
             ["E   ImportError: cannot import name cmod"], 1, MissingPythonModule("cmod")
