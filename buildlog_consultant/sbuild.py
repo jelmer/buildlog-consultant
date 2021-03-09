@@ -27,7 +27,7 @@ from .apt import (
     find_install_deps_failure_description,
 )
 from .autopkgtest import find_autopkgtest_failure_description
-from .common import find_build_failure_description, NoSpaceOnDevice
+from .common import find_build_failure_description, NoSpaceOnDevice, ChrootNotFound
 
 __all__ = [
     "SbuildFailure",
@@ -556,6 +556,10 @@ def find_creation_session_error(lines):
         line = lines[i]
         if line.startswith("E: "):
             ret = i + 1, line, None
+        m = re.fullmatch(
+            "E: Chroot for distribution (.*), architecture (.*) not found\n", line)
+        if m:
+            return i + 1, line, ChrootNotFound('%s-%s-sbuild' % (m.group(1), m.group(2)))
         if line.endswith(": No space left on device\n"):
             return i + 1, line, NoSpaceOnDevice()
 

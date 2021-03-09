@@ -244,6 +244,23 @@ def interpreter_missing(m):
     return MissingCommand(m.group(1))
 
 
+class ChrootNotFound(Problem):
+
+    kind = "chroot-not-found"
+
+    def __init__(self, chroot):
+        self.chroot = chroot
+
+    def __str__(self):
+        return "Chroot not found: %s" % self.chroot
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.chroot)
+
+    def __eq__(self, other):
+        return isinstance(self, type(other)) and self.chroot == other.chroot
+
+
 class MissingSprocketsFile(Problem):
 
     kind = "missing-sprockets-file"
