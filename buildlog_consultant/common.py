@@ -2374,7 +2374,9 @@ build_failure_regexps = [
      r'\<java.io.FileNotFoundException: (.*) \(No such file or directory\)\>'
      r'java.io.FileNotFoundException: (.*) \(No such file or directory\)',
      missing_lazyfont_file,
-    ),
+     ),
+    (r'Package (.*) was not found in the pkg-config search path.',
+     lambda m: MissingPkgConfig(m.group(1))),
 ]
 
 
