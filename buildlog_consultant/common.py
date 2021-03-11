@@ -170,6 +170,9 @@ class MissingFile(Problem):
     def __repr__(self):
         return "%s(%r)" % (type(self).__name__, self.path)
 
+    def json(self):
+        return {'path': self.path}
+
 
 def file_not_found(m):
     if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
@@ -225,6 +228,9 @@ class MissingJDK(Problem):
     def __repr__(self):
         return "%s(%r)" % (type(self).__name__, self.jdk_path)
 
+    def json(self):
+        return {}
+
 
 def jdk_file_missing(m):
     return MissingJDKFile(m.group(2), m.group(1))
@@ -259,6 +265,9 @@ class ChrootNotFound(Problem):
 
     def __eq__(self, other):
         return isinstance(self, type(other)) and self.chroot == other.chroot
+
+    def json(self):
+        return {'chroot': self.chroot}
 
 
 class MissingSprocketsFile(Problem):

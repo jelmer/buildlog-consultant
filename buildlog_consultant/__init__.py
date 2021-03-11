@@ -22,6 +22,9 @@ class Problem(object):
     kind: str
     is_global: bool = False
 
+    def json(self):
+        raise NotImplementedError(self.json)
+
 
 class SingleLineMatch(object):
 
