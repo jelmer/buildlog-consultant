@@ -1816,6 +1816,7 @@ build_failure_regexps = [
         r"No such file or directory",
         file_not_found,
     ),
+    (r"OSError: \[Errno 28\] No space left on device", lambda m: NoSpaceOnDevice()),
     (r"OSError: No such file (.*)", file_not_found),
     (
         r"Could not open \'(.*)\': No such file or directory at "

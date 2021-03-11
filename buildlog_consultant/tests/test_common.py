@@ -834,6 +834,14 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             NoSpaceOnDevice(),
         )
 
+        self.run_test(
+            [
+                'OSError: [Errno 28] No space left on device',
+            ],
+            1,
+            NoSpaceOnDevice(),
+        )
+
     def test_segmentation_fault(self):
         self.run_test(
             [
