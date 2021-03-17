@@ -1354,9 +1354,9 @@ class SingleLineMatcher(Matcher):
 class AutoconfUnexpectedMacroMatcher(Matcher):
 
     regexp1 = re.compile(
-        r'\.\/configure: line [0-9]+: syntax error near unexpected token `.*\'\n')
+        r'\.\/configure: line [0-9]+: syntax error near unexpected token `.*\'')
     regexp2 = re.compile(
-        r'\.\/configure: line [0-9]+: `([A-Z0-9_]+)\(.*\n')
+        r'\.\/configure: line [0-9]+: `([A-Z0-9_]+)\(.*')
 
     def match(self, lines, i):
         m = self.regexp1.fullmatch(lines[i])
@@ -1371,7 +1371,7 @@ class AutoconfUnexpectedMacroMatcher(Matcher):
 class HaskellMissingDependencyMatcher(Matcher):
 
     regexp = re.compile(
-        r"(.*): Encountered missing or private dependencies:\n"
+        r"(.*): Encountered missing or private dependencies:"
     )
 
     def match(self, lines, i):
