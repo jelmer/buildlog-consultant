@@ -2054,6 +2054,10 @@ build_failure_regexps = [
         lambda m: MissingCommand('pkgconf'),
     ),
     (
+        r'autoreconf was not found; .*',
+        lambda m: MissingCommand('autoreconf'),
+    ),
+    (
         r"python3.[0-9]+: can\'t open file \'(.*)\': "
         "[Errno 2] No such file or directory",
         file_not_found,
