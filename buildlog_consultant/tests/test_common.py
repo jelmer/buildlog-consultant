@@ -1398,6 +1398,11 @@ arch:all and the other not)""".splitlines(),
             1,
             MissingAutoconfMacro("AC_CHECK_CCA"),
         )
+        self.run_test(
+            ["./configure: line 12569: PKG_PROG_PKG_CONFIG: command not found"],
+            1,
+            MissingAutoconfMacro("PKG_PROG_PKG_CONFIG"),
+        )
 
     def test_config_status_input(self):
         self.run_test(

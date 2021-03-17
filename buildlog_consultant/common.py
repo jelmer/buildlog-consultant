@@ -1073,6 +1073,10 @@ def autoconf_undefined_macro(m):
     return MissingAutoconfMacro(m.group(2))
 
 
+def configure_undefined_macro(m):
+    return MissingAutoconfMacro(m.group(2))
+
+
 class MissingGnomeCommonDependency(Problem):
 
     kind = "missing-gnome-common-dependency"
@@ -1688,6 +1692,7 @@ build_failure_regexps = [
         node_module_missing,
     ),
     (r'>> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
+    (r"(\.\/configure): line \d+: ([A-Z0-9_]+): command not found", configure_undefined_macro),
     (r".*: line \d+: ([^ ]+): command not found", command_missing),
     (r".*: line \d+: ([^ ]+): Permission denied", None),
     (r"\/bin\/sh: \d+: ([^ ]+): not found", command_missing),
