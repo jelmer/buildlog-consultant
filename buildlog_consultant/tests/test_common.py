@@ -1406,6 +1406,11 @@ arch:all and the other not)""".splitlines(),
             1,
             MissingAutoconfMacro("PKG_PROG_PKG_CONFIG"),
         )
+        self.run_test(
+            ['checking for gawk... (cached) mawk\n',
+             "./configure: line 2368: syntax error near unexpected token `APERTIUM,'\n",
+             "./configure: line 2368: `PKG_CHECK_MODULES(APERTIUM, apertium >= 3.7.1)'\n"],
+            3, MissingAutoconfMacro("PKG_CHECK_MODULES"))
 
     def test_config_status_input(self):
         self.run_test(

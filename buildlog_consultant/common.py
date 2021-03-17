@@ -1330,6 +1330,23 @@ class SingleLineMatcher(Matcher):
         return [i], err
 
 
+class AutoconfUnexpectedMacroMatcher(Matcher):
+
+    regexp1 = re.compile(
+        r'\.\/configure: line [0-9]+: syntax error near unexpected token `.*\'\n')
+    regexp2 = re.compile(
+        r'\.\/configure: line [0-9]+: `([A-Z0-9_]+)\(.*\n')
+
+    def match(self, lines, i):
+        m = self.regexp1.fullmatch(lines[i])
+        if not m:
+            return [], None
+        m = self.regexp2.fullmatch(lines[i+1])
+        if m:
+            return [i, i+1], MissingAutoconfMacro(m.group(1))
+        return [], None
+
+
 class HaskellMissingDependencyMatcher(Matcher):
 
     regexp = re.compile(
@@ -1729,6 +1746,7 @@ build_failure_regexps = [
     ),
     (r"Error: pkg-config not found\!", lambda m: MissingCommand("pkg-config")),
     (r" ERROR: BLAS not found\!", lambda m: MissingLibrary("blas")),
+    AutoconfUnexpectedMacroMatcher(),
     (r"\./configure: [0-9]+: \.: Illegal option .*", None),
     (r"Requested \'(.*)\' but version of ([^ ]+) is ([^ ]+)", pkg_config_missing),
     (
