@@ -2050,6 +2050,10 @@ build_failure_regexps = [
         lambda m: MissingJavaClass("com.sun.tools.javac.Main"),
     ),
     (
+        r'checking for (.*)\.\.\. configure: error: "Cannot check for existence of module (.*) without pkgconf"',
+        lambda m: MissingCommand('pkgconf'),
+    ),
+    (
         r"python3.[0-9]+: can\'t open file \'(.*)\': "
         "[Errno 2] No such file or directory",
         file_not_found,

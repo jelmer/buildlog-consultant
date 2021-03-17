@@ -816,6 +816,13 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             MissingPkgConfig("libfilezilla", "0.17.1"),
         )
 
+    def test_pkgconf(self):
+        self.run_test(
+            ['checking for LAPACK... '
+             'configure: error: "Cannot check for existence of module lapack without pkgconf"'],
+            1,
+            MissingCommand('pkgconf'))
+
     def test_dh_with_order(self):
         self.run_test(
             [
