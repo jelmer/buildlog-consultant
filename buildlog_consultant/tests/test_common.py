@@ -629,6 +629,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             None,
         )
+        self.run_test(
+            ["npm ERR! [!] Error: Cannot find module '@rollup/plugin-buble'"],
+            1, MissingNodeModule("@rollup/plugin-buble"))
 
     def test_command_missing(self):
         self.run_test(
