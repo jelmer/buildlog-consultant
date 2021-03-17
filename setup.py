@@ -17,4 +17,11 @@ setup(
     },
     test_suite="buildlog_consultant.tests.test_suite",
     install_requires=['python_debian', 'PyYAML'],
+    entry_points={
+        'console_scripts': [
+            ('analyse-sbuild-log='
+             'buildlog_consultant.sbuild:main'),
+        ],
+    },
+
 )
