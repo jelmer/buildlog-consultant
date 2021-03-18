@@ -460,6 +460,20 @@ class MissingPkgConfig(Problem):
         )
 
 
+class MissingGoRuntime(Problem):
+
+    kind = 'missing-go-runtime'
+
+    def __repr__(self):
+        return "%s()" % (type(self).__name__, )
+
+    def __str__(self):
+        return "go runtime is missing"
+
+    def __eq__(self, other):
+        return isinstance(self, type(other))
+
+
 def pkg_config_missing(m):
     expr = m.group(1).strip().split("\t")[0]
     if ">=" in expr:
@@ -2445,6 +2459,8 @@ build_failure_regexps = [
      ),
     (r'Package (.*) was not found in the pkg-config search path.',
      lambda m: MissingPkgConfig(m.group(1))),
+    (r'go runtime is required: https://golang.org/doc/install',
+     lambda m: MissingGoRuntime()),
 ]
 
 
