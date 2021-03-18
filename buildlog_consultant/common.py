@@ -232,12 +232,35 @@ class MissingJDK(Problem):
         return {}
 
 
+class MissingJRE(Problem):
+
+    kind = "missing-jre"
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self))
+        )
+
+    def __str__(self):
+        return "Missing JRE"
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, )
+
+    def json(self):
+        return {}
+
+
 def jdk_file_missing(m):
     return MissingJDKFile(m.group(2), m.group(1))
 
 
 def jdk_missing(m):
     return MissingJDK(m.group(1))
+
+
+def jre_missing(m):
+    return MissingJRE()
 
 
 def interpreter_missing(m):
@@ -1865,6 +1888,11 @@ build_failure_regexps = [
         r"installation '(.*)' used by Gradle. Make sure Gradle is running "
         "on a JDK, not JRE.",
         jdk_missing,
+    ),
+    (
+        r"ERROR: JAVA_HOME is not set and no 'java' command could be found "
+        r"in your PATH.",
+        jre_missing
     ),
     (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "

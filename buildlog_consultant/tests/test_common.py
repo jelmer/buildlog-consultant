@@ -31,6 +31,7 @@ from ..common import (
     MissingDHCompatLevel,
     MissingJDKFile,
     MissingJDK,
+    MissingJRE,
     MissingPythonModule,
     MissingPythonDistribution,
     MissingGoPackage,
@@ -617,6 +618,12 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
                 "Make sure Gradle is running on a JDK, not JRE.",
             ], 1,
             MissingJDK('/usr/lib/jvm/java-8-openjdk-amd64/jre'))
+
+    def test_missing_jre(self):
+        self.run_test([
+            "ERROR: JAVA_HOME is not set and no 'java' command "
+            "could be found in your PATH."], 1,
+            MissingJRE())
 
     def test_node_module_missing(self):
         self.run_test(
