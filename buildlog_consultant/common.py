@@ -2393,6 +2393,11 @@ build_failure_regexps = [
         r"ImportError: Numpy version (.*) or later must be " r"installed to use .*",
         lambda m: MissingPythonModule("numpy", minimum_version=m.group(1)),
     ),
+    # Seen in mayavi2
+    (
+        r'\w+Numpy is required to build.*',
+        lambda m: MissingPythonModule("numpy")
+    ),
     # autoconf
     (r"configure.ac:[0-9]+: error: required file \'(.*)\' not found", file_not_found),
     # automake
