@@ -2238,6 +2238,7 @@ build_failure_regexps = [
         r"could not load (.*), and no fallback was found",
         None,
     ),
+    (r'E: Failed to execute “.*”: No such file or directory\n', command_missing),
     (r"E: The Debian version .* cannot be used as an ELPA version.", None),
     # ImageMagick
     (
@@ -2489,6 +2490,8 @@ build_failure_regexps = [
      lambda m: MissingPkgConfig(m.group(1))),
     (r'go runtime is required: https://golang.org/doc/install',
      lambda m: MissingGoRuntime()),
+    (r"%Error: '(.*)' must be installed to build\n",
+     lambda m: MissingCommand(m.group(1))),
 ]
 
 

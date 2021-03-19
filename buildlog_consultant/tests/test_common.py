@@ -663,6 +663,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             ["/bin/bash: valac: command not found"], 1, MissingCommand("valac")
         )
         self.run_test(
+            ['E: Failed to execute “python3”: No such file or directory'],
+            1, MissingCommand("python3"))
+        self.run_test(
             [
                 'Can\'t exec "cmake": No such file or directory at '
                 "/usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line 484."
