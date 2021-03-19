@@ -1694,6 +1694,11 @@ build_failure_regexps = [
         python_reqs_not_found,
     ),
     (
+        r'We need the Python library (.*) to be installed. '
+        r'Try runnning: python -m ensurepip',
+        lambda m: MissingPythonDistribution(m.group(1)),
+    ),
+    (
         r"pkg_resources.DistributionNotFound: The \'([^\']+)\' "
         r"distribution was not found and is required by (.*)",
         pkg_resources_distribution_not_found,
@@ -2101,6 +2106,10 @@ build_failure_regexps = [
     ),
     (
         r'autogen.sh: You must have GNU autoconf installed.',
+        lambda m: MissingCommand('autoconf'),
+    ),
+    (
+        r'It appears that Autotools is not correctly installed on this system.',
         lambda m: MissingCommand('autoconf'),
     ),
     (
