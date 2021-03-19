@@ -1884,6 +1884,8 @@ build_failure_regexps = [
         file_not_found,
     ),
     (r"OSError: \[Errno 28\] No space left on device", lambda m: NoSpaceOnDevice()),
+    # python:setuptools_scm
+    (r"OSError: 'git' was not found", lambda m: MissingCommand('git')),
     (r"OSError: No such file (.*)", file_not_found),
     (
         r"Could not open \'(.*)\': No such file or directory at "
