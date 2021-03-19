@@ -2238,7 +2238,7 @@ build_failure_regexps = [
         r"could not load (.*), and no fallback was found",
         None,
     ),
-    (r'E: Failed to execute “.*”: No such file or directory\n', command_missing),
+    (r'E: Failed to execute “(.*)”: No such file or directory', command_missing),
     (r"E: The Debian version .* cannot be used as an ELPA version.", None),
     # ImageMagick
     (
