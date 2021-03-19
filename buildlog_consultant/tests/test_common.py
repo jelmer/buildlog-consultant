@@ -539,7 +539,7 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
                 "(/usr/lib/python3/dist-packages/msrest/polling/__init__.py)"
             ],
             1,
-            None,
+            MissingPythonModule('msrest.polling.async_poller'),
         )
         self.run_test(
             ["/usr/bin/python3: No module named sphinx"],

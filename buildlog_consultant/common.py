@@ -110,6 +110,10 @@ def python_module_not_found(m):
         return MissingPythonModule(m.group(1), python_version=None)
 
 
+def python_submodule_not_found(m):
+    return MissingPythonModule(m.group(2) + '.' + m.group(1), python_version=None)
+
+
 def python2_module_not_found(m):
     return MissingPythonModule(m.group(1), python_version=2)
 
@@ -1701,8 +1705,8 @@ build_failure_regexps = [
         r"Requirement.parse\(\'(.*)\'\)\)\!",
         python2_reqs_not_found,
     ),
-    ("ImportError: cannot import name '(.*)' from '(.*)'", None),
-    ("E   ImportError: cannot import name '(.*)' from '(.*)'", None),
+    ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
+    ("E   ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E   ImportError: cannot import name ([^']+)", python_module_not_found),
     (
         r"django.core.exceptions.ImproperlyConfigured: Error loading .* module: "
