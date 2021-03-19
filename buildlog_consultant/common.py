@@ -1047,27 +1047,6 @@ def gnome_common_missing(m):
     return GnomeCommonMissing()
 
 
-class AutoconfMissing(Problem):
-
-    kind = "autoconf-missing"
-
-    def __init__(self) -> None:
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
-
-    def __str__(self):
-        return "autoconf is not installed"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
-
-
-def autoconf_missing(m):
-    return AutoconfMissing()
-
-
 class MissingXfceDependency(Problem):
 
     kind = "missing-xfce-dependency"
@@ -2116,7 +2095,11 @@ build_failure_regexps = [
     ),
     (
         r'autogen.sh: You must have GNU autoconf installed.',
-        autoconf_missing,
+        lambda m: MissingCommand('autoconf'),
+    ),
+    (
+        r'\*\*\* No autoreconf found \*\*\*',
+        lambda m: MissingCommand('autoreconf'),
     ),
     (r"You need to install the gnome-common module and make.*", gnome_common_missing),
     (
