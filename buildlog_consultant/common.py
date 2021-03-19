@@ -1791,6 +1791,7 @@ build_failure_regexps = [
         lambda m: MissingCommand("rst2html"),
     ),
     (r"Error: pkg-config not found\!", lambda m: MissingCommand("pkg-config")),
+    (r"ERROR: unable to find python", lambda m: MissingCommand("python")),
     (r" ERROR: BLAS not found\!", lambda m: MissingLibrary("blas")),
     AutoconfUnexpectedMacroMatcher(),
     (r"\./configure: [0-9]+: \.: Illegal option .*", None),
