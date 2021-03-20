@@ -1388,6 +1388,21 @@ class AutoconfUnexpectedMacroMatcher(Matcher):
         return [], None
 
 
+class PythonFileNotFoundErrorMatcher(Matcher):
+
+    final_line_re = re.compile(
+        r"^(?:E  +)?FileNotFoundError: \[Errno 2\] "
+        r"No such file or directory: \'(.*)\'")
+
+    def match(self, lines, i):
+        m = self.final_line_re.fullmatch(lines[i].rstrip('\n'))
+        if not m:
+            return [], None
+        if i-2 >= 0 and 'subprocess' in lines[i-2]:
+            return [i], MissingCommand(m.group(1))
+        return [i], file_not_found(m)
+
+
 class HaskellMissingDependencyMatcher(Matcher):
 
     regexp = re.compile(
@@ -2388,11 +2403,7 @@ build_failure_regexps = [
         r"https://github.com/rails/execjs for a list of available runtimes\..*",
         javascript_runtime_missing,
     ),
-    (
-        r"^(?:E  +)?FileNotFoundError: \[Errno 2\] "
-        r"No such file or directory: \'(.*)\'",
-        file_not_found,
-    ),
+    PythonFileNotFoundErrorMatcher(),
     # ruby
     (r"Errno::ENOENT: No such file or directory - (.*)", file_not_found),
     (r"(.*.rb):[0-9]+:in `.*\': .* \(.*\) ", None),

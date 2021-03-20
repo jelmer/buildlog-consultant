@@ -709,6 +709,26 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingCommand("dpkg-architecture"),
         )
+        self.run_test(
+            ['Traceback (most recent call last):',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mesonmain.py", line 140, in run',
+             '    return options.run_func(options)',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 267, in run',
+             '    names = create_dist_git(dist_name, archives, src_root, bld_root, dist_sub, b.dist_scripts, subprojects)',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 119, in create_dist_git',
+             '    git_clone(src_root, distdir)',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 108, in git_clone',
+             '    if git_have_dirty_index(src_root):',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 104, in git_have_dirty_index',
+             '    ret = subprocess.call([\'git\', \'-C\', src_root, \'diff-index\', \'--quiet\', \'HEAD\'])',
+             '  File "/usr/lib/python3.9/subprocess.py", line 349, in call',
+             '    with Popen(*popenargs, **kwargs) as p:',
+             '  File "/usr/lib/python3.9/subprocess.py", line 951, in __init__',
+             '    self._execute_child(args, executable, preexec_fn, close_fds,',
+             '  File "/usr/lib/python3.9/subprocess.py", line 1823, in _execute_child',
+             '    raise child_exception_type(errno_num, err_msg, err_filename)',
+             'FileNotFoundError: [Errno 2] No such file or directory: \'git\''], 18,
+             MissingCommand('git'))
 
     def test_ts_error(self):
         self.run_test(
