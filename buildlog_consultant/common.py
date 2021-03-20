@@ -1374,15 +1374,15 @@ class SingleLineMatcher(Matcher):
 class AutoconfUnexpectedMacroMatcher(Matcher):
 
     regexp1 = re.compile(
-        r'\.\/configure: line [0-9]+: syntax error near unexpected token `.*\'')
+        r'\.\/configure: line [0-9]+: syntax error near unexpected token `.+\'')
     regexp2 = re.compile(
         r'\.\/configure: line [0-9]+: `([A-Z0-9_]+)\(.*')
 
     def match(self, lines, i):
-        m = self.regexp1.fullmatch(lines[i])
+        m = self.regexp1.fullmatch(lines[i].rstrip('\n'))
         if not m:
             return [], None
-        m = self.regexp2.fullmatch(lines[i+1])
+        m = self.regexp2.fullmatch(lines[i+1].rstrip('\n'))
         if m:
             return [i, i+1], MissingAutoconfMacro(m.group(1))
         return [], None
@@ -1395,7 +1395,7 @@ class HaskellMissingDependencyMatcher(Matcher):
     )
 
     def match(self, lines, i):
-        m = self.regexp.fullmatch(lines[i])
+        m = self.regexp.fullmatch(lines[i].rstrip('\n'))
         if not m:
             return [], None
         deps = []
@@ -1474,7 +1474,7 @@ def cmake_unsuitable_version(m):
 
 class CMakeErrorMatcher(Matcher):
 
-    regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):\n")
+    regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):")
 
     cmake_errors = [
         (
@@ -1544,7 +1544,7 @@ class CMakeErrorMatcher(Matcher):
         return linenos, textwrap.dedent("".join(error_lines)).splitlines(True)
 
     def match(self, lines, i):
-        m = self.regexp.fullmatch(lines[i])
+        m = self.regexp.fullmatch(lines[i].rstrip('\n'))
         if not m:
             return [], None
 
