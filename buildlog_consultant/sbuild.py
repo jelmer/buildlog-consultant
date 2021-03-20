@@ -479,7 +479,7 @@ def _parse_debcargo_failure(m, pl):
         else:
             return DebcargoFailure(''.join(extra))
 
-    return DebcargoFailure()
+    return DebcargoFailure('Debcargo failed to run')
 
 
 BRZ_ERRORS = [
