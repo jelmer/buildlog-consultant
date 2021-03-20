@@ -2496,6 +2496,8 @@ build_failure_regexps = [
      lambda m: MissingGoRuntime()),
     (r"%Error: '(.*)' must be installed to build\n",
      lambda m: MissingCommand(m.group(1))),
+    (r'configure: error: "Could not find (.*) in PATH"',
+     lambda m: MissingCommand(m.group(1))),
 ]
 
 
