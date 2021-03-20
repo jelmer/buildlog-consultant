@@ -1835,6 +1835,10 @@ build_failure_regexps = [
         meson_c_library_missing,
     ),
     (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: Pkg-config binary for machine .* not found. Giving up.",
+        lambda m: MissingCommand('pkg-config'),
+    ),
+    (
         r"dh: Unknown sequence --(.*) "
         r"\(options should not come before the sequence\)",
         dh_with_order,
