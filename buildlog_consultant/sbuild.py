@@ -85,11 +85,16 @@ class DpkgSourceLocalChanges(Problem):
         return isinstance(other, type(self)) and self.files == other.files
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.files)
+        if len(self.files) < 5:
+            return "%s(%r)" % (type(self).__name__, self.files)
+        else:
+            return "<%s(%d files)>" % (type(self).__name__, len(self.files))
 
     def __str__(self):
-        if self.files:
+        if self.files and len(self.files) < 5:
             return "Tree has local changes: %r" % self.files
+        elif self.files:
+            return "Tree has local changes: %d files" % len(self.files)
         else:
             return "Tree has local changes"
 
