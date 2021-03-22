@@ -727,8 +727,8 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
              '    self._execute_child(args, executable, preexec_fn, close_fds,',
              '  File "/usr/lib/python3.9/subprocess.py", line 1823, in _execute_child',
              '    raise child_exception_type(errno_num, err_msg, err_filename)',
-             'FileNotFoundError: [Errno 2] No such file or directory: \'git\''], 18,
-             MissingCommand('git'))
+             'FileNotFoundError: [Errno 2] No such file or directory: \'git\''],
+            18, MissingCommand('git'))
 
     def test_ts_error(self):
         self.run_test(
