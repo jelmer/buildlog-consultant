@@ -594,11 +594,14 @@ class MissingPerlModule(Problem):
         )
 
     def __str__(self):
-        return "Missing Perl module: %s (filename: %r, inc: %r)" % (
-            self.module,
-            self.filename,
-            self.inc,
-        )
+        if self.filename or self.inc:
+            return "Missing Perl module: %s (filename: %r, inc: %r)" % (
+                self.module,
+                self.filename,
+                self.inc,
+            )
+        else:
+            return "Missing Perl Module: %s" % self.module
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
