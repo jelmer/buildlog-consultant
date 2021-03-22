@@ -249,7 +249,7 @@ class MissingJRE(Problem):
         return "Missing JRE"
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, )
+        return "%s()" % (type(self).__name__, )
 
     def json(self):
         return {}
@@ -2801,3 +2801,32 @@ def find_build_failure_description(  # noqa: C901
             if m:
                 return SingleLineMatch.from_lines(lines, lineno), None
     return None, None
+
+
+def main(argv=None):
+    import argparse
+
+    parser = argparse.ArgumentParser("analyse-build-log")
+    parser.add_argument("path", type=str)
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+    with open(args.path, "r") as f:
+        lines = f.readlines()
+
+    m, problem = find_build_failure_description(lines)
+
+    if not m:
+        logging.info('No issues found')
+    else:
+        logging.info('Issue found at line %d:', m.lineno)
+        logging.info('%s', m.line)
+
+    if problem:
+        logging.info('Identified issue: %s: %s', problem.kind, problem)
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(sys.argv[1:]))

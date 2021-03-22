@@ -21,6 +21,8 @@ setup(
         'console_scripts': [
             ('analyse-sbuild-log='
              'buildlog_consultant.sbuild:main'),
+            ('analyse-build-log='
+             'buildlog_consultant.common:main'),
         ],
     },
 
