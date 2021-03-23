@@ -2096,6 +2096,7 @@ build_failure_regexps = [
         None,
     ),
     (r"IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
+    (r"error: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
     (r"E   IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
     ("FAIL\t(.+\\/.+\\/.+)\t([0-9.]+)s", go_test_failed),
     (
