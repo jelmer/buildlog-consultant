@@ -2004,6 +2004,10 @@ build_failure_regexps = [
         maven_missing_plugin,
     ),
     (
+        r"(.*): exec: \"(.*)\": executable file not found in \$PATH",
+        lambda m: MissingCommand(m.group(2))
+    ),
+    (
         r"dh_missing: (warning: )?(.*) exists in debian/.* but is not "
         r"installed to anywhere",
         dh_missing_uninstalled,

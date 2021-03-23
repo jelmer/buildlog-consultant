@@ -653,6 +653,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             MissingCommand("python3"),
         )
         self.run_test(
+            ['pkg-config: exec: "pkg-config": executable file not found in $PATH'],
+            1, MissingCommand('pkg-config'))
+        self.run_test(
             ["make[1]: docker: Command not found"], 1, MissingCommand("docker")
         )
         self.run_test(["make[1]: git: Command not found"], 1, MissingCommand("git"))
