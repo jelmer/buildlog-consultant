@@ -1876,6 +1876,8 @@ build_failure_regexps = [
      lambda m: MissingCommand('git')),
     ("Please install 'git' seperately and try again.",
      lambda m: MissingCommand('git')),
+    (r'vcver.scm.git.GitCommandError: \'git .*\' returned an error code 127',
+     lambda m: MissingCommand('git')),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"configure: error: (doxygen|asciidoc) is not available "
