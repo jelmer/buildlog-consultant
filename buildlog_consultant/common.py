@@ -1884,6 +1884,7 @@ build_failure_regexps = [
         interpreter_missing,
     ),
     # SH error
+    (r".*: [0-9]+: exec: (.*): not found", command_missing),
     (r".*: [0-9]+: (.*): not found", command_missing),
     (r"/usr/bin/env: ‘(.*)’: No such file or directory", command_missing),
     (r"/usr/bin/env: \'(.*)\': No such file or directory", command_missing),
