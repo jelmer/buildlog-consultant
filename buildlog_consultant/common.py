@@ -2182,6 +2182,11 @@ build_failure_regexps = [
         autoconf_undefined_macro,
     ),
     (
+        r"configure.(in|ac):[0-9]+: error: macro (.*) is not defined; "
+        r"is a m4 file missing\?",
+        autoconf_undefined_macro
+    ),
+    (
         r"config.status: error: cannot find input file: `(.*)\'",
         config_status_input_missing,
     ),
