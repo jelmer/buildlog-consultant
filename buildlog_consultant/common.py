@@ -1815,6 +1815,8 @@ build_failure_regexps = [
     (r"make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
     (r".*: failed to exec \'(.*)\': No such file or directory", command_missing),
     (r"No package \'([^\']+)\' found", pkg_config_missing),
+    ("Please install 'git' seperately and try again.",
+     lambda m: MissingCommand('git')),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"configure: error: (doxygen|asciidoc) is not available "
