@@ -1766,6 +1766,10 @@ build_failure_regexps = [
         pkg_resources_distribution_not_found,
     ),
     (
+        r"Please install cmake version \>= (.*) and re-run setup",
+        lambda m: MissingCommand('cmake'),
+    ),
+    (
         r"pluggy.manager.PluginValidationError: "
         r"Plugin \'.*\' could not be loaded: "
         r"\(.* \(/usr/lib/python2.[0-9]/dist-packages\), "
