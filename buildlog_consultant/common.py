@@ -168,6 +168,26 @@ def pkg_resources_distribution_not_found(m):
     return None
 
 
+class MissingVagueDependency(Problem):
+
+    kind = "missing-vague-dependency"
+
+    def __init__(self, name):
+        self.name = name
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.name == other.name
+
+    def __str__(self):
+        return "Missing dependency: %s" % self.name
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.name)
+
+    def json(self):
+        return {"name": self.name}
+
+
 class MissingFile(Problem):
 
     kind = "missing-file"
@@ -1897,6 +1917,14 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
         lambda m: MissingPkgConfig("libkqueue"),
+    ),
+    (
+        r'Did not find pkg-config by name \'pkg-config\'',
+        lambda m: MissingCommand('pkg-config'),
+    ),
+    (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found',
+        meson_pkg_config_missing,
     ),
     (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found, '
