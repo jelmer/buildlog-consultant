@@ -188,6 +188,23 @@ class MissingVagueDependency(Problem):
         return {"name": self.name}
 
 
+class MissingQt(Problem):
+
+    kind = "missing-qt"
+
+    def __init__(self):
+        pass
+
+    def __eq__(self, other):
+        return isinstance(self, type(other))
+
+    def __str__(self):
+        return "Missing QT installation"
+
+    def __repr__(self):
+        return "%s()" % type(self).__name__
+
+
 class MissingFile(Problem):
 
     kind = "missing-file"
@@ -1861,6 +1878,8 @@ build_failure_regexps = [
         r"\s*Module not found: Error: Can\'t resolve \'(.*)\' in \'(.*)\'",
         node_module_missing,
     ),
+    (r'qmake: could not find a Qt installation of \'\'',
+     lambda m: MissingQt()),
     (r'>> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
