@@ -2643,6 +2643,8 @@ build_failure_regexps = [
      lambda m: UnknownCertificateAuthority(m.group(1))),
     ("\t\(Do you need to predeclare (.*)\?\)",
      lambda m: MissingPerlPredeclared(m.group(1))),
+    (r"  vignette builder 'knitr' not found",
+     lambda m: MissingRPackage('knitr')),
 ]
 
 
