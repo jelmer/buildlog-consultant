@@ -1868,6 +1868,8 @@ build_failure_regexps = [
      node_module_missing),
     (r"npm ERR\! Error: Cannot find module '(.*)'",
      node_module_missing),
+    (r"npm ERR\! ERROR in Entry module not found: "
+     r"Error: Can't resolve '(.*)' in '.*'", node_module_missing),
     (r"(\.\/configure): line \d+: ([A-Z0-9_]+): command not found", configure_undefined_macro),
     (r".*: line \d+: ([^ ]+): command not found", command_missing),
     (r".*: line \d+: ([^ ]+): Permission denied", None),
