@@ -1862,6 +1862,8 @@ build_failure_regexps = [
         r"configure: error: Documentation enabled but rst2html not found.",
         lambda m: MissingCommand("rst2html"),
     ),
+    (r'cannot run pkg-config to check .* version at (.*) line [0-9]+\.',
+     lambda m: MissingCommand('pkg-config')),
     (r"Error: pkg-config not found\!", lambda m: MissingCommand("pkg-config")),
     (r"ERROR: unable to find python", lambda m: MissingCommand("python")),
     (r" ERROR: BLAS not found\!", lambda m: MissingLibrary("blas")),
