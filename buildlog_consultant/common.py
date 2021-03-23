@@ -110,6 +110,16 @@ def python_module_not_found(m):
         return MissingPythonModule(m.group(1), python_version=None)
 
 
+def python_cmd_module_not_found(m):
+    if m.group(1).endswith('python3'):
+        python_version = 3
+    elif m.group(1).endswith('python2'):
+        python_version = 2
+    else:
+        python_version = None
+    return MissingPythonModule(m.group(3), python_version=python_version)
+
+
 def python_submodule_not_found(m):
     return MissingPythonModule(m.group(2) + '.' + m.group(1), python_version=None)
 
@@ -1759,6 +1769,10 @@ build_failure_regexps = [
         r"Could not import extension .* \(exception: No module named (.*)\)",
         sphinx_module_not_found,
     ),
+    (r"^(.*): Error while finding module specification for "
+     r"'(.*)' \(ModuleNotFoundError: No module named '(.*)'\)",
+     python_cmd_module_not_found
+     ),
     ("E   ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
     (r"/usr/bin/python3: No module named (.*)", python3_module_not_found),
     ('.*:[0-9]+: cannot find package "(.*)" in any of:', missing_go_package),
@@ -1793,7 +1807,7 @@ build_failure_regexps = [
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
     (r'npm ERR\! \>\> Local Npm module "(.*)" not found. Is it installed\?',
-     node_module_missing), node_module_missing),
+     node_module_missing),
     (r"(\.\/configure): line \d+: ([A-Z0-9_]+): command not found", configure_undefined_macro),
     (r".*: line \d+: ([^ ]+): command not found", command_missing),
     (r".*: line \d+: ([^ ]+): Permission denied", None),

@@ -555,6 +555,11 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingPythonModule("pngmath"),
         )
+        self.run_test(
+            ["/usr/bin/python3: Error while finding module specification "
+             "for 'pep517.build' "
+             "(ModuleNotFoundError: No module named 'pep517')"],
+            1, MissingPythonModule('pep517', python_version=3))
 
     def test_sphinx(self):
         self.run_test(
