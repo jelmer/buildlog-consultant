@@ -623,6 +623,23 @@ def install_no_space(m):
     return NoSpaceOnDevice()
 
 
+class MissingPerlPredeclared(Problem):
+
+    kind = "missing-perl-predeclared"
+
+    def __init__(self, name):
+        self.name = name
+
+    def __eq__(self, other):
+        return isinstance(self, type(other)) and self.name == other.name
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.name)
+
+    def __str__(self):
+        return "missing predeclared function: %s" % self.name
+
+
 class MissingPerlModule(Problem):
 
     kind = "missing-perl-module"
@@ -2622,6 +2639,8 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r"go: .*: Get \"(.*)\": x509: certificate signed by unknown authority",
      lambda m: UnknownCertificateAuthority(m.group(1))),
+    ("\t\(Do you need to predeclare (.*)\?\)",
+     lambda m: MissingPerlPredeclared(m.group(1))),
 ]
 
 

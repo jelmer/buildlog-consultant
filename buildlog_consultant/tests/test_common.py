@@ -42,6 +42,7 @@ from ..common import (
     MissingPkgConfig,
     MissingPerlFile,
     MissingPerlModule,
+    MissingPerlPredeclared,
     MissingPhpClass,
     MissingRubyGem,
     MissingValaPackage,
@@ -927,6 +928,16 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingPerlModule(None, module="Dist::Inkt::Profile::TOBYINK"),
         )
+
+    def test_perl_missing_predeclared(self):
+        self.run_test([
+            "String found where operator expected at Makefile.PL line 13, near \"author_tests 'xt'\"",
+            "\t(Do you need to predeclare author_tests?)",
+            "syntax error at Makefile.PL line 13, near \"author_tests 'xt'\"",
+            "Bareword \"use_test_base\" not allowed while \"strict subs\" in use at Makefile.PL line 12.",
+            "Bareword \"auto_set_repository\" not allowed while "
+            "\"strict subs\" in use at Makefile.PL line 13.",
+            ], 2, MissingPerlPredeclared('author_tests'))
 
     def test_unknown_cert_authority(self):
         self.run_test(
