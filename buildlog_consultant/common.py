@@ -392,6 +392,23 @@ class MissingNodeModule(Problem):
         return "%s(%r)" % (type(self).__name__, self.module)
 
 
+class MissingNodePackage(Problem):
+
+    kind = "missing-node-package"
+
+    def __init__(self, package):
+        self.package = package
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.package == other.package
+
+    def __str__(self):
+        return "Missing Node Package: %s" % self.package
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.package)
+
+
 def node_module_missing(m):
     if m.group(1).startswith("/<<PKGBUILDDIR>>/"):
         return None
