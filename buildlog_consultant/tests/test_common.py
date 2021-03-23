@@ -61,6 +61,7 @@ from ..common import (
     FailedGoTest,
     UpstartFilePresent,
     DirectoryNonExistant,
+    UnknownCertificateAuthority,
 )
 import unittest
 
@@ -912,6 +913,16 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingPerlModule(None, module="Dist::Inkt::Profile::TOBYINK"),
         )
+
+    def test_unknown_cert_authority(self):
+        self.run_test(
+            ['go: github.com/golangci/golangci-lint@v1.24.0: Get '
+             '"https://proxy.golang.org/github.com/golangci/'
+             'golangci-lint/@v/v1.24.0.mod": x509: '
+             'certificate signed by unknown authority'],
+            1, UnknownCertificateAuthority(
+                "https://proxy.golang.org/github.com/golangci/"
+                "golangci-lint/@v/v1.24.0.mod"))
 
     def test_missing_perl_module(self):
         self.run_test(

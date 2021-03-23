@@ -1693,6 +1693,23 @@ class DuplicateDHCompatLevel(Problem):
         return isinstance(other, type(self)) and self.command == other.command
 
 
+class UnknownCertificateAuthority(Problem):
+
+    kind = "unknown-certificate-authority"
+
+    def __init__(self, url):
+        self.url = url
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.url)
+
+    def __str__(self):
+        return "Unknown Certificate Authority for %s" % self.url
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.url == other.url
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -2516,6 +2533,8 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r'configure: error: "Could not find (.*) in PATH"',
      lambda m: MissingCommand(m.group(1))),
+    (r"go: .*: Get \"(.*)\": x509: certificate signed by unknown authority",
+     lambda m: UnknownCertificateAuthority(m.group(1))),
 ]
 
 
