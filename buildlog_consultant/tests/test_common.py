@@ -656,6 +656,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             ['pkg-config: exec: "pkg-config": executable file not found in $PATH'],
             1, MissingCommand('pkg-config'))
         self.run_test(
+            ['Can\'t exec "git": No such file or directory at '
+             'Makefile.PL line 25.'], 1, MissingCommand('git'))
+        self.run_test(
             ["make[1]: docker: Command not found"], 1, MissingCommand("docker")
         )
         self.run_test(["make[1]: git: Command not found"], 1, MissingCommand("git"))

@@ -2008,6 +2008,10 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(2))
     ),
     (
+        r"Can't exec \"(.*)\": No such file or directory at (.*) line ([0-9]+).",
+        command_missing,
+    ),
+    (
         r"dh_missing: (warning: )?(.*) exists in debian/.* but is not "
         r"installed to anywhere",
         dh_missing_uninstalled,
