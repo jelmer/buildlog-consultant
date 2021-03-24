@@ -1677,6 +1677,8 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     ("Please install 'git' seperately and try again.",
      lambda m: MissingCommand('git')),
+    (r'\> A problem occurred starting process \'command \'(.*)\'\'',
+     lambda m: MissingCommand(m.group(1))),
     (r'vcver.scm.git.GitCommandError: \'git .*\' returned an error code 127',
      lambda m: MissingCommand('git')),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
