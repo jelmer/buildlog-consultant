@@ -1517,7 +1517,7 @@ class MissingDHCompatLevel:
 
 
 @problem("duplicate-dh-compat-level")
-class DuplicateDHCompatLevel
+class DuplicateDHCompatLevel:
 
     command: str
 
