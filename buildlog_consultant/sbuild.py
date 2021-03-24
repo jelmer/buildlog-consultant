@@ -427,12 +427,12 @@ def find_preamble_failure_description(
                     "dpkg-source: info: local changes detected, "
                     "the modified files are:\n"
                 ):
-                    error = DpkgSourceLocalChanges(files)
-                    return lineno + 1, str(error), error
+                    err = DpkgSourceLocalChanges(files)
+                    return lineno + 1, str(err), err
                 files.append(lines[j].strip())
                 j -= 1
             err = DpkgSourceLocalChanges()
-            return lineno + 1, str(error), err
+            return lineno + 1, str(err), err
         if line == "dpkg-source: error: unrepresentable changes to source":
             err = DpkgSourceUnrepresentableChanges()
             return lineno + 1, line, err
@@ -495,8 +495,8 @@ def find_preamble_failure_description(
         m = re.match("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
         if m:
             patchname = m.group(1).split("/")[-1]
-            error = PatchApplicationFailed(patchname)
-            return lineno + 1, line, error
+            err = PatchApplicationFailed(patchname)
+            return lineno + 1, str(err), err
         m = re.match(
             r"dpkg-source: error: LC_ALL=C patch .* "
             r"--reject-file=- < .*\/debian\/patches\/([^ ]+) "
@@ -505,8 +505,8 @@ def find_preamble_failure_description(
         )
         if m:
             patchname = m.group(1)
-            error = PatchApplicationFailed(patchname)
-            return lineno + 1, line, error
+            err = PatchApplicationFailed(patchname)
+            return lineno + 1, str(err), err
         m = re.match(
             "dpkg-source: error: "
             "can't build with source format '(.*)': "
@@ -514,16 +514,16 @@ def find_preamble_failure_description(
             line,
         )
         if m:
-            error = SourceFormatUnbuildable(m.group(1))
-            return lineno + 1, line, error
+            err = SourceFormatUnbuildable(m.group(1))
+            return lineno + 1, str(err), err
         m = re.match(
             "dpkg-source: error: cannot read (.*): "
             "No such file or directory",
             line,
         )
         if m:
-            error = PatchFileMissing(m.group(1).split("/", 1)[1])
-            return lineno + 1, line, error
+            err = PatchFileMissing(m.group(1).split("/", 1)[1])
+            return lineno + 1, str(err), err
         m = re.match(
             "dpkg-source: error: "
             "source package format '(.*)' is not supported: "
@@ -531,24 +531,24 @@ def find_preamble_failure_description(
             line,
         )
         if m:
-            (match, error) = find_build_failure_description(
+            (match, err) = find_build_failure_description(
                 [m.group(2)]
             )
-            if error is None:
-                error = SourceFormatUnsupported(m.group(1))
-            return lineno + 1, line, error
+            if err is None:
+                err = SourceFormatUnsupported(m.group(1))
+            return lineno + 1, str(err), err
         m = re.match(
             "breezy.errors.NoSuchRevision: " "(.*) has no revision b'(.*)'",
             line,
         )
         if m:
-            error = MissingRevision(m.group(2).encode())
-            return lineno + 1, line, error
+            err = MissingRevision(m.group(2).encode())
+            return lineno + 1, str(err), err
 
         m = re.match("dpkg-source: error: (.*)", line)
         if m:
             err = DpkgSourcePackFailed(m.group(1))
-            ret = lineno + 1, line, err
+            ret = lineno + 1, str(err), err
 
     return ret
 
