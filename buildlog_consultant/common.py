@@ -2648,7 +2648,7 @@ def find_build_failure_description(  # noqa: C901
     Returns:
       tuple with (match object, error object)
     """
-    OFFSET = 150
+    OFFSET = 250
     # Is this cmake-specific, or rather just kf5 / qmake ?
     cmake = False
     # We search backwards for clear errors.
