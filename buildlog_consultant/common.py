@@ -1474,29 +1474,24 @@ def c_sharp_compiler_missing(m):
     return MissingCSharpCompiler()
 
 
-class MissingCargoCrate(Problem):
+@problem("missing-libtool")
+class MissingLibtool:
 
-    kind = "missing-cargo-crate"
+    def __str__(self):
+        return "Libtool is missing"
 
-    def __init__(self, crate, requirement):
-        self.crate = crate
-        self.requirement = requirement
 
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.crate == other.crate
-            and self.requirement == other.requirement
-        )
+@problem("missing-cargo-crate")
+class MissingCargoCrate:
+
+    crate: str
+    requirement: Optional[str]
 
     def __str__(self):
         if self.requirement:
             return "Missing crate: %s (%s)" % (self.crate, self.requirement)
         else:
             return "Missing crate: %s" % self.crate
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.crate, self.requirement)
 
 
 def cargo_missing_requirement(m):
@@ -1521,21 +1516,13 @@ class MissingDHCompatLevel:
         return "Missing DH Compat Level (command: %s)" % self.command
 
 
-class DuplicateDHCompatLevel(Problem):
+@problem("duplicate-dh-compat-level")
+class DuplicateDHCompatLevel
 
-    kind = "duplicate-dh-compat-level"
-
-    def __init__(self, command):
-        self.command = command
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.command)
+    command: str
 
     def __str__(self):
         return "DH Compat Level specified twice (command: %s)" % self.command
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.command == other.command
 
 
 class UnknownCertificateAuthority(Problem):
@@ -2337,6 +2324,8 @@ build_failure_regexps = [
     # JavaScript
     (r".*: ENOENT: no such file or directory, open \'(.*)\'", file_not_found),
     (r"\[Error: ENOENT: no such file or directory, stat \'(.*)\'\] \{", file_not_found),
+    (r'(.*):[0-9]+: error: Libtool library used but \'LIBTOOL\' is undefined',
+     lambda m: MissingLibtool()),
     # libtoolize
     (r"libtoolize:   error: \'(.*)\' does not exist.", file_not_found),
     # Seen in python-cogent
