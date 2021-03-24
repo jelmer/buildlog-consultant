@@ -408,6 +408,13 @@ def find_autopkgtest_failure_description(  # noqa: C901
                             error,
                             match.line,
                         )
+                if msg == 'autopkgtest':
+                    if lines[i+1].rstrip() == ': error cleaning up:':
+                        return (
+                            test_output_offset[current_field] + 1,
+                            last_test,
+                            AutopkgtestTimedOut(),
+                            lines[i-1].rstrip())
                 return (i + 1, last_test, None, msg)
         else:
             if current_field:
