@@ -175,6 +175,9 @@ class PatchApplicationFailed(Problem):
     def __str__(self):
         return "Patch application failed: %s" % self.patchname
 
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.patchname)
+
 
 class SourceFormatUnbuildable(Problem):
 
