@@ -2041,8 +2041,13 @@ build_failure_regexps = [
         perl_missing_author_dep,
     ),
     (
-        r"> Could not find (.*). Please check that (.*) contains a valid JDK "
+        r"> Could not find (.*)\. Please check that (.*) contains a valid JDK "
         r"installation.",
+        jdk_file_missing,
+    ),
+    (
+        r"> Could not find (.*)\. Please check that (.*) contains a valid "
+        r"\(and compatible\) JDK installation.",
         jdk_file_missing,
     ),
     (
