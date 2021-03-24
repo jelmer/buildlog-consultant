@@ -335,6 +335,13 @@ class MissingCommand:
         return "Missing command: %s" % self.command
 
 
+@problem("no-secret-gpg-key")
+class MissingSecretGpgKey:
+
+    def __str__(self):
+        return "No secret GPG key is present"
+
+
 class MissingConfigure(Problem):
 
     kind = "missing-configure"
@@ -2436,6 +2443,8 @@ build_failure_regexps = [
      lambda m: MissingRPackage('knitr')),
     (r'fatal: unable to auto-detect email address \(got \'.*\'\)',
      lambda m: MissingGitIdentity()),
+    (r"gpg: no default secret key: No secret key",
+     lambda m: MissingSecretGpgKey()),
 ]
 
 
