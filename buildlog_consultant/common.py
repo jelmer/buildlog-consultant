@@ -1579,6 +1579,11 @@ build_failure_regexps = [
         lambda m: MissingPythonDistribution(m.group(1)),
     ),
     (
+        r'pkg_resources.DistributionNotFound: The \'([^\']+)\' '
+        r'distribution was not found and is required by the application',
+        pkg_resources_distribution_not_found,
+    ),
+    (
         r"pkg_resources.DistributionNotFound: The \'([^\']+)\' "
         r"distribution was not found and is required by (.*)",
         pkg_resources_distribution_not_found,
