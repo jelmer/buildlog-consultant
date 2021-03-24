@@ -72,6 +72,7 @@ SBUILD_FOCUS_SECTION: Dict[Optional[str], str] = {
     "arch-check": "check architectures",
     "check-space": "cleanup",
     "unpack": "build",
+    "fetch-src": "fetch source files",
 }
 
 
@@ -409,7 +410,7 @@ def find_preamble_failure_description(
     lines: List[str],
 ) -> Tuple[Optional[int], Optional[str], Optional[Problem]]:
     ret: Tuple[Optional[int], Optional[str], Optional[Problem]] = (None, None, None)
-    OFFSET = 20
+    OFFSET = 100
     err: Problem
     for i in range(1, OFFSET):
         lineno = len(lines) - i
@@ -703,6 +704,12 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
     phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None
     error = None
     section_lines = paragraphs.get(focus_section, [])
+    if failed_stage == "fetch-src":
+        if not section_lines[0].strip():
+            section_lines = section_lines[1:]
+        if len(section_lines) == 1 and section_lines[0].startswith('E: Could not find '):
+            offset, description, error = find_preamble_failure_description(
+                paragraphs[None])
     if failed_stage == "create-session":
         offset, description, error = find_creation_session_error(section_lines)
         if error:
