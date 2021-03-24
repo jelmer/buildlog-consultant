@@ -710,7 +710,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         if len(section_lines) == 1 and section_lines[0].startswith('E: Could not find '):
             offset, description, error = find_preamble_failure_description(
                 paragraphs[None])
-            failed_stage = None
+            return SbuildFailure("unpack", description, error)
     if failed_stage == "create-session":
         offset, description, error = find_creation_session_error(section_lines)
         if error:
