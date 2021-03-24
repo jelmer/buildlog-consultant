@@ -1839,7 +1839,7 @@ build_failure_regexps = [
         python_module_not_found,
     ),
     ("E   ImportError: No module named (.*)", python_module_not_found),
-    ("ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
+    ("\s*ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
     (
         r"Could not import extension .* \(exception: No module named (.*)\)",
         sphinx_module_not_found,
@@ -2657,7 +2657,7 @@ build_failure_regexps = [
      lambda m: MissingPkgConfig(m.group(1))),
     (r'go runtime is required: https://golang.org/doc/install',
      lambda m: MissingGoRuntime()),
-    (r"%Error: '(.*)' must be installed to build\n",
+    (r"\%Error: '(.*)' must be installed to build",
      lambda m: MissingCommand(m.group(1))),
     (r'configure: error: "Could not find (.*) in PATH"',
      lambda m: MissingCommand(m.group(1))),

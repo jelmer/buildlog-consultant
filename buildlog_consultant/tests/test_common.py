@@ -525,6 +525,10 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             MissingPythonModule("django_crispy_forms", 3),
         )
         self.run_test(
+            [" ModuleNotFoundError: No module named 'Cython'"],
+            1,
+            MissingPythonModule('Cython', 3))
+        self.run_test(
             ["ModuleNotFoundError: No module named 'distro'"],
             1,
             MissingPythonModule("distro", 3),
@@ -661,6 +665,10 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingCommand("python3"),
         )
+        self.run_test(
+            ["%Error: 'flex' must be installed to build"],
+            1,
+            MissingCommand('flex'))
         self.run_test(
             ['pkg-config: exec: "pkg-config": executable file not found in $PATH'],
             1, MissingCommand('pkg-config'))
