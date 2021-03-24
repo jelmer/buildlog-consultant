@@ -496,7 +496,6 @@ def find_preamble_failure_description(
         if m:
             patchname = m.group(1).split("/")[-1]
             error = PatchApplicationFailed(patchname)
-            description = "Patch %s failed to apply" % patchname
             return lineno + 1, line, error
         m = re.match(
             r"dpkg-source: error: LC_ALL=C patch .* "
@@ -507,7 +506,6 @@ def find_preamble_failure_description(
         if m:
             patchname = m.group(1)
             error = PatchApplicationFailed(patchname)
-            description = "Patch %s failed to apply" % patchname
             return lineno + 1, line, error
         m = re.match(
             "dpkg-source: error: "
@@ -517,7 +515,6 @@ def find_preamble_failure_description(
         )
         if m:
             error = SourceFormatUnbuildable(m.group(1))
-            description = m.group(2)
             return lineno + 1, line, error
         m = re.match(
             "dpkg-source: error: cannot read (.*): "
@@ -526,7 +523,6 @@ def find_preamble_failure_description(
         )
         if m:
             error = PatchFileMissing(m.group(1).split("/", 1)[1])
-            description = "Patch file %s in series but missing" % (error.path)
             return lineno + 1, line, error
         m = re.match(
             "dpkg-source: error: "
@@ -540,10 +536,6 @@ def find_preamble_failure_description(
             )
             if error is None:
                 error = SourceFormatUnsupported(m.group(1))
-            if match is None:
-                description = m.group(2)
-            else:
-                description = match.line.rstrip('\n')
             return lineno + 1, line, error
         m = re.match(
             "breezy.errors.NoSuchRevision: " "(.*) has no revision b'(.*)'",
@@ -551,7 +543,6 @@ def find_preamble_failure_description(
         )
         if m:
             error = MissingRevision(m.group(2).encode())
-            description = "Revision %r is not present" % (error.revision)
             return lineno + 1, line, error
 
         m = re.match("dpkg-source: error: (.*)", line)
@@ -780,9 +771,11 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         description = "build failed"
         phase = ("buildenv",)
         if list(paragraphs.keys()) == [None]:
-            offset, description, error = find_preamble_failure_description(
+            offset, line, error = find_preamble_failure_description(
                 paragraphs[None])
-            if error is None:
+            if error is not None:
+                description = str(error)
+            else:
                 (match, error) = find_build_failure_description(paragraphs[None])
                 if match is None:
                     error, description = find_brz_build_error(paragraphs[None])
@@ -975,7 +968,7 @@ def main(argv=None):
     if failed_stage == "unpack":
         lines = section_lines.get(focus_section, [])
         lines = strip_useless_build_tail(lines)
-        offset, description, error = find_preamble_failure_description(lines)
+        offset, line, error = find_preamble_failure_description(lines)
         if error:
             print("Error: %s" % error)
     if failed_stage in ("build", "autopkgtest"):
