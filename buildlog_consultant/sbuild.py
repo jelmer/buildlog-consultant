@@ -71,6 +71,7 @@ SBUILD_FOCUS_SECTION: Dict[Optional[str], str] = {
     "apt-get-update": "update chroot",
     "arch-check": "check architectures",
     "check-space": "cleanup",
+    "unpack": "build",
 }
 
 
@@ -608,6 +609,11 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         offset, description, error = find_creation_session_error(section_lines)
         if error:
             phase = ("create-session",)
+    if failed_stage == "unpack":
+        section_lines = strip_useless_build_tail(section_lines)
+        offset, description, error = find_preamble_failure_description(section_lines)
+        if error:
+            return SbuildFailure("unpack", description, error)
     if failed_stage == "build":
         section_lines = strip_useless_build_tail(section_lines)
         match, error = find_build_failure_description(section_lines)
@@ -925,6 +931,12 @@ def main(argv=None):
         failed_stage = "autopkgtest"
     if failed_stage:
         print("Failed stage: %s (focus section: %s)" % (failed_stage, focus_section))
+    if failed_stage == "unpack":
+        lines = section_lines.get(focus_section, [])
+        lines = strip_useless_build_tail(lines)
+        offset, description, error = find_preamble_failure_description(lines)
+        if error:
+            print("Error: %s" % error)
     if failed_stage in ("build", "autopkgtest"):
         lines = section_lines.get(focus_section, [])
         lines = strip_useless_build_tail(lines)
