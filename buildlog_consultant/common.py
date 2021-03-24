@@ -1933,6 +1933,8 @@ build_failure_regexps = [
     (r"No package \'([^\']+)\' found", pkg_config_missing),
     (r"\-\- Please install Git, make sure it is in your path, and then try again.",
      lambda m: MissingCommand('git')),
+    (r'\> Cannot run program "(.*)": error=2, No such file or directory',
+     lambda m: MissingCommand(m.group(1))),
     ("Please install 'git' seperately and try again.",
      lambda m: MissingCommand('git')),
     (r'vcver.scm.git.GitCommandError: \'git .*\' returned an error code 127',

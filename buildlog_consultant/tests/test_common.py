@@ -763,6 +763,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
              '    raise child_exception_type(errno_num, err_msg, err_filename)',
              'FileNotFoundError: [Errno 2] No such file or directory: \'git\''],
             18, MissingCommand('git'))
+        self.run_test(
+            ['> Cannot run program "git": error=2, No such file or directory'],
+            1, MissingCommand('git'))
 
     def test_ts_error(self):
         self.run_test(
