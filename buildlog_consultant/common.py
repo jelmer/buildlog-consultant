@@ -1927,6 +1927,7 @@ build_failure_regexps = [
     (r"make\[[0-9]+\]: (.*): Command not found", command_missing),
     (r"make: (.*): Command not found", command_missing),
     (r"make: (.*): No such file or directory", command_missing),
+    (r"xargs: (.*): No such file or directory", command_missing),
     (r"make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
     (r".*: failed to exec \'(.*)\': No such file or directory", command_missing),
     (r"No package \'([^\']+)\' found", pkg_config_missing),
