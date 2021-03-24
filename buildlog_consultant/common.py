@@ -23,28 +23,18 @@ from typing import List, Optional, Tuple
 import re
 import textwrap
 
-from . import Problem, SingleLineMatch
+from . import Problem, SingleLineMatch, problem
 
 
 logger = logging.getLogger(__name__)
 
 
+@problem("missing-python-module")
 class MissingPythonModule(Problem):
 
-    kind = "missing-python-module"
-
-    def __init__(self, module, python_version=None, minimum_version=None):
-        self.module = module
-        self.python_version = python_version
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and other.module == self.module
-            and other.python_version == self.python_version
-            and other.minimum_version == self.minimum_version
-        )
+    module: str
+    python_version: Optional[str] = None
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.python_version:
@@ -188,58 +178,27 @@ class MissingVagueDependency(Problem):
         return {"name": self.name}
 
 
-class MissingQt(Problem):
-
-    kind = "missing-qt"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(self, type(other))
+@problem("missing-qt")
+class MissingQt:
 
     def __str__(self):
         return "Missing QT installation"
 
-    def __repr__(self):
-        return "%s()" % type(self).__name__
 
-
-class MissingGitIdentity(Problem):
-
-    kind = "missing-git-identity"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(self, type(other))
+@problem("missing-git-identity")
+class MissingGitIdentity:
 
     def __str__(self):
         return "Missing Git Identity"
 
-    def __repr__(self):
-        return "%s()" % type(self).__name__
 
-
+@problem("missing-file")
 class MissingFile(Problem):
 
-    kind = "missing-file"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
+    path: str
 
     def __str__(self):
         return "Missing file: %s" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
-
-    def json(self):
-        return {'path': self.path}
 
 
 def file_not_found(m):
@@ -255,68 +214,30 @@ def webpack_file_missing(m):
     return None
 
 
-class MissingJDKFile(Problem):
+@problem("missing-jdk-file")
+class MissingJDKFile:
 
-    kind = "missing-jdk-file"
-
-    def __init__(self, jdk_path, filename):
-        self.jdk_path = jdk_path
-        self.filename = filename
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.jdk_path == other.jdk_path
-            and self.filename == other.filename
-        )
+    jdk_path: str
+    filename: str
 
     def __str__(self):
         return "Missing JDK file %s (JDK Path: %s)" % (self.filename, self.jdk_path)
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.jdk_path, self.filename)
 
+@problem("missing-jdk")
+class MissingJDK:
 
-class MissingJDK(Problem):
-
-    kind = "missing-jdk"
-
-    def __init__(self, jdk_path):
-        self.jdk_path = jdk_path
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.jdk_path == other.jdk_path
-        )
+    jdk_path: str
 
     def __str__(self):
         return "Missing JDK (JDK Path: %s)" % (self.jdk_path)
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.jdk_path)
 
-    def json(self):
-        return {}
-
-
-class MissingJRE(Problem):
-
-    kind = "missing-jre"
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-        )
+@problem("missing-jre")
+class MissingJRE:
 
     def __str__(self):
         return "Missing JRE"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__, )
-
-    def json(self):
-        return {}
 
 
 def jdk_file_missing(m):
@@ -341,46 +262,23 @@ def interpreter_missing(m):
     return MissingCommand(m.group(1))
 
 
-class ChrootNotFound(Problem):
+@problem("chroot-not-found")
+class ChrootNotFound:
 
-    kind = "chroot-not-found"
-
-    def __init__(self, chroot):
-        self.chroot = chroot
+    chroot: str
 
     def __str__(self):
         return "Chroot not found: %s" % self.chroot
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.chroot)
 
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.chroot == other.chroot
+@problem("missing-sprockets-file")
+class MissingSprocketsFile:
 
-    def json(self):
-        return {'chroot': self.chroot}
-
-
-class MissingSprocketsFile(Problem):
-
-    kind = "missing-sprockets-file"
-
-    def __init__(self, name, content_type):
-        self.name = name
-        self.content_type = content_type
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.name == other.name
-            and self.content_type == other.content_type
-        )
+    name: str
+    content_type: str
 
     def __str__(self):
         return "Missing sprockets file: %s (type: %s)" % (self.name, self.content_type)
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.name, self.content_type)
 
 
 def sprockets_file_not_found(m):
@@ -429,38 +327,22 @@ def c_header_missing(m):
     return MissingCHeader(m.group(1))
 
 
-class MissingNodeModule(Problem):
+@problem("missing-node-module")
+class MissingNodeModule:
 
-    kind = "missing-node-module"
-
-    def __init__(self, module):
-        self.module = module
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.module == other.module
+    module: str
 
     def __str__(self):
         return "Missing Node Module: %s" % self.module
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.module)
 
-
+@problem("missing-node-package")
 class MissingNodePackage(Problem):
 
-    kind = "missing-node-package"
-
-    def __init__(self, package):
-        self.package = package
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.package == other.package
+    package: str
 
     def __str__(self):
         return "Missing Node Package: %s" % self.package
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.package)
 
 
 def node_module_missing(m):
@@ -471,21 +353,13 @@ def node_module_missing(m):
     return MissingNodeModule(m.group(1))
 
 
-class MissingCommand(Problem):
+@problem("command-missing")
+class MissingCommand:
 
-    kind = "command-missing"
-
-    def __init__(self, command):
-        self.command = command
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.command == other.command
+    command: str
 
     def __str__(self):
         return "Missing command: %s" % self.command
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.command)
 
 
 class MissingConfigure(Problem):
@@ -641,13 +515,8 @@ def dh_with_order(m):
     return DhWithOrderIncorrect()
 
 
-class NoSpaceOnDevice(Problem):
-
-    kind = "no-space-on-device"
-    is_global = True
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("no-space-on-device", is_global=True)
+class NoSpaceOnDevice:
 
     def __str__(self):
         return "No space on device"
@@ -657,39 +526,21 @@ def install_no_space(m):
     return NoSpaceOnDevice()
 
 
-class MissingPerlPredeclared(Problem):
+@problem("missing-perl-predeclared")
+class MissingPerlPredeclared:
 
-    kind = "missing-perl-predeclared"
-
-    def __init__(self, name):
-        self.name = name
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.name == other.name
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.name)
+    name: str
 
     def __str__(self):
         return "missing predeclared function: %s" % self.name
 
 
-class MissingPerlModule(Problem):
+@problem("missing-perl-module")
+class MissingPerlModule:
 
-    kind = "missing-perl-module"
-
-    def __init__(self, filename, module, inc=None):
-        self.filename = filename
-        self.module = module
-        self.inc = inc
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and other.module == self.module
-            and other.filename == self.filename
-            and other.inc == self.inc
-        )
+    filename: str
+    module: str
+    inc: Optional[List[str]] = None
 
     def __str__(self):
         if self.filename or self.inc:
@@ -700,14 +551,6 @@ class MissingPerlModule(Problem):
             )
         else:
             return "Missing Perl Module: %s" % self.module
-
-    def __repr__(self):
-        return "%s(%r, %r, %r)" % (
-            type(self).__name__,
-            self.filename,
-            self.module,
-            self.inc,
-        )
 
 
 def perl_missing_module(m):
@@ -726,26 +569,14 @@ def perl_missing_author_dep(m):
     return MissingPerlModule(None, m.group(1), None)
 
 
-class MissingPerlFile(Problem):
+@problem("missing-perl-file")
+class MissingPerlFile:
 
-    kind = "missing-perl-file"
-
-    def __init__(self, filename, inc=None):
-        self.filename = filename
-        self.inc = inc
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and other.filename == self.filename
-            and other.inc == self.inc
-        )
+    filename: str
+    inc: Optional[List[str]] = None
 
     def __str__(self):
         return "Missing Perl file: %s (inc: %r)" % (self.filename, self.inc)
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.filename, self.inc)
 
 
 def perl_missing_file(m):
@@ -1311,31 +1142,15 @@ def dh_installinit_upstart_file(m):
     return UpstartFilePresent(m.group(1))
 
 
-class NeedPgBuildExtUpdateControl(Problem):
+@problem("need-pg-buildext-updatecontrol")
+class NeedPgBuildExtUpdateControl:
 
-    kind = "need-pg-buildext-updatecontrol"
-
-    def __init__(self, generated_path, template_path):
-        self.generated_path = generated_path
-        self.template_path = template_path
-
-    def __eq__(self, other):
-        return (
-            isinstance(self, type(self))
-            and self.generated_path == other.generated_path
-            and self.template_path == other.template_path
-        )
+    generated_path: str
+    template_path: str
 
     def __str__(self):
         return "Need to run 'pg_buildext updatecontrol' to update %s" % (
             self.generated_path
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (
-            type(self).__name__,
-            self.generated_path,
-            self.template_path,
         )
 
 
@@ -1343,21 +1158,13 @@ def need_pg_buildext_updatecontrol(m):
     return NeedPgBuildExtUpdateControl(m.group(1), m.group(2))
 
 
-class MissingValaPackage(Problem):
+@problem("missing-vala-package")
+class MissingValaPackage:
 
-    kind = "missing-vala-package"
-
-    def __init__(self, package):
-        self.package = package
+    package: str
 
     def __str__(self):
         return "Missing Vala package: %s" % self.package
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.package)
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.package == other.package
 
 
 def vala_package_missing(m):

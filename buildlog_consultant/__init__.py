@@ -17,6 +17,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from dataclasses import dataclass
+
+
 class Problem(object):
 
     kind: str
@@ -24,6 +27,22 @@ class Problem(object):
 
     def json(self):
         raise NotImplementedError(self.json)
+
+
+def problem(kind, is_global=False):
+
+    def json(self):
+        ret = {}
+        for name in self.__dataclass_fields__:
+            ret[name] = getattr(self, name)
+        return ret
+
+    def _wrap(cls):
+        ret = dataclass(cls)
+        ret.kind = kind
+        ret.json = json
+        return ret
+    return _wrap
 
 
 class SingleLineMatch(object):
