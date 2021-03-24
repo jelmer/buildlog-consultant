@@ -2445,6 +2445,9 @@ build_failure_regexps = [
      lambda m: MissingGitIdentity()),
     (r"gpg: no default secret key: No secret key",
      lambda m: MissingSecretGpgKey()),
+    (r'ERROR: FAILED--Further testing stopped: '
+     r'Test requires module \'(.*)\' but it\'s not found',
+     lambda m: MissingPerlModule(None, m.group(1))),
 ]
 
 
