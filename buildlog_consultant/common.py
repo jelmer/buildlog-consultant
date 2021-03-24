@@ -158,24 +158,13 @@ def pkg_resources_distribution_not_found(m):
     return None
 
 
-class MissingVagueDependency(Problem):
+@problem("missing-vague-dependency")
+class MissingVagueDependency:
 
-    kind = "missing-vague-dependency"
-
-    def __init__(self, name):
-        self.name = name
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.name == other.name
+    name: str
 
     def __str__(self):
         return "Missing dependency: %s" % self.name
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.name)
-
-    def json(self):
-        return {"name": self.name}
 
 
 @problem("missing-qt")
@@ -193,7 +182,7 @@ class MissingGitIdentity:
 
 
 @problem("missing-file")
-class MissingFile(Problem):
+class MissingFile:
 
     path: str
 
@@ -285,42 +274,26 @@ def sprockets_file_not_found(m):
     return MissingSprocketsFile(m.group(1), m.group(2))
 
 
-class MissingGoPackage(Problem):
+@problem("missing-go-package")
+class MissingGoPackage:
 
-    kind = "missing-go-package"
-
-    def __init__(self, package):
-        self.package = package
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.package == other.package
+    package: str
 
     def __str__(self):
         return "Missing Go package: %s" % self.package
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.package)
 
 
 def missing_go_package(m):
     return MissingGoPackage(m.group(1))
 
 
-class MissingCHeader(Problem):
+@problem("missing-c-header")
+class MissingCHeader:
 
-    kind = "missing-c-header"
-
-    def __init__(self, header):
-        self.header = header
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.header == other.header
+    header: str
 
     def __str__(self):
         return "Missing C Header: %s" % self.header
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.header)
 
 
 def c_header_missing(m):
@@ -841,21 +814,13 @@ def php_missing_class(m):
     return MissingPhpClass(m.group(1))
 
 
-class MissingJavaClass(Problem):
+@problem("missing-java-class")
+class MissingJavaClass:
 
-    kind = "missing-java-class"
-
-    def __init__(self, classname):
-        self.classname = classname
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.classname == other.classname
+    classname: str
 
     def __str__(self):
         return "missing java class: %s" % self.classname
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.classname)
 
 
 def java_missing_class(m):
@@ -1121,21 +1086,13 @@ def jvm_missing(m):
     return MissingJVM()
 
 
-class UpstartFilePresent(Problem):
+@problem("upstart-file-present")
+class UpstartFilePresent:
 
-    kind = "upstart-file-present"
-
-    def __init__(self, filename):
-        self.filename = filename
-
-    def __eq__(self, other):
-        return isinstance(self, type(other))
+    filename: str
 
     def __str__(self):
         return "Upstart file present: %s" % self.filename
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.filename)
 
 
 def dh_installinit_upstart_file(m):
@@ -1174,39 +1131,23 @@ def vala_package_missing(m):
 MAVEN_ERROR_PREFIX = "(?:\\[ERROR\\]|\\[\x1b\\[1;31mERROR\x1b\\[m\\]) "
 
 
-class DirectoryNonExistant(Problem):
+@problem("local-directory-not-existing")
+class DirectoryNonExistant:
 
-    kind = "local-directory-not-existing"
-
-    def __init__(self, path):
-        self.path = path
+    path: str
 
     def __str__(self):
         return "Directory does not exist: %s" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
 
 
 def directory_not_found(m):
     return DirectoryNonExistant(m.group(1))
 
 
-class ImageMagickDelegateMissing(Problem):
+@problem("imagemagick-delegate-missing")
+class ImageMagickDelegateMissing:
 
-    kind = "imagemagick-delegate-missing"
-
-    def __init__(self, delegate):
-        self.delegate = delegate
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and other.delegate == self.delegate
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.delegate)
+    delegate: str
 
     def __str__(self):
         return "Imagemagick missing delegate: %s" % self.delegate
@@ -1564,21 +1505,13 @@ def missing_lazyfont_file(m):
     return MissingFile(m.group(1))
 
 
-class MissingDHCompatLevel(Problem):
+@problem("missing-dh-compat-level")
+class MissingDHCompatLevel:
 
-    kind = "missing-dh-compat-level"
-
-    def __init__(self, command):
-        self.command = command
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.command)
+    command: str
 
     def __str__(self):
         return "Missing DH Compat Level (command: %s)" % self.command
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.command == other.command
 
 
 class DuplicateDHCompatLevel(Problem):

@@ -40,6 +40,7 @@ def problem(kind, is_global=False):
     def _wrap(cls):
         ret = dataclass(cls)
         ret.kind = kind
+        ret.is_global = is_global
         ret.json = json
         return ret
     return _wrap
