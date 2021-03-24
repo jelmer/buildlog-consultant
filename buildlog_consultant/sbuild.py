@@ -346,6 +346,29 @@ class DpkgSourcePackFailed(Problem):
             return "Packing source directory failed."
 
 
+class DpkgBadVersion(Problem):
+
+    kind = "dpkg-bad-version"
+
+    def __init__(self, version, reason=None):
+        self.version = version
+        self.reason = reason
+
+    def __eq__(self, other):
+        return (isinstance(other, type(self)) and
+                other.reason == self.reason and
+                self.version == other.version)
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (type(self).__name__, self.version, self.reason)
+
+    def __str__(self):
+        if self.reason:
+            return "Version (%s) is invalid: %s" % (self.version, self.reason)
+        else:
+            return "Version (%s) is invalid" % self.version
+
+
 class MissingDebcargoCrate(Problem):
 
     kind = "debcargo-missing-crate"
@@ -459,6 +482,16 @@ def find_preamble_failure_description(
         if m:
             err = DpkgSourcePackFailed()
             ret = lineno + 1, line, err
+
+        m = re.match("E: Bad version unknown in (.*)", line)
+        if m and lines[lineno-1].startswith('LINE: '):
+            m = re.match(
+                'dpkg-parsechangelog: warning: .*\(l[0-9]+\): '
+                'version \'(.*)\' is invalid: (.*)',
+                lines[lineno-2])
+            if m:
+                err = DpkgBadVersion(m.group(1), m.group(2))
+                return lineno + 1, line, err
 
     return ret
 
