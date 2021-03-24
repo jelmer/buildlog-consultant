@@ -205,6 +205,23 @@ class MissingQt(Problem):
         return "%s()" % type(self).__name__
 
 
+class MissingGitIdentity(Problem):
+
+    kind = "missing-git-identity"
+
+    def __init__(self):
+        pass
+
+    def __eq__(self, other):
+        return isinstance(self, type(other))
+
+    def __str__(self):
+        return "Missing Git Identity"
+
+    def __repr__(self):
+        return "%s()" % type(self).__name__
+
+
 class MissingFile(Problem):
 
     kind = "missing-file"
@@ -2667,6 +2684,8 @@ build_failure_regexps = [
      lambda m: MissingPerlPredeclared(m.group(1))),
     (r"  vignette builder 'knitr' not found",
      lambda m: MissingRPackage('knitr')),
+    (r'fatal: unable to auto-detect email address \(got \'.*\'\)',
+     lambda m: MissingGitIdentity()),
 ]
 
 

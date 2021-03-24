@@ -63,6 +63,7 @@ from ..common import (
     UpstartFilePresent,
     DirectoryNonExistant,
     UnknownCertificateAuthority,
+    MissingGitIdentity,
 )
 import unittest
 
@@ -104,6 +105,12 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             MissingFile("/usr/share/openstack-pkg-tools/pkgos.make"),
         )
+
+    def test_git_identity(self):
+        self.run_test(
+            ["fatal: unable to auto-detect email address "
+             "(got 'jenkins@osuosl167-amd64.(none)')"],
+            1, MissingGitIdentity())
 
     def test_ioerror(self):
         self.run_test(
