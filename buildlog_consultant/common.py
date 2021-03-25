@@ -2474,10 +2474,10 @@ build_failure_regexps = [
     (r'(subprocess.CalledProcessError|error): '
      r'Command \'\[\'/usr/bin/python([0-9.]*)\', \'-m\', \'pip\', '
      r'\'--disable-pip-version-check\', \'wheel\', \'--no-deps\', \'-w\', '
-     r'\'([^\']+)\', \'--quiet\', \'(.*)\'\]\' '
+     r'.*, \'([^-][^\']+)\'\]\' '
      r'returned non-zero exit status 1.',
      lambda m: MissingPythonDistribution(
-         m.group(4),
+         m.group(3),
          python_version=(int(m.group(2)[0]) if m.group(2) else None))
     ),
     (r'vcversioner: \[\'git\', .*, \'describe\', \'--tags\', \'--long\'\] '
