@@ -249,7 +249,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
 
     def test_vague(self):
         self.run_test(
-            ["configure: error: Please install gnu flex from http://www.gnu.org/software/flex/"], 1, MissingVagueDependency("gnu flex"))
+                ["configure: error: Please install gnu flex from http://www.gnu.org/software/flex/"], 1, MissingVagueDependency("gnu flex", 'http://www.gnu.org/software/flex/'))
 
     def test_interpreter_missing(self):
         self.run_test(
@@ -476,6 +476,12 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingPythonDistribution("configparser", None, "3.5"),
         )
+        self.run_test(
+            ["error: Command '['/usr/bin/python3.9', '-m', 'pip', "
+             "'--disable-pip-version-check', 'wheel', '--no-deps', '-w', "
+             "'/tmp/tmp973_8lhm', '--quiet', 'asynctest']' "
+             "returned non-zero exit status 1."], 1,
+            MissingPythonDistribution('asynctest', python_version=3))
 
     def test_lazy_font(self):
         self.run_test(

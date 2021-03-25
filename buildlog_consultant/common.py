@@ -2447,10 +2447,15 @@ build_failure_regexps = [
     (r'ERROR: FAILED--Further testing stopped: '
      r'Test requires module \'(.*)\' but it\'s not found',
      lambda m: MissingPerlModule(None, m.group(1))),
-
+    (r'error: Command \'\[\'/usr/bin/python3.*\', \'-m\', \'pip\', '
+     r'\'--disable-pip-version-check\', \'wheel\', \'--no-deps\', \'-w\', '
+     r'\'([^\']+)\', \'--quiet\', \'(.*)\'\]\' '
+     r'returned non-zero exit status 1.',
+     lambda m: MissingPythonDistribution(m.group(2), python_version=3)
+    ),
     # Intentionally at the bottom of the list.
     (
-        r'configure: error: Please install (.*) from (http://.*)',
+        r'configure: error: Please install (.*) from (http:\/\/[^ ]+)',
         lambda m: MissingVagueDependency(m.group(1), m.group(2)),
     ),
     (
