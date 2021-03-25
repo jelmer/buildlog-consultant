@@ -2039,6 +2039,10 @@ build_failure_regexps = [
         lambda m: MissingCommand('autoconf'),
     ),
     (
+        r'  You must have (autoconf|automake) installed to compile (.*)\.',
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
         r'It appears that Autotools is not correctly installed on this system.',
         lambda m: MissingCommand('autoconf'),
     ),
