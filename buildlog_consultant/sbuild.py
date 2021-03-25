@@ -707,12 +707,11 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         if error:
             phase = ("create-session",)
     if failed_stage == "unpack":
-        section_lines = strip_useless_build_tail(section_lines)
         offset, description, error = find_preamble_failure_description(section_lines)
         if error:
             return SbuildFailure("unpack", description, error)
     if failed_stage == "build":
-        section_lines = strip_useless_build_tail(section_lines)
+        section_lines, files = strip_useless_build_tail(section_lines)
         match, error = find_build_failure_description(section_lines)
         if error:
             description = str(error)
@@ -720,7 +719,6 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         elif match:
             description = match.line.rstrip('\n')
     if failed_stage == "autopkgtest":
-        section_lines = strip_useless_build_tail(section_lines)
         (
             apt_offset,
             testname,
@@ -849,14 +847,19 @@ def strip_useless_build_tail(lines, look_back=None):
             if lines and lines[-1] == ("-" * 80 + "\n"):
                 lines = lines[:-1]
             break
-    try:
-        end_offset = lines.index("==> config.log <==\n")
-    except ValueError:
-        pass
-    else:
-        lines = lines[:end_offset]
 
-    return lines
+    files = {}
+    current_contents = []
+
+    header_re = re.compile(r'==\> .* \<==\n')
+    for i in range(len(lines) - 1, -1, -1):
+        m = header_re.match(lines[i])
+        if m:
+            files[m.group(1)] = current_contents
+            current_contents = []
+            continue
+
+    return lines, files
 
 
 class ArchitectureNotInList(Problem):
@@ -967,7 +970,6 @@ def main(argv=None):
         print("Failed stage: %s (focus section: %s)" % (failed_stage, focus_section))
     if failed_stage == "unpack":
         lines = section_lines.get(focus_section, [])
-        lines = strip_useless_build_tail(lines)
         offset, line, error = find_preamble_failure_description(lines)
         if error:
             print("Error: %s" % error)
