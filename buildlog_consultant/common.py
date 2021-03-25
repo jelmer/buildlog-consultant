@@ -1251,6 +1251,8 @@ class AutoconfUnexpectedMacroMatcher(Matcher):
         m = self.regexp1.fullmatch(lines[i].rstrip('\n'))
         if not m:
             return [], None
+        if not (len(lines) >= i):
+            return [], None
         m = self.regexp2.fullmatch(lines[i+1].rstrip('\n'))
         if m:
             return [i, i+1], MissingAutoconfMacro(m.group(1))
