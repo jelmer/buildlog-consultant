@@ -162,6 +162,7 @@ def pkg_resources_distribution_not_found(m):
 class MissingVagueDependency:
 
     name: str
+    url: Optional[str] = None
 
     def __str__(self):
         return "Missing dependency: %s" % self.name
@@ -2446,7 +2447,11 @@ build_failure_regexps = [
     # Intentionally at the bottom of the list.
     (
         r'configure: error: Please install (.*) from (http://.*)',
-        lambda m: MissingVagueDependency('gnu flex'),
+        lambda m: MissingVagueDependency(m.group(1), m.group(2)),
+    ),
+    (
+        r'Error\! You need to have (.*) \((.*)\) around.',
+        lambda m: MissingVagueDependency(m.group(1), m.group(2)),
     ),
 ]
 
