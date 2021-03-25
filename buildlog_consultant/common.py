@@ -1687,7 +1687,6 @@ build_failure_regexps = [
     (r"xargs: (.*): No such file or directory", command_missing),
     (r"make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
     (r".*: failed to exec \'(.*)\': No such file or directory", command_missing),
-    (r"No package \'([^\']+)\' found", pkg_config_missing),
     (r"\-\- Please install Git, make sure it is in your path, and then try again.",
      lambda m: MissingCommand('git')),
     (r'\> Cannot run program "(.*)": error=2, No such file or directory',
