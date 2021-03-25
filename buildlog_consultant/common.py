@@ -2300,8 +2300,8 @@ build_failure_regexps = [
         pkg_config_missing,
     ),
     (
-        r"configure: error: xsltproc is required to build documentation",
-        lambda m: MissingCommand("xsltproc"),
+        r"configure: error: (.*) is required to build documentation",
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
     (r".*:[0-9]+: (.*) does not exist.", file_not_found),
     # uglifyjs

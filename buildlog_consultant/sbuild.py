@@ -711,7 +711,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         if error:
             return SbuildFailure("unpack", description, error)
     if failed_stage == "build":
-        section_lines, files = strip_useless_build_tail(section_lines)
+        section_lines, files = strip_build_tail(section_lines)
         match, error = find_build_failure_description(section_lines)
         if error:
             description = str(error)
@@ -836,7 +836,7 @@ def find_failed_stage(lines: List[str]) -> Optional[str]:
 DEFAULT_LOOK_BACK = 50
 
 
-def strip_useless_build_tail(lines, look_back=None):
+def strip_build_tail(lines, look_back=None):
     if look_back is None:
         look_back = DEFAULT_LOOK_BACK
 
@@ -857,6 +857,7 @@ def strip_useless_build_tail(lines, look_back=None):
         if m:
             files[m.group(1)] = current_contents
             current_contents = []
+            lines = lines[:i]
             continue
 
     return lines, files
@@ -975,7 +976,8 @@ def main(argv=None):
             print("Error: %s" % error)
     if failed_stage in ("build", "autopkgtest"):
         lines = section_lines.get(focus_section, [])
-        lines = strip_useless_build_tail(lines)
+        if failed_stage == "build":
+            lines, files = strip_build_tail(lines)
         match, error = find_build_failure_description(lines)
         if match:
             print("Failed line: %d:" % (section_offsets[focus_section][0] + match.lineno))
