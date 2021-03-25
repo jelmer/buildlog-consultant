@@ -2490,6 +2490,7 @@ build_failure_regexps = [
     (
         r'configure: error: Required package (.*) is not available\.',
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
     (
         r'Error\! You need to have (.*) \((.*)\) around.',
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2)),
