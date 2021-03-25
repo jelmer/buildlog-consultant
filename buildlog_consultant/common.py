@@ -1329,10 +1329,6 @@ def cmake_file_missing(m):
     return MissingFile(m.group(2))
 
 
-def cmake_config_file_missing(m):
-    return MissingPkgConfig(m.group(1), m.group(3))
-
-
 def cmake_package_config_file_missing(m):
     return CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
 
@@ -1414,7 +1410,7 @@ class CMakeErrorMatcher(Matcher):
         (
             r'Could not find a configuration file for package "(.*)".*'
             r'.*requested version "(.*)"\.',
-            cmake_config_file_missing,
+            lambda m: MissingPkgConfig(m.group(1), m.group(2))
         ),
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
