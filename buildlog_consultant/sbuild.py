@@ -851,7 +851,7 @@ def strip_useless_build_tail(lines, look_back=None):
     files = {}
     current_contents = []
 
-    header_re = re.compile(r'==\> .* \<==\n')
+    header_re = re.compile(r'==\> (.*) \<==\n')
     for i in range(len(lines) - 1, -1, -1):
         m = header_re.match(lines[i])
         if m:
