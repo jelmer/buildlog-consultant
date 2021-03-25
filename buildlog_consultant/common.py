@@ -1647,6 +1647,8 @@ build_failure_regexps = [
     (r'Cannot find X include files via .*', lambda m: MissingX11()),
     (r'\*\*\* No X11\! Install X-Windows development headers/libraries\! \*\*\*',
      lambda m: MissingX11()),
+    (r'  \*\*\* The (.*) script could not be found\. .*',
+     lambda m: MissingCommand(m.group(1))),
     (r'>> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
