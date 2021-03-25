@@ -47,6 +47,7 @@ from ..common import (
     MissingRubyGem,
     MissingValaPackage,
     MissingXmlEntity,
+    MissingVagueDependency,
     MissingLibrary,
     MissingJavaClass,
     MissingRPackage,
@@ -245,6 +246,10 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             MissingFile("/usr/share/firmware-microbit-micropython/firmware.hex"),
         )
+
+    def test_vague(self):
+        self.run_test(
+            ["configure: error: Please install gnu flex from http://www.gnu.org/software/flex/"], 1, MissingVagueDependency("gnu flex"))
 
     def test_interpreter_missing(self):
         self.run_test(
