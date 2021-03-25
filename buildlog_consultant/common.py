@@ -2511,6 +2511,10 @@ build_failure_regexps = [
      r'failed and \'(.*)/version.txt\' isn\'t present\.',
      lambda m: MissingVcVersionerVersion()),
 
+    (r'# Module \'(.*)\' is not installed',
+     lambda m: MissingPerlModule(None, m.group(1)),
+    ),
+
     # Intentionally at the bottom of the list.
     (
         r'configure: error: Please install (.*) from (http:\/\/[^ ]+)',
