@@ -2699,6 +2699,7 @@ secondary_build_failure_regexps = [
     r"cc: error: (.*)",
     r"\[ERROR\] .*",
     r"dh_auto_(test|build): error: (.*)",
+    r'error: invalid command \'(.*)\'',
 ]
 
 compiled_secondary_build_failure_regexps = [
