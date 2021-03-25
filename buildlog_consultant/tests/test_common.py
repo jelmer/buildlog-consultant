@@ -482,6 +482,13 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
              "'/tmp/tmp973_8lhm', '--quiet', 'asynctest']' "
              "returned non-zero exit status 1."], 1,
             MissingPythonDistribution('asynctest', python_version=3))
+        self.run_test(
+            ["subprocess.CalledProcessError: Command "
+             "'['/usr/bin/python', '-m', 'pip', "
+             "'--disable-pip-version-check', 'wheel', '--no-deps', "
+             "'-w', '/tmp/tmpm2l3kcgv', '--quiet', 'setuptools_scm']' "
+             "returned non-zero exit status 1."],
+            1, MissingPythonDistribution('setuptools_scm'))
 
     def test_lazy_font(self):
         self.run_test(

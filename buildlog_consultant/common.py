@@ -2464,11 +2464,14 @@ build_failure_regexps = [
     (r'ERROR: FAILED--Further testing stopped: '
      r'Test requires module \'(.*)\' but it\'s not found',
      lambda m: MissingPerlModule(None, m.group(1))),
-    (r'error: Command \'\[\'/usr/bin/python3.*\', \'-m\', \'pip\', '
+    (r'(subprocess.CalledProcessError|error): '
+     r'Command \'\[\'/usr/bin/python([0-9.]*)\', \'-m\', \'pip\', '
      r'\'--disable-pip-version-check\', \'wheel\', \'--no-deps\', \'-w\', '
      r'\'([^\']+)\', \'--quiet\', \'(.*)\'\]\' '
      r'returned non-zero exit status 1.',
-     lambda m: MissingPythonDistribution(m.group(2), python_version=3)
+     lambda m: MissingPythonDistribution(
+         m.group(4),
+         python_version=(int(m.group(2)[0]) if m.group(2) else None))
     ),
     # Intentionally at the bottom of the list.
     (
