@@ -46,6 +46,7 @@ from ..common import (
     MissingPerlPredeclared,
     MissingPhpClass,
     MissingRubyGem,
+    MissingSetupPyCommand,
     MissingValaPackage,
     MissingXmlEntity,
     MissingVagueDependency,
@@ -686,6 +687,22 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
         self.run_test(
             ["npm ERR! Error: Cannot find module 'fs-extra'"],
             1, MissingNodeModule('fs-extra'))
+
+    def test_setup_py_command(self):
+        self.run_test("""\
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'long_description_content_type'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'test_suite'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'python_requires'
+  warnings.warn(msg)
+usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+   or: setup.py --help [cmd1 cmd2 ...]
+   or: setup.py --help-commands
+   or: setup.py cmd --help
+
+error: invalid command 'test'
+""".splitlines(True), 12, MissingSetupPyCommand('test'))
 
     def test_command_missing(self):
         self.run_test(

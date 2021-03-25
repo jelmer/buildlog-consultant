@@ -1240,6 +1240,33 @@ class SingleLineMatcher(Matcher):
         return [i], err
 
 
+@problem("missing-setup.py-command")
+class MissingSetupPyCommand:
+
+    command: str
+
+    def __str__(self):
+        return "missing setup.py subcommand: %s" % self.command
+
+
+class SetupPyCommandMissingMatcher(Matcher):
+
+    final_line_re = re.compile(
+        r'error: invalid command \'(.*)\'')
+    warning_match = re.compile(
+        r'usage: setup.py \[global_opts\] cmd1 '
+        r'\[cmd1_opts\] \[cmd2 \[cmd2_opts\] \.\.\.\]')
+
+    def match(self, lines, i):
+        m = self.final_line_re.fullmatch(lines[i].rstrip('\n'))
+        if not m:
+            return [], None
+        for j in range(i, max(0, i - 20), -1):
+            if self.warning_match.fullmatch(lines[j].rstrip('\n')):
+                return [i], MissingSetupPyCommand(m.group(1))
+        return []
+
+
 class AutoconfUnexpectedMacroMatcher(Matcher):
 
     regexp1 = re.compile(
@@ -1689,6 +1716,7 @@ build_failure_regexps = [
     (r"xargs: (.*): No such file or directory", command_missing),
     (r"make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
     (r".*: failed to exec \'(.*)\': No such file or directory", command_missing),
+    (r"No package \'([^\']+)\' found", pkg_config_missing),
     (r"\-\- Please install Git, make sure it is in your path, and then try again.",
      lambda m: MissingCommand('git')),
     (r'\> Cannot run program "(.*)": error=2, No such file or directory',
@@ -2438,6 +2466,7 @@ build_failure_regexps = [
         lambda m: MissingLibrary("readline"),
     ),
     HaskellMissingDependencyMatcher(),
+    SetupPyCommandMissingMatcher(),
     CMakeErrorMatcher(),
     (
         r"error: failed to select a version for the requirement `(.*)`",
@@ -2700,7 +2729,6 @@ secondary_build_failure_regexps = [
     r"cc: error: (.*)",
     r"\[ERROR\] .*",
     r"dh_auto_(test|build): error: (.*)",
-    r'error: invalid command \'(.*)\'',
 ]
 
 compiled_secondary_build_failure_regexps = [
