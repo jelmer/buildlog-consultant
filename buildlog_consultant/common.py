@@ -2541,9 +2541,14 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(1)),
     ),
     (
-        r'configure: error: Mising the (.*) library',
-        lambda m: MissingLibrary(m.group(1)),
+        r'configure: error: Missing the (.*) library',
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
+    (
+        r'configure: error: Missing the (.*) Library',
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+
     (
         r'configure: error: Missing lib(.*)\.',
         lambda m: MissingLibrary(m.group(1)),
