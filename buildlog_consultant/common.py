@@ -2731,6 +2731,7 @@ secondary_build_failure_regexps = [
     r"cc: error: (.*)",
     r"\[ERROR\] .*",
     r"dh_auto_(test|build): error: (.*)",
+    r'tar: This does not look like a tar archive',
 ]
 
 compiled_secondary_build_failure_regexps = [
