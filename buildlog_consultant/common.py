@@ -175,6 +175,13 @@ class MissingQt:
         return "Missing QT installation"
 
 
+@problem("missing-x11")
+class MissingX11:
+
+    def __str__(self):
+        return "Missing X11 headers"
+
+
 @problem("missing-git-identity")
 class MissingGitIdentity:
 
@@ -1637,6 +1644,7 @@ build_failure_regexps = [
     ),
     (r'qmake: could not find a Qt installation of \'\'',
      lambda m: MissingQt()),
+    (r'Cannot find X include files via .*', lambda m: MissingX11()),
     (r'>> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
@@ -1813,6 +1821,11 @@ build_failure_regexps = [
         r"No such file or directory",
         file_not_found,
     ),
+    (r'.*:[0-9]+:[0-9]+: ERROR: \<ExternalProgram \'python3\' -> '
+     r'\[\'/usr/bin/python3\'\]\> is not a valid python or '
+     r'it is missing setuptools',
+     lambda m: MissingPythonDistribution('setuptools', python_version=3)
+     ),
     (r"OSError: \[Errno 28\] No space left on device", lambda m: NoSpaceOnDevice()),
     # python:setuptools_scm
     (r"OSError: 'git' was not found", lambda m: MissingCommand('git')),
