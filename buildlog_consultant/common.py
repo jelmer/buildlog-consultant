@@ -84,6 +84,13 @@ class MissingPythonDistribution(Problem):
         else:
             return ret
 
+    @classmethod
+    def from_requirement_str(cls, text, python_version=None):
+        if ">=" in text:
+            text, minimum = text.split(">=")
+            return cls(text, python_version, minimum)
+        return cls(text, python_version)
+
     def __repr__(self):
         return "%s(%r, python_version=%r, minimum_version=%r)" % (
             type(self).__name__,
@@ -129,14 +136,8 @@ def sphinx_module_not_found(m):
 
 def python_reqs_not_found(m):
     expr = m.group(2)
-    if ">=" in expr:
-        pkg, minimum = expr.split(">=")
-        return MissingPythonDistribution(pkg.strip(), None, minimum.strip())
     expr = expr.split(";")[0]
-    if " " not in expr:
-        return MissingPythonDistribution(expr, None)
-    # Hmm
-    return None
+    return MissingPythonDistribution.from_requirement_str(expr)
 
 
 def python2_reqs_not_found(m):
@@ -152,10 +153,7 @@ def python2_reqs_not_found(m):
 
 def pkg_resources_distribution_not_found(m):
     expr = m.group(1)
-    if ">=" in expr:
-        pkg, minimum = expr.split(">=")
-        return MissingPythonDistribution(pkg.strip(), None, minimum.strip())
-    return None
+    return MissingPythonDistribution.from_requirement_str(expr)
 
 
 @problem("missing-vague-dependency")
@@ -2476,7 +2474,7 @@ build_failure_regexps = [
      r'\'--disable-pip-version-check\', \'wheel\', \'--no-deps\', \'-w\', '
      r'.*, \'([^-][^\']+)\'\]\' '
      r'returned non-zero exit status 1.',
-     lambda m: MissingPythonDistribution(
+     lambda m: MissingPythonDistribution.from_requirement_str(
          m.group(3),
          python_version=(int(m.group(2)[0]) if m.group(2) else None))
     ),
