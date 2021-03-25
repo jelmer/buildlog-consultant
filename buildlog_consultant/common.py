@@ -1645,6 +1645,8 @@ build_failure_regexps = [
     (r'qmake: could not find a Qt installation of \'\'',
      lambda m: MissingQt()),
     (r'Cannot find X include files via .*', lambda m: MissingX11()),
+    (r'\*\*\* No X11\! Install X-Windows development headers/libraries\! \*\*\*',
+     lambda m: MissingX11()),
     (r'>> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
