@@ -40,6 +40,7 @@ from ..common import (
     MissingNodeModule,
     MissingCommand,
     MissingPkgConfig,
+    MissingVcVersionerVersion,
     MissingPerlFile,
     MissingPerlModule,
     MissingPerlPredeclared,
@@ -220,6 +221,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             MissingFile("/usr/lib/nodejs/requirejs/text.js"),
         )
+
+    def test_vcversioner(self):
+        self.run_test(
+            ["vcversioner: ['git', '--git-dir', '/build/tmp0tlam4pe/pyee/.git', "
+             "'describe', '--tags', '--long'] failed and "
+             "'/build/tmp0tlam4pe/pyee/version.txt' isn't present."],
+            1, MissingVcVersionerVersion())
 
     def test_python_missing_file(self):
         self.run_test(

@@ -350,6 +350,13 @@ class MissingSecretGpgKey:
         return "No secret GPG key is present"
 
 
+@problem("no-vcversioner-version")
+class MissingVcVersionerVersion:
+
+    def __str__(self):
+        return "vcversion could not find a git directory or version.txt file"
+
+
 class MissingConfigure(Problem):
 
     kind = "missing-configure"
@@ -2473,6 +2480,10 @@ build_failure_regexps = [
          m.group(4),
          python_version=(int(m.group(2)[0]) if m.group(2) else None))
     ),
+    (r'vcversioner: \[\'git\', .*, \'describe\', \'--tags\', \'--long\'\] '
+     r'failed and \'(.*)/version.txt\' isn\'t present\.',
+     lambda m: MissingVcVersionerVersion()),
+
     # Intentionally at the bottom of the list.
     (
         r'configure: error: Please install (.*) from (http:\/\/[^ ]+)',
