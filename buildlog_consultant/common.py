@@ -2461,6 +2461,22 @@ build_failure_regexps = [
         r'configure: error: You don\'t have (.*) installed',
         lambda m: MissingVagueDependency(m.group(1))
     ),
+    (
+        r'configure: error: Could not find a recent version of (.*)',
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r'configure: error: Unable to locate the required (.*) library',
+        lambda m: MissingLibrary(m.group(1)),
+    ),
+    (
+        r'configure: error: Mising the (.*) library',
+        lambda m: MissingLibrary(m.group(1)),
+    ),
+    (
+        r'configure: error: Missing lib(.*)\.',
+        lambda m: MissingLibrary(m.group(1)),
+    ),
 ]
 
 
