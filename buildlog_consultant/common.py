@@ -2457,6 +2457,10 @@ build_failure_regexps = [
         r'Error\! You need to have (.*) \((.*)\) around.',
         lambda m: MissingVagueDependency(m.group(1), m.group(2)),
     ),
+    (
+        r'configure: error: You don\'t have (.*) installed',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
 ]
 
 
