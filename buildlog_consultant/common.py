@@ -1441,7 +1441,7 @@ class CMakeErrorMatcher(Matcher):
          r'lib(.*) version is too old, or lib(.*) wasn\'t found in the place you\n'
          r'said.', lambda m: MissingLibrary(m.group(1))),
         (r'need (.*) of version (.*)',
-         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group2())),
+         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     ]
 
     @classmethod
