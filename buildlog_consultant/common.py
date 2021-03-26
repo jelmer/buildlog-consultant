@@ -1380,7 +1380,8 @@ class CMakeErrorMatcher(Matcher):
             r"--  Package \'(.*)\', required by \'(.*)\', not found",
             cmake_pkg_config_missing,
         ),
-        (r"Could NOT find (.*) \(missing: .*\)", cmake_command_missing),
+        (r"Could NOT find (.*) \(missing: .*\)",
+         lambda m: MissingVagueDependency(m.group(1))),
         (
             r'The (.+) compiler\n\n  "(.*)"\n\nis not able to compile a '
             r"simple test program\.\n\nIt fails with the following output:\n\n"
