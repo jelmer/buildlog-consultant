@@ -161,7 +161,7 @@ class MissingVagueDependency:
 
     name: str
     url: Optional[str] = None
-    minimum_version: Optional[str]
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         return "Missing dependency: %s" % self.name
@@ -1371,11 +1371,6 @@ class CMakeNeedExactVersion(Problem):
             self.package, self.exact_version_needed)
 
 
-def cmake_unsuitable_version(m):
-    return CMakeNeedExactVersion(
-        m.group(1), m.group(2), m.group(3), m.group(4))
-
-
 class CMakeErrorMatcher(Matcher):
 
     regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):")
@@ -1393,9 +1388,13 @@ class CMakeErrorMatcher(Matcher):
             r"CMake will not be able to correctly generate this project.\n$",
             cmake_compiler_failure,
         ),
-        (r"Could NOT find (.*): Found unsuitable version \"(.*)\", but\n"
-         r"required is exact version \"(.*)\" \(found\n(.*)\)",
-         cmake_unsuitable_version
+        (r"Could NOT find (.*): Found unsuitable version \"(.*)\",\sbut\s"
+         r"required\sis\sexact version \"(.*)\" \(found\s(.*)\)",
+         lambda m: CMakeNeedExactVersion(m.group(1), m.group(2), m.group(3), m.group(4)),
+         ),
+        (r"Could NOT find (.*): Found unsuitable version \"(.*)\",\sbut\s"
+         r"required\sis\sat\sleast\s\"(.*)\" \(found\s(.*)\)",
+         lambda m: MissingPkgConfig(m.group(1), m.group(3))
          ),
         (
             r'The imported target \"(.*)\" references the file\n\n\s*"(.*)"\n\n'
