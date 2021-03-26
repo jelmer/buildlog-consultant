@@ -1431,7 +1431,9 @@ class CMakeErrorMatcher(Matcher):
          lambda m: NoSpaceOnDevice()),
         (r'file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n', None),
         (r'Could NOT find (.*) \(missing: (.*)\)', None),
-
+        (r'Missing (.*)\.  Either your\n'
+         r'lib(.*) version is too old, or lib(.*) wasn\'t found in the place you\n'
+         r'said.', lambda m: MissingLibrary(m.group(1))),
     ]
 
     @classmethod
