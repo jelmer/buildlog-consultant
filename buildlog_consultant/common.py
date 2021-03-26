@@ -1711,6 +1711,7 @@ build_failure_regexps = [
     (r".*: line \d+: ([^ ]+): Permission denied", None),
     (r"\/bin\/sh: \d+: ([^ ]+): not found", command_missing),
     (r"sh: \d+: ([^ ]+): not found", command_missing),
+    (r".*\.sh: \d+: ([^ ]+): not found", command_missing),
     (r".*: 1: cd: can\'t cd to (.*)", directory_not_found),
     (r"\/bin\/bash: (.*): command not found", command_missing),
     (r"bash: (.*): command not found", command_missing),
