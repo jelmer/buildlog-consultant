@@ -753,6 +753,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
                 description = match.line[3:].rstrip('\n')
             else:
                 description = match.line.rstrip('\n')
+        phase = ("build", )
     if failed_stage == "arch-check":
         (offset, line, error) = find_arch_check_failure_description(section_lines)
         if error:
