@@ -2104,7 +2104,7 @@ build_failure_regexps = [
         lambda m: MissingCommand('autoconf'),
     ),
     (
-        r'  You must have (autoconf|automake) installed to compile (.*)\.',
+        r'\s*You must have (autoconf|automake|aclocal|libtool|libtoolize) installed to compile (.*)\.',
         lambda m: MissingCommand(m.group(1)),
     ),
     (
