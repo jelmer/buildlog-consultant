@@ -1651,7 +1651,7 @@ build_failure_regexps = [
         python_module_not_found,
     ),
     ("E   ImportError: No module named (.*)", python_module_not_found),
-    ("\s*ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
+    (r"\s*ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
     (
         r"Could not import extension .* \(exception: No module named (.*)\)",
         sphinx_module_not_found,
@@ -2502,7 +2502,7 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r"go: .*: Get \"(.*)\": x509: certificate signed by unknown authority",
      lambda m: UnknownCertificateAuthority(m.group(1))),
-    ("\t\(Do you need to predeclare (.*)\?\)",
+    (r"\t\(Do you need to predeclare (.*)\?\)",
      lambda m: MissingPerlPredeclared(m.group(1))),
     (r"  vignette builder 'knitr' not found",
      lambda m: MissingRPackage('knitr')),
@@ -2521,14 +2521,14 @@ build_failure_regexps = [
      lambda m: MissingPythonDistribution.from_requirement_str(
          m.group(3),
          python_version=(int(m.group(2)[0]) if m.group(2) else None))
-    ),
+     ),
     (r'vcversioner: \[\'git\', .*, \'describe\', \'--tags\', \'--long\'\] '
      r'failed and \'(.*)/version.txt\' isn\'t present\.',
      lambda m: MissingVcVersionerVersion()),
 
     (r'# Module \'(.*)\' is not installed',
      lambda m: MissingPerlModule(None, m.group(1)),
-    ),
+     ),
 
     (
         r'configure: error: Missing lib(.*)\.',

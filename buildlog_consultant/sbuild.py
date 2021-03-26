@@ -406,9 +406,7 @@ class MissingDebcargoCrate(Problem):
         return ret
 
 
-def find_preamble_failure_description(
-    lines: List[str],
-) -> Tuple[Optional[int], Optional[str], Optional[Problem]]:
+def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[int], Optional[str], Optional[Problem]]:  # noqa: C901
     ret: Tuple[Optional[int], Optional[str], Optional[Problem]] = (None, None, None)
     OFFSET = 100
     err: Problem
@@ -485,8 +483,8 @@ def find_preamble_failure_description(
         m = re.match("E: Bad version unknown in (.*)", line)
         if m and lines[lineno-1].startswith('LINE: '):
             m = re.match(
-                'dpkg-parsechangelog: warning: .*\(l[0-9]+\): '
-                'version \'(.*)\' is invalid: (.*)',
+                r'dpkg-parsechangelog: warning: .*\(l[0-9]+\): '
+                r'version \'(.*)\' is invalid: (.*)',
                 lines[lineno-2])
             if m:
                 err = DpkgBadVersion(m.group(1), m.group(2))
