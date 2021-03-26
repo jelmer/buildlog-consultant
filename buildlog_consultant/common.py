@@ -2596,6 +2596,7 @@ secondary_build_failure_regexps = [
     r"error: Unrecognized option: \'.*\'",
     r".*: No space left on device",
     r"Segmentation fault",
+    r'make\[[0-9]+\]: (.*): No such file or directory',
     r"make\[[0-9]+\]: \*\*\* \[.*:[0-9]+: .*\] Segmentation fault",
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
