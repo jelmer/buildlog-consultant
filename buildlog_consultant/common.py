@@ -1948,7 +1948,7 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(2))
     ),
     (
-        r"Can't exec \"(.*)\": No such file or directory at (.*) line ([0-9]+).",
+        r"Can't exec \"(.*)\": No such file or directory at (.*) line ([0-9]+)\.",
         command_missing,
     ),
     (
@@ -2560,7 +2560,7 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(1)),
     ),
     (
-        r'configure: error: Missing (.*)',
+        r'configure: error: Missing (.*)\.',
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
