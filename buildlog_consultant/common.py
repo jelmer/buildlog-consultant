@@ -1010,21 +1010,14 @@ def automake_input_missing(m):
     return MissingAutomakeInput(m.group(1))
 
 
-class MissingAutoconfMacro(Problem):
+@problem("missing-autoconf-macro")
+class MissingAutoconfMacro:
 
-    kind = "missing-autoconf-macro"
-
-    def __init__(self, macro):
-        self.macro = macro
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.macro == other.macro
+    macro: str
+    need_rebuild: bool = False
 
     def __str__(self):
         return "autoconf macro %s missing" % self.macro
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.macro)
 
 
 def autoconf_undefined_macro(m):
@@ -1272,7 +1265,7 @@ class AutoconfUnexpectedMacroMatcher(Matcher):
     regexp1 = re.compile(
         r'\.\/configure: line [0-9]+: syntax error near unexpected token `.+\'')
     regexp2 = re.compile(
-        r'\.\/configure: line [0-9]+: `([A-Z0-9_]+)\(.*')
+        r'\.\/configure: line [0-9]+: `\s*([A-Z0-9_]+)\(.*')
 
     def match(self, lines, i):
         m = self.regexp1.fullmatch(lines[i].rstrip('\n'))
@@ -1283,7 +1276,7 @@ class AutoconfUnexpectedMacroMatcher(Matcher):
         except IndexError:
             return [], None
         if m:
-            return [i, i+1], MissingAutoconfMacro(m.group(1))
+            return [i, i+1], MissingAutoconfMacro(m.group(1), need_rebuild=True)
         return [], None
 
 
