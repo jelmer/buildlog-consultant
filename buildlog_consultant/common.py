@@ -1412,6 +1412,12 @@ class CMakeErrorMatcher(Matcher):
             cmake_package_config_file_missing,
         ),
         (
+            r'.*Could not find a package configuration file provided by "(.*)"\s'
+            r"\(requested\sversion\s.+\)\swith\sany\sof\sthe\sfollowing\snames:\n"
+            r"\n(  .*\n)+\n.*$",
+            cmake_package_config_file_missing,
+        ),
+        (
             r"No CMAKE_(.*)_COMPILER could be found.\n"
             r"\n"
             r"Tell CMake where to find the compiler by setting either"
@@ -1461,12 +1467,12 @@ class CMakeErrorMatcher(Matcher):
 
         error = None
         for r, fn in self.cmake_errors:
-            if fn is None:
-                error = None
-                break
             m = re.match(r, "".join(error_lines), flags=re.DOTALL)
             if m:
-                error = fn(m)
+                if fn is None:
+                    error = None
+                else:
+                    error = fn(m)
                 break
 
         return linenos, error
