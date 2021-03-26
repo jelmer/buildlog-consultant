@@ -2541,7 +2541,7 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r'configure: error: Unable to locate the required (.*) library',
+        r'configure: error: Unable to locate .*',
         lambda m: MissingLibrary(m.group(1)),
     ),
     (
