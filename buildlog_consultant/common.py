@@ -1522,6 +1522,15 @@ class MissingLibtool:
         return "Libtool is missing"
 
 
+@problem("missing-pytest-fixture")
+class MissingPytestFixture:
+
+    fixture: str
+
+    def __str__(self):
+        return "Missing pytest fixture: %s" % self.fixture
+
+
 @problem("missing-cargo-crate")
 class MissingCargoCrate:
 
@@ -1628,6 +1637,8 @@ build_failure_regexps = [
         python2_reqs_not_found,
     ),
     ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
+    ("E       fixture '(.*)' not found",
+        lambda m: MissingPytestFixture(m.group(1))),
     ("E   ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E   ImportError: cannot import name ([^']+)", python_module_not_found),
     (
