@@ -2722,6 +2722,7 @@ secondary_build_failure_regexps = [
     # glib
     r"\(.*:[0-9]+\): [a-zA-Z0-9]+-CRITICAL \*\*: [0-9:.]+: .*",
     r"tar: option requires an argument -- \'.\'",
+    r"tar: .*: Cannot stat: No such file or directory",
     # rsvg-convert
     r"Could not render file (.*.svg)",
     # pybuild tests
