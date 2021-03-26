@@ -19,7 +19,7 @@
 
 from dataclasses import dataclass
 
-__version__ = (0, 0, 4)
+__version__ = (0, 0, 5)
 
 
 class Problem(object):
