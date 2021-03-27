@@ -1443,6 +1443,8 @@ class CMakeErrorMatcher(Matcher):
          r'said.', lambda m: MissingLibrary(m.group(1))),
         (r'need (.*) of version (.*)',
          lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2).strip())),
+        (r'  \*\*\* (.*) is required to build (.*)',
+         lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
