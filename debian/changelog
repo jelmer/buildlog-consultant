@@ -1,6 +1,7 @@
 buildlog-consultant (0.0.3-2) UNRELEASED; urgency=medium
 
   * Add upstream signing keys.
+  * Set Vcs-Git headers.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 03 Mar 2021 18:14:54 -0000
 
