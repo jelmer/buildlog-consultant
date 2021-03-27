@@ -2670,7 +2670,7 @@ secondary_build_failure_regexps = [
     "SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
     "pkg_resources.UnknownExtra|tarfile.ReadError|"
     "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
-    "datalad.support.exceptions.IncompleteResultsError"
+    "datalad.support.exceptions.IncompleteResultsError|AssertionError"
     r"): .*",
     "^E   DeprecationWarning: .*",
     "^E       fixture '(.*)' not found",
