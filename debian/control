@@ -6,6 +6,8 @@ Priority: optional
 Section: python
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
 Homepage: https://github.com/jelmer/buildlog-consultant
+Vcs-Git: https://salsa.debian.org/jelmer/buildlog-consultant.git
+Vcs-Browser: https://salsa.debian.org/jelmer/buildlog-consultant
 
 Package: python3-buildlog-consultant
 Architecture: all
