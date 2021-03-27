@@ -1699,7 +1699,7 @@ build_failure_regexps = [
      lambda m: MissingX11()),
     (r'  \*\*\* The (.*) script could not be found\. .*',
      lambda m: MissingCommand(m.group(1))),
-    (r'>> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
+    (r'\>\> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
     (r'npm ERR\! \>\> Local Npm module "(.*)" not found. Is it installed\?',
@@ -1859,6 +1859,12 @@ build_failure_regexps = [
         r"> Kotlin could not find the required JDK tools in the Java "
         r"installation '(.*)' used by Gradle. Make sure Gradle is running "
         "on a JDK, not JRE.",
+        jdk_missing,
+    ),
+    (
+        r'\> JDK_5 environment variable is not defined. '
+        r'It must point to any JDK that is capable to compile with '
+        r'Java 5 target \(.*\)',
         jdk_missing,
     ),
     (
