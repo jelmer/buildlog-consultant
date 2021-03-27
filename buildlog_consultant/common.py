@@ -2611,6 +2611,8 @@ secondary_build_failure_regexps = [
         r"\'(?!maintainer-clean)(?!clean)(.*)\'\.  Stop\."
     ),
     r".*:[0-9]+: \*\*\* empty variable name.  Stop.",
+    # Clojure
+    r'Could not locate (.*) or (.*) on classpath\.',
     # QMake
     r"Project ERROR: .*",
     # pdflatex
