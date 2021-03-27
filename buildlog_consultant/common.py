@@ -2680,6 +2680,7 @@ secondary_build_failure_regexps = [
     r"# failed [0-9]+ of [0-9]+ tests",
     # Pytest
     r"(.*).py:[0-9]+: AssertionError",
+    r"============================ no tests ran in ([0-9.]+)s =============================",
     # Perl
     r"  Failed tests:  [0-9-]+",
     # Go
