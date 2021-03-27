@@ -2025,6 +2025,8 @@ build_failure_regexps = [
     # A Python error, but not likely to be actionable. The previous
     # line will have the actual line that failed.
     (r"ImportError: cannot import name (.*)", None),
+    # Rust ?
+    (r"  = note: /usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (r"/usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (
         r"Could not find gem \'([^ ]+) \(([^)]+)\)\', " r"which is required by gem.*",
