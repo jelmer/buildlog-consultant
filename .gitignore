@@ -2,3 +2,4 @@ update.sh
 buildlog_consultant.egg-info
 __pycache__
 *~
+build

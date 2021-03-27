@@ -27,7 +27,7 @@ from .apt import (
     find_install_deps_failure_description,
 )
 from .autopkgtest import find_autopkgtest_failure_description
-from .common import find_build_failure_description, NoSpaceOnDevice
+from .common import find_build_failure_description, NoSpaceOnDevice, ChrootNotFound
 
 __all__ = [
     "SbuildFailure",
@@ -45,20 +45,20 @@ class SbuildFailure(Exception):
         stage: Optional[str],
         description: Optional[str],
         error: Optional["Problem"] = None,
-        context: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
+        phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
     ):
         self.stage = stage
         self.description = description
         self.error = error
-        self.context = context
+        self.phase = phase
 
     def __repr__(self):
-        return "%s(%r, %r, error=%r, context=%r)" % (
+        return "%s(%r, %r, error=%r, phase=%r)" % (
             type(self).__name__,
             self.stage,
             self.description,
             self.error,
-            self.context,
+            self.phase,
         )
 
 
@@ -71,6 +71,8 @@ SBUILD_FOCUS_SECTION: Dict[Optional[str], str] = {
     "apt-get-update": "update chroot",
     "arch-check": "check architectures",
     "check-space": "cleanup",
+    "unpack": "build",
+    "fetch-src": "fetch source files",
 }
 
 
@@ -85,11 +87,16 @@ class DpkgSourceLocalChanges(Problem):
         return isinstance(other, type(self)) and self.files == other.files
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.files)
+        if len(self.files) < 5:
+            return "%s(%r)" % (type(self).__name__, self.files)
+        else:
+            return "<%s(%d files)>" % (type(self).__name__, len(self.files))
 
     def __str__(self):
-        if self.files:
+        if self.files and len(self.files) < 5:
             return "Tree has local changes: %r" % self.files
+        elif self.files:
+            return "Tree has local changes: %d files" % len(self.files)
         else:
             return "Tree has local changes"
 
@@ -169,6 +176,9 @@ class PatchApplicationFailed(Problem):
     def __str__(self):
         return "Patch application failed: %s" % self.patchname
 
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.patchname)
+
 
 class SourceFormatUnbuildable(Problem):
 
@@ -246,17 +256,20 @@ class DebcargoFailure(Problem):
 
     kind = "debcargo-failed"
 
-    def __init__(self):
-        pass
+    def __init__(self, reason):
+        self.reason = reason
 
     def __str__(self):
-        return "Debcargo failed"
+        if self.reason:
+            return "Debcargo failed: %s" % self.reason
+        else:
+            return "Debcargo failed"
 
     def __repr__(self):
         return "%s()" % type(self).__name__
 
     def __eq__(self, other):
-        return isinstance(other, type(self))
+        return isinstance(other, type(self)) and other.reason == self.reason
 
 
 class UScanFailed(Problem):
@@ -337,11 +350,65 @@ class DpkgSourcePackFailed(Problem):
             return "Packing source directory failed."
 
 
-def find_preamble_failure_description(
-    lines: List[str],
-) -> Tuple[Optional[int], Optional[str], Optional[Problem]]:
+class DpkgBadVersion(Problem):
+
+    kind = "dpkg-bad-version"
+
+    def __init__(self, version, reason=None):
+        self.version = version
+        self.reason = reason
+
+    def __eq__(self, other):
+        return (isinstance(other, type(self)) and
+                other.reason == self.reason and
+                self.version == other.version)
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (type(self).__name__, self.version, self.reason)
+
+    def __str__(self):
+        if self.reason:
+            return "Version (%s) is invalid: %s" % (self.version, self.reason)
+        else:
+            return "Version (%s) is invalid" % self.version
+
+
+class MissingDebcargoCrate(Problem):
+
+    kind = "debcargo-missing-crate"
+
+    def __init__(self, crate, version=None):
+        self.crate = crate
+        self.version = version
+
+    @classmethod
+    def from_string(cls, text):
+        text = text.strip()
+        if '=' in text:
+            (crate, version) = text.split('=')
+            return cls(crate.strip(), version.strip())
+        else:
+            return cls(text)
+
+    def __eq__(self, other):
+        return (isinstance(other, type(self)) and
+                other.crate == self.crate and
+                other.version == self.version)
+
+    def __repr__(self):
+        return "%s(%r, version=%r)" % (
+            type(self).__name__, self.crate, self.version)
+
+    def __str__(self):
+        ret = "debcargo can't find crate %s" % self.crate
+        if self.version:
+            ret += " (version: %s)" % self.version
+        return ret
+
+
+def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[int], Optional[str], Optional[Problem]]:  # noqa: C901
     ret: Tuple[Optional[int], Optional[str], Optional[Problem]] = (None, None, None)
-    OFFSET = 20
+    OFFSET = 100
     err: Problem
     for i in range(1, OFFSET):
         lineno = len(lines) - i
@@ -358,12 +425,12 @@ def find_preamble_failure_description(
                     "dpkg-source: info: local changes detected, "
                     "the modified files are:\n"
                 ):
-                    error = DpkgSourceLocalChanges(files)
-                    return lineno + 1, str(error), error
+                    err = DpkgSourceLocalChanges(files)
+                    return lineno + 1, str(err), err
                 files.append(lines[j].strip())
                 j -= 1
             err = DpkgSourceLocalChanges()
-            return lineno + 1, str(error), err
+            return lineno + 1, str(err), err
         if line == "dpkg-source: error: unrepresentable changes to source":
             err = DpkgSourceUnrepresentableChanges()
             return lineno + 1, line, err
@@ -408,70 +475,158 @@ def find_preamble_failure_description(
             err = SourceFormatUnsupported(m.group(1))
             return lineno + 1, line, err
 
-        m = re.match("dpkg-source: error: (.*)", line)
-        if m:
-            err = DpkgSourcePackFailed(m.group(1))
-            ret = lineno + 1, line, err
-
         m = re.match("E: Failed to package source directory (.*)", line)
         if m:
             err = DpkgSourcePackFailed()
             ret = lineno + 1, line, err
 
+        m = re.match("E: Bad version unknown in (.*)", line)
+        if m and lines[lineno-1].startswith('LINE: '):
+            m = re.match(
+                r'dpkg-parsechangelog: warning: .*\(l[0-9]+\): '
+                r'version \'(.*)\' is invalid: (.*)',
+                lines[lineno-2])
+            if m:
+                err = DpkgBadVersion(m.group(1), m.group(2))
+                return lineno + 1, line, err
+
+        m = re.match("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
+        if m:
+            patchname = m.group(1).split("/")[-1]
+            err = PatchApplicationFailed(patchname)
+            return lineno + 1, str(err), err
+        m = re.match(
+            r"dpkg-source: error: LC_ALL=C patch .* "
+            r"--reject-file=- < .*\/debian\/patches\/([^ ]+) "
+            r"subprocess returned exit status 1",
+            line,
+        )
+        if m:
+            patchname = m.group(1)
+            err = PatchApplicationFailed(patchname)
+            return lineno + 1, str(err), err
+        m = re.match(
+            "dpkg-source: error: "
+            "can't build with source format '(.*)': "
+            "(.*)",
+            line,
+        )
+        if m:
+            err = SourceFormatUnbuildable(m.group(1))
+            return lineno + 1, str(err), err
+        m = re.match(
+            "dpkg-source: error: cannot read (.*): "
+            "No such file or directory",
+            line,
+        )
+        if m:
+            err = PatchFileMissing(m.group(1).split("/", 1)[1])
+            return lineno + 1, str(err), err
+        m = re.match(
+            "dpkg-source: error: "
+            "source package format '(.*)' is not supported: "
+            "(.*)",
+            line,
+        )
+        if m:
+            (match, err) = find_build_failure_description(
+                [m.group(2)]
+            )
+            if err is None:
+                err = SourceFormatUnsupported(m.group(1))
+            return lineno + 1, str(err), err
+        m = re.match(
+            "breezy.errors.NoSuchRevision: " "(.*) has no revision b'(.*)'",
+            line,
+        )
+        if m:
+            err = MissingRevision(m.group(2).encode())
+            return lineno + 1, str(err), err
+
+        m = re.match("dpkg-source: error: (.*)", line)
+        if m:
+            err = DpkgSourcePackFailed(m.group(1))
+            ret = lineno + 1, str(err), err
+
     return ret
+
+
+def _parse_debcargo_failure(m, pl):
+    MORE_TAIL = '\x1b[0m\n'
+    MORE_HEAD = '\x1b[1;31mSomething failed: '
+    if pl[-1].endswith(MORE_TAIL):
+        extra = [pl[-1][:-len(MORE_TAIL)]]
+        for line in reversed(pl[:-1]):
+            if extra[0].startswith(MORE_HEAD):
+                extra[0] = extra[0][len(MORE_HEAD):]
+                break
+            extra.insert(0, line)
+        else:
+            extra = []
+        if extra and extra[-1] == (
+                ' Try `debcargo update` to update the crates.io index.'):
+            n = re.match(r'Couldn\'t find any crate matching (.*)', extra[-2])
+            if n:
+                return MissingDebcargoCrate.from_string(n.group(1))
+            else:
+                return DpkgSourcePackFailed(extra[-2])
+        else:
+            return DebcargoFailure(''.join(extra))
+
+    return DebcargoFailure('Debcargo failed to run')
 
 
 BRZ_ERRORS = [
     (
         "Unable to find the needed upstream tarball for "
         "package (.*), version (.*)\\.",
-        lambda m: UnableToFindUpstreamTarball(m.group(1), m.group(2)),
+        lambda m, pl: UnableToFindUpstreamTarball(m.group(1), m.group(2)),
     ),
     (
         "Unknown mercurial extra fields in (.*): b'(.*)'.",
-        lambda m: UnknownMercurialExtraFields(m.group(2)),
+        lambda m, pl: UnknownMercurialExtraFields(m.group(2)),
     ),
     (
         "UScan failed to run: OpenPGP signature did not verify..",
-        lambda m: UpstreamPGPSignatureVerificationFailed(),
+        lambda m, pl: UpstreamPGPSignatureVerificationFailed(),
     ),
     (
         r"Inconsistency between source format and version: "
         r"version is( not)? native, format is( not)? native\.",
-        lambda m: InconsistentSourceFormat(),
+        lambda m, pl: InconsistentSourceFormat(),
     ),
     (
         r"UScan failed to run: In (.*) no matching hrefs "
         "for version (.*) in watch line",
-        lambda m: UScanRequestVersionMissing(m.group(2)),
+        lambda m, pl: UScanRequestVersionMissing(m.group(2)),
     ),
     (
         r"UScan failed to run: In directory ., downloading \s+" r"(.*) failed: (.*)",
-        lambda m: UScanFailed(m.group(1), m.group(2)),
+        lambda m, pl: UScanFailed(m.group(1), m.group(2)),
     ),
     (
         r"UScan failed to run: In watchfile debian/watch, "
         r"reading webpage\n  (.*) failed: (.*)",
-        lambda m: UScanFailed(m.group(1), m.group(2)),
+        lambda m, pl: UScanFailed(m.group(1), m.group(2)),
     ),
     (
         r"Unable to parse upstream metadata file (.*): (.*)",
-        lambda m: UpstreamMetadataFileParseError(m.group(1), m.group(2)),
+        lambda m, pl: UpstreamMetadataFileParseError(m.group(1), m.group(2)),
     ),
-    (r"Debcargo failed to run\.", lambda m: DebcargoFailure()),
+    (r"Debcargo failed to run\.", _parse_debcargo_failure),
 ]
 
 
 _BRZ_ERRORS = [(re.compile(r), fn) for (r, fn) in BRZ_ERRORS]
 
 
-def parse_brz_error(line: str) -> Tuple[Optional[Problem], str]:
+def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem], str]:
     error: Problem
     line = line.strip()
     for search_re, fn in _BRZ_ERRORS:
         m = search_re.match(line)
         if m:
-            error = fn(m)
+            error = fn(m, prior_lines)
             return (error, str(error))
     if line.startswith("UScan failed to run"):
         return (None, line)
@@ -495,6 +650,10 @@ def find_creation_session_error(lines):
         line = lines[i]
         if line.startswith("E: "):
             ret = i + 1, line, None
+        m = re.fullmatch(
+            "E: Chroot for distribution (.*), architecture (.*) not found\n", line)
+        if m:
+            return i + 1, line, ChrootNotFound('%s-%s-sbuild' % (m.group(1), m.group(2)))
         if line.endswith(": No space left on device\n"):
             return i + 1, line, NoSpaceOnDevice()
 
@@ -509,7 +668,7 @@ def find_brz_build_error(lines):
             for n in lines[i + 1 :]:
                 if n.startswith(" "):
                     rest.append(n)
-            return parse_brz_error("".join(rest))
+            return parse_brz_error("".join(rest), lines[:i])
     return (None, None)
 
 
@@ -531,23 +690,33 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         # command.
         failed_stage = "autopkgtest"
     description = None
-    context: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None
+    phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None
     error = None
     section_lines = paragraphs.get(focus_section, [])
+    if failed_stage == "fetch-src":
+        if not section_lines[0].strip():
+            section_lines = section_lines[1:]
+        if len(section_lines) == 1 and section_lines[0].startswith('E: Could not find '):
+            offset, description, error = find_preamble_failure_description(
+                paragraphs[None])
+            return SbuildFailure("unpack", description, error)
     if failed_stage == "create-session":
         offset, description, error = find_creation_session_error(section_lines)
         if error:
-            context = ("create-session",)
+            phase = ("create-session",)
+    if failed_stage == "unpack":
+        offset, description, error = find_preamble_failure_description(section_lines)
+        if error:
+            return SbuildFailure("unpack", description, error)
     if failed_stage == "build":
-        section_lines = strip_useless_build_tail(section_lines)
+        section_lines, files = strip_build_tail(section_lines)
         match, error = find_build_failure_description(section_lines)
         if error:
             description = str(error)
-            context = ("build",)
+            phase = ("build",)
         elif match:
             description = match.line.rstrip('\n')
     if failed_stage == "autopkgtest":
-        section_lines = strip_useless_build_tail(section_lines)
         (
             apt_offset,
             testname,
@@ -562,7 +731,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             description = apt_description
         if apt_offset is not None:
             offset = apt_offset
-        context = ("autopkgtest", testname)
+        phase = ("autopkgtest", testname)
     if failed_stage == "apt-get-update":
         focus_section, match, error = find_apt_get_update_failure(
             paragraphs
@@ -584,6 +753,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
                 description = match.line[3:].rstrip('\n')
             else:
                 description = match.line.rstrip('\n')
+        phase = ("build", )
     if failed_stage == "arch-check":
         (offset, line, error) = find_arch_check_failure_description(section_lines)
         if error:
@@ -596,75 +766,12 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
         description = "build failed stage %s" % failed_stage
     if description is None:
         description = "build failed"
-        context = ("buildenv",)
+        phase = ("buildenv",)
         if list(paragraphs.keys()) == [None]:
-            for line in reversed(paragraphs[None]):
-                m = re.match("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
-                if m:
-                    patchname = m.group(1).split("/")[-1]
-                    error = PatchApplicationFailed(patchname)
-                    description = "Patch %s failed to apply" % patchname
-                    break
-                m = re.match(
-                    r"dpkg-source: error: LC_ALL=C patch .* "
-                    r"--reject-file=- < .*\/debian\/patches\/([^ ]+) "
-                    r"subprocess returned exit status 1",
-                    line,
-                )
-                if m:
-                    patchname = m.group(1)
-                    error = PatchApplicationFailed(patchname)
-                    description = "Patch %s failed to apply" % patchname
-                    break
-                m = re.match(
-                    "dpkg-source: error: "
-                    "can't build with source format '(.*)': "
-                    "(.*)",
-                    line,
-                )
-                if m:
-                    error = SourceFormatUnbuildable(m.group(1))
-                    description = m.group(2)
-                    break
-                m = re.match(
-                    "dpkg-source: error: cannot read (.*): "
-                    "No such file or directory",
-                    line,
-                )
-                if m:
-                    error = PatchFileMissing(m.group(1).split("/", 1)[1])
-                    description = "Patch file %s in series but missing" % (error.path)
-                    break
-                m = re.match(
-                    "dpkg-source: error: "
-                    "source package format '(.*)' is not supported: "
-                    "(.*)",
-                    line,
-                )
-                if m:
-                    (match, error) = find_build_failure_description(
-                        [m.group(2)]
-                    )
-                    if error is None:
-                        error = SourceFormatUnsupported(m.group(1))
-                    if match is None:
-                        description = m.group(2)
-                    else:
-                        description = match.line.rstrip('\n')
-                    break
-                m = re.match("dpkg-source: error: (.*)", line)
-                if m:
-                    error = None
-                    description = m.group(1)
-                    break
-                m = re.match(
-                    "breezy.errors.NoSuchRevision: " "(.*) has no revision b'(.*)'",
-                    line,
-                )
-                if m:
-                    error = MissingRevision(m.group(2).encode())
-                    description = "Revision %r is not present" % (error.revision)
-                    break
+            offset, line, error = find_preamble_failure_description(
+                paragraphs[None])
+            if error is not None:
+                description = str(error)
             else:
                 (match, error) = find_build_failure_description(paragraphs[None])
                 if match is None:
@@ -672,7 +779,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
                 else:
                     description = match.line.rstrip('\n')
 
-    return SbuildFailure(failed_stage, description, error=error, context=context)
+    return SbuildFailure(failed_stage, description, error=error, phase=phase)
 
 
 def parse_sbuild_log(
@@ -728,7 +835,7 @@ def find_failed_stage(lines: List[str]) -> Optional[str]:
 DEFAULT_LOOK_BACK = 50
 
 
-def strip_useless_build_tail(lines, look_back=None):
+def strip_build_tail(lines, look_back=None):
     if look_back is None:
         look_back = DEFAULT_LOOK_BACK
 
@@ -739,14 +846,20 @@ def strip_useless_build_tail(lines, look_back=None):
             if lines and lines[-1] == ("-" * 80 + "\n"):
                 lines = lines[:-1]
             break
-    try:
-        end_offset = lines.index("==> config.log <==\n")
-    except ValueError:
-        pass
-    else:
-        lines = lines[:end_offset]
 
-    return lines
+    files = {}
+    current_contents = []
+
+    header_re = re.compile(r'==\> (.*) \<==\n')
+    for i in range(len(lines) - 1, -1, -1):
+        m = header_re.match(lines[i])
+        if m:
+            files[m.group(1)] = current_contents
+            current_contents = []
+            lines = lines[:i]
+            continue
+
+    return lines, files
 
 
 class ArchitectureNotInList(Problem):
@@ -823,3 +936,70 @@ def find_check_space_failure_description(lines):
                     InsufficientDiskSpace(int(m.group(1)), int(m.group(2))),
                 )
             return (offset + 1, line, None)
+
+
+def main(argv=None):
+    import argparse
+
+    parser = argparse.ArgumentParser("analyse-sbuild-log")
+    parser.add_argument("path", type=str)
+    args = parser.parse_args()
+
+    with open(args.path, "rb") as f:
+        print(worker_failure_from_sbuild_log(f))
+
+    # TODO(jelmer): Return more data from worker_failure_from_sbuild_log and
+    # then use that here.
+    section_offsets = {}
+    section_lines = {}
+    with open(args.path, "rb") as f:
+        for title, offsets, lines in parse_sbuild_log(f):
+            print("Section %s (lines %d-%d)" % (title, offsets[0], offsets[1]))
+            if title is not None:
+                title = title.lower()
+            section_offsets[title] = offsets
+            section_lines[title] = lines
+
+    failed_stage = find_failed_stage(section_lines.get("summary", []))
+    focus_section = SBUILD_FOCUS_SECTION.get(failed_stage)
+    if failed_stage == "run-post-build-commands":
+        # We used to run autopkgtest as the only post build
+        # command.
+        failed_stage = "autopkgtest"
+    if failed_stage:
+        print("Failed stage: %s (focus section: %s)" % (failed_stage, focus_section))
+    if failed_stage == "unpack":
+        lines = section_lines.get(focus_section, [])
+        offset, line, error = find_preamble_failure_description(lines)
+        if error:
+            print("Error: %s" % error)
+    if failed_stage in ("build", "autopkgtest"):
+        lines = section_lines.get(focus_section, [])
+        if failed_stage == "build":
+            lines, files = strip_build_tail(lines)
+        match, error = find_build_failure_description(lines)
+        if match:
+            print("Failed line: %d:" % (section_offsets[focus_section][0] + match.lineno))
+            print(match.line)
+        if error:
+            print("Error: %s" % error)
+    if failed_stage == "apt-get-update":
+        focus_section, match, error = find_apt_get_update_failure(section_lines)
+        if match:
+            print("Failed line: %d:" % (section_offsets[focus_section][0] + match.lineno))
+            print(match.line)
+        if error:
+            print("Error: %s" % error)
+    if failed_stage == "install-deps":
+        (focus_section, match, error) = find_install_deps_failure_description(
+            section_lines
+        )
+        if match:
+            print("Failed line: %d:" % (section_offsets[focus_section][0] + match.lineno))
+            print(match.line)
+        print(error)
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(sys.argv))

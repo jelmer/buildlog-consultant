@@ -17,6 +17,7 @@
 
 from ..common import (
     CMakeFilesMissing,
+    CMakeNeedExactVersion,
     find_build_failure_description,
     CcacheError,
     DebhelperPatternNotFound,
@@ -29,6 +30,8 @@ from ..common import (
     MissingCHeader,
     MissingDHCompatLevel,
     MissingJDKFile,
+    MissingJDK,
+    MissingJRE,
     MissingPythonModule,
     MissingPythonDistribution,
     MissingGoPackage,
@@ -37,12 +40,16 @@ from ..common import (
     MissingNodeModule,
     MissingCommand,
     MissingPkgConfig,
+    MissingVcVersionerVersion,
     MissingPerlFile,
     MissingPerlModule,
+    MissingPerlPredeclared,
     MissingPhpClass,
     MissingRubyGem,
+    MissingSetupPyCommand,
     MissingValaPackage,
     MissingXmlEntity,
+    MissingVagueDependency,
     MissingLibrary,
     MissingJavaClass,
     MissingRPackage,
@@ -58,6 +65,8 @@ from ..common import (
     FailedGoTest,
     UpstartFilePresent,
     DirectoryNonExistant,
+    UnknownCertificateAuthority,
+    MissingGitIdentity,
 )
 import unittest
 
@@ -99,6 +108,12 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             MissingFile("/usr/share/openstack-pkg-tools/pkgos.make"),
         )
+
+    def test_git_identity(self):
+        self.run_test(
+            ["fatal: unable to auto-detect email address "
+             "(got 'jenkins@osuosl167-amd64.(none)')"],
+            1, MissingGitIdentity())
 
     def test_ioerror(self):
         self.run_test(
@@ -208,6 +223,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             MissingFile("/usr/lib/nodejs/requirejs/text.js"),
         )
 
+    def test_vcversioner(self):
+        self.run_test(
+            ["vcversioner: ['git', '--git-dir', '/build/tmp0tlam4pe/pyee/.git', "
+             "'describe', '--tags', '--long'] failed and "
+             "'/build/tmp0tlam4pe/pyee/version.txt' isn't present."],
+            1, MissingVcVersionerVersion())
+
     def test_python_missing_file(self):
         self.run_test(
             [
@@ -233,6 +255,10 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             MissingFile("/usr/share/firmware-microbit-micropython/firmware.hex"),
         )
+
+    def test_vague(self):
+        self.run_test(
+                ["configure: error: Please install gnu flex from http://www.gnu.org/software/flex/"], 1, MissingVagueDependency("gnu flex", 'http://www.gnu.org/software/flex/'))
 
     def test_interpreter_missing(self):
         self.run_test(
@@ -352,6 +378,25 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             CMakeFilesMissing(["sensor_msgsConfig.cmake", "sensor_msgs-config.cmake"]),
         )
 
+    def test_cmake_missing_exact_version(self):
+        self.run_test(
+            """\
+CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
+  Could NOT find SignalProtocol: Found unsuitable version "2.3.3", but
+  required is exact version "2.3.2" (found
+  /usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so)
+""".splitlines(
+                True
+            ),
+            4,
+            CMakeNeedExactVersion(
+                "SignalProtocol",
+                "2.3.3",
+                "2.3.2",
+                "/usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so",
+            ),
+        )
+
     def test_dh_compat_dupe(self):
         self.run_test(
             [
@@ -440,6 +485,33 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             MissingPythonDistribution("configparser", None, "3.5"),
         )
+        self.run_test(
+            ["error: Command '['/usr/bin/python3.9', '-m', 'pip', "
+             "'--disable-pip-version-check', 'wheel', '--no-deps', '-w', "
+             "'/tmp/tmp973_8lhm', '--quiet', 'asynctest']' "
+             "returned non-zero exit status 1."], 1,
+            MissingPythonDistribution('asynctest', python_version=3))
+        self.run_test(
+            ["subprocess.CalledProcessError: Command "
+             "'['/usr/bin/python', '-m', 'pip', "
+             "'--disable-pip-version-check', 'wheel', '--no-deps', "
+             "'-w', '/tmp/tmpm2l3kcgv', '--quiet', 'setuptools_scm']' "
+             "returned non-zero exit status 1."],
+            1, MissingPythonDistribution('setuptools_scm'))
+
+    def test_lazy_font(self):
+        self.run_test(
+            ['[ERROR] LazyFont - Failed to read font file '
+             '/usr/share/texlive/texmf-dist/fonts/opentype/public/'
+             'stix2-otf/STIX2Math.otf '
+             '<java.io.FileNotFoundException: /usr/share/texlive/texmf-dist/'
+             'fonts/opentype/public/stix2-otf/STIX2Math.otf '
+             '(No such file or directory)>java.io.FileNotFoundException: '
+             '/usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf'
+             '/STIX2Math.otf (No such file or directory)'], 1,
+            MissingFile(
+                '/usr/share/texlive/texmf-dist/fonts/opentype/'
+                'public/stix2-otf/STIX2Math.otf'))
 
     def test_pytest_import(self):
         self.run_test(
@@ -487,6 +559,10 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingPythonModule("django_crispy_forms", 3),
         )
         self.run_test(
+            [" ModuleNotFoundError: No module named 'Cython'"],
+            1,
+            MissingPythonModule('Cython', 3))
+        self.run_test(
             ["ModuleNotFoundError: No module named 'distro'"],
             1,
             MissingPythonModule("distro", 3),
@@ -503,7 +579,7 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
                 "(/usr/lib/python3/dist-packages/msrest/polling/__init__.py)"
             ],
             1,
-            MissingPythonModule("msrest.polling"),
+            MissingPythonModule('msrest.polling.async_poller'),
         )
         self.run_test(
             ["/usr/bin/python3: No module named sphinx"],
@@ -518,6 +594,11 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             MissingPythonModule("pngmath"),
         )
+        self.run_test(
+            ["/usr/bin/python3: Error while finding module specification "
+             "for 'pep517.build' "
+             "(ModuleNotFoundError: No module named 'pep517')"],
+            1, MissingPythonModule('pep517', python_version=3))
 
     def test_sphinx(self):
         self.run_test(
@@ -573,6 +654,22 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingJDKFile("/usr/lib/jvm/java-8-openjdk-amd64", "tools.jar"),
         )
 
+    def test_missing_jdk(self):
+        self.run_test(
+            [
+                "> Kotlin could not find the required JDK tools in "
+                "the Java installation "
+                "'/usr/lib/jvm/java-8-openjdk-amd64/jre' used by Gradle. "
+                "Make sure Gradle is running on a JDK, not JRE.",
+            ], 1,
+            MissingJDK('/usr/lib/jvm/java-8-openjdk-amd64/jre'))
+
+    def test_missing_jre(self):
+        self.run_test([
+            "ERROR: JAVA_HOME is not set and no 'java' command "
+            "could be found in your PATH."], 1,
+            MissingJRE())
+
     def test_node_module_missing(self):
         self.run_test(
             ["Error: Cannot find module 'tape'"], 1, MissingNodeModule("tape")
@@ -584,6 +681,28 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             None,
         )
+        self.run_test(
+            ["npm ERR! [!] Error: Cannot find module '@rollup/plugin-buble'"],
+            1, MissingNodeModule("@rollup/plugin-buble"))
+        self.run_test(
+            ["npm ERR! Error: Cannot find module 'fs-extra'"],
+            1, MissingNodeModule('fs-extra'))
+
+    def test_setup_py_command(self):
+        self.run_test("""\
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'long_description_content_type'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'test_suite'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'python_requires'
+  warnings.warn(msg)
+usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+   or: setup.py --help [cmd1 cmd2 ...]
+   or: setup.py --help-commands
+   or: setup.py cmd --help
+
+error: invalid command 'test'
+""".splitlines(True), 12, MissingSetupPyCommand('test'))
 
     def test_command_missing(self):
         self.run_test(
@@ -597,6 +716,19 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingCommand("python3"),
         )
         self.run_test(
+            ["%Error: 'flex' must be installed to build"],
+            1,
+            MissingCommand('flex'))
+        self.run_test(
+            ['pkg-config: exec: "pkg-config": executable file not found in $PATH'],
+            1, MissingCommand('pkg-config'))
+        self.run_test(
+            ['Can\'t exec "git": No such file or directory at '
+             'Makefile.PL line 25.'], 1, MissingCommand('git'))
+        self.run_test(
+            ["vcver.scm.git.GitCommandError: 'git describe --tags --match 'v*'"
+             " --abbrev=0' returned an error code 127"], 1, MissingCommand('git'))
+        self.run_test(
             ["make[1]: docker: Command not found"], 1, MissingCommand("docker")
         )
         self.run_test(["make[1]: git: Command not found"], 1, MissingCommand("git"))
@@ -607,6 +739,9 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
         self.run_test(
             ["/bin/bash: valac: command not found"], 1, MissingCommand("valac")
         )
+        self.run_test(
+            ['E: Failed to execute “python3”: No such file or directory'],
+            1, MissingCommand("python3"))
         self.run_test(
             [
                 'Can\'t exec "cmake": No such file or directory at '
@@ -651,6 +786,29 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             MissingCommand("dpkg-architecture"),
         )
+        self.run_test(
+            ['Traceback (most recent call last):',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mesonmain.py", line 140, in run',
+             '    return options.run_func(options)',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 267, in run',
+             '    names = create_dist_git(dist_name, archives, src_root, bld_root, dist_sub, b.dist_scripts, subprojects)',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 119, in create_dist_git',
+             '    git_clone(src_root, distdir)',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 108, in git_clone',
+             '    if git_have_dirty_index(src_root):',
+             '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 104, in git_have_dirty_index',
+             '    ret = subprocess.call([\'git\', \'-C\', src_root, \'diff-index\', \'--quiet\', \'HEAD\'])',
+             '  File "/usr/lib/python3.9/subprocess.py", line 349, in call',
+             '    with Popen(*popenargs, **kwargs) as p:',
+             '  File "/usr/lib/python3.9/subprocess.py", line 951, in __init__',
+             '    self._execute_child(args, executable, preexec_fn, close_fds,',
+             '  File "/usr/lib/python3.9/subprocess.py", line 1823, in _execute_child',
+             '    raise child_exception_type(errno_num, err_msg, err_filename)',
+             'FileNotFoundError: [Errno 2] No such file or directory: \'git\''],
+            18, MissingCommand('git'))
+        self.run_test(
+            ['> Cannot run program "git": error=2, No such file or directory'],
+            1, MissingCommand('git'))
 
     def test_ts_error(self):
         self.run_test(
@@ -768,6 +926,13 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingPkgConfig("libfilezilla", "0.17.1"),
         )
 
+    def test_pkgconf(self):
+        self.run_test(
+            ['checking for LAPACK... '
+             'configure: error: "Cannot check for existence of module lapack without pkgconf"'],
+            1,
+            MissingCommand('pkgconf'))
+
     def test_dh_with_order(self):
         self.run_test(
             [
@@ -784,6 +949,14 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
                 "/usr/bin/install: error writing '"
                 "/<<PKGBUILDDIR>>/debian/tmp/usr/lib/gcc/"
                 "x86_64-linux-gnu/8/cc1objplus': No space left on device"
+            ],
+            1,
+            NoSpaceOnDevice(),
+        )
+
+        self.run_test(
+            [
+                'OSError: [Errno 28] No space left on device',
             ],
             1,
             NoSpaceOnDevice(),
@@ -819,6 +992,26 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             MissingPerlModule(None, module="Dist::Inkt::Profile::TOBYINK"),
         )
+
+    def test_perl_missing_predeclared(self):
+        self.run_test([
+            "String found where operator expected at Makefile.PL line 13, near \"author_tests 'xt'\"",
+            "\t(Do you need to predeclare author_tests?)",
+            "syntax error at Makefile.PL line 13, near \"author_tests 'xt'\"",
+            "Bareword \"use_test_base\" not allowed while \"strict subs\" in use at Makefile.PL line 12.",
+            "Bareword \"auto_set_repository\" not allowed while "
+            "\"strict subs\" in use at Makefile.PL line 13.",
+            ], 2, MissingPerlPredeclared('author_tests'))
+
+    def test_unknown_cert_authority(self):
+        self.run_test(
+            ['go: github.com/golangci/golangci-lint@v1.24.0: Get '
+             '"https://proxy.golang.org/github.com/golangci/'
+             'golangci-lint/@v/v1.24.0.mod": x509: '
+             'certificate signed by unknown authority'],
+            1, UnknownCertificateAuthority(
+                "https://proxy.golang.org/github.com/golangci/"
+                "golangci-lint/@v/v1.24.0.mod"))
 
     def test_missing_perl_module(self):
         self.run_test(
@@ -1345,6 +1538,16 @@ arch:all and the other not)""".splitlines(),
             1,
             MissingAutoconfMacro("AC_CHECK_CCA"),
         )
+        self.run_test(
+            ["./configure: line 12569: PKG_PROG_PKG_CONFIG: command not found"],
+            1,
+            MissingAutoconfMacro("PKG_PROG_PKG_CONFIG"),
+        )
+        self.run_test(
+            ['checking for gawk... (cached) mawk',
+             "./configure: line 2368: syntax error near unexpected token `APERTIUM,'",
+             "./configure: line 2368: `PKG_CHECK_MODULES(APERTIUM, apertium >= 3.7.1)'"],
+            3, MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True))
 
     def test_config_status_input(self):
         self.run_test(
