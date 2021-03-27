@@ -7,7 +7,7 @@ setup(
     packages=[
         "buildlog_consultant",
     ],
-    version="0.0.3",
+    version="0.0.5",
     author="Jelmer Vernooij",
     author_email="jelmer@jelmer.uk",
     url="https://github.com/jelmer/buildlog-consultant",
@@ -17,4 +17,13 @@ setup(
     },
     test_suite="buildlog_consultant.tests.test_suite",
     install_requires=['python_debian', 'PyYAML'],
+    entry_points={
+        'console_scripts': [
+            ('analyse-sbuild-log='
+             'buildlog_consultant.sbuild:main'),
+            ('analyse-build-log='
+             'buildlog_consultant.common:main'),
+        ],
+    },
+
 )

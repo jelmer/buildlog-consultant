@@ -1,13 +1,14 @@
 .flake8
 .gitignore
 AUTHORS
+CODE_OF_CONDUCT.md
 LICENSE
 README.md
+SECURITY.md
 releaser.conf
 setup.py
 .github/workflows/pythonpackage.yml
 buildlog_consultant/__init__.py
-buildlog_consultant/__main__.py
 buildlog_consultant/apt.py
 buildlog_consultant/autopkgtest.py
 buildlog_consultant/common.py
@@ -15,6 +16,7 @@ buildlog_consultant/sbuild.py
 buildlog_consultant.egg-info/PKG-INFO
 buildlog_consultant.egg-info/SOURCES.txt
 buildlog_consultant.egg-info/dependency_links.txt
+buildlog_consultant.egg-info/entry_points.txt
 buildlog_consultant.egg-info/requires.txt
 buildlog_consultant.egg-info/top_level.txt
 buildlog_consultant/tests/__init__.py

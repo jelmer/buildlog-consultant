@@ -22,27 +22,10 @@ from typing import Tuple, Optional, List, Dict, Union
 
 from . import Problem
 from .apt import find_apt_get_failure, AptFetchFailure
-from .common import find_build_failure_description
+from .common import find_build_failure_description, ChrootNotFound
 
 
 logger = logging.getLogger(__name__)
-
-
-class ChrootNotFound(Problem):
-
-    kind = "chroot-not-found"
-
-    def __init__(self, chroot):
-        self.chroot = chroot
-
-    def __str__(self):
-        return "Chroot not found: %s" % self.chroot
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.chroot)
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.chroot == other.chroot
 
 
 class AutopkgtestDepsUnsatisfiable(Problem):
@@ -425,6 +408,13 @@ def find_autopkgtest_failure_description(  # noqa: C901
                             error,
                             match.line,
                         )
+                if msg == 'autopkgtest':
+                    if lines[i+1].rstrip() == ': error cleaning up:':
+                        return (
+                            test_output_offset[current_field] + 1,
+                            last_test,
+                            AutopkgtestTimedOut(),
+                            lines[i-1].rstrip())
                 return (i + 1, last_test, None, msg)
         else:
             if current_field:

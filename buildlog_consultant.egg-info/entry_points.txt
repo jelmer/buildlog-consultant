@@ -1,0 +1,4 @@
+[console_scripts]
+analyse-build-log = buildlog_consultant.common:main
+analyse-sbuild-log = buildlog_consultant.sbuild:main
+
