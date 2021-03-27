@@ -2172,6 +2172,11 @@ build_failure_regexps = [
         r"(.*): first defined here",
         None,
     ),
+    (
+        r"\/usr\/bin\/ld: (.*): multiple definition of `*.\'; "
+        r"(.*):\((.*)\) first defined here",
+        None,
+    ),
     (r"\/usr\/bin\/ld: (.*): undefined reference to `(.*)\'", None),
     (r"\/usr\/bin\/ld: (.*): undefined reference to symbol \'(.*)\'", None),
     (
