@@ -477,21 +477,13 @@ def cmake_pkg_config_missing(m):
     return MissingPkgConfig(m.group(1))
 
 
+@problem("missing-cmake-files")
 class CMakeFilesMissing(Problem):
 
-    kind = "cmake-files-missing"
-
-    def __init__(self, filenames):
-        self.filenames = filenames
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.filenames == other.filenames
+    filenames: List[str]
 
     def __str__(self):
         return "Missing CMake package configuration files: %r" % (self.filenames,)
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.filenames)
 
 
 class DhWithOrderIncorrect(Problem):
@@ -2672,7 +2664,7 @@ secondary_build_failure_regexps = [
     "httptools.parser.errors.HttpParserInvalidURLError|HypothesisException|"
     "SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
     "pkg_resources.UnknownExtra|tarfile.ReadError|"
-    "numpydoc.docscrape.ParseError|"
+    "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
     "datalad.support.exceptions.IncompleteResultsError"
     r"): .*",
     "^E   DeprecationWarning: .*",
