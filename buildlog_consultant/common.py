@@ -1692,6 +1692,8 @@ build_failure_regexps = [
     (r'  \*\*\* The (.*) script could not be found\. .*',
      lambda m: MissingCommand(m.group(1))),
     (r'\>\> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
+    (r'npm ERR\! CLI for webpack must be installed.',
+     lambda m: MissingNodePackage('webpack-cli')),
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
     (r'npm ERR\! \>\> Local Npm module "(.*)" not found. Is it installed\?',
