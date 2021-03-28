@@ -259,6 +259,18 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
     def test_vague(self):
         self.run_test(
                 ["configure: error: Please install gnu flex from http://www.gnu.org/software/flex/"], 1, MissingVagueDependency("gnu flex", 'http://www.gnu.org/software/flex/'))
+        self.run_test(
+                ["configure: error:",
+                 "",
+                 "        Unable to find the Multi Emulator Super System (MESS)."],
+                3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
+
+    def test_multi_line_configure_error(self):
+        self.run_test(
+                ["configure: error:",
+                 "",
+                 "        Some other error."],
+                3, None)
 
     def test_interpreter_missing(self):
         self.run_test(

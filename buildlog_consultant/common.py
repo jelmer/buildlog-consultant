@@ -1253,6 +1253,26 @@ class SetupPyCommandMissingMatcher(Matcher):
         return []
 
 
+class MultiLineConfigureError(Matcher):
+
+    submatchers = [
+        (re.compile(r'\s*Unable to find (.*)\.'),
+         lambda m: MissingVagueDependency(m.group(1))),
+        ]
+
+    def match(self, lines, i):
+        if lines[i].rstrip('\n') != 'configure: error:':
+            return [], None
+
+        for j, line in enumerate(lines[i+1:]):
+            for submatcher, fn in self.submatchers:
+                m = submatcher.match(line.rstrip('\n'))
+                if m:
+                    return [i+j+1], fn(m)
+
+        return list(range(i+1, len(lines))), None
+
+
 class AutoconfUnexpectedMacroMatcher(Matcher):
 
     regexp1 = re.compile(
@@ -1738,6 +1758,7 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r'vcver.scm.git.GitCommandError: \'git .*\' returned an error code 127',
      lambda m: MissingCommand('git')),
+    MultiLineConfigureError(),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"configure: error: (doxygen|asciidoc) is not available "
