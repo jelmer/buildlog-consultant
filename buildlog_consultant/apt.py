@@ -138,7 +138,11 @@ def find_apt_get_failure(lines):
         if line.startswith("E: Failed to fetch "):
             m = re.match("^E: Failed to fetch ([^ ]+)  (.*)", line)
             if m:
-                return SingleLineMatch.from_lines(lines, lineno), AptFetchFailure(m.group(1), m.group(2))
+                if 'No space left on device' in m.group(2):
+                    problem = NoSpaceOnDevice()
+                else:
+                    problem = AptFetchFailure(m.group(1), m.group(2))
+                return SingleLineMatch.from_lines(lines, lineno), problem
             return SingleLineMatch.from_lines(lines, lineno), None
         if line in (
             "E: Broken packages",
