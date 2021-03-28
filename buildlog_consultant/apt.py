@@ -167,6 +167,8 @@ def find_apt_get_failure(lines):
         m = re.match(r"E: Unable to locate package (.*)", line)
         if m:
             return SingleLineMatch.from_lines(lines, lineno), AptPackageUnknown(m.group(1))
+        if line == 'E: Write error - write (28: No space left on device)':
+            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
         m = re.match(r"dpkg: error: (.*)", line)
         if m:
             if m.group(1).endswith(": No space left on device"):
