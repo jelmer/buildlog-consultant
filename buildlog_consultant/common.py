@@ -2649,6 +2649,7 @@ secondary_build_failure_regexps = [
     # CTest
     r"Errors while running CTest",
     r"dh_auto_install: error: .*",
+    r"dh_quilt_patch: error: (.*)",
     r"dh.*: Aborting due to earlier error",
     r"dh.*: unknown option or error during option parsing; aborting",
     r"Could not import extension .* \(exception: .*\)",
