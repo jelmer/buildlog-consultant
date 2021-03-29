@@ -1593,6 +1593,15 @@ class DuplicateDHCompatLevel:
         return "DH Compat Level specified twice (command: %s)" % self.command
 
 
+@problem("missing-introspection-typelib")
+class MissingIntrospectionTypelib:
+
+    library: str
+
+    def __str__(self):
+        return "Missing introspection typelib: %s" % self.library
+
+
 class UnknownCertificateAuthority(Problem):
 
     kind = "unknown-certificate-authority"
@@ -1654,6 +1663,8 @@ build_failure_regexps = [
         r"Requirement.parse\(\'(.*)\'\)\)\!",
         python2_reqs_not_found,
     ),
+    (r'ImportError: cannot import name (.*), introspection typelib not found',
+     lambda m: MissingIntrospectionTypelib(m.group(1))),
     ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E       fixture '(.*)' not found",
         lambda m: MissingPytestFixture(m.group(1))),
