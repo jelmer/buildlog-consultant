@@ -2535,6 +2535,8 @@ build_failure_regexps = [
      lambda m: UnknownCertificateAuthority(m.group(1))),
     (r"\t\(Do you need to predeclare (.*)\?\)",
      lambda m: MissingPerlPredeclared(m.group(1))),
+    (r"Bareword \"(.*)\" not allowed while \"strict subs\" in use at "
+     r"Makefile.PL line ([0-9]+).", lambda m: MissingPerlPredeclared(m.group(1))),
     (r"  vignette builder 'knitr' not found",
      lambda m: MissingRPackage('knitr')),
     (r'fatal: unable to auto-detect email address \(got \'.*\'\)',
