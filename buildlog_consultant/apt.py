@@ -19,9 +19,10 @@
 import re
 
 from debian.deb822 import PkgRelation
+from typing import List, TypedDict, Optional, Tuple
 import yaml
 
-from . import Problem, SingleLineMatch
+from . import Problem, SingleLineMatch, problem
 from .common import NoSpaceOnDevice
 
 
@@ -217,38 +218,34 @@ def find_cudf_output(lines):
     return yaml.safe_load("\n".join(output))
 
 
-class UnsatisfiedDependencies(Problem):
+ParsedRelation = TypedDict(
+    'ParsedRelation',
+    {
+        'name': str,
+        'archqual': Optional[str],
+        'version': Optional[Tuple[str, str]],
+        'arch': Optional[List['PkgRelation.ArchRestriction']],
+        'restrictions': Optional[List[List['PkgRelation.BuildRestriction']]],
+    }
+)
 
-    kind = "unsatisfied-dependencies"
 
-    def __init__(self, relations):
-        self.relations = relations
+@problem("unsatisfied-dependencies")
+class UnsatisfiedDependencies:
 
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.relations == other.relations
+    relations: List[List[List[ParsedRelation]]]
 
     def __str__(self):
         return "Unsatisfied dependencies: %s" % PkgRelation.str(self.relations)
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.relations)
 
+@problem("unsatisfied-conflicts")
+class UnsatisfiedConflicts:
 
-class UnsatisfiedConflicts(Problem):
-
-    kind = "unsatisfied-conflicts"
-
-    def __init__(self, relations):
-        self.relations = relations
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.relations == other.relations
+    relations: List[List[List[ParsedRelation]]]
 
     def __str__(self):
         return "Unsatisfied conflicts: %s" % PkgRelation.str(self.relations)
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.relations)
 
 
 def error_from_dose3_report(report):
