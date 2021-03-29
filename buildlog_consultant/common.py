@@ -940,21 +940,11 @@ def dh_pattern_no_matches(m):
     )
 
 
-class GnomeCommonMissing(Problem):
-
-    kind = "gnome-common-missing"
-
-    def __init__(self) -> None:
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-gnome-common")
+class GnomeCommonMissing:
 
     def __str__(self):
         return "gnome-common is not installed"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
 
 
 def gnome_common_missing(m):
@@ -2152,6 +2142,7 @@ build_failure_regexps = [
         r'\*\*\* No autoreconf found \*\*\*',
         lambda m: MissingCommand('autoreconf'),
     ),
+    (r"You need to install gnome-common module and make.*", gnome_common_missing),
     (r"You need to install the gnome-common module and make.*", gnome_common_missing),
     (
         r"You need to install gnome-common from the GNOME (git|CVS|SVN)",
