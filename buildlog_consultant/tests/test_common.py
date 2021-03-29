@@ -1010,10 +1010,11 @@ error: invalid command 'test'
             "String found where operator expected at Makefile.PL line 13, near \"author_tests 'xt'\"",
             "\t(Do you need to predeclare author_tests?)",
             "syntax error at Makefile.PL line 13, near \"author_tests 'xt'\"",
-            "Bareword \"use_test_base\" not allowed while \"strict subs\" in use at Makefile.PL line 12.",
-            "Bareword \"auto_set_repository\" not allowed while "
             "\"strict subs\" in use at Makefile.PL line 13.",
             ], 2, MissingPerlPredeclared('author_tests'))
+        self.run_test([
+            "Bareword \"use_test_base\" not allowed while \"strict subs\" in use at Makefile.PL line 12."],
+            1, MissingPerlPredeclared('use_test_base'))
 
     def test_unknown_cert_authority(self):
         self.run_test(

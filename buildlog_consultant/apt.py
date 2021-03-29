@@ -19,7 +19,7 @@
 import re
 
 from debian.deb822 import PkgRelation
-from typing import List, TypedDict, Optional, Tuple
+from typing import List, Optional, Tuple
 import yaml
 
 from . import Problem, SingleLineMatch, problem
@@ -218,16 +218,22 @@ def find_cudf_output(lines):
     return yaml.safe_load("\n".join(output))
 
 
-ParsedRelation = TypedDict(
-    'ParsedRelation',
-    {
-        'name': str,
-        'archqual': Optional[str],
-        'version': Optional[Tuple[str, str]],
-        'arch': Optional[List['PkgRelation.ArchRestriction']],
-        'restrictions': Optional[List[List['PkgRelation.BuildRestriction']]],
-    }
-)
+try:
+    from typing import TypedDict
+except ImportError:   # python < 3.9
+    from typing import Dict, Any
+    ParsedRelation = Dict[str, Dict[str, Any]]
+else:
+    ParsedRelation = TypedDict(
+        'ParsedRelation',
+        {
+            'name': str,
+            'archqual': Optional[str],
+            'version': Optional[Tuple[str, str]],
+            'arch': Optional[List['PkgRelation.ArchRestriction']],
+            'restrictions': Optional[List[List['PkgRelation.BuildRestriction']]],
+        }
+    )
 
 
 @problem("unsatisfied-dependencies")
