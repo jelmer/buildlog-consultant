@@ -465,10 +465,6 @@ def meson_pkg_config_missing(m):
     return MissingPkgConfig(m.group(3))
 
 
-def meson_pkg_config_too_low(m):
-    return MissingPkgConfig(m.group(3), m.group(4))
-
-
 def meson_c_library_missing(m):
     return MissingLibrary(m.group(3))
 
@@ -1816,9 +1812,9 @@ build_failure_regexps = [
         meson_pkg_config_missing,
     ),
     (
-        ".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
-        "need '([^']+)' \\['>= ([^']+)'\\] found '([^']+)'\\.",
-        meson_pkg_config_too_low,
+        r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
+        r"need '([^']+)' \['>=\s*([^']+)'\] found '([^']+)'\.",
+        lambda m: MissingPkgConfig(m.group(3), m.group(4))
     ),
     (
         ".*meson.build:([0-9]+):([0-9]+): ERROR: C shared or static library '(.*)' not found",

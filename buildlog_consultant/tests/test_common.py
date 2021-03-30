@@ -905,6 +905,10 @@ error: invalid command 'test'
             1,
             MissingPkgConfig("libpeas-1.0", "1.24.0"),
         )
+        self.run_test(
+            ["meson.build:233:0: ERROR: Invalid version of dependency, need 'vte-2.91' ['>=0.63.0'] found '0.62.3'."],
+            1, MissingPkgConfig("vte-2.91", "0.63.0"))
+
         self.run_test(["No package 'tepl-3' found"], 1, MissingPkgConfig("tepl-3"))
         self.run_test(
             ["Requested 'vte-2.91 >= 0.59.0' but version of vte is 0.58.2"],
