@@ -1493,6 +1493,9 @@ arch:all and the other not)""".splitlines(),
         self.run_test(
             ["there is no package called 'mockr'"], 1, MissingRPackage("mockr")
         )
+        self.run_test(
+            ["ERROR: dependencies 'igraph', 'matlab', 'expm', 'RcppParallel' are not available for package 'markovchain'"],
+            1, MissingRPackage('igraph'))
 
     def test_mv_stat(self):
         self.run_test(

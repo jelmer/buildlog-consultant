@@ -870,7 +870,7 @@ class MissingRPackage(Problem):
 
 def r_missing_package(m):
     fragment = m.group(1)
-    deps = [dep.strip("‘’ ") for dep in fragment.split(",")]
+    deps = [dep.strip("‘’' ") for dep in fragment.split(",")]
     return MissingRPackage(deps[0])
 
 
@@ -1999,10 +1999,10 @@ build_failure_regexps = [
         dh_addon_load_failure,
     ),
     (
-        "ERROR: dependencies (.*) are not available for package ‘(.*)’",
+        "ERROR: dependencies (.*) are not available for package [‘'](.*)['’]",
         r_missing_package,
     ),
-    ("ERROR: dependency ‘(.*)’ is not available for package ‘(.*)’", r_missing_package),
+    ("ERROR: dependency [‘'](.*)['’] is not available for package [‘'](.*)[’']", r_missing_package),
     (
         r"Error in library\(.*\) : there is no package called \'(.*)\'",
         r_missing_package,
