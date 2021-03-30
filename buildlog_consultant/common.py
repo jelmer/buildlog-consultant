@@ -2646,6 +2646,7 @@ secondary_build_failure_regexps = [
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
     r"^FAILED \(.*\)",
+    r"FAILED .*",
     r"cat: (.*): No such file or directory",
     # Random Python errors
     "^(E  +)?(SyntaxError|TypeError|ValueError|AttributeError|NameError|"
