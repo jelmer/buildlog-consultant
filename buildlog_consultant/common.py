@@ -2754,6 +2754,7 @@ secondary_build_failure_regexps = [
     r"\[ERROR\] .*",
     r"dh_auto_(test|build): error: (.*)",
     r'tar: This does not look like a tar archive',
+    r'\[DZ\] no name was ever set',
 ]
 
 compiled_secondary_build_failure_regexps = [
