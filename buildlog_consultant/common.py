@@ -2642,6 +2642,7 @@ secondary_build_failure_regexps = [
         r"\'(?!maintainer-clean)(?!clean)(.*)\'\.  Stop\."
     ),
     r".*:[0-9]+: \*\*\* empty variable name.  Stop.",
+    r"error: can't copy '(.*)': doesn't exist or not a regular file",
     # Clojure
     r'Could not locate (.*) or (.*) on classpath\.',
     # QMake
