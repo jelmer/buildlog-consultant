@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 @problem("missing-python-module")
-class MissingPythonModule(Problem):
+class MissingPythonModule:
 
     module: str
     python_version: Optional[str] = None
@@ -56,22 +56,12 @@ class MissingPythonModule(Problem):
         )
 
 
-class MissingPythonDistribution(Problem):
+@problem("missing-python-distribution")
+class MissingPythonDistribution:
 
-    kind = "missing-python-distribution"
-
-    def __init__(self, distribution, python_version=None, minimum_version=None):
-        self.distribution = distribution
-        self.python_version = python_version
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and other.distribution == self.distribution
-            and other.python_version == self.python_version
-            and other.minimum_version == self.minimum_version
-        )
+    distribution: str
+    python_version: Optional[int] = None
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.python_version:
@@ -317,7 +307,7 @@ class MissingNodeModule:
 
 
 @problem("missing-node-package")
-class MissingNodePackage(Problem):
+class MissingNodePackage:
 
     package: str
 
@@ -356,18 +346,11 @@ class MissingVcVersionerVersion:
         return "vcversion could not find a git directory or version.txt file"
 
 
-class MissingConfigure(Problem):
-
-    kind = "missing-configure"
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-configure")
+class MissingConfigure:
 
     def __str__(self):
         return "Missing configure script"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
 
 
 def command_missing(m):
@@ -383,18 +366,8 @@ def command_missing(m):
     return MissingCommand(command)
 
 
-class MissingJavaScriptRuntime(Problem):
-
-    kind = "javascript-runtime-missing"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
+@problem("javascript-runtime-missing")
+class MissingJavaScriptRuntime:
 
     def __str__(self):
         return "Missing JavaScript Runtime"
@@ -404,20 +377,11 @@ def javascript_runtime_missing(m):
     return MissingJavaScriptRuntime()
 
 
-class MissingPkgConfig(Problem):
+@problem("missing-pkg-config-package")
+class MissingPkgConfig:
 
-    kind = "pkg-config-missing"
-
-    def __init__(self, module, minimum_version=None):
-        self.module = module
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.module == other.module
-            and self.minimum_version == other.minimum_version
-        )
+    module: str
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.minimum_version:
@@ -436,18 +400,11 @@ class MissingPkgConfig(Problem):
         )
 
 
-class MissingGoRuntime(Problem):
-
-    kind = 'missing-go-runtime'
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__, )
+@problem('missing-go-runtime')
+class MissingGoRuntime:
 
     def __str__(self):
         return "go runtime is missing"
-
-    def __eq__(self, other):
-        return isinstance(self, type(other))
 
 
 def pkg_config_missing(m):
