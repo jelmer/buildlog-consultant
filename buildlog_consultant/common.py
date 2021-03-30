@@ -1880,7 +1880,7 @@ build_failure_regexps = [
     (
         r'\> JDK_5 environment variable is not defined. '
         r'It must point to any JDK that is capable to compile with '
-        r'Java 5 target \(.*\)',
+        r'Java 5 target \((.*)\)',
         jdk_missing,
     ),
     (
