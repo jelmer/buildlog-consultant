@@ -2549,11 +2549,11 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r'configure: error: Missing the (.*) library',
+        r'configure: error: Missing the (.* library)',
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r"configure: error: (.*) requires (.*) libraries, .*",
+        r"configure: error: (.*) requires (.* libraries), .*",
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (
