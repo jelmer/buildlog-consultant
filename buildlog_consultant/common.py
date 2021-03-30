@@ -2146,12 +2146,12 @@ build_failure_regexps = [
     ("(.*):([0-9]+): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): error: undefined reference to '(.*)'", None),
     (
-        r"\/usr\/bin\/ld: (.*): multiple definition of `*.\'; "
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; "
         r"(.*): first defined here",
         None,
     ),
     (
-        r"\/usr\/bin\/ld: (.*): multiple definition of `*.\'; "
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; "
         r"(.*):\((.*)\) first defined here",
         None,
     ),
