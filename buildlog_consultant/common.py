@@ -2616,6 +2616,7 @@ secondary_build_failure_regexps = [
     r"dh.*: unknown option or error during option parsing; aborting",
     r"Could not import extension .* \(exception: .*\)",
     r"configure.ac:[0-9]+: error: (.*)",
+    r"Reconfigure the source tree (via './config' or 'perl Configure'), please.",
     r"dwz: Too few files for multifile optimization",
     r"dh_dwz: dwz -q -- .* returned exit code [0-9]+",
     r"help2man: can\'t get `-?-help\' info from .*",
