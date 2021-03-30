@@ -6,6 +6,7 @@ setup(
     name="buildlog-consultant",
     packages=[
         "buildlog_consultant",
+        "buildlog_consultant.tests",
     ],
     version="0.0.5",
     author="Jelmer Vernooij",
