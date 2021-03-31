@@ -1400,6 +1400,7 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2).strip())),
         (r'\*\*\* (.*) is required to build (.*)\n',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'([^ ]+) not found', lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod

@@ -409,6 +409,12 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             ),
         )
 
+    def test_cmake_missing_vague(self):
+        self.run_test(
+            ["CMake Error at CMakeLists.txt:84 (MESSAGE):",
+             "  alut not found"],
+            2, MissingVagueDependency("alut"))
+
     def test_dh_compat_dupe(self):
         self.run_test(
             [
