@@ -123,7 +123,7 @@ class AptBrokenPackages(Problem):
         return isinstance(other, type(self)) and self.description == other.description
 
 
-def find_apt_get_failure(lines):
+def find_apt_get_failure(lines):  # noqa: C901
     """Find the key failure line in apt-get-output.
 
     Returns:
