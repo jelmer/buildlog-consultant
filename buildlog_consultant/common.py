@@ -2531,6 +2531,9 @@ build_failure_regexps = [
      r'failed and \'(.*)/version.txt\' isn\'t present\.',
      lambda m: MissingVcVersionerVersion()),
 
+    (r"You don't have a working TeX binary (tex) installed anywhere in",
+     lambda m: MissingCommand('tex')),
+
     (r'# Module \'(.*)\' is not installed',
      lambda m: MissingPerlModule(None, m.group(1)),
      ),
