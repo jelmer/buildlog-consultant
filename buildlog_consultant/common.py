@@ -1400,7 +1400,9 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2).strip())),
         (r'\*\*\* (.*) is required to build (.*)\n',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'\[([^ ]+)\] not found', lambda m: MissingVagueDependency(m.group(1))),
         (r'([^ ]+) not found', lambda m: MissingVagueDependency(m.group(1))),
+        (r'error: could not find git .*', lambda m: MissingCommand('git')),
     ]
 
     @classmethod
@@ -1561,6 +1563,13 @@ class UnknownCertificateAuthority(Problem):
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.url == other.url
+
+
+@problem("missing-x-display")
+class MissingXDisplay:
+
+    def __str__(self):
+        return "No X Display"
 
 
 build_failure_regexps = [
@@ -1798,6 +1807,11 @@ build_failure_regexps = [
     (
         r".*Can\'t locate (.*).pm in @INC \(you may need to install the "
         r"(.*) module\) \(@INC contains: (.*)\) at .* line .*.",
+        perl_missing_module,
+    ),
+    (
+        r".*Can\'t locate (.*).pm in @INC \(you may need to install the "
+        r"(.*) module\) \(@INC contains: (.*)\)\.",
         perl_missing_module,
     ),
     (r">\(error\): Could not expand \[(.*)\'", perl_expand_failed),
@@ -2479,6 +2493,8 @@ build_failure_regexps = [
      r'java.io.FileNotFoundException: (.*) \(No such file or directory\)',
      missing_lazyfont_file,
      ),
+    (r'qt.qpa.xcb: could not connect to display',
+     lambda m: MissingXDisplay()),
     (r'Package (.*) was not found in the pkg-config search path.',
      lambda m: MissingPkgConfig(m.group(1))),
     (r'go runtime is required: https://golang.org/doc/install',
@@ -2756,6 +2772,7 @@ secondary_build_failure_regexps = [
     r"dh_auto_(test|build): error: (.*)",
     r'tar: This does not look like a tar archive',
     r'\[DZ\] no name was ever set',
+    r"diff: (.*): No such file or directory",
 ]
 
 compiled_secondary_build_failure_regexps = [
