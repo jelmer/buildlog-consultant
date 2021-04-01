@@ -1521,6 +1521,15 @@ def missing_lazyfont_file(m):
     return MissingFile(m.group(1))
 
 
+@problem("missing-latex-file")
+class MissingLatexFile:
+
+    filename: str
+
+    def __str__(self):
+        return "Missing LaTeX file: %s" % self.filename
+
+
 @problem("missing-dh-compat-level")
 class MissingDHCompatLevel:
 
@@ -1548,21 +1557,13 @@ class MissingIntrospectionTypelib:
         return "Missing introspection typelib: %s" % self.library
 
 
-class UnknownCertificateAuthority(Problem):
+@problem("unknown-certificate-authority")
+class UnknownCertificateAuthority:
 
-    kind = "unknown-certificate-authority"
-
-    def __init__(self, url):
-        self.url = url
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.url)
+    url: str
 
     def __str__(self):
         return "Unknown Certificate Authority for %s" % self.url
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.url == other.url
 
 
 @problem("missing-x-display")
@@ -2542,6 +2543,9 @@ build_failure_regexps = [
         r'configure: error: Missing lib(.*)\.',
         lambda m: MissingLibrary(m.group(1)),
     ),
+
+    (r'\! LaTeX Error: File `(.*)\' not found\.',
+     lambda m: MissingLatexFile(m.group(1))),
 
     # Intentionally at the bottom of the list.
     (

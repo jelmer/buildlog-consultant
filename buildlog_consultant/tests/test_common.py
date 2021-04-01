@@ -44,6 +44,7 @@ from ..common import (
     MissingPerlFile,
     MissingPerlModule,
     MissingPerlPredeclared,
+    MissingLatexFile,
     MissingPhpClass,
     MissingRubyGem,
     MissingSetupPyCommand,
@@ -530,6 +531,11 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             MissingFile(
                 '/usr/share/texlive/texmf-dist/fonts/opentype/'
                 'public/stix2-otf/STIX2Math.otf'))
+
+    def test_missing_latex_files(self):
+        self.run_test(
+            ["! LaTeX Error: File `fancyvrb.sty' not found."],
+            1, MissingLatexFile('fancyvrb.sty'))
 
     def test_pytest_import(self):
         self.run_test(
