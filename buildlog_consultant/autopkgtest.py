@@ -531,4 +531,20 @@ def find_testbed_setup_failure(lines):
                 line,
                 AutopkgtestTestbedSetupFailure(command, status_code, stderr),
             )
+        m = re.fullmatch(
+            r'\<VirtSubproc\>: failure: \[\'(.*)\'\] '
+            r'unexpectedly produced stderr output `(.*)', line)
+        if m:
+            command = m.group(1)
+            stderr_output = m.group(2)
+            n = re.match(
+                r'W: /var/lib/schroot/session/(.*): '
+                'Failed to stat file: No such file or directory',
+                stderr_output)
+            if n:
+                return (i + 1, line, AutopkgtestDepChrootDisappeared())
+            return (
+                i + 1,
+                line,
+                AutopkgtestTestbedSetupFailure(command, 1, stderr_output))
     return None, None, None
