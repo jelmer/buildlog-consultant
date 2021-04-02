@@ -431,7 +431,7 @@ def cmake_pkg_config_missing(m):
 
 
 @problem("missing-cmake-files")
-class CMakeFilesMissing(Problem):
+class CMakeFilesMissing:
 
     filenames: List[str]
 
@@ -439,12 +439,8 @@ class CMakeFilesMissing(Problem):
         return "Missing CMake package configuration files: %r" % (self.filenames,)
 
 
-class DhWithOrderIncorrect(Problem):
-
-    kind = "debhelper-argument-order"
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("debhelper-argument-order")
+class DhWithOrderIncorrect:
 
     def __str__(self):
         return "dh argument order is incorrect"
@@ -542,86 +538,51 @@ class MissingMavenArtifacts(Problem):
         return "%s(%r)" % (type(self).__name__, self.artifacts)
 
 
-class DhUntilUnsupported(Problem):
-
-    kind = "dh-until-unsupported"
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("dh-until-unsupported")
+class DhUntilUnsupported:
 
     def __str__(self):
         return "dh --until is no longer supported"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
 
 
 def dh_until_unsupported(m):
     return DhUntilUnsupported()
 
 
-class DhAddonLoadFailure(Problem):
+@problem("dh-addon-load-failure")
+class DhAddonLoadFailure:
 
-    kind = "dh-addon-load-failure"
-
-    def __init__(self, name, path):
-        self.name = name
-        self.path = path
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.name == other.name
-            and self.path == other.path
-        )
+    name: str
+    path: str
 
     def __str__(self):
         return "dh addon loading failed: %s" % self.name
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.name, self.path)
 
 
 def dh_addon_load_failure(m):
     return DhAddonLoadFailure(m.group(1), m.group(2))
 
 
-class DhMissingUninstalled(Problem):
+@problem("dh-missing-uninstalled")
+class DhMissingUninstalled:
 
-    kind = "dh-missing-uninstalled"
-
-    def __init__(self, missing_file):
-        self.missing_file = missing_file
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.missing_file == other.missing_file
+    missing_file: str
 
     def __str__(self):
         return "File built by Debian not installed: %r" % self.missing_file
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.missing_file)
 
 
 def dh_missing_uninstalled(m):
     return DhMissingUninstalled(m.group(2))
 
 
-class DhLinkDestinationIsDirectory(Problem):
+@problem("dh-link-destination-is-directory")
+class DhLinkDestinationIsDirectory:
 
-    kind = "dh-link-destination-is-directory"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
+    path: str
 
     def __str__(self):
         return "Link destination %s is directory" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 def dh_link_destination_is_dir(m):
@@ -637,92 +598,56 @@ def maven_missing_plugin(m):
     return MissingMavenArtifacts([m.group(1)])
 
 
-class MissingXmlEntity(Problem):
+@problem("missing-xml-entity")
+class MissingXmlEntity:
 
-    kind = "missing-xml-entity"
-
-    def __init__(self, url):
-        self.url = url
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.url == other.url
+    url: str
 
     def __str__(self):
         return "Missing XML entity: %s" % self.url
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.url)
 
 
 def xsltproc_network_entity(m):
     return MissingXmlEntity(m.group(1))
 
 
-class CcacheError(Problem):
+@problem("ccache-error")
+class CcacheError:
 
-    kind = "ccache-error"
-
-    def __init__(self, error):
-        self.error = error
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.error == other.error
+    error: str
 
     def __str__(self):
         return "ccache error: %s" % self.error
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.error)
 
 
 def ccache_error(m):
     return CcacheError(m.group(1))
 
 
-class MissingLibrary(Problem):
+@problem("missing-library")
+class MissingLibrary:
 
-    kind = "missing-library"
-
-    def __init__(self, library):
-        self.library = library
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.library == other.library
+    library: str
 
     def __str__(self):
         return "missing library: %s" % self.library
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.library)
 
 
 def ld_missing_lib(m):
     return MissingLibrary(m.group(1))
 
 
-class MissingRubyGem(Problem):
+@problem("missing-ruby-gem")
+class MissingRubyGem:
 
-    kind = "missing-ruby-gem"
-
-    def __init__(self, gem: str, version: Optional[str] = None):
-        self.gem = gem
-        self.version = version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.gem == other.gem
-            and self.version == other.version
-        )
+    gem: str
+    version: Optional[str] = None
 
     def __str__(self):
         if self.version:
             return "missing ruby gem: %s (>= %s)" % (self.gem, self.version)
         else:
             return "missing ruby gem: %s" % self.gem
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.gem, self.version)
 
 
 def ruby_missing_gem(m):
@@ -737,42 +662,26 @@ def ruby_missing_gem(m):
     return MissingRubyGem(m.group(1), minimum_version)
 
 
-class MissingRubyFile(Problem):
+@problem("missing-ruby-file")
+class MissingRubyFile:
 
-    kind = "missing-ruby-file"
-
-    def __init__(self, filename):
-        self.filename = filename
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.filename)
+    filename: str
 
     def __str__(self):
         return "Missing ruby file: %s" % (self.filename,)
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.filename == other.filename
 
 
 def ruby_missing_name(m):
     return MissingRubyFile(m.group(1))
 
 
-class MissingPhpClass(Problem):
+@problem("missing-php-class")
+class MissingPhpClass:
 
-    kind = "missing-php-class"
-
-    def __init__(self, php_class):
-        self.php_class = php_class
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.php_class == other.php_class
+    php_class: str
 
     def __str__(self):
         return "missing PHP class: %s" % self.php_class
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.php_class)
 
 
 def php_missing_class(m):
@@ -792,20 +701,11 @@ def java_missing_class(m):
     return MissingJavaClass(m.group(1))
 
 
-class MissingRPackage(Problem):
+@problem("missing-r-package")
+class MissingRPackage:
 
-    kind = "missing-r-package"
-
-    def __init__(self, package, minimum_version=None):
-        self.package = package
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.package == other.package
-            and self.minimum_version == other.minimum_version
-        )
+    package: str
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.minimum_version:
@@ -815,9 +715,6 @@ class MissingRPackage(Problem):
             )
         else:
             return "missing R package: %s" % self.package
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.package, self.minimum_version)
 
 
 def r_missing_package(m):
@@ -853,35 +750,17 @@ def go_test_failed(m):
     return FailedGoTest(m.group(1))
 
 
-class DebhelperPatternNotFound(Problem):
+@problem("debhelper-pattern-not-found")
+class DebhelperPatternNotFound:
 
-    kind = "debhelper-pattern-not-found"
-
-    def __init__(self, pattern, tool, directories):
-        self.pattern = pattern
-        self.tool = tool
-        self.directories = directories
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.pattern == other.pattern
-            and self.tool == other.tool
-            and self.directories == other.directories
-        )
+    pattern: str
+    tool: str
+    directories: List[str]
 
     def __str__(self):
         return "debhelper (%s) expansion failed for %r (directories: %r)" % (
             self.tool,
             self.pattern,
-            self.directories,
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r, %r)" % (
-            type(self).__name__,
-            self.pattern,
-            self.tool,
             self.directories,
         )
 
@@ -903,18 +782,10 @@ def gnome_common_missing(m):
     return GnomeCommonMissing()
 
 
-class MissingXfceDependency(Problem):
+@problem("missing-xfce-dependency")
+class MissingXfceDependency:
 
-    kind = "missing-xfce-dependency"
-
-    def __init__(self, package):
-        self.package = package
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.package == other.package
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.package)
+    package: str
 
     def __str__(self):
         return "Missing XFCE build dependency: %s" % (self.package)
@@ -924,21 +795,13 @@ def xfce_dependency_missing(m):
     return MissingXfceDependency(m.group(1))
 
 
-class MissingAutomakeInput(Problem):
+@problem("missing-automake-input")
+class MissingAutomakeInput:
 
-    kind = "missing-automake-input"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
+    path: str
 
     def __str__(self):
         return "automake input file %s missing" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 def automake_input_missing(m):
@@ -963,23 +826,11 @@ def configure_undefined_macro(m):
     return MissingAutoconfMacro(m.group(2))
 
 
-class MissingGnomeCommonDependency(Problem):
+@problem("missing-gnome-common-dependency")
+class MissingGnomeCommonDependency:
 
-    kind = "missing-gnome-common-dependency"
-
-    def __init__(self, package, minimum_version=None):
-        self.package = package
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.package == other.package
-            and self.minimum_version == other.minimum_version
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.package, self.minimum_version)
+    package: str
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         return "Missing gnome-common dependency: %s: (>= %s)" % (
@@ -992,42 +843,24 @@ def missing_glib_gettext(m):
     return MissingGnomeCommonDependency("glib-gettext", m.group(1))
 
 
-class MissingConfigStatusInput(Problem):
+@problem("missing-config.status-input")
+class MissingConfigStatusInput:
 
-    kind = "missing-config.status-input"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
+    path: str
 
     def __str__(self):
         return "missing config.status input %s" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 def config_status_input_missing(m):
     return MissingConfigStatusInput(m.group(1))
 
 
-class MissingJVM(Problem):
-
-    kind = "missing-jvm"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(self, type(other))
+@problem("missing-jvm")
+class MissingJVM:
 
     def __str__(self):
         return "Missing JVM"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__)
 
 
 def jvm_missing(m):
@@ -1105,18 +938,10 @@ def imagemagick_delegate_missing(m):
     return ImageMagickDelegateMissing(m.group(1))
 
 
-class DebianVersionRejected(Problem):
+@problem("debian-version-rejected")
+class DebianVersionRejected:
 
-    kind = "debian-version-rejected"
-
-    def __init__(self, version):
-        self.version = version
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and other.version == self.version
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.version)
+    version: str
 
     def __str__(self):
         return "Debian Version Rejected; %s" % self.version
@@ -1440,38 +1265,18 @@ class CMakeErrorMatcher(Matcher):
         return linenos, error
 
 
-class MissingFortranCompiler(Problem):
-
-    kind = "missing-fortran-compiler"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-fortran-compiler")
+class MissingFortranCompiler:
 
     def __str__(self):
         return "No Fortran compiler found"
 
-    def __repr__(self):
-        return "%s()" % type(self).__name__
 
-
-class MissingCSharpCompiler(Problem):
-
-    kind = "missing-c#-compiler"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-c#-compiler")
+class MissingCSharpCompiler:
 
     def __str__(self):
         return "No C# compiler found"
-
-    def __repr__(self):
-        return "%s()" % type(self).__name__
 
 
 def c_sharp_compiler_missing(m):
