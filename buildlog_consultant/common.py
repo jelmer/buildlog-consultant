@@ -482,11 +482,10 @@ class MissingPerlModule:
     inc: Optional[List[str]] = None
 
     def __str__(self):
-        if self.filename or self.inc:
-            return "Missing Perl module: %s (filename: %r, inc: %r)" % (
+        if self.filename:
+            return "Missing Perl module: %s (filename: %r)" % (
                 self.module,
                 self.filename,
-                self.inc,
             )
         else:
             return "Missing Perl Module: %s" % self.module
