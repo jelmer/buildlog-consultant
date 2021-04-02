@@ -2538,6 +2538,8 @@ build_failure_regexps = [
     (r'# Module \'(.*)\' is not installed',
      lambda m: MissingPerlModule(None, m.group(1)),
      ),
+    (r'Base class package "(.*)" is empty.',
+     lambda m: MissingPerlModule(None, m.group(1))),
     (r'    \!  (.*::.*) is not installed', lambda m: MissingPerlModule(None, m.group(1))),
     (
         r'configure: error: Missing lib(.*)\.',
