@@ -2544,6 +2544,9 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(1)),
     ),
 
+    (r'The "(.*)" executable has not been found\.',
+     lambda m: MissingCommand(m.group(1))),
+
     (r'\! LaTeX Error: File `(.*)\' not found\.',
      lambda m: MissingLatexFile(m.group(1))),
 
