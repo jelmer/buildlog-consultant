@@ -1303,7 +1303,7 @@ class MissingPytestFixture:
 class MissingCargoCrate:
 
     crate: str
-    requirement: Optional[str]
+    requirement: Optional[str] = None
 
     def __str__(self):
         if self.requirement:
