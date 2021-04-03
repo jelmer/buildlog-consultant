@@ -21,7 +21,7 @@ from typing import List, Tuple, Iterator, BinaryIO, Optional, Union, Dict
 
 import logging
 
-from . import Problem
+from . import Problem, problem
 from .apt import (
     find_apt_get_update_failure,
     find_install_deps_failure_description,
@@ -76,15 +76,10 @@ SBUILD_FOCUS_SECTION: Dict[Optional[str], str] = {
 }
 
 
-class DpkgSourceLocalChanges(Problem):
+@problem("unexpected-local-upstream-changes")
+class DpkgSourceLocalChanges:
 
-    kind = "unexpected-local-upstream-changes"
-
-    def __init__(self, files=None):
-        self.files = files
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.files == other.files
+    files: Optional[List[str]] = None
 
     def __repr__(self):
         if len(self.files) < 5:
@@ -101,63 +96,43 @@ class DpkgSourceLocalChanges(Problem):
             return "Tree has local changes"
 
 
-class DpkgSourceUnrepresentableChanges(Problem):
-
-    kind = "unrepresentable-local-changes"
+@problem("unrepresentable-local-changes")
+class DpkgSourceUnrepresentableChanges:
 
     def __str__(self):
         return "Tree has unrepresentable local changes."
 
 
-class DpkgUnwantedBinaryFiles(Problem):
-
-    kind = "unwanted-binary-files"
+@problem("unwanted-binary-files")
+class DpkgUnwantedBinaryFiles:
 
     def __str__(self):
         return "Tree has unwanted binary files."
 
 
-class DpkgBinaryFileChanged(Problem):
+@problem("changed-binary-files")
+class DpkgBinaryFileChanged:
 
-    kind = "changed-binary-files"
-
-    def __init__(self, paths):
-        self.paths = paths
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.paths)
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.paths == other.paths
+    paths: List[str]
 
     def __str__(self):
         return "Tree has binary files with changes: %r" % self.paths
 
 
-class MissingControlFile(Problem):
+@problem("missing-control-file")
+class MissingControlFile:
 
-    kind = "missing-control-file"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.path == other.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
+    path: str
 
     def __str__(self):
         return "Tree is missing control file %s" % self.path
 
 
-class UnableToFindUpstreamTarball(Problem):
+@problem("unable-to-find-upstream-tarball")
+class UnableToFindUpstreamTarball:
 
-    kind = "unable-to-find-upstream-tarball"
-
-    def __init__(self, package, version):
-        self.package = package
-        self.version = version
+    package: str
+    version: str
 
     def __str__(self):
         return "Unable to find the needed upstream tarball for " "%s, version %s." % (
@@ -166,98 +141,71 @@ class UnableToFindUpstreamTarball(Problem):
         )
 
 
-class PatchApplicationFailed(Problem):
+@problem("patch-application-failed")
+class PatchApplicationFailed:
 
-    kind = "patch-application-failed"
-
-    def __init__(self, patchname):
-        self.patchname = patchname
+    patchname: str
 
     def __str__(self):
         return "Patch application failed: %s" % self.patchname
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.patchname)
 
+@problem("source-format-unbuildable")
+class SourceFormatUnbuildable:
 
-class SourceFormatUnbuildable(Problem):
-
-    kind = "source-format-unbuildable"
-
-    def __init__(self, source_format):
-        self.source_format = source_format
+    source_format: str
 
     def __str__(self):
         return "Source format %s unbuildable" % self.source_format
 
 
-class SourceFormatUnsupported(Problem):
+@problem("unsupported-source-format")
+class SourceFormatUnsupported:
 
-    kind = "unsupported-source-format"
-
-    def __init__(self, source_format):
-        self.source_format = source_format
+    source_format: str
 
     def __str__(self):
         return "Source format %r unsupported" % self.source_format
 
 
-class PatchFileMissing(Problem):
+@problem("patch-file-missing")
+class PatchFileMissing:
 
-    kind = "patch-file-missing"
-
-    def __init__(self, path):
-        self.path = path
+    path: str
 
     def __str__(self):
         return "Patch file %s missing" % self.path
 
 
-class UnknownMercurialExtraFields(Problem):
+@problem("unknown-mercurial-extra-fields")
+class UnknownMercurialExtraFields:
 
-    kind = "unknown-mercurial-extra-fields"
-
-    def __init__(self, field):
-        self.field = field
+    field: str
 
     def __str__(self):
         return "Unknown Mercurial extra fields: %s" % self.field
 
 
-class UpstreamPGPSignatureVerificationFailed(Problem):
-
-    kind = "upstream-pgp-signature-verification-failed"
-
-    def __init__(self):
-        pass
+@problem("upstream-pgp-signature-verification-failed")
+class UpstreamPGPSignatureVerificationFailed:
 
     def __str__(self):
         return "Unable to verify the PGP signature on the upstream source"
 
 
-class UScanRequestVersionMissing(Problem):
+@problem("uscan-requested-version-missing")
+class UScanRequestVersionMissing:
 
-    kind = "uscan-requested-version-missing"
-
-    def __init__(self, version):
-        self.version = version
+    version: str
 
     def __str__(self):
         return "UScan can not find requested version %s." % self.version
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.version)
 
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.version == other.version
+@problem("debcargo-failed")
+class DebcargoFailure:
 
-
-class DebcargoFailure(Problem):
-
-    kind = "debcargo-failed"
-
-    def __init__(self, reason):
-        self.reason = reason
+    reason: str
 
     def __str__(self):
         if self.reason:
@@ -265,83 +213,38 @@ class DebcargoFailure(Problem):
         else:
             return "Debcargo failed"
 
-    def __repr__(self):
-        return "%s()" % type(self).__name__
 
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and other.reason == self.reason
+@problem("uscan-failed")
+class UScanFailed:
 
-
-class UScanFailed(Problem):
-
-    kind = "uscan-failed"
-
-    def __init__(self, url, reason):
-        self.url = url
-        self.reason = reason
+    url: str
+    reason: str
 
     def __str__(self):
         return "UScan failed to download %s: %s." % (self.url, self.reason)
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.url, self.reason)
 
-    def __eq__(self, other):
-        return (
-            isinstance(self, type(other))
-            and self.url == other.url
-            and self.reason == other.reason
-        )
-
-
-class InconsistentSourceFormat(Problem):
-
-    kind = "inconsistent-source-format"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("inconsistent-source-format")
+class InconsistentSourceFormat:
 
     def __str__(self):
         return "Inconsistent source format between version and source format"
 
 
-class UpstreamMetadataFileParseError(Problem):
+@problem("debian-upstream-metadata-invalid")
+class UpstreamMetadataFileParseError:
 
-    kind = "debian-upstream-metadata-invalid"
-
-    def __init__(self, path, reason):
-        self.path = path
-        self.reason = reason
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.path == other.path
-            and self.reason == other.reason
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.path, self.reason)
+    path: str
+    reason: str
 
     def __str__(self):
         return "%s is invalid" % self.path
 
 
-class DpkgSourcePackFailed(Problem):
+@problem("dpkg-source-pack-failed")
+class DpkgSourcePackFailed:
 
-    kind = "dpkg-source-pack-failed"
-
-    def __init__(self, reason=None):
-        self.reason = reason
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and other.reason == self.reason
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.reason)
+    reason: Optional[str] = None
 
     def __str__(self):
         if self.reason:
@@ -350,21 +253,11 @@ class DpkgSourcePackFailed(Problem):
             return "Packing source directory failed."
 
 
-class DpkgBadVersion(Problem):
+@problem("dpkg-bad-version")
+class DpkgBadVersion:
 
-    kind = "dpkg-bad-version"
-
-    def __init__(self, version, reason=None):
-        self.version = version
-        self.reason = reason
-
-    def __eq__(self, other):
-        return (isinstance(other, type(self)) and
-                other.reason == self.reason and
-                self.version == other.version)
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.version, self.reason)
+    version: str
+    reason: Optional[str] = None
 
     def __str__(self):
         if self.reason:
@@ -373,13 +266,11 @@ class DpkgBadVersion(Problem):
             return "Version (%s) is invalid" % self.version
 
 
-class MissingDebcargoCrate(Problem):
+@problem("debcargo-missing-crate")
+class MissingDebcargoCrate:
 
-    kind = "debcargo-missing-crate"
-
-    def __init__(self, crate, version=None):
-        self.crate = crate
-        self.version = version
+    crate: str
+    version: Optional[str] = None
 
     @classmethod
     def from_string(cls, text):
@@ -389,15 +280,6 @@ class MissingDebcargoCrate(Problem):
             return cls(crate.strip(), version.strip())
         else:
             return cls(text)
-
-    def __eq__(self, other):
-        return (isinstance(other, type(self)) and
-                other.crate == self.crate and
-                other.version == self.version)
-
-    def __repr__(self):
-        return "%s(%r, version=%r)" % (
-            type(self).__name__, self.crate, self.version)
 
     def __str__(self):
         ret = "debcargo can't find crate %s" % self.crate
@@ -551,6 +433,16 @@ def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[int], 
     return ret
 
 
+@problem("debcargo-unacceptable-predicate")
+class DebcargoUnacceptablePredicate:
+
+    predicate: str
+
+    def __str__(self):
+        return "Cannot represent prerelease part of dependency: %s" % (
+            self.predicate)
+
+
 def _parse_debcargo_failure(m, pl):
     MORE_TAIL = '\x1b[0m\n'
     MORE_HEAD = '\x1b[1;31mSomething failed: '
@@ -570,6 +462,12 @@ def _parse_debcargo_failure(m, pl):
                 return MissingDebcargoCrate.from_string(n.group(1))
             else:
                 return DpkgSourcePackFailed(extra[-2])
+        elif extra:
+            m = re.match(
+                r'Cannot represent prerelease part of dependency: (.*) Predicate \{ (.*) \}',
+                extra[0])
+            if m:
+                return DebcargoUnacceptablePredicate(m.group(2))
         else:
             return DebcargoFailure(''.join(extra))
 
@@ -633,12 +531,10 @@ def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem
     return (None, line.split("\n")[0])
 
 
-class MissingRevision(Problem):
+@problem("missing-revision")
+class MissingRevision:
 
-    kind = "missing-revision"
-
-    def __init__(self, revision):
-        self.revision = revision
+    revision: bytes
 
     def __str__(self):
         return "Missing revision: %r" % self.revision
@@ -862,26 +758,14 @@ def strip_build_tail(lines, look_back=None):
     return lines, files
 
 
-class ArchitectureNotInList(Problem):
+@problem("arch-not-in-list")
+class ArchitectureNotInList:
 
-    kind = "arch-not-in-list"
-
-    def __init__(self, arch, arch_list):
-        self.arch = arch
-        self.arch_list = arch_list
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.arch, self.arch_list)
+    arch: str
+    arch_list: List[str]
 
     def __str__(self):
         return "Architecture %s not a build arch" % (self.arch,)
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.arch == other.arch
-            and self.arch_list == other.arch_list
-        )
 
 
 def find_arch_check_failure_description(lines):
@@ -897,23 +781,11 @@ def find_arch_check_failure_description(lines):
     return len(lines) - 1, lines[-1], None
 
 
-class InsufficientDiskSpace(Problem):
+@problem("insufficient-disk-space")
+class InsufficientDiskSpace:
 
-    kind = "insufficient-disk-space"
-
-    def __init__(self, needed, free):
-        self.needed = needed
-        self.free = free
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.needed == other.needed
-            and self.free == other.free
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.needed, self.free)
+    needed: int
+    free: int
 
     def __str__(self):
         return "Insufficient disk space for build. " "Need: %d KiB, free: %s KiB" % (
