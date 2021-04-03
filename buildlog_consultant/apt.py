@@ -280,12 +280,22 @@ def error_from_dose3_report(report):
 
 def find_install_deps_failure_description(paragraphs):
     error = None
+
     DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
     dose3_lines = paragraphs.get(DOSE3_SECTION)
     if dose3_lines:
         dose3_output = find_cudf_output(dose3_lines)
         if dose3_output:
             error = error_from_dose3_report(dose3_output["report"])
+        return DOSE3_SECTION, None, error
+
+    SECTION = 'install package build dependencies'
+    build_dependencies_lines = paragraphs.get(SECTION)
+    if build_dependencies_lines:
+        dose3_output = find_cudf_output(build_dependencies_lines)
+        if dose3_output:
+            error = error_from_dose3_report(dose3_output["report"])
+        return SECTION, None, error
 
     for focus_section, lines in paragraphs.items():
         if focus_section is None:
