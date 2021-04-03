@@ -236,22 +236,29 @@ else:
     )
 
 
-@problem("unsatisfied-dependencies")
-class UnsatisfiedDependencies:
+@problem("unsatisfied-apt-dependencies")
+class UnsatisfiedAptDependencies:
 
     relations: List[List[List[ParsedRelation]]]
 
     def __str__(self):
-        return "Unsatisfied dependencies: %s" % PkgRelation.str(self.relations)
+        return "Unsatisfied APT dependencies: %s" % PkgRelation.str(self.relations)
+
+    @classmethod
+    def from_str(cls, text):
+        return cls(PkgRelation.parse_relations(text))
+
+    def __repr__(self):
+        return "%s.from_str(%r)" % (type(self).__name__, PkgRelation.str(self.relations))
 
 
-@problem("unsatisfied-conflicts")
-class UnsatisfiedConflicts:
+@problem("unsatisfied-apt-conflicts")
+class UnsatisfiedAptConflicts:
 
     relations: List[List[List[ParsedRelation]]]
 
     def __str__(self):
-        return "Unsatisfied conflicts: %s" % PkgRelation.str(self.relations)
+        return "Unsatisfied APT conflicts: %s" % PkgRelation.str(self.relations)
 
 
 def error_from_dose3_report(report):
@@ -273,9 +280,9 @@ def error_from_dose3_report(report):
             )
             conflict.extend(relation)
     if missing:
-        return UnsatisfiedDependencies(missing)
+        return UnsatisfiedAptDependencies(missing)
     if conflict:
-        return UnsatisfiedConflicts(conflict)
+        return UnsatisfiedAptConflicts(conflict)
 
 
 def find_install_deps_failure_description(paragraphs):
