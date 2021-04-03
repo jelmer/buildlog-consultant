@@ -76,9 +76,10 @@ class MissingPythonDistribution:
 
     @classmethod
     def from_requirement_str(cls, text, python_version=None):
-        if ">=" in text:
-            text, minimum = text.split(">=")
-            return cls(text, python_version, minimum)
+        from requirements.requirement import Requirement
+        req = Requirement.parse(text)
+        if len(req.specs) == 1 and req.specs[0][0] == ">=":
+            return cls(req.name, python_version, req.specs[0][1])
         return cls(text, python_version)
 
     def __repr__(self):
