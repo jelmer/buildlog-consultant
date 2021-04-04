@@ -3,6 +3,7 @@
 AUTHORS
 CODE_OF_CONDUCT.md
 LICENSE
+MANIFEST.in
 README.md
 SECURITY.md
 releaser.conf

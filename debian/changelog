@@ -1,3 +1,8 @@
+buildlog-consultant (0.0.7-1) UNRELEASED; urgency=low
+  * New upstream release.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 04 Apr 2021 20:21:31 -0000
+
 buildlog-consultant (0.0.5-1) unstable; urgency=medium
 
   * Add upstream signing keys.
