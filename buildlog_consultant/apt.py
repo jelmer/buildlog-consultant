@@ -197,9 +197,9 @@ def find_apt_get_failure(lines):  # noqa: C901
     return ret
 
 
-def find_apt_get_update_failure(paragraphs):
+def find_apt_get_update_failure(sbuildlog):
     focus_section = "update chroot"
-    lines = paragraphs.get(focus_section, [])
+    lines = sbuildlog.get_section_lines(focus_section)
     match, error = find_apt_get_failure(lines)
     return focus_section, match, error
 
@@ -285,11 +285,11 @@ def error_from_dose3_report(report):
         return UnsatisfiedAptConflicts(conflict)
 
 
-def find_install_deps_failure_description(paragraphs):
+def find_install_deps_failure_description(sbuildlog):
     error = None
 
     DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
-    dose3_lines = paragraphs.get(DOSE3_SECTION)
+    dose3_lines = sbuildlog.get_section_lines(DOSE3_SECTION)
     if dose3_lines:
         dose3_output = find_cudf_output(dose3_lines)
         if dose3_output:
@@ -297,21 +297,21 @@ def find_install_deps_failure_description(paragraphs):
         return DOSE3_SECTION, None, error
 
     SECTION = 'install package build dependencies'
-    build_dependencies_lines = paragraphs.get(SECTION)
+    build_dependencies_lines = sbuildlog.get_section_lines(SECTION)
     if build_dependencies_lines:
         dose3_output = find_cudf_output(build_dependencies_lines)
         if dose3_output:
             error = error_from_dose3_report(dose3_output["report"])
         return SECTION, None, error
 
-    for focus_section, lines in paragraphs.items():
-        if focus_section is None:
+    for section in sbuildlog.sections:
+        if section.title is None:
             continue
-        if re.match("install (.*) build dependencies.*", focus_section):
-            match, v_error = find_apt_get_failure(lines)
+        if re.match("install (.*) build dependencies.*", section.title.lower()):
+            match, v_error = find_apt_get_failure(section.lines)
             if error is None:
                 error = v_error
             if match is not None:
-                return focus_section, match, error
+                return section.title, match, error
 
-    return focus_section, None, error
+    return section.title, None, error
