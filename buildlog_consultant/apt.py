@@ -19,9 +19,10 @@
 import re
 
 from debian.deb822 import PkgRelation
+from typing import List, Optional, Tuple
 import yaml
 
-from . import Problem, SingleLineMatch
+from . import Problem, SingleLineMatch, problem
 from .common import NoSpaceOnDevice
 
 
@@ -122,7 +123,7 @@ class AptBrokenPackages(Problem):
         return isinstance(other, type(self)) and self.description == other.description
 
 
-def find_apt_get_failure(lines):
+def find_apt_get_failure(lines):  # noqa: C901
     """Find the key failure line in apt-get-output.
 
     Returns:
@@ -138,7 +139,11 @@ def find_apt_get_failure(lines):
         if line.startswith("E: Failed to fetch "):
             m = re.match("^E: Failed to fetch ([^ ]+)  (.*)", line)
             if m:
-                return SingleLineMatch.from_lines(lines, lineno), AptFetchFailure(m.group(1), m.group(2))
+                if 'No space left on device' in m.group(2):
+                    problem = NoSpaceOnDevice()
+                else:
+                    problem = AptFetchFailure(m.group(1), m.group(2))
+                return SingleLineMatch.from_lines(lines, lineno), problem
             return SingleLineMatch.from_lines(lines, lineno), None
         if line in (
             "E: Broken packages",
@@ -163,6 +168,8 @@ def find_apt_get_failure(lines):
         m = re.match(r"E: Unable to locate package (.*)", line)
         if m:
             return SingleLineMatch.from_lines(lines, lineno), AptPackageUnknown(m.group(1))
+        if line == 'E: Write error - write (28: No space left on device)':
+            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
         m = re.match(r"dpkg: error: (.*)", line)
         if m:
             if m.group(1).endswith(": No space left on device"):
@@ -190,9 +197,9 @@ def find_apt_get_failure(lines):
     return ret
 
 
-def find_apt_get_update_failure(paragraphs):
+def find_apt_get_update_failure(sbuildlog):
     focus_section = "update chroot"
-    lines = paragraphs.get(focus_section, [])
+    lines = sbuildlog.get_section_lines(focus_section)
     match, error = find_apt_get_failure(lines)
     return focus_section, match, error
 
@@ -211,38 +218,47 @@ def find_cudf_output(lines):
     return yaml.safe_load("\n".join(output))
 
 
-class UnsatisfiedDependencies(Problem):
+try:
+    from typing import TypedDict
+except ImportError:   # python < 3.9
+    from typing import Dict, Any
+    ParsedRelation = Dict[str, Dict[str, Any]]
+else:
+    ParsedRelation = TypedDict(
+        'ParsedRelation',
+        {
+            'name': str,
+            'archqual': Optional[str],
+            'version': Optional[Tuple[str, str]],
+            'arch': Optional[List['PkgRelation.ArchRestriction']],
+            'restrictions': Optional[List[List['PkgRelation.BuildRestriction']]],
+        }
+    )
 
-    kind = "unsatisfied-dependencies"
 
-    def __init__(self, relations):
-        self.relations = relations
+@problem("unsatisfied-apt-dependencies")
+class UnsatisfiedAptDependencies:
 
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.relations == other.relations
-
-    def __str__(self):
-        return "Unsatisfied dependencies: %s" % PkgRelation.str(self.relations)
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.relations)
-
-
-class UnsatisfiedConflicts(Problem):
-
-    kind = "unsatisfied-conflicts"
-
-    def __init__(self, relations):
-        self.relations = relations
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.relations == other.relations
+    relations: List[List[List[ParsedRelation]]]
 
     def __str__(self):
-        return "Unsatisfied conflicts: %s" % PkgRelation.str(self.relations)
+        return "Unsatisfied APT dependencies: %s" % PkgRelation.str(self.relations)
+
+    @classmethod
+    def from_str(cls, text):
+        return cls(PkgRelation.parse_relations(text))
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.relations)
+        return "%s.from_str(%r)" % (type(self).__name__, PkgRelation.str(self.relations))
+
+
+@problem("unsatisfied-apt-conflicts")
+class UnsatisfiedAptConflicts:
+
+    relations: List[List[List[ParsedRelation]]]
+
+    def __str__(self):
+        return "Unsatisfied APT conflicts: %s" % PkgRelation.str(self.relations)
 
 
 def error_from_dose3_report(report):
@@ -264,28 +280,38 @@ def error_from_dose3_report(report):
             )
             conflict.extend(relation)
     if missing:
-        return UnsatisfiedDependencies(missing)
+        return UnsatisfiedAptDependencies(missing)
     if conflict:
-        return UnsatisfiedConflicts(conflict)
+        return UnsatisfiedAptConflicts(conflict)
 
 
-def find_install_deps_failure_description(paragraphs):
+def find_install_deps_failure_description(sbuildlog):
     error = None
+
     DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
-    dose3_lines = paragraphs.get(DOSE3_SECTION)
+    dose3_lines = sbuildlog.get_section_lines(DOSE3_SECTION)
     if dose3_lines:
         dose3_output = find_cudf_output(dose3_lines)
         if dose3_output:
             error = error_from_dose3_report(dose3_output["report"])
+        return DOSE3_SECTION, None, error
 
-    for focus_section, lines in paragraphs.items():
-        if focus_section is None:
+    SECTION = 'install package build dependencies'
+    build_dependencies_lines = sbuildlog.get_section_lines(SECTION)
+    if build_dependencies_lines:
+        dose3_output = find_cudf_output(build_dependencies_lines)
+        if dose3_output:
+            error = error_from_dose3_report(dose3_output["report"])
+        return SECTION, None, error
+
+    for section in sbuildlog.sections:
+        if section.title is None:
             continue
-        if re.match("install (.*) build dependencies.*", focus_section):
-            match, v_error = find_apt_get_failure(lines)
+        if re.match("install (.*) build dependencies.*", section.title.lower()):
+            match, v_error = find_apt_get_failure(section.lines)
             if error is None:
                 error = v_error
             if match is not None:
-                return focus_section, match, error
+                return section.title, match, error
 
-    return focus_section, None, error
+    return section.title, None, error

@@ -44,6 +44,7 @@ from ..common import (
     MissingPerlFile,
     MissingPerlModule,
     MissingPerlPredeclared,
+    MissingLatexFile,
     MissingPhpClass,
     MissingRubyGem,
     MissingSetupPyCommand,
@@ -259,6 +260,18 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
     def test_vague(self):
         self.run_test(
                 ["configure: error: Please install gnu flex from http://www.gnu.org/software/flex/"], 1, MissingVagueDependency("gnu flex", 'http://www.gnu.org/software/flex/'))
+        self.run_test(
+                ["configure: error:",
+                 "",
+                 "        Unable to find the Multi Emulator Super System (MESS)."],
+                3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
+
+    def test_multi_line_configure_error(self):
+        self.run_test(
+                ["configure: error:",
+                 "",
+                 "        Some other error."],
+                3, None)
 
     def test_interpreter_missing(self):
         self.run_test(
@@ -397,6 +410,12 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             ),
         )
 
+    def test_cmake_missing_vague(self):
+        self.run_test(
+            ["CMake Error at CMakeLists.txt:84 (MESSAGE):",
+             "  alut not found"],
+            2, MissingVagueDependency("alut"))
+
     def test_dh_compat_dupe(self):
         self.run_test(
             [
@@ -512,6 +531,11 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             MissingFile(
                 '/usr/share/texlive/texmf-dist/fonts/opentype/'
                 'public/stix2-otf/STIX2Math.otf'))
+
+    def test_missing_latex_files(self):
+        self.run_test(
+            ["! LaTeX Error: File `fancyvrb.sty' not found."],
+            1, MissingLatexFile('fancyvrb.sty'))
 
     def test_pytest_import(self):
         self.run_test(
@@ -893,6 +917,10 @@ error: invalid command 'test'
             1,
             MissingPkgConfig("libpeas-1.0", "1.24.0"),
         )
+        self.run_test(
+            ["meson.build:233:0: ERROR: Invalid version of dependency, need 'vte-2.91' ['>=0.63.0'] found '0.62.3'."],
+            1, MissingPkgConfig("vte-2.91", "0.63.0"))
+
         self.run_test(["No package 'tepl-3' found"], 1, MissingPkgConfig("tepl-3"))
         self.run_test(
             ["Requested 'vte-2.91 >= 0.59.0' but version of vte is 0.58.2"],
@@ -998,10 +1026,11 @@ error: invalid command 'test'
             "String found where operator expected at Makefile.PL line 13, near \"author_tests 'xt'\"",
             "\t(Do you need to predeclare author_tests?)",
             "syntax error at Makefile.PL line 13, near \"author_tests 'xt'\"",
-            "Bareword \"use_test_base\" not allowed while \"strict subs\" in use at Makefile.PL line 12.",
-            "Bareword \"auto_set_repository\" not allowed while "
             "\"strict subs\" in use at Makefile.PL line 13.",
             ], 2, MissingPerlPredeclared('author_tests'))
+        self.run_test([
+            "Bareword \"use_test_base\" not allowed while \"strict subs\" in use at Makefile.PL line 12."],
+            1, MissingPerlPredeclared('use_test_base'))
 
     def test_unknown_cert_authority(self):
         self.run_test(
@@ -1480,6 +1509,9 @@ arch:all and the other not)""".splitlines(),
         self.run_test(
             ["there is no package called 'mockr'"], 1, MissingRPackage("mockr")
         )
+        self.run_test(
+            ["ERROR: dependencies 'igraph', 'matlab', 'expm', 'RcppParallel' are not available for package 'markovchain'"],
+            1, MissingRPackage('igraph'))
 
     def test_mv_stat(self):
         self.run_test(

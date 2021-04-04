@@ -180,6 +180,19 @@ class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
             ),
         )
 
+    def test_session_disappeared(self):
+        error = AutopkgtestDepChrootDisappeared()
+        self.assertEqual(
+            (4, None, error, "<VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory"),
+            find_autopkgtest_failure_description("""\
+autopkgtest [22:52:18]: starting date: 2021-04-01
+autopkgtest [22:52:18]: version 5.16
+autopkgtest [22:52:18]: host osuosl167-amd64; command line: /usr/bin/autopkgtest '/tmp/tmpb0o8ai2j/build-area/liquid-dsp_1.2.0+git20210131.9ae84d8-1~jan+deb1_amd64.changes' --no-auto-control -- schroot unstable-amd64-sbuild
+<VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory
+'
+autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 32] Broken pipe
+""".splitlines(False)))
+
     def test_stderr(self):
         error = AutopkgtestStderrFailure("some output")
         self.assertEqual(

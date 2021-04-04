@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 @problem("missing-python-module")
-class MissingPythonModule(Problem):
+class MissingPythonModule:
 
     module: str
     python_version: Optional[str] = None
@@ -56,22 +56,12 @@ class MissingPythonModule(Problem):
         )
 
 
-class MissingPythonDistribution(Problem):
+@problem("missing-python-distribution")
+class MissingPythonDistribution:
 
-    kind = "missing-python-distribution"
-
-    def __init__(self, distribution, python_version=None, minimum_version=None):
-        self.distribution = distribution
-        self.python_version = python_version
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and other.distribution == self.distribution
-            and other.python_version == self.python_version
-            and other.minimum_version == self.minimum_version
-        )
+    distribution: str
+    python_version: Optional[int] = None
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.python_version:
@@ -86,9 +76,10 @@ class MissingPythonDistribution(Problem):
 
     @classmethod
     def from_requirement_str(cls, text, python_version=None):
-        if ">=" in text:
-            text, minimum = text.split(">=")
-            return cls(text, python_version, minimum)
+        from requirements.requirement import Requirement
+        req = Requirement.parse(text)
+        if len(req.specs) == 1 and req.specs[0][0] == ">=":
+            return cls(req.name, python_version, req.specs[0][1])
         return cls(text, python_version)
 
     def __repr__(self):
@@ -317,7 +308,7 @@ class MissingNodeModule:
 
 
 @problem("missing-node-package")
-class MissingNodePackage(Problem):
+class MissingNodePackage:
 
     package: str
 
@@ -356,18 +347,11 @@ class MissingVcVersionerVersion:
         return "vcversion could not find a git directory or version.txt file"
 
 
-class MissingConfigure(Problem):
-
-    kind = "missing-configure"
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-configure")
+class MissingConfigure:
 
     def __str__(self):
         return "Missing configure script"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
 
 
 def command_missing(m):
@@ -383,18 +367,8 @@ def command_missing(m):
     return MissingCommand(command)
 
 
-class MissingJavaScriptRuntime(Problem):
-
-    kind = "javascript-runtime-missing"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
+@problem("javascript-runtime-missing")
+class MissingJavaScriptRuntime:
 
     def __str__(self):
         return "Missing JavaScript Runtime"
@@ -404,20 +378,11 @@ def javascript_runtime_missing(m):
     return MissingJavaScriptRuntime()
 
 
-class MissingPkgConfig(Problem):
+@problem("missing-pkg-config-package")
+class MissingPkgConfig:
 
-    kind = "pkg-config-missing"
-
-    def __init__(self, module, minimum_version=None):
-        self.module = module
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.module == other.module
-            and self.minimum_version == other.minimum_version
-        )
+    module: str
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.minimum_version:
@@ -436,18 +401,11 @@ class MissingPkgConfig(Problem):
         )
 
 
-class MissingGoRuntime(Problem):
-
-    kind = 'missing-go-runtime'
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__, )
+@problem('missing-go-runtime')
+class MissingGoRuntime:
 
     def __str__(self):
         return "go runtime is missing"
-
-    def __eq__(self, other):
-        return isinstance(self, type(other))
 
 
 def pkg_config_missing(m):
@@ -465,10 +423,6 @@ def meson_pkg_config_missing(m):
     return MissingPkgConfig(m.group(3))
 
 
-def meson_pkg_config_too_low(m):
-    return MissingPkgConfig(m.group(3), m.group(4))
-
-
 def meson_c_library_missing(m):
     return MissingLibrary(m.group(3))
 
@@ -477,29 +431,17 @@ def cmake_pkg_config_missing(m):
     return MissingPkgConfig(m.group(1))
 
 
-class CMakeFilesMissing(Problem):
+@problem("missing-cmake-files")
+class CMakeFilesMissing:
 
-    kind = "cmake-files-missing"
-
-    def __init__(self, filenames):
-        self.filenames = filenames
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.filenames == other.filenames
+    filenames: List[str]
 
     def __str__(self):
         return "Missing CMake package configuration files: %r" % (self.filenames,)
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.filenames)
 
-
-class DhWithOrderIncorrect(Problem):
-
-    kind = "debhelper-argument-order"
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("debhelper-argument-order")
+class DhWithOrderIncorrect:
 
     def __str__(self):
         return "dh argument order is incorrect"
@@ -537,11 +479,10 @@ class MissingPerlModule:
     inc: Optional[List[str]] = None
 
     def __str__(self):
-        if self.filename or self.inc:
-            return "Missing Perl module: %s (filename: %r, inc: %r)" % (
+        if self.filename:
+            return "Missing Perl module: %s (filename: %r)" % (
                 self.module,
                 self.filename,
-                self.inc,
             )
         else:
             return "Missing Perl Module: %s" % self.module
@@ -598,86 +539,51 @@ class MissingMavenArtifacts(Problem):
         return "%s(%r)" % (type(self).__name__, self.artifacts)
 
 
-class DhUntilUnsupported(Problem):
-
-    kind = "dh-until-unsupported"
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("dh-until-unsupported")
+class DhUntilUnsupported:
 
     def __str__(self):
         return "dh --until is no longer supported"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
 
 
 def dh_until_unsupported(m):
     return DhUntilUnsupported()
 
 
-class DhAddonLoadFailure(Problem):
+@problem("dh-addon-load-failure")
+class DhAddonLoadFailure:
 
-    kind = "dh-addon-load-failure"
-
-    def __init__(self, name, path):
-        self.name = name
-        self.path = path
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.name == other.name
-            and self.path == other.path
-        )
+    name: str
+    path: str
 
     def __str__(self):
         return "dh addon loading failed: %s" % self.name
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.name, self.path)
 
 
 def dh_addon_load_failure(m):
     return DhAddonLoadFailure(m.group(1), m.group(2))
 
 
-class DhMissingUninstalled(Problem):
+@problem("dh-missing-uninstalled")
+class DhMissingUninstalled:
 
-    kind = "dh-missing-uninstalled"
-
-    def __init__(self, missing_file):
-        self.missing_file = missing_file
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.missing_file == other.missing_file
+    missing_file: str
 
     def __str__(self):
         return "File built by Debian not installed: %r" % self.missing_file
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.missing_file)
 
 
 def dh_missing_uninstalled(m):
     return DhMissingUninstalled(m.group(2))
 
 
-class DhLinkDestinationIsDirectory(Problem):
+@problem("dh-link-destination-is-directory")
+class DhLinkDestinationIsDirectory:
 
-    kind = "dh-link-destination-is-directory"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
+    path: str
 
     def __str__(self):
         return "Link destination %s is directory" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 def dh_link_destination_is_dir(m):
@@ -693,92 +599,56 @@ def maven_missing_plugin(m):
     return MissingMavenArtifacts([m.group(1)])
 
 
-class MissingXmlEntity(Problem):
+@problem("missing-xml-entity")
+class MissingXmlEntity:
 
-    kind = "missing-xml-entity"
-
-    def __init__(self, url):
-        self.url = url
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.url == other.url
+    url: str
 
     def __str__(self):
         return "Missing XML entity: %s" % self.url
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.url)
 
 
 def xsltproc_network_entity(m):
     return MissingXmlEntity(m.group(1))
 
 
-class CcacheError(Problem):
+@problem("ccache-error")
+class CcacheError:
 
-    kind = "ccache-error"
-
-    def __init__(self, error):
-        self.error = error
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.error == other.error
+    error: str
 
     def __str__(self):
         return "ccache error: %s" % self.error
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.error)
 
 
 def ccache_error(m):
     return CcacheError(m.group(1))
 
 
-class MissingLibrary(Problem):
+@problem("missing-library")
+class MissingLibrary:
 
-    kind = "missing-library"
-
-    def __init__(self, library):
-        self.library = library
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.library == other.library
+    library: str
 
     def __str__(self):
         return "missing library: %s" % self.library
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.library)
 
 
 def ld_missing_lib(m):
     return MissingLibrary(m.group(1))
 
 
-class MissingRubyGem(Problem):
+@problem("missing-ruby-gem")
+class MissingRubyGem:
 
-    kind = "missing-ruby-gem"
-
-    def __init__(self, gem: str, version: Optional[str] = None):
-        self.gem = gem
-        self.version = version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.gem == other.gem
-            and self.version == other.version
-        )
+    gem: str
+    version: Optional[str] = None
 
     def __str__(self):
         if self.version:
             return "missing ruby gem: %s (>= %s)" % (self.gem, self.version)
         else:
             return "missing ruby gem: %s" % self.gem
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.gem, self.version)
 
 
 def ruby_missing_gem(m):
@@ -793,42 +663,26 @@ def ruby_missing_gem(m):
     return MissingRubyGem(m.group(1), minimum_version)
 
 
-class MissingRubyFile(Problem):
+@problem("missing-ruby-file")
+class MissingRubyFile:
 
-    kind = "missing-ruby-file"
-
-    def __init__(self, filename):
-        self.filename = filename
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.filename)
+    filename: str
 
     def __str__(self):
         return "Missing ruby file: %s" % (self.filename,)
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and self.filename == other.filename
 
 
 def ruby_missing_name(m):
     return MissingRubyFile(m.group(1))
 
 
-class MissingPhpClass(Problem):
+@problem("missing-php-class")
+class MissingPhpClass:
 
-    kind = "missing-php-class"
-
-    def __init__(self, php_class):
-        self.php_class = php_class
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.php_class == other.php_class
+    php_class: str
 
     def __str__(self):
         return "missing PHP class: %s" % self.php_class
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.php_class)
 
 
 def php_missing_class(m):
@@ -848,20 +702,11 @@ def java_missing_class(m):
     return MissingJavaClass(m.group(1))
 
 
-class MissingRPackage(Problem):
+@problem("missing-r-package")
+class MissingRPackage:
 
-    kind = "missing-r-package"
-
-    def __init__(self, package, minimum_version=None):
-        self.package = package
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.package == other.package
-            and self.minimum_version == other.minimum_version
-        )
+    package: str
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.minimum_version:
@@ -872,13 +717,10 @@ class MissingRPackage(Problem):
         else:
             return "missing R package: %s" % self.package
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.package, self.minimum_version)
-
 
 def r_missing_package(m):
     fragment = m.group(1)
-    deps = [dep.strip("‘’ ") for dep in fragment.split(",")]
+    deps = [dep.strip("‘’' ") for dep in fragment.split(",")]
     return MissingRPackage(deps[0])
 
 
@@ -909,35 +751,17 @@ def go_test_failed(m):
     return FailedGoTest(m.group(1))
 
 
-class DebhelperPatternNotFound(Problem):
+@problem("debhelper-pattern-not-found")
+class DebhelperPatternNotFound:
 
-    kind = "debhelper-pattern-not-found"
-
-    def __init__(self, pattern, tool, directories):
-        self.pattern = pattern
-        self.tool = tool
-        self.directories = directories
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.pattern == other.pattern
-            and self.tool == other.tool
-            and self.directories == other.directories
-        )
+    pattern: str
+    tool: str
+    directories: List[str]
 
     def __str__(self):
         return "debhelper (%s) expansion failed for %r (directories: %r)" % (
             self.tool,
             self.pattern,
-            self.directories,
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r, %r)" % (
-            type(self).__name__,
-            self.pattern,
-            self.tool,
             self.directories,
         )
 
@@ -948,39 +772,21 @@ def dh_pattern_no_matches(m):
     )
 
 
-class GnomeCommonMissing(Problem):
-
-    kind = "gnome-common-missing"
-
-    def __init__(self) -> None:
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-gnome-common")
+class GnomeCommonMissing:
 
     def __str__(self):
         return "gnome-common is not installed"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__,)
 
 
 def gnome_common_missing(m):
     return GnomeCommonMissing()
 
 
-class MissingXfceDependency(Problem):
+@problem("missing-xfce-dependency")
+class MissingXfceDependency:
 
-    kind = "missing-xfce-dependency"
-
-    def __init__(self, package):
-        self.package = package
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.package == other.package
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.package)
+    package: str
 
     def __str__(self):
         return "Missing XFCE build dependency: %s" % (self.package)
@@ -990,21 +796,13 @@ def xfce_dependency_missing(m):
     return MissingXfceDependency(m.group(1))
 
 
-class MissingAutomakeInput(Problem):
+@problem("missing-automake-input")
+class MissingAutomakeInput:
 
-    kind = "missing-automake-input"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
+    path: str
 
     def __str__(self):
         return "automake input file %s missing" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 def automake_input_missing(m):
@@ -1029,23 +827,11 @@ def configure_undefined_macro(m):
     return MissingAutoconfMacro(m.group(2))
 
 
-class MissingGnomeCommonDependency(Problem):
+@problem("missing-gnome-common-dependency")
+class MissingGnomeCommonDependency:
 
-    kind = "missing-gnome-common-dependency"
-
-    def __init__(self, package, minimum_version=None):
-        self.package = package
-        self.minimum_version = minimum_version
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.package == other.package
-            and self.minimum_version == other.minimum_version
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.package, self.minimum_version)
+    package: str
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         return "Missing gnome-common dependency: %s: (>= %s)" % (
@@ -1058,42 +844,24 @@ def missing_glib_gettext(m):
     return MissingGnomeCommonDependency("glib-gettext", m.group(1))
 
 
-class MissingConfigStatusInput(Problem):
+@problem("missing-config.status-input")
+class MissingConfigStatusInput:
 
-    kind = "missing-config.status-input"
-
-    def __init__(self, path):
-        self.path = path
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.path == other.path
+    path: str
 
     def __str__(self):
         return "missing config.status input %s" % self.path
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 def config_status_input_missing(m):
     return MissingConfigStatusInput(m.group(1))
 
 
-class MissingJVM(Problem):
-
-    kind = "missing-jvm"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(self, type(other))
+@problem("missing-jvm")
+class MissingJVM:
 
     def __str__(self):
         return "Missing JVM"
-
-    def __repr__(self):
-        return "%s()" % (type(self).__name__)
 
 
 def jvm_missing(m):
@@ -1171,18 +939,10 @@ def imagemagick_delegate_missing(m):
     return ImageMagickDelegateMissing(m.group(1))
 
 
-class DebianVersionRejected(Problem):
+@problem("debian-version-rejected")
+class DebianVersionRejected:
 
-    kind = "debian-version-rejected"
-
-    def __init__(self, version):
-        self.version = version
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and other.version == self.version
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.version)
+    version: str
 
     def __str__(self):
         return "Debian Version Rejected; %s" % self.version
@@ -1259,6 +1019,26 @@ class SetupPyCommandMissingMatcher(Matcher):
             if self.warning_match.fullmatch(lines[j].rstrip('\n')):
                 return [i], MissingSetupPyCommand(m.group(1))
         return []
+
+
+class MultiLineConfigureError(Matcher):
+
+    submatchers = [
+        (re.compile(r'\s*Unable to find (.*)\.'),
+         lambda m: MissingVagueDependency(m.group(1))),
+        ]
+
+    def match(self, lines, i):
+        if lines[i].rstrip('\n') != 'configure: error:':
+            return [], None
+
+        for j, line in enumerate(lines[i+1:]):
+            for submatcher, fn in self.submatchers:
+                m = submatcher.match(line.rstrip('\n'))
+                if m:
+                    return [i+j+1], fn(m)
+
+        return list(range(i+1, len(lines))), None
 
 
 class AutoconfUnexpectedMacroMatcher(Matcher):
@@ -1443,6 +1223,11 @@ class CMakeErrorMatcher(Matcher):
          r'said.', lambda m: MissingLibrary(m.group(1))),
         (r'need (.*) of version (.*)',
          lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2).strip())),
+        (r'\*\*\* (.*) is required to build (.*)\n',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'\[([^ ]+)\] not found', lambda m: MissingVagueDependency(m.group(1))),
+        (r'([^ ]+) not found', lambda m: MissingVagueDependency(m.group(1))),
+        (r'error: could not find git .*', lambda m: MissingCommand('git')),
     ]
 
     @classmethod
@@ -1481,38 +1266,18 @@ class CMakeErrorMatcher(Matcher):
         return linenos, error
 
 
-class MissingFortranCompiler(Problem):
-
-    kind = "missing-fortran-compiler"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-fortran-compiler")
+class MissingFortranCompiler:
 
     def __str__(self):
         return "No Fortran compiler found"
 
-    def __repr__(self):
-        return "%s()" % type(self).__name__
 
-
-class MissingCSharpCompiler(Problem):
-
-    kind = "missing-c#-compiler"
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return isinstance(other, type(self))
+@problem("missing-c#-compiler")
+class MissingCSharpCompiler:
 
     def __str__(self):
         return "No C# compiler found"
-
-    def __repr__(self):
-        return "%s()" % type(self).__name__
 
 
 def c_sharp_compiler_missing(m):
@@ -1539,7 +1304,7 @@ class MissingPytestFixture:
 class MissingCargoCrate:
 
     crate: str
-    requirement: Optional[str]
+    requirement: Optional[str] = None
 
     def __str__(self):
         if self.requirement:
@@ -1561,6 +1326,15 @@ def missing_lazyfont_file(m):
     return MissingFile(m.group(1))
 
 
+@problem("missing-latex-file")
+class MissingLatexFile:
+
+    filename: str
+
+    def __str__(self):
+        return "Missing LaTeX file: %s" % self.filename
+
+
 @problem("missing-dh-compat-level")
 class MissingDHCompatLevel:
 
@@ -1579,21 +1353,29 @@ class DuplicateDHCompatLevel:
         return "DH Compat Level specified twice (command: %s)" % self.command
 
 
-class UnknownCertificateAuthority(Problem):
+@problem("missing-introspection-typelib")
+class MissingIntrospectionTypelib:
 
-    kind = "unknown-certificate-authority"
+    library: str
 
-    def __init__(self, url):
-        self.url = url
+    def __str__(self):
+        return "Missing introspection typelib: %s" % self.library
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.url)
+
+@problem("unknown-certificate-authority")
+class UnknownCertificateAuthority:
+
+    url: str
 
     def __str__(self):
         return "Unknown Certificate Authority for %s" % self.url
 
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.url == other.url
+
+@problem("missing-x-display")
+class MissingXDisplay:
+
+    def __str__(self):
+        return "No X Display"
 
 
 build_failure_regexps = [
@@ -1640,6 +1422,8 @@ build_failure_regexps = [
         r"Requirement.parse\(\'(.*)\'\)\)\!",
         python2_reqs_not_found,
     ),
+    (r'ImportError: cannot import name (.*), introspection typelib not found',
+     lambda m: MissingIntrospectionTypelib(m.group(1))),
     ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E       fixture '(.*)' not found",
         lambda m: MissingPytestFixture(m.group(1))),
@@ -1697,7 +1481,9 @@ build_failure_regexps = [
      lambda m: MissingX11()),
     (r'  \*\*\* The (.*) script could not be found\. .*',
      lambda m: MissingCommand(m.group(1))),
-    (r'>> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
+    (r'\>\> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
+    (r'npm ERR\! CLI for webpack must be installed.',
+     lambda m: MissingNodePackage('webpack-cli')),
     (r"npm ERR\! \[\!\] Error: Cannot find module '(.*)'",
      node_module_missing),
     (r'npm ERR\! \>\> Local Npm module "(.*)" not found. Is it installed\?',
@@ -1742,6 +1528,7 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r'vcver.scm.git.GitCommandError: \'git .*\' returned an error code 127',
      lambda m: MissingCommand('git')),
+    MultiLineConfigureError(),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"configure: error: (doxygen|asciidoc) is not available "
@@ -1798,9 +1585,9 @@ build_failure_regexps = [
         meson_pkg_config_missing,
     ),
     (
-        ".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
-        "need '([^']+)' \\['>= ([^']+)'\\] found '([^']+)'\\.",
-        meson_pkg_config_too_low,
+        r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
+        r"need '([^']+)' \['>=\s*([^']+)'\] found '([^']+)'\.",
+        lambda m: MissingPkgConfig(m.group(3), m.group(4))
     ),
     (
         ".*meson.build:([0-9]+):([0-9]+): ERROR: C shared or static library '(.*)' not found",
@@ -1826,6 +1613,11 @@ build_failure_regexps = [
     (
         r".*Can\'t locate (.*).pm in @INC \(you may need to install the "
         r"(.*) module\) \(@INC contains: (.*)\) at .* line .*.",
+        perl_missing_module,
+    ),
+    (
+        r".*Can\'t locate (.*).pm in @INC \(you may need to install the "
+        r"(.*) module\) \(@INC contains: (.*)\)\.",
         perl_missing_module,
     ),
     (r">\(error\): Could not expand \[(.*)\'", perl_expand_failed),
@@ -1857,6 +1649,12 @@ build_failure_regexps = [
         r"> Kotlin could not find the required JDK tools in the Java "
         r"installation '(.*)' used by Gradle. Make sure Gradle is running "
         "on a JDK, not JRE.",
+        jdk_missing,
+    ),
+    (
+        r'\> JDK_5 environment variable is not defined. '
+        r'It must point to any JDK that is capable to compile with '
+        r'Java 5 target \((.*)\)',
         jdk_missing,
     ),
     (
@@ -1975,10 +1773,10 @@ build_failure_regexps = [
         dh_addon_load_failure,
     ),
     (
-        "ERROR: dependencies (.*) are not available for package ‘(.*)’",
+        "ERROR: dependencies (.*) are not available for package [‘'](.*)['’]",
         r_missing_package,
     ),
-    ("ERROR: dependency ‘(.*)’ is not available for package ‘(.*)’", r_missing_package),
+    ("ERROR: dependency [‘'](.*)['’] is not available for package [‘'](.*)[’']", r_missing_package),
     (
         r"Error in library\(.*\) : there is no package called \'(.*)\'",
         r_missing_package,
@@ -2025,6 +1823,8 @@ build_failure_regexps = [
     # A Python error, but not likely to be actionable. The previous
     # line will have the actual line that failed.
     (r"ImportError: cannot import name (.*)", None),
+    # Rust ?
+    (r"  = note: /usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (r"/usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (
         r"Could not find gem \'([^ ]+) \(([^)]+)\)\', " r"which is required by gem.*",
@@ -2116,6 +1916,7 @@ build_failure_regexps = [
         r'\*\*\* No autoreconf found \*\*\*',
         lambda m: MissingCommand('autoreconf'),
     ),
+    (r"You need to install gnome-common module and make.*", gnome_common_missing),
     (r"You need to install the gnome-common module and make.*", gnome_common_missing),
     (
         r"You need to install gnome-common from the GNOME (git|CVS|SVN)",
@@ -2166,8 +1967,13 @@ build_failure_regexps = [
     ("(.*):([0-9]+): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): error: undefined reference to '(.*)'", None),
     (
-        r"\/usr\/bin\/ld: (.*): multiple definition of `*.\'; "
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; "
         r"(.*): first defined here",
+        None,
+    ),
+    (
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; "
+        r"(.*):\((.*)\) first defined here",
         None,
     ),
     (r"\/usr\/bin\/ld: (.*): undefined reference to `(.*)\'", None),
@@ -2493,6 +2299,8 @@ build_failure_regexps = [
      r'java.io.FileNotFoundException: (.*) \(No such file or directory\)',
      missing_lazyfont_file,
      ),
+    (r'qt.qpa.xcb: could not connect to display',
+     lambda m: MissingXDisplay()),
     (r'Package (.*) was not found in the pkg-config search path.',
      lambda m: MissingPkgConfig(m.group(1))),
     (r'go runtime is required: https://golang.org/doc/install',
@@ -2505,6 +2313,8 @@ build_failure_regexps = [
      lambda m: UnknownCertificateAuthority(m.group(1))),
     (r"\t\(Do you need to predeclare (.*)\?\)",
      lambda m: MissingPerlPredeclared(m.group(1))),
+    (r"Bareword \"(.*)\" not allowed while \"strict subs\" in use at "
+     r"Makefile.PL line ([0-9]+).", lambda m: MissingPerlPredeclared(m.group(1))),
     (r"  vignette builder 'knitr' not found",
      lambda m: MissingRPackage('knitr')),
     (r'fatal: unable to auto-detect email address \(got \'.*\'\)',
@@ -2527,14 +2337,25 @@ build_failure_regexps = [
      r'failed and \'(.*)/version.txt\' isn\'t present\.',
      lambda m: MissingVcVersionerVersion()),
 
+    (r"You don't have a working TeX binary \(tex\) installed anywhere in",
+     lambda m: MissingCommand('tex')),
+
     (r'# Module \'(.*)\' is not installed',
      lambda m: MissingPerlModule(None, m.group(1)),
      ),
-
+    (r'Base class package "(.*)" is empty.',
+     lambda m: MissingPerlModule(None, m.group(1))),
+    (r'    \!  (.*::.*) is not installed', lambda m: MissingPerlModule(None, m.group(1))),
     (
         r'configure: error: Missing lib(.*)\.',
         lambda m: MissingLibrary(m.group(1)),
     ),
+
+    (r'The "(.*)" executable has not been found\.',
+     lambda m: MissingCommand(m.group(1))),
+
+    (r'\! LaTeX Error: File `(.*)\' not found\.',
+     lambda m: MissingLatexFile(m.group(1))),
 
     # Intentionally at the bottom of the list.
     (
@@ -2562,8 +2383,12 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r'configure: error: Missing the (.*) library',
+        r'configure: error: Missing the (.* library)',
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) requires (.* libraries), .*",
+        lambda m: MissingVagueDependency(m.group(2)),
     ),
     (
         r'configure: error: Missing (.*)\.',
@@ -2604,6 +2429,9 @@ secondary_build_failure_regexps = [
         r"\'(?!maintainer-clean)(?!clean)(.*)\'\.  Stop\."
     ),
     r".*:[0-9]+: \*\*\* empty variable name.  Stop.",
+    r"error: can't copy '(.*)': doesn't exist or not a regular file",
+    # Clojure
+    r'Could not locate (.*) or (.*) on classpath\.',
     # QMake
     r"Project ERROR: .*",
     # pdflatex
@@ -2617,10 +2445,12 @@ secondary_build_failure_regexps = [
     # CTest
     r"Errors while running CTest",
     r"dh_auto_install: error: .*",
+    r"dh_quilt_patch: error: (.*)",
     r"dh.*: Aborting due to earlier error",
     r"dh.*: unknown option or error during option parsing; aborting",
     r"Could not import extension .* \(exception: .*\)",
     r"configure.ac:[0-9]+: error: (.*)",
+    r"Reconfigure the source tree (via './config' or 'perl Configure'), please.",
     r"dwz: Too few files for multifile optimization",
     r"dh_dwz: dwz -q -- .* returned exit code [0-9]+",
     r"help2man: can\'t get `-?-help\' info from .*",
@@ -2651,6 +2481,7 @@ secondary_build_failure_regexps = [
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
     r"^FAILED \(.*\)",
+    r"FAILED .*",
     r"cat: (.*): No such file or directory",
     # Random Python errors
     "^(E  +)?(SyntaxError|TypeError|ValueError|AttributeError|NameError|"
@@ -2662,8 +2493,8 @@ secondary_build_failure_regexps = [
     "httptools.parser.errors.HttpParserInvalidURLError|HypothesisException|"
     "SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
     "pkg_resources.UnknownExtra|tarfile.ReadError|"
-    "numpydoc.docscrape.ParseError|"
-    "datalad.support.exceptions.IncompleteResultsError"
+    "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
+    "datalad.support.exceptions.IncompleteResultsError|AssertionError"
     r"): .*",
     "^E   DeprecationWarning: .*",
     "^E       fixture '(.*)' not found",
@@ -2673,6 +2504,7 @@ secondary_build_failure_regexps = [
     r"# failed [0-9]+ of [0-9]+ tests",
     # Pytest
     r"(.*).py:[0-9]+: AssertionError",
+    r"============================ no tests ran in ([0-9.]+)s =============================",
     # Perl
     r"  Failed tests:  [0-9-]+",
     # Go
@@ -2693,8 +2525,8 @@ secondary_build_failure_regexps = [
     r"ln: failed to create symbolic link \'(.*)\': No such file or directory",
     r"ln: failed to create symbolic link \'(.*)\': Permission denied",
     r"ln: invalid option -- .*",
-    r"mkdir: cannot create directory ‘(.*)’: No such file or directory",
-    r"mkdir: cannot create directory ‘(.*)’: File exists",
+    r"mkdir: cannot create directory [‘'](.*)['’]: No such file or directory",
+    r"mkdir: cannot create directory [‘'](.*)['’]: File exists",
     r"mkdir: missing operand",
     r"Fatal error: .*",
     "Fatal Error: (.*)",
@@ -2756,6 +2588,8 @@ secondary_build_failure_regexps = [
     r"\[ERROR\] .*",
     r"dh_auto_(test|build): error: (.*)",
     r'tar: This does not look like a tar archive',
+    r'\[DZ\] no name was ever set',
+    r"diff: (.*): No such file or directory",
 ]
 
 compiled_secondary_build_failure_regexps = [
