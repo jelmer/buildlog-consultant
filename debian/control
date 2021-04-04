@@ -1,6 +1,6 @@
 Rules-Requires-Root: no
 Standards-Version: 4.5.1
-Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools, python3-debian, python3-yaml
+Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools, python3-debian, python3-yaml, python3-requirement-parser
 Source: buildlog-consultant
 Priority: optional
 Section: python
@@ -11,7 +11,7 @@ Vcs-Browser: https://salsa.debian.org/jelmer/buildlog-consultant
 
 Package: python3-buildlog-consultant
 Architecture: all
-Depends: ${misc:Depends}, ${python3:Depends}, python3-debian, python3-yaml
+Depends: ${misc:Depends}, ${python3:Depends}, python3-debian, python3-yaml, python3-requirement-parser
 Description: build log parser and analyser
  buildlog-consultant can parse build logs and highlight and extract the key
  error lines. This can be used to extract a snippet from a build log with the
