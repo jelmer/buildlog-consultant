@@ -20,7 +20,7 @@ import logging
 import re
 from typing import Tuple, Optional, List, Dict, Union
 
-from . import Problem, SingleLineMatch
+from . import Problem, SingleLineMatch, problem
 from .apt import find_apt_get_failure, AptFetchFailure
 from .common import find_build_failure_description, ChrootNotFound
 
@@ -28,12 +28,10 @@ from .common import find_build_failure_description, ChrootNotFound
 logger = logging.getLogger(__name__)
 
 
-class AutopkgtestDepsUnsatisfiable(Problem):
+@problem("badpkg")
+class AutopkgtestDepsUnsatisfiable:
 
-    kind = "badpkg"
-
-    def __init__(self, args):
-        self.args = args
+    args: List[str]
 
     @classmethod
     def from_blame_line(cls, line):
@@ -50,28 +48,19 @@ class AutopkgtestDepsUnsatisfiable(Problem):
                 logger.warn("unknown entry %s on badpkg line", entry)
         return cls(args)
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.args == other.args
 
-    def __repr__(self):
-        return "%s(args=%r)" % (type(self).__name__, self.args)
-
-
-class AutopkgtestTimedOut(Problem):
-
-    kind = "timed-out"
-
-    def __init__(self):
-        pass
+@problem("timed-out")
+class AutopkgtestTimedOut:
 
     def __str__(self):
         return "Timed out"
 
-    def __repr__(self):
-        return "%s()" % (type(self).__name__)
 
-    def __eq__(self, other):
-        return isinstance(self, type(other))
+@problem("xdg-runtime-dir-not-set")
+class XDGRunTimeNotSet:
+
+    def __str__(self):
+        return "XDG_RUNTIME_DIR is not set"
 
 
 class AutopkgtestTestbedFailure(Problem):
@@ -228,36 +217,18 @@ def parse_autopkgtest_summary(lines):
         i += 1
 
 
-class AutopkgtestTestbedSetupFailure(Problem):
+@problem("testbed-setup-failure")
+class AutopkgtestTestbedSetupFailure:
 
-    kind = "testbed-setup-failure"
-
-    def __init__(self, command, exit_status, error):
-        self.command = command
-        self.exit_status = exit_status
-        self.error = error
+    command: str
+    exit_status: int
+    error: str
 
     def __str__(self):
         return "Error setting up testbed %r failed (%d): %s" % (
             self.command,
             self.exit_status,
             self.error,
-        )
-
-    def __repr__(self):
-        return "%s(%r, %r, %r)" % (
-            type(self).__name__,
-            self.command,
-            self.exit_status,
-            self.error,
-        )
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, type(self))
-            and self.command == other.command
-            and self.exit_status == other.exit_status
-            and self.error == other.error
         )
 
 
@@ -449,15 +420,22 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     if match is not None and stderr_offset is not None:
                         offset = match.offset + stderr_offset
                         description = match.line
+                    elif len(stderr_lines) == 1 and re.match(
+                            r'QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to \'(.*)\'',
+                            stderr_lines[0]):
+                        error = XDGRunTimeNotSet()
+                        description = stderr_lines[0]
+                        offset = stderr_offset
                     else:
-                        offset = None
+                        offset = stderr_offset
                         description = None
                 else:
                     (match, error) = find_build_failure_description([output])
-                    offset = None
                     if match is not None:
+                        offset = match.offset
                         description = match.line
                     else:
+                        offset = None
                         description = None
                 if offset is None:
                     offset = summary_offset + lineno
