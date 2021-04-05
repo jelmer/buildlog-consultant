@@ -447,7 +447,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                             "unauthorized stderr output: %s"
                             % (testname, error.stderr_line)
                         )
-                return SingleLineMatch.from_lines(summary_lines, offset), testname, error, description
+                return SingleLineMatch.from_lines(lines, offset), testname, error, description
             elif reason == "badpkg":
                 output_lines = test_output.get((testname, "prepare testbed"), [])
                 output_offset = test_output_offset.get((testname, "prepare testbed"))
