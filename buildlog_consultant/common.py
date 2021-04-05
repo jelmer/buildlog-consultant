@@ -2360,6 +2360,9 @@ build_failure_regexps = [
     (r'  vignette builder \'(.*)\' not found',
      lambda m: MissingRPackage(m.group(1))),
 
+    (r'Error: package \'(.*)\' (.*) was found, but >= (.*) is required by \'(.*)\'',
+     lambda m: MissingRPackage(m.group(1), m.group(3))),
+
     # Intentionally at the bottom of the list.
     (
         r'configure: error: Please install (.*) from (http:\/\/[^ ]+)',
