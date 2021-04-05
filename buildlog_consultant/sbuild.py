@@ -309,7 +309,7 @@ class MissingDebcargoCrate:
 
 
 def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[SingleLineMatch], Optional[Problem]]:  # noqa: C901
-    ret: Tuple[Optional[int], Optional[str], Optional[Problem]] = (None, None, None)
+    ret: Tuple[Optional[int], Optional[str], Optional[Problem]] = (None, None)
     OFFSET = 100
     err: Problem
     for i in range(1, OFFSET):
