@@ -2351,6 +2351,9 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(1)),
     ),
 
+    (r'OSError: (.*): cannot open shared object file: No such file or directory',
+     lambda m: MissingFile(m.group(1))),
+
     (r'The "(.*)" executable has not been found\.',
      lambda m: MissingCommand(m.group(1))),
 
@@ -2362,6 +2365,9 @@ build_failure_regexps = [
 
     (r'Error: package \'(.*)\' (.*) was found, but >= (.*) is required by \'(.*)\'',
      lambda m: MissingRPackage(m.group(1), m.group(3))),
+
+    (r'  there is no package called \'(.*)\'',
+     lambda m: MissingRPackage(m.group(1))),
 
     # Intentionally at the bottom of the list.
     (
