@@ -1598,6 +1598,11 @@ build_failure_regexps = [
         lambda m: MissingCommand('pkg-config'),
     ),
     (
+        ".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) require (.*) >= (.*), (.*) which were not found.",
+        lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
+    ),
+
+    (
         r"dh: Unknown sequence --(.*) "
         r"\(options should not come before the sequence\)",
         dh_with_order,
