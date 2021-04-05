@@ -185,6 +185,11 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             None,
         )
 
+    def test_vignette_builder(self):
+        self.run_test(
+            ['  vignette builder \'R.rsp\' not found'],
+            1, MissingRPackage('R.rsp'))
+
     def test_dh_missing_addon(self):
         self.run_test(
             [

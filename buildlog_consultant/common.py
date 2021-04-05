@@ -2357,6 +2357,9 @@ build_failure_regexps = [
     (r'\! LaTeX Error: File `(.*)\' not found\.',
      lambda m: MissingLatexFile(m.group(1))),
 
+    (r'  vignette builder \'(.*)\' not found',
+     lambda m: MissingRPackage(m.group(1))),
+
     # Intentionally at the bottom of the list.
     (
         r'configure: error: Please install (.*) from (http:\/\/[^ ]+)',
