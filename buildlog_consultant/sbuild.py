@@ -672,11 +672,11 @@ def find_failure_unpack(sbuildlog, failed_stage):
 
 def find_failure_build(sbuildlog, failed_stage):
     section = sbuildlog.get_section("build")
+    phase = ("build",)
     section_lines, files = strip_build_tail(section.lines)
     match, error = find_build_failure_description(section_lines)
     if error:
         description = str(error)
-        phase = ("build",)
     elif match:
         description = match.line.rstrip('\n')
     else:
