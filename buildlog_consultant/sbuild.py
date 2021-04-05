@@ -70,6 +70,7 @@ class SbuildFailure(Exception):
     def json(self):
         ret = {
             'stage': self.stage,
+            'phase': self.phase,
             'section': self.section.title if self.section else None,
             'lineno': (self.section.offsets[0] + self.match.lineno) if self.match else None,
             }
@@ -693,9 +694,8 @@ def find_failure_autopkgtest(sbuildlog, failed_stage):
         "autopkgtest": "autopkgtest"}[failed_stage]
     section = sbuildlog.get_section(focus_section)
 
-    # TODO(jelmer): Return match object from find_autopkgtest_failure_description
     (
-        apt_offset,
+        match,
         testname,
         error,
         description,
@@ -707,7 +707,7 @@ def find_failure_autopkgtest(sbuildlog, failed_stage):
     phase = ("autopkgtest", testname)
     return SbuildFailure(
         failed_stage, description, error=error, phase=phase, section=section,
-        match=SingleLineMatch.from_lines(section.lines, apt_offset))
+        match=match)
 
 
 def find_failure_apt_get_update(sbuildlog, failed_stage):
@@ -964,6 +964,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser("analyse-sbuild-log")
     parser.add_argument("--debug", action="store_true", help="Display debug output.")
     parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument("--context", "-c", type=int, default=5, help="Number of context lines to print.")
     parser.add_argument("path", type=str)
     args = parser.parse_args()
 
@@ -991,7 +992,8 @@ def main(argv=None):
         logging.info("Error: %s" % failure.error)
     if failure.match:
         logging.info("Failed line: %d:" % (failure.section.offsets[0] + failure.match.lineno))
-        logging.info("%s", failure.match.line)
+        for i in range(max(0, failure.match.offset - args.context), min(len(failure.section.lines), failure.match.offset + args.context + 1)):
+            logging.info(" %s  %s", ">" if failure.match.offset == i else " ", failure.section.lines[i].rstrip('\n'))
 
 
 if __name__ == '__main__':

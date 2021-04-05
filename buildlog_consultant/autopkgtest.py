@@ -20,7 +20,7 @@ import logging
 import re
 from typing import Tuple, Optional, List, Dict, Union
 
-from . import Problem
+from . import Problem, SingleLineMatch
 from .apt import find_apt_get_failure, AptFetchFailure
 from .common import find_build_failure_description, ChrootNotFound
 
@@ -263,7 +263,7 @@ class AutopkgtestTestbedSetupFailure(Problem):
 
 def find_autopkgtest_failure_description(  # noqa: C901
     lines: List[str],
-) -> Tuple[Optional[int], Optional[str], Optional["Problem"], Optional[str]]:
+) -> Tuple[Optional[SingleLineMatch], Optional[str], Optional["Problem"], Optional[str]]:
     """Find the autopkgtest failure in output.
 
     Returns:
@@ -320,7 +320,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     )
                     if m:
                         error = AutopkgtestDepChrootDisappeared()
-                        return (i + 1, last_test, error, stderr)
+                        return (SingleLineMatch.from_lines(lines, i), last_test, error, stderr)
                 m = re.fullmatch(r"testbed failure: (.*)", msg)
                 if m:
                     testbed_failure_reason = m.group(1)
@@ -336,7 +336,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         if error is not None:
                             assert match is not None
                             return (
-                                test_output_offset[field] + match.lineno,
+                                SingleLineMatch.from_lines(lines, test_output_offset[field] + match.offset),
                                 last_test,
                                 error,
                                 match.line,
@@ -347,35 +347,32 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         == "sent `auxverb_debug_fail', got `copy-failed', "
                         "expected `ok...'"
                     ):
-                        (match, error) = find_build_failure_description(
-                            lines
-                        )
+                        (match, error) = find_build_failure_description(lines)
                         if error is not None:
-                            assert match is not None
-                            return (match.lineno, last_test, error, match.line)
+                            return (match, last_test, error, match.line)
 
                     if (
                         testbed_failure_reason
                         == "cannot send to testbed: [Errno 32] Broken pipe"
                     ):
-                        offset, line, error = find_testbed_setup_failure(lines)
-                        if error and offset:
-                            return (offset, last_test, error, line)
+                        match, error = find_testbed_setup_failure(lines)
+                        if error and match:
+                            return (match, last_test, error, match.line)
                     if (
                         testbed_failure_reason
                         == "apt repeatedly failed to download packages"
                     ):
                         match, error = find_apt_get_failure(lines)
                         if error and match:
-                            return (match.lineno, last_test, error, match.line)
+                            return (match, last_test, error, match.line)
                         return (
-                            i + 1,
+                            SingleLineMatch.from_lines(lines, i),
                             last_test,
                             AptFetchFailure(None, testbed_failure_reason),
                             None,
                         )
                     return (
-                        i + 1,
+                        SingleLineMatch.from_lines(lines, i),
                         last_test,
                         AutopkgtestTestbedFailure(testbed_failure_reason),
                         None,
@@ -386,9 +383,9 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         lines[:i]
                     )
                     if error and match:
-                        return (match.lineno, last_test, error, match.line)
+                        return (match, last_test, error, match.line)
                     return (
-                        i + 1,
+                        SingleLineMatch.from_lines(lines, i),
                         last_test,
                         AutopkgtestErroneousPackage(m.group(1)),
                         None,
@@ -403,7 +400,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         and current_field in test_output_offset
                     ):
                         return (
-                            test_output_offset[current_field] + match.lineno,
+                            SingleLineMatch.from_lines(lines, test_output_offset[current_field] + match.offset),
                             last_test,
                             error,
                             match.line,
@@ -411,11 +408,11 @@ def find_autopkgtest_failure_description(  # noqa: C901
                 if msg == 'autopkgtest':
                     if lines[i+1].rstrip() == ': error cleaning up:':
                         return (
-                            test_output_offset[current_field] + 1,
+                            SingleLineMatch.from_lines(lines, test_output_offset[current_field]),
                             last_test,
                             AutopkgtestTimedOut(),
                             lines[i-1].rstrip())
-                return (i + 1, last_test, None, msg)
+                return (SingleLineMatch.from_lines(lines, i), last_test, None, msg)
         else:
             if current_field:
                 test_output[current_field].append(line)
@@ -429,7 +426,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
         if not lines:
             return (None, None, None, None)
         else:
-            return (len(lines), lines[-1], None, None)
+            return (SingleLineMatch.from_lines(lines, len(lines)-1), lines[-1], None, None)
     else:
         for (lineno, testname, result, reason, extra) in parse_autopkgtest_summary(
             summary_lines
@@ -439,7 +436,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
             assert result == "FAIL"
             if reason == "timed out":
                 error = AutopkgtestTimedOut()
-                return (summary_offset + lineno + 1, testname, error, reason)
+                return (SingleLineMatch.from_lines(lines, summary_offset + lineno), testname, error, reason)
             elif reason.startswith("stderr: "):
                 output = reason[len("stderr: ") :]
                 stderr_lines = test_output.get((testname, "stderr"), [])
@@ -450,7 +447,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         stderr_lines
                     )
                     if match is not None and stderr_offset is not None:
-                        offset = match.lineno + stderr_offset - 1
+                        offset = match.offset + stderr_offset
                         description = match.line
                     else:
                         offset = None
@@ -472,14 +469,14 @@ def find_autopkgtest_failure_description(  # noqa: C901
                             "unauthorized stderr output: %s"
                             % (testname, error.stderr_line)
                         )
-                return offset + 1, testname, error, description
+                return SingleLineMatch.from_lines(summary_lines, offset), testname, error, description
             elif reason == "badpkg":
                 output_lines = test_output.get((testname, "prepare testbed"), [])
                 output_offset = test_output_offset.get((testname, "prepare testbed"))
                 if output_lines and output_offset:
                     match, error = find_apt_get_failure(output_lines)
                     if error and match:
-                        return (match.offset + output_offset + 1, testname, error, None)
+                        return (SingleLineMatch.from_lines(lines, match.offset + output_offset), testname, error, None)
                 badpkg = None
                 blame = None
                 for line in extra:
@@ -493,7 +490,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     description = "Test %s failed" % testname
 
                 error = AutopkgtestDepsUnsatisfiable.from_blame_line(blame)
-                return (summary_offset + lineno + 1, testname, error, description)
+                return (SingleLineMatch.from_lines(lines, summary_offset + lineno), testname, error, description)
             else:
                 output_lines = test_output.get((testname, "output"), [])
                 output_offset = test_output_offset.get((testname, "output"))
@@ -503,12 +500,12 @@ def find_autopkgtest_failure_description(  # noqa: C901
                 if match is None or output_offset is None:
                     offset = summary_offset + lineno
                 else:
-                    offset = match.lineno + output_offset
+                    offset = match.offset + output_offset
                 if match is None:
                     description = "Test %s failed: %s" % (testname, reason)
                 else:
                     description = match.line
-                return offset + 1, testname, error, description  # type: ignore
+                return SingleLineMatch.from_lines(lines, offset), testname, error, description  # type: ignore
 
     return None, None, None, None
 
@@ -525,9 +522,9 @@ def find_testbed_setup_failure(lines):
             stderr = m.group(3)
             m = re.fullmatch(r"E: (.*): Chroot not found\\n", stderr)
             if m:
-                return (i + 1, line, ChrootNotFound(m.group(1)))
+                return (SingleLineMatch.from_lines(lines, i), line, ChrootNotFound(m.group(1)))
             return (
-                i + 1,
+                SingleLineMatch.from_lines(lines, i),
                 line,
                 AutopkgtestTestbedSetupFailure(command, status_code, stderr),
             )
@@ -542,9 +539,9 @@ def find_testbed_setup_failure(lines):
                 'Failed to stat file: No such file or directory',
                 stderr_output)
             if n:
-                return (i + 1, line, AutopkgtestDepChrootDisappeared())
+                return (SingleLineMatch.from_lines(lines, i), line, AutopkgtestDepChrootDisappeared())
             return (
-                i + 1,
+                SingleLineMatch.from_lines(lines, i),
                 line,
                 AutopkgtestTestbedSetupFailure(command, 1, stderr_output))
-    return None, None, None
+    return None, None
