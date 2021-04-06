@@ -8,7 +8,7 @@ setup(
         "buildlog_consultant",
         "buildlog_consultant.tests",
     ],
-    version="0.0.7",
+    version="0.0.8",
     author="Jelmer Vernooij",
     author_email="jelmer@jelmer.uk",
     url="https://github.com/jelmer/buildlog-consultant",

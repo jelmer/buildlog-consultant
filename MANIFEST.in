@@ -1,4 +1,4 @@
-CODE_OF_CONDUCT.md
-AUTHORS
-README.md
-SECURITY.md
+include CODE_OF_CONDUCT.md
+include AUTHORS
+include README.md
+include SECURITY.md

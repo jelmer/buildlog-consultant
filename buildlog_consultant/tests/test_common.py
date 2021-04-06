@@ -185,6 +185,11 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             None,
         )
 
+    def test_vignette_builder(self):
+        self.run_test(
+            ['  vignette builder \'R.rsp\' not found'],
+            1, MissingRPackage('R.rsp'))
+
     def test_dh_missing_addon(self):
         self.run_test(
             [
@@ -1512,6 +1517,9 @@ arch:all and the other not)""".splitlines(),
         self.run_test(
             ["ERROR: dependencies 'igraph', 'matlab', 'expm', 'RcppParallel' are not available for package 'markovchain'"],
             1, MissingRPackage('igraph'))
+        self.run_test(
+            ["Error: package 'BH' 1.66.0-1 was found, but >= 1.75.0.0 is required by 'RSQLite'"], 1,
+            MissingRPackage('BH', '1.75.0.0'))
 
     def test_mv_stat(self):
         self.run_test(
