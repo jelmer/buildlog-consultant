@@ -139,7 +139,7 @@ def find_apt_get_failure(lines):  # noqa: C901
         if line.startswith("E: Failed to fetch "):
             m = re.match("^E: Failed to fetch ([^ ]+)  (.*)", line)
             if m:
-                if 'No space left on device' in m.group(2):
+                if "No space left on device" in m.group(2):
                     problem = NoSpaceOnDevice()
                 else:
                     problem = AptFetchFailure(m.group(1), m.group(2))
@@ -153,7 +153,9 @@ def find_apt_get_failure(lines):  # noqa: C901
             return SingleLineMatch.from_lines(lines, lineno), error
         m = re.match("E: The repository '([^']+)' does not have a Release file.", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), AptMissingReleaseFile(m.group(1))
+            return SingleLineMatch.from_lines(lines, lineno), AptMissingReleaseFile(
+                m.group(1)
+            )
         m = re.match(
             "dpkg-deb: error: unable to write file '(.*)': " "No space left on device",
             line,
@@ -167,8 +169,10 @@ def find_apt_get_failure(lines):  # noqa: C901
             ret = SingleLineMatch.from_lines(lines, lineno), None
         m = re.match(r"E: Unable to locate package (.*)", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), AptPackageUnknown(m.group(1))
-        if line == 'E: Write error - write (28: No space left on device)':
+            return SingleLineMatch.from_lines(lines, lineno), AptPackageUnknown(
+                m.group(1)
+            )
+        if line == "E: Write error - write (28: No space left on device)":
             return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
         m = re.match(r"dpkg: error: (.*)", line)
         if m:
@@ -220,19 +224,20 @@ def find_cudf_output(lines):
 
 try:
     from typing import TypedDict
-except ImportError:   # python < 3.9
+except ImportError:  # python < 3.9
     from typing import Dict, Any
+
     ParsedRelation = Dict[str, Dict[str, Any]]
 else:
     ParsedRelation = TypedDict(
-        'ParsedRelation',
+        "ParsedRelation",
         {
-            'name': str,
-            'archqual': Optional[str],
-            'version': Optional[Tuple[str, str]],
-            'arch': Optional[List['PkgRelation.ArchRestriction']],
-            'restrictions': Optional[List[List['PkgRelation.BuildRestriction']]],
-        }
+            "name": str,
+            "archqual": Optional[str],
+            "version": Optional[Tuple[str, str]],
+            "arch": Optional[List["PkgRelation.ArchRestriction"]],
+            "restrictions": Optional[List[List["PkgRelation.BuildRestriction"]]],
+        },
     )
 
 
@@ -249,7 +254,10 @@ class UnsatisfiedAptDependencies:
         return cls(PkgRelation.parse_relations(text))
 
     def __repr__(self):
-        return "%s.from_str(%r)" % (type(self).__name__, PkgRelation.str(self.relations))
+        return "%s.from_str(%r)" % (
+            type(self).__name__,
+            PkgRelation.str(self.relations),
+        )
 
 
 @problem("unsatisfied-apt-conflicts")
@@ -296,7 +304,7 @@ def find_install_deps_failure_description(sbuildlog):
             error = error_from_dose3_report(dose3_output["report"])
         return DOSE3_SECTION, None, error
 
-    SECTION = 'install package build dependencies'
+    SECTION = "install package build dependencies"
     build_dependencies_lines = sbuildlog.get_section_lines(SECTION)
     if build_dependencies_lines:
         dose3_output = find_cudf_output(build_dependencies_lines)

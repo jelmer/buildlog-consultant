@@ -34,13 +34,13 @@ class ParseBrzErrorTests(unittest.TestCase):
             ),
             parse_brz_error(
                 "Inconsistency between source format and version: version "
-                "is not native, format is native.", []
+                "is not native, format is native.",
+                [],
             ),
         )
 
 
 class FindBrzBuildErrorTests(unittest.TestCase):
-
     def test_missing_debcargo_crate(self):
         lines = [
             "Using crate name: version-check, version 0.9.2",
@@ -48,7 +48,10 @@ class FindBrzBuildErrorTests(unittest.TestCase):
             "\x1b[1;31mSomething failed: Couldn't find any crate "
             "matching version-check = 0.9.2\n",
             " Try `debcargo update` to update the crates.io index.\x1b[0m\n",
-            "brz: ERROR: Debcargo failed to run.\n"]
+            "brz: ERROR: Debcargo failed to run.\n",
+        ]
         err, line = find_brz_build_error(lines)
-        self.assertEqual(line, "debcargo can't find crate version-check (version: 0.9.2)")
-        self.assertEqual(err, MissingDebcargoCrate('version-check', '0.9.2'))
+        self.assertEqual(
+            line, "debcargo can't find crate version-check (version: 0.9.2)"
+        )
+        self.assertEqual(err, MissingDebcargoCrate("version-check", "0.9.2"))
