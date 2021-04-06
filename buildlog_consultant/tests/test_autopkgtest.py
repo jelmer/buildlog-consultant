@@ -25,7 +25,9 @@ from ..autopkgtest import (
     AutopkgtestStderrFailure,
     find_autopkgtest_failure_description,
 )
+from .. import SingleLineMatch
 from ..common import MissingCommand, MissingFile
+
 
 
 class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
@@ -36,13 +38,14 @@ class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
 
     def test_no_match(self):
         self.assertEqual(
-            (1, "blalblala\n", None, None),
+            (SingleLineMatch(0, "blalblala\n"), "blalblala\n", None, None),
             find_autopkgtest_failure_description(["blalblala\n"]),
         )
 
     def test_unknown_error(self):
         self.assertEqual(
-            (2, "python-bcolz", None, "Test python-bcolz failed: some error"),
+            (SingleLineMatch(1, "python-bcolz         FAIL some error\n"),
+                "python-bcolz", None, "Test python-bcolz failed: some error"),
             find_autopkgtest_failure_description(
                 [
                     "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
@@ -54,7 +57,8 @@ class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
     def test_timed_out(self):
         error = AutopkgtestTimedOut()
         self.assertEqual(
-            (2, "unit-tests", error, "timed out"),
+            (SingleLineMatch(1, "unit-tests           FAIL timed out"),
+             "unit-tests", error, "timed out"),
             find_autopkgtest_failure_description(
                 [
                     "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
@@ -107,7 +111,19 @@ class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
 
         self.assertEqual(
             (
-                2,
+                SingleLineMatch(2, "blame: arg:/home/janitor/tmp/tmppvupofwl/build-area/"
+                    "bcolz-doc_1.2.1+ds2-4~jan+lint1_all.deb deb:bcolz-doc "
+                    "arg:/home/janitor/tmp/tmppvupofwl/build-area/python-"
+                    "bcolz-dbgsym_1.2.1+ds2-4~jan+lint1_amd64.deb "
+                    "deb:python-bcolz-dbgsym arg:/home/janitor/tmp/"
+                    "tmppvupofwl/build-area/python-bcolz_1.2.1+ds2-4~jan"
+                    "+lint1_amd64.deb deb:python-bcolz arg:/home/janitor/"
+                    "tmp/tmppvupofwl/build-area/python3-bcolz-dbgsym_1.2.1"
+                    "+ds2-4~jan+lint1_amd64.deb deb:python3-bcolz-dbgsym "
+                    "arg:/home/janitor/tmp/tmppvupofwl/build-area/python3-"
+                    "bcolz_1.2.1+ds2-4~jan+lint1_amd64.deb deb:python3-"
+                    "bcolz /home/janitor/tmp/tmppvupofwl/build-area/"
+                    "bcolz_1.2.1+ds2-4~jan+lint1.dsc\n"),
                 "python-bcolz",
                 error,
                 "Test python-bcolz failed: Test dependencies are unsatisfiable. "
@@ -156,7 +172,11 @@ class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                2,
+                SingleLineMatch(
+                    2, "blame: arg:/home/janitor/tmp/tmpgbn5jhou/build-area/cmake"
+                    "-extras_1.3+17.04.20170310-6~jan+unchanged1_all.deb "
+                    "deb:cmake-extras /home/janitor/tmp/tmpgbn5jhou/"
+                    "build-area/cmake-extras_1.3+17.04.20170310-6~jan.dsc"),
                 "intltool",
                 error,
                 "Test intltool failed: Test dependencies are unsatisfiable. "
@@ -183,7 +203,7 @@ class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
     def test_session_disappeared(self):
         error = AutopkgtestDepChrootDisappeared()
         self.assertEqual(
-            (4, None, error, "<VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory"),
+            (SingleLineMatch(3, "<VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory"), None, error, "<VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory"),
             find_autopkgtest_failure_description("""\
 autopkgtest [22:52:18]: starting date: 2021-04-01
 autopkgtest [22:52:18]: version 5.16
@@ -197,7 +217,7 @@ autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 3
         error = AutopkgtestStderrFailure("some output")
         self.assertEqual(
             (
-                6,
+                SingleLineMatch(2, "some output"),
                 "intltool",
                 error,
                 "Test intltool failed due to unauthorized stderr output: "
@@ -216,7 +236,7 @@ autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 3
             ),
         )
         self.assertEqual(
-            (2, "intltool", MissingCommand("ss"), "/tmp/bla: 12: ss: not found"),
+            (SingleLineMatch(1, "/tmp/bla: 12: ss: not found"), "intltool", MissingCommand("ss"), "/tmp/bla: 12: ss: not found"),
             find_autopkgtest_failure_description(
                 [
                     "autopkgtest [20:49:00]: test intltool:"
@@ -230,7 +250,9 @@ autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 3
         )
         self.assertEqual(
             (
-                2,
+                SingleLineMatch(
+                    1, 'command10            FAIL stderr: Can\'t exec "uptime": No such file or directory at '
+                    "/usr/lib/nagios/plugins/check_uptime line 529."),
                 "command10",
                 MissingCommand("uptime"),
                 'Can\'t exec "uptime": No such file or directory at '
@@ -253,7 +275,12 @@ autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 3
             "`timeout', expected `ok...'"
         )
         self.assertEqual(
-            (1, None, error, None),
+            (SingleLineMatch(0,
+                    "autopkgtest [12:46:18]: ERROR: testbed failure: sent "
+                    "`copyup /tmp/autopkgtest.9IStGJ/build.0Pm/src/ "
+                    "/tmp/autopkgtest.output.icg0g8e6/tests-tree/', got "
+                    "`timeout', expected `ok...'\n"),
+                None, error, None),
             find_autopkgtest_failure_description(
                 [
                     "autopkgtest [12:46:18]: ERROR: testbed failure: sent "
@@ -267,7 +294,8 @@ autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 3
     def test_testbed_failure_with_test(self):
         error = AutopkgtestTestbedFailure("testbed auxverb failed with exit code 255")
         self.assertEqual(
-            (4, "phpunit", error, None),
+            (SingleLineMatch(3, "autopkgtest [06:59:01]: ERROR: testbed failure: testbed auxverb failed with exit code 255\n"),
+                "phpunit", error, None),
             find_autopkgtest_failure_description(
                 """\
 Removing autopkgtest-satdep (0) ...
@@ -288,7 +316,7 @@ Exiting with 16
     def test_test_command_failure(self):
         self.assertEqual(
             (
-                7,
+                SingleLineMatch(5, 'Cannot open file "/usr/share/php/Pimple/autoload.php".\n'),
                 "command2",
                 MissingFile("/usr/share/php/Pimple/autoload.php"),
                 'Cannot open file "/usr/share/php/Pimple/autoload.php".\n',
@@ -319,7 +347,12 @@ Exiting with 4
     def test_dpkg_failure(self):
         self.assertEqual(
             (
-                8,
+                SingleLineMatch(
+                    7, 'autopkgtest [19:19:23]: ERROR: "dpkg --unpack '
+                    '/tmp/autopkgtest.hdIETy/4-autopkgtest-satdep.deb" failed with '
+                    'stderr "W: /var/lib/schroot/session/unstable-amd64-sbuild-'
+                    '7fb1b836-14f9-4709-8584-cbbae284db97: Failed to stat file: '
+                    'No such file or directory\n'),
                 "runtestsuite",
                 AutopkgtestDepChrootDisappeared(),
                 """\
@@ -350,7 +383,8 @@ No such file or directory
 
     def test_last_stderr_line(self):
         self.assertEqual(
-            (11, "unmunge", None, "Test unmunge failed: non-zero exit status 2"),
+            (SingleLineMatch(10, "unmunge              FAIL non-zero exit status 2\n"),
+             "unmunge", None, "Test unmunge failed: non-zero exit status 2"),
             find_autopkgtest_failure_description(
                 """\
 autopkgtest [17:38:49]: test unmunge: [-----------------------
@@ -378,7 +412,7 @@ Exiting with 4
     def test_python_error_in_output(self):
         self.assertEqual(
             (
-                7,
+                SingleLineMatch(5, 'builtins.OverflowError: mktime argument out of range\n'),
                 "unit-tests-3",
                 None,
                 "builtins.OverflowError: mktime argument out of range\n",

@@ -427,12 +427,13 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         description = stderr_lines[0]
                         offset = stderr_offset
                     else:
-                        offset = stderr_offset
+                        if stderr_offset is not None:
+                            offset = stderr_offset
                         description = None
                 else:
                     (match, error) = find_build_failure_description([output])
                     if match is not None:
-                        offset = match.offset
+                        offset = summary_offset + lineno + match.offset
                         description = match.line
                     else:
                         offset = None
@@ -457,18 +458,19 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         return (SingleLineMatch.from_lines(lines, match.offset + output_offset), testname, error, None)
                 badpkg = None
                 blame = None
-                for line in extra:
+                for extra_offset, line in enumerate(extra, 1):
                     if line.startswith("badpkg: "):
                         badpkg = line[len("badpkg: ") :]
                     if line.startswith("blame: "):
                         blame = line
+                        blame_offset = extra_offset
                 if badpkg is not None:
                     description = "Test %s failed: %s" % (testname, badpkg.rstrip("\n"))
                 else:
                     description = "Test %s failed" % testname
 
                 error = AutopkgtestDepsUnsatisfiable.from_blame_line(blame)
-                return (SingleLineMatch.from_lines(lines, summary_offset + lineno), testname, error, description)
+                return (SingleLineMatch.from_lines(lines, summary_offset + lineno + blame_offset), testname, error, description)
             else:
                 output_lines = test_output.get((testname, "output"), [])
                 output_offset = test_output_offset.get((testname, "output"))
@@ -500,10 +502,9 @@ def find_testbed_setup_failure(lines):
             stderr = m.group(3)
             m = re.fullmatch(r"E: (.*): Chroot not found\\n", stderr)
             if m:
-                return (SingleLineMatch.from_lines(lines, i), line, ChrootNotFound(m.group(1)))
+                return (SingleLineMatch.from_lines(lines, i), ChrootNotFound(m.group(1)))
             return (
                 SingleLineMatch.from_lines(lines, i),
-                line,
                 AutopkgtestTestbedSetupFailure(command, status_code, stderr),
             )
         m = re.fullmatch(
@@ -517,9 +518,8 @@ def find_testbed_setup_failure(lines):
                 'Failed to stat file: No such file or directory',
                 stderr_output)
             if n:
-                return (SingleLineMatch.from_lines(lines, i), line, AutopkgtestDepChrootDisappeared())
+                return (SingleLineMatch.from_lines(lines, i), AutopkgtestDepChrootDisappeared())
             return (
                 SingleLineMatch.from_lines(lines, i),
-                line,
                 AutopkgtestTestbedSetupFailure(command, 1, stderr_output))
     return None, None

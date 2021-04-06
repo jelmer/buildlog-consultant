@@ -57,6 +57,12 @@ class SingleLineMatch(object):
         self.offset = offset
         self.line = line
 
+    def __repr__(self):
+        return "%s(%r, %r)" % (type(self).__name__, self.offset, self.line)
+
+    def __eq__(self, other):
+        return isinstance(self, type(other)) and self.offset == other.offset and self.line == other.line
+
     @property
     def lineno(self) -> int:
         return self.offset + 1
