@@ -22,6 +22,9 @@ from dataclasses import dataclass
 __version__ = (0, 0, 7)
 
 
+problem_clses = {}
+
+
 class Problem(object):
 
     kind: str
@@ -44,6 +47,7 @@ def problem(kind, is_global=False):
         ret.kind = kind
         ret.is_global = is_global
         ret.json = json
+        problem_clses[ret.kind] = ret
         return ret
     return _wrap
 
