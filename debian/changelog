@@ -1,4 +1,12 @@
+buildlog-consultant (0.0.8-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+   + Fixes sbuild log section parsing. Closes: #986444
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 06 Apr 2021 17:33:34 -0000
+
 buildlog-consultant (0.0.7-1) unstable; urgency=low
+
   * New upstream release.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 04 Apr 2021 20:31:23 +0100

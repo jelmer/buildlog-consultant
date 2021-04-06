@@ -1598,6 +1598,11 @@ build_failure_regexps = [
         lambda m: MissingCommand('pkg-config'),
     ),
     (
+        ".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) require (.*) >= (.*), (.*) which were not found.",
+        lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
+    ),
+
+    (
         r"dh: Unknown sequence --(.*) "
         r"\(options should not come before the sequence\)",
         dh_with_order,
@@ -2351,11 +2356,26 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(1)),
     ),
 
+    (r'OSError: (.*): cannot open shared object file: No such file or directory',
+     lambda m: MissingFile(m.group(1))),
+
     (r'The "(.*)" executable has not been found\.',
      lambda m: MissingCommand(m.group(1))),
 
     (r'\! LaTeX Error: File `(.*)\' not found\.',
      lambda m: MissingLatexFile(m.group(1))),
+
+    (r'  vignette builder \'(.*)\' not found',
+     lambda m: MissingRPackage(m.group(1))),
+
+    (r'Error: package \'(.*)\' (.*) was found, but >= (.*) is required by \'(.*)\'',
+     lambda m: MissingRPackage(m.group(1), m.group(3))),
+
+    (r'  there is no package called \'(.*)\'',
+     lambda m: MissingRPackage(m.group(1))),
+
+    (r'Exception: cannot execute command due to missing interpreter: (.*)',
+     command_missing),
 
     # Intentionally at the bottom of the list.
     (
@@ -2699,26 +2719,43 @@ def find_build_failure_description(  # noqa: C901
 
 def main(argv=None):
     import argparse
+    import json
 
     parser = argparse.ArgumentParser("analyse-build-log")
     parser.add_argument("path", type=str)
+    parser.add_argument("--context", "-c", type=int, default=5)
+    parser.add_argument("--json", action="store_true", help="Output JSON.")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     with open(args.path, "r") as f:
-        lines = f.readlines()
+        lines = list(f.readlines())
 
     m, problem = find_build_failure_description(lines)
 
-    if not m:
-        logging.info('No issues found')
+    if args.json:
+        ret = {}
+        if m:
+            ret['lineno'] = m.lineno
+            ret['line'] = m.line
+        if problem:
+            ret['problem'] = problem.kind
+            try:
+                ret['details'] = problem.json()
+            except NotImplementedError:
+                ret['details'] = None
+        json.dump(ret, sys.stdout)
     else:
-        logging.info('Issue found at line %d:', m.lineno)
-        logging.info('%s', m.line)
+        if not m:
+            logging.info('No issues found')
+        else:
+            logging.info('Issue found at line %d:', m.lineno)
+            for i in range(max(0, m.offset - args.context), min(len(lines), m.offset + args.context + 1)):
+                logging.info(" %s  %s", ">" if m.offset == i else " ", lines[i].rstrip('\n'))
 
-    if problem:
-        logging.info('Identified issue: %s: %s', problem.kind, problem)
+        if problem:
+            logging.info('Identified issue: %s: %s', problem.kind, problem)
 
 
 if __name__ == '__main__':

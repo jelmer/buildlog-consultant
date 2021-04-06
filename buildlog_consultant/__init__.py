@@ -19,7 +19,10 @@
 
 from dataclasses import dataclass
 
-__version__ = (0, 0, 7)
+__version__ = (0, 0, 8)
+
+
+problem_clses = {}
 
 
 class Problem(object):
@@ -44,6 +47,7 @@ def problem(kind, is_global=False):
         ret.kind = kind
         ret.is_global = is_global
         ret.json = json
+        problem_clses[ret.kind] = ret
         return ret
     return _wrap
 
@@ -56,6 +60,12 @@ class SingleLineMatch(object):
     def __init__(self, offset: int, line: str):
         self.offset = offset
         self.line = line
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (type(self).__name__, self.offset, self.line)
+
+    def __eq__(self, other):
+        return isinstance(self, type(other)) and self.offset == other.offset and self.line == other.line
 
     @property
     def lineno(self) -> int:
