@@ -623,6 +623,16 @@ class MissingLibrary:
         return "missing library: %s" % self.library
 
 
+@problem("missing-static-library")
+class MissingStaticLibrary:
+
+    library: str
+    filename: str
+
+    def __str__(self):
+        return "missing static library: %s" % self.library
+
+
 def ld_missing_lib(m):
     return MissingLibrary(m.group(1))
 
@@ -1236,6 +1246,9 @@ class CMakeErrorMatcher(Matcher):
         (r"\[([^ ]+)\] not found", lambda m: MissingVagueDependency(m.group(1))),
         (r"([^ ]+) not found", lambda m: MissingVagueDependency(m.group(1))),
         (r"error: could not find git .*", lambda m: MissingCommand("git")),
+        (r'Could not find \'(.*)\' executable[\!,].*', lambda m: MissingCommand(m.group(1))),
+        (r'Could not find (.*)_STATIC_LIBRARIES using the following names: ([a-zA-z0-9_.]+)',
+         lambda m: MissingStaticLibrary(m.group(1), m.group(2))),
     ]
 
     @classmethod
@@ -1269,9 +1282,9 @@ class CMakeErrorMatcher(Matcher):
                     error = None
                 else:
                     error = fn(m)
-                break
+                return linenos, error
 
-        return linenos, error
+        return [], None
 
 
 @problem("missing-fortran-compiler")
@@ -2357,6 +2370,11 @@ build_failure_regexps = [
         lambda m: UnknownCertificateAuthority(m.group(1)),
     ),
     (
+        r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
+        lambda m: UnknownCertificateAuthority(m.group(1)),
+    ),
+
+    (
         r"\t\(Do you need to predeclare (.*)\?\)",
         lambda m: MissingPerlPredeclared(m.group(1)),
     ),
@@ -2429,6 +2447,8 @@ build_failure_regexps = [
         lambda m: MissingRPackage(m.group(1), m.group(3)),
     ),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
+    (r'  namespace "(.*)" .* is being loaded, but \>= (.*) is required',
+     lambda m: MissingRPackage(m.group(1), m.group(2))),
     (
         r"Exception: cannot execute command due to missing interpreter: (.*)",
         command_missing,

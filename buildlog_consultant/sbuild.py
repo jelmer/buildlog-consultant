@@ -85,20 +85,6 @@ class SbuildFailure(Exception):
         return ret
 
 
-SBUILD_FOCUS_SECTION: Dict[Optional[str], str] = {
-    "build": "build",
-    "run-post-build-commands": "post build commands",
-    "post-build": "post build",
-    "install-deps": "install package build dependencies",
-    "explain-bd-uninstallable": "install package build dependencies",
-    "apt-get-update": "update chroot",
-    "arch-check": "check architectures",
-    "check-space": "cleanup",
-    "unpack": "build",
-    "fetch-src": "fetch source files",
-}
-
-
 @problem("unexpected-local-upstream-changes")
 class DpkgSourceLocalChanges:
 
@@ -648,7 +634,7 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
         return SbuildFailure("unpack", str(error), error, section=section, match=match)
     description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None, section=section, match=None
+        failed_stage, description, error=None, phase=None, section=section, match=None
     )
 
 
