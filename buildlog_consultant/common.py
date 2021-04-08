@@ -1395,6 +1395,15 @@ class MissingXDisplay:
         return "No X Display"
 
 
+@problem("inactive-killed")
+class InactiveKilled:
+
+    minutes: int
+
+    def __str__(self):
+        return "Killed due to inactivity"
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -2453,6 +2462,11 @@ build_failure_regexps = [
         r"Exception: cannot execute command due to missing interpreter: (.*)",
         command_missing,
     ),
+    (
+     r'E: Build killed with signal TERM after ([0-9]+) minutes of inactivity',
+     lambda m: InactiveKilled(int(m.group(1)))
+     ),
+
     # Intentionally at the bottom of the list.
     (
         r"configure: error: Please install (.*) from (http:\/\/[^ ]+)",
