@@ -821,45 +821,46 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             sbuildlog, failed_stage
         )
     except KeyError:
-        logging.warning("unknown failed stage: %s", failed_stage)
-        description = "build failed stage %s" % failed_stage
-        return SbuildFailure(
-            failed_stage, description, error=None, phase=None, section=None, match=None
-        )
-    else:
-        if overall_failure is not None:
-            return overall_failure
-
-        description = "build failed"
-        phase = ("buildenv",)
-        if sbuildlog.section_titles() == [None]:
-            section = sbuildlog.sections[0]
-            match, error = find_preamble_failure_description(section.lines)
-            if error is not None:
-                description = str(error)
-            else:
-                (match, error) = find_build_failure_description(section.lines)
-                if match is None:
-                    error, description = find_brz_build_error(section.lines)
-                else:
-                    description = match.line.rstrip("\n")
-
+        if failed_stage is not None:
+            logging.warning("unknown failed stage: %s", failed_stage)
+            description = "build failed stage %s" % failed_stage
             return SbuildFailure(
-                failed_stage,
-                description,
-                error=error,
-                phase=phase,
-                section=section,
-                match=match,
+                failed_stage, description, error=None, phase=None, section=None, match=None
             )
+
+    if overall_failure is not None:
+        return overall_failure
+
+    description = "build failed"
+    phase = ("buildenv",)
+    if sbuildlog.section_titles() == [None]:
+        section = sbuildlog.sections[0]
+        match, error = find_preamble_failure_description(section.lines)
+        if error is not None:
+            description = str(error)
+        else:
+            (match, error) = find_build_failure_description(section.lines)
+            if match is None:
+                error, description = find_brz_build_error(section.lines)
+            else:
+                description = match.line.rstrip("\n")
+
         return SbuildFailure(
             failed_stage,
             description,
             error=error,
             phase=phase,
-            section=None,
-            match=None,
+            section=section,
+            match=match,
         )
+    return SbuildFailure(
+        failed_stage,
+        description,
+        error=error,
+        phase=phase,
+        section=None,
+        match=None,
+    )
 
 
 def parse_sbuild_log(f: BinaryIO) -> Iterator[SbuildLogSection]:
