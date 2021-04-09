@@ -63,7 +63,6 @@ from ..common import (
     DhAddonLoadFailure,
     NoSpaceOnDevice,
     DhWithOrderIncorrect,
-    FailedGoTest,
     UpstartFilePresent,
     DirectoryNonExistant,
     UnknownCertificateAuthority,
@@ -1640,7 +1639,7 @@ arch:all and the other not)""".splitlines(),
         self.run_test(
             ["FAIL\tgithub.com/edsrzf/mmap-go\t0.083s"],
             1,
-            FailedGoTest("github.com/edsrzf/mmap-go"),
+            None,
         )
 
     def test_debhelper_pattern(self):
