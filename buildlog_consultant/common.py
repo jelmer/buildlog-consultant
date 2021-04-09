@@ -729,27 +729,6 @@ def r_too_old(m):
     return MissingRPackage(package, new_version)
 
 
-class FailedGoTest(Problem):
-
-    kind = "failed-go-test"
-
-    def __init__(self, test):
-        self.test = test
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.test == other.test
-
-    def __str__(self):
-        return "failed go test: %s" % self.test
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.test)
-
-
-def go_test_failed(m):
-    return FailedGoTest(m.group(1))
-
-
 @problem("debhelper-pattern-not-found")
 class DebhelperPatternNotFound:
 
@@ -1404,6 +1383,13 @@ class InactiveKilled:
         return "Killed due to inactivity"
 
 
+@problem("missing-pause-credentials")
+class MissingPauseCredentials:
+
+    def __str__(self):
+        return "Missing credentials for PAUSE"
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -1862,7 +1848,7 @@ build_failure_regexps = [
     (r"IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
     (r"error: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
     (r"E   IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
-    ("FAIL\t(.+\\/.+\\/.+)\t([0-9.]+)s", go_test_failed),
+    ("FAIL\t(.+\\/.+\\/.+)\t([0-9.]+)s", None),
     (
         r'dh_(.*): Cannot find \(any matches for\) "(.*)" \(tried in (.*)\)',
         dh_pattern_no_matches,
@@ -2470,6 +2456,14 @@ build_failure_regexps = [
      r'E: Build killed with signal TERM after ([0-9]+) minutes of inactivity',
      lambda m: InactiveKilled(int(m.group(1)))
      ),
+
+    (r'\[Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! '
+     r'Please set it or specify an authority for this plugin. at inline delegation in '
+     r'Dist::Zilla::Plugin::Authority for logger->log_fatal \(attribute declared in '
+     r'/usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\.',
+     lambda m: MissingPauseCredentials()),
+
+    # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
     (
