@@ -827,9 +827,9 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
             return SbuildFailure(
                 failed_stage, description, error=None, phase=None, section=None, match=None
             )
-
-    if overall_failure is not None:
-        return overall_failure
+    else:
+        if overall_failure is not None:
+            return overall_failure
 
     description = "build failed"
     phase = ("buildenv",)
