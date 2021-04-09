@@ -1517,6 +1517,7 @@ build_failure_regexps = [
         r"Error: Can't resolve '(.*)' in '.*'",
         node_module_missing,
     ),
+    (r'npm ERR\! sh: [0-9]+: (.*): not found', command_missing),
     (r'npm ERR\! (.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: Cannot find module \'(.*)\' or its corresponding type declarations.',
      lambda m: MissingNodeModule(m.group(2))),
 
