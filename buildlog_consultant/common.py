@@ -1527,6 +1527,7 @@ build_failure_regexps = [
     ),
     (r".*: line \d+: ([^ ]+): command not found", command_missing),
     (r".*: line \d+: ([^ ]+): Permission denied", None),
+    (r'/usr/bin/texi2dvi: TeX neither supports -recorder nor outputs \\openout lines in its log file', None),
     (r"\/bin\/sh: \d+: ([^ ]+): not found", command_missing),
     (r"sh: \d+: ([^ ]+): not found", command_missing),
     (r".*\.sh: \d+: ([^ ]+): not found", command_missing),
@@ -1664,6 +1665,10 @@ build_failure_regexps = [
         r".*Can\'t locate (.*).pm in @INC \(you may need to install the "
         r"(.*) module\) \(@INC contains: (.*)\)\.",
         perl_missing_module,
+    ),
+    (
+        r"\[DynamicPrereqs\] Can't locate (.*) at inline delegation in .*",
+        lambda m: MissingPerlModule(None, m.group(1), None)
     ),
     (r">\(error\): Could not expand \[(.*)\'", perl_expand_failed),
     (
