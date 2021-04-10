@@ -23,7 +23,7 @@ from typing import List, Optional, Tuple
 import re
 import textwrap
 
-from . import Problem, SingleLineMatch, problem
+from . import Problem, SingleLineMatch, problem, version_string
 
 
 logger = logging.getLogger(__name__)
@@ -2821,6 +2821,9 @@ def main(argv=None):
     parser.add_argument("path", type=str)
     parser.add_argument("--context", "-c", type=int, default=5)
     parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version_string
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")

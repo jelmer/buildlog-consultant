@@ -22,7 +22,7 @@ from typing import List, Tuple, Iterator, BinaryIO, Optional, Union, Dict
 from dataclasses import dataclass
 import logging
 
-from . import Problem, problem, SingleLineMatch
+from . import Problem, problem, SingleLineMatch, version_string
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
@@ -1012,6 +1012,9 @@ def main(argv=None):
     parser.add_argument("--json", action="store_true", help="Output JSON.")
     parser.add_argument(
         "--context", "-c", type=int, default=5, help="Number of context lines to print."
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version_string
     )
     parser.add_argument("path", type=str)
     args = parser.parse_args()

@@ -20,6 +20,7 @@
 from dataclasses import dataclass
 
 __version__ = (0, 0, 9)
+version_string = '.'.join(map(str, __version__))
 
 
 problem_clses = {}
