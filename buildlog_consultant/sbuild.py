@@ -24,6 +24,7 @@ import logging
 
 from . import Problem, problem, SingleLineMatch
 from .apt import (
+    find_apt_get_failure,
     find_apt_get_update_failure,
     find_install_deps_failure_description,
 )
@@ -48,8 +49,8 @@ class SbuildFailure(Exception):
         description: Optional[str],
         error: Optional["Problem"] = None,
         phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
-        section: Optional['SbuildLogSection'] = None,
-        match: Optional[SingleLineMatch] = None
+        section: Optional["SbuildLogSection"] = None,
+        match: Optional[SingleLineMatch] = None,
     ):
         self.stage = stage
         self.description = description
@@ -69,32 +70,20 @@ class SbuildFailure(Exception):
 
     def json(self):
         ret = {
-            'stage': self.stage,
-            'phase': self.phase,
-            'section': self.section.title if self.section else None,
-            'lineno': (self.section.offsets[0] + self.match.lineno) if self.match else None,
-            }
+            "stage": self.stage,
+            "phase": self.phase,
+            "section": self.section.title if self.section else None,
+            "lineno": (self.section.offsets[0] + self.match.lineno)
+            if self.match
+            else None,
+        }
         if self.error:
-            ret['kind'] = self.error.kind
+            ret["kind"] = self.error.kind
             try:
-                ret['details'] = self.error.json()
+                ret["details"] = self.error.json()
             except NotImplementedError:
-                ret['details'] = None
+                ret["details"] = None
         return ret
-
-
-SBUILD_FOCUS_SECTION: Dict[Optional[str], str] = {
-    "build": "build",
-    "run-post-build-commands": "post build commands",
-    "post-build": "post build",
-    "install-deps": "install package build dependencies",
-    "explain-bd-uninstallable": "install package build dependencies",
-    "apt-get-update": "update chroot",
-    "arch-check": "check architectures",
-    "check-space": "cleanup",
-    "unpack": "build",
-    "fetch-src": "fetch source files",
-}
 
 
 @problem("unexpected-local-upstream-changes")
@@ -119,14 +108,12 @@ class DpkgSourceLocalChanges:
 
 @problem("unrepresentable-local-changes")
 class DpkgSourceUnrepresentableChanges:
-
     def __str__(self):
         return "Tree has unrepresentable local changes."
 
 
 @problem("unwanted-binary-files")
 class DpkgUnwantedBinaryFiles:
-
     def __str__(self):
         return "Tree has unwanted binary files."
 
@@ -209,7 +196,6 @@ class UnknownMercurialExtraFields:
 
 @problem("upstream-pgp-signature-verification-failed")
 class UpstreamPGPSignatureVerificationFailed:
-
     def __str__(self):
         return "Unable to verify the PGP signature on the upstream source"
 
@@ -247,7 +233,6 @@ class UScanFailed:
 
 @problem("inconsistent-source-format")
 class InconsistentSourceFormat:
-
     def __str__(self):
         return "Inconsistent source format between version and source format"
 
@@ -296,8 +281,8 @@ class MissingDebcargoCrate:
     @classmethod
     def from_string(cls, text):
         text = text.strip()
-        if '=' in text:
-            (crate, version) = text.split('=')
+        if "=" in text:
+            (crate, version) = text.split("=")
             return cls(crate.strip(), version.strip())
         else:
             return cls(text)
@@ -309,7 +294,9 @@ class MissingDebcargoCrate:
         return ret
 
 
-def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[SingleLineMatch], Optional[Problem]]:  # noqa: C901
+def find_preamble_failure_description(  # noqa: C901
+    lines: List[str],
+) -> Tuple[Optional[SingleLineMatch], Optional[Problem]]:
     ret: Tuple[Optional[int], Optional[str], Optional[Problem]] = (None, None)
     OFFSET = 100
     err: Problem
@@ -384,11 +371,12 @@ def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[Single
             ret = SingleLineMatch.from_lines(lines, lineno), err
 
         m = re.match("E: Bad version unknown in (.*)", line)
-        if m and lines[lineno-1].startswith('LINE: '):
+        if m and lines[lineno - 1].startswith("LINE: "):
             m = re.match(
-                r'dpkg-parsechangelog: warning: .*\(l[0-9]+\): '
-                r'version \'(.*)\' is invalid: (.*)',
-                lines[lineno-2])
+                r"dpkg-parsechangelog: warning: .*\(l[0-9]+\): "
+                r"version \'(.*)\' is invalid: (.*)",
+                lines[lineno - 2],
+            )
             if m:
                 err = DpkgBadVersion(m.group(1), m.group(2))
                 return SingleLineMatch.from_lines(lines, lineno), err
@@ -409,17 +397,14 @@ def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[Single
             err = PatchApplicationFailed(patchname)
             return SingleLineMatch.from_lines(lines, lineno), err
         m = re.match(
-            "dpkg-source: error: "
-            "can't build with source format '(.*)': "
-            "(.*)",
+            "dpkg-source: error: " "can't build with source format '(.*)': " "(.*)",
             line,
         )
         if m:
             err = SourceFormatUnbuildable(m.group(1))
             return SingleLineMatch.from_lines(lines, lineno), err
         m = re.match(
-            "dpkg-source: error: cannot read (.*): "
-            "No such file or directory",
+            "dpkg-source: error: cannot read (.*): " "No such file or directory",
             line,
         )
         if m:
@@ -432,9 +417,7 @@ def find_preamble_failure_description(lines: List[str]) -> Tuple[Optional[Single
             line,
         )
         if m:
-            (match, err) = find_build_failure_description(
-                [m.group(2)]
-            )
+            (match, err) = find_build_failure_description([m.group(2)])
             if err is None:
                 err = SourceFormatUnsupported(m.group(1))
             return SingleLineMatch.from_lines(lines, lineno), err
@@ -460,39 +443,40 @@ class DebcargoUnacceptablePredicate:
     predicate: str
 
     def __str__(self):
-        return "Cannot represent prerelease part of dependency: %s" % (
-            self.predicate)
+        return "Cannot represent prerelease part of dependency: %s" % (self.predicate)
 
 
 def _parse_debcargo_failure(m, pl):
-    MORE_TAIL = '\x1b[0m\n'
-    MORE_HEAD = '\x1b[1;31mSomething failed: '
+    MORE_TAIL = "\x1b[0m\n"
+    MORE_HEAD = "\x1b[1;31mSomething failed: "
     if pl[-1].endswith(MORE_TAIL):
-        extra = [pl[-1][:-len(MORE_TAIL)]]
+        extra = [pl[-1][: -len(MORE_TAIL)]]
         for line in reversed(pl[:-1]):
             if extra[0].startswith(MORE_HEAD):
-                extra[0] = extra[0][len(MORE_HEAD):]
+                extra[0] = extra[0][len(MORE_HEAD) :]
                 break
             extra.insert(0, line)
         else:
             extra = []
         if extra and extra[-1] == (
-                ' Try `debcargo update` to update the crates.io index.'):
-            n = re.match(r'Couldn\'t find any crate matching (.*)', extra[-2])
+            " Try `debcargo update` to update the crates.io index."
+        ):
+            n = re.match(r"Couldn\'t find any crate matching (.*)", extra[-2])
             if n:
                 return MissingDebcargoCrate.from_string(n.group(1))
             else:
                 return DpkgSourcePackFailed(extra[-2])
         elif extra:
             m = re.match(
-                r'Cannot represent prerelease part of dependency: (.*) Predicate \{ (.*) \}',
-                extra[0])
+                r"Cannot represent prerelease part of dependency: (.*) Predicate \{ (.*) \}",
+                extra[0],
+            )
             if m:
                 return DebcargoUnacceptablePredicate(m.group(2))
         else:
-            return DebcargoFailure(''.join(extra))
+            return DebcargoFailure("".join(extra))
 
-    return DebcargoFailure('Debcargo failed to run')
+    return DebcargoFailure("Debcargo failed to run")
 
 
 BRZ_ERRORS = [
@@ -568,9 +552,12 @@ def find_creation_session_error(lines):
         if line.startswith("E: "):
             ret = SingleLineMatch.from_lines(lines, i), None
         m = re.fullmatch(
-            "E: Chroot for distribution (.*), architecture (.*) not found\n", line)
+            "E: Chroot for distribution (.*), architecture (.*) not found\n", line
+        )
         if m:
-            return SingleLineMatch.from_lines(lines, i), ChrootNotFound('%s-%s-sbuild' % (m.group(1), m.group(2)))
+            return SingleLineMatch.from_lines(lines, i), ChrootNotFound(
+                "%s-%s-sbuild" % (m.group(1), m.group(2))
+            )
         if line.endswith(": No space left on device\n"):
             return SingleLineMatch.from_lines(lines, i), NoSpaceOnDevice()
 
@@ -622,7 +609,10 @@ class SbuildLog(object):
     def parse(cls, f: BinaryIO):
         sections = []
         for section in parse_sbuild_log(f):
-            logging.debug("Section %s (lines %d-%d)" % (section.title, section.offsets[0], section.offsets[1]))
+            logging.debug(
+                "Section %s (lines %d-%d)"
+                % (section.title, section.offsets[0], section.offsets[1])
+            )
             sections.append(section)
         return cls(sections)
 
@@ -633,19 +623,21 @@ class SbuildLog(object):
 def find_failure_fetch_src(sbuildlog, failed_stage):
     section = sbuildlog.get_section("fetch source files")
     if not section:
-        logging.warning('expected section: fetch source files')
+        logging.warning("expected section: fetch source files")
         return None
     section_lines = section.lines
     if not section_lines[0].strip():
         section_lines = section_lines[1:]
-    if len(section_lines) == 1 and section_lines[0].startswith('E: Could not find '):
+    if len(section_lines) == 1 and section_lines[0].startswith("E: Could not find "):
         match, error = find_preamble_failure_description(
-            sbuildlog.get_section_lines(None))
+            sbuildlog.get_section_lines(None)
+        )
         return SbuildFailure("unpack", str(error), error, section=section, match=match)
+    (match, error) = find_apt_get_failure(section.lines)
     description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None,
-        section=section, match=None)
+        failed_stage, description, error=error, phase=None, section=section, match=match
+    )
 
 
 def find_failure_create_session(sbuildlog, failed_stage):
@@ -656,19 +648,26 @@ def find_failure_create_session(sbuildlog, failed_stage):
     if description is None:
         description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=phase,
-        section=section, match=match)
+        failed_stage,
+        description,
+        error=error,
+        phase=phase,
+        section=section,
+        match=match,
+    )
 
 
 def find_failure_unpack(sbuildlog, failed_stage):
     section = sbuildlog.get_section("build")
     match, error = find_preamble_failure_description(section.lines)
     if error:
-        return SbuildFailure(failed_stage, str(error), error, section=section, match=match)
+        return SbuildFailure(
+            failed_stage, str(error), error, section=section, match=match
+        )
     description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None, section=section,
-        match=match)
+        failed_stage, description, error=error, phase=None, section=section, match=match
+    )
 
 
 def find_failure_build(sbuildlog, failed_stage):
@@ -679,94 +678,117 @@ def find_failure_build(sbuildlog, failed_stage):
     if error:
         description = str(error)
     elif match:
-        description = match.line.rstrip('\n')
+        description = match.line.rstrip("\n")
     else:
         description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=phase,
-        section=section, match=match)
+        failed_stage,
+        description,
+        error=error,
+        phase=phase,
+        section=section,
+        match=match,
+    )
 
 
 def find_failure_autopkgtest(sbuildlog, failed_stage):
     focus_section = {
         "run-post-build-commands": "post build commands",
         "post-build": "post build",
-        "autopkgtest": "autopkgtest"}[failed_stage]
+        "autopkgtest": "autopkgtest",
+    }[failed_stage]
     section = sbuildlog.get_section(focus_section)
-
-    (
-        match,
-        testname,
-        error,
-        description,
-    ) = find_autopkgtest_failure_description(section.lines)
-    if not description:
-        description = str(error)
+    if section is not None:
+        (
+            match,
+            testname,
+            error,
+            description,
+        ) = find_autopkgtest_failure_description(section.lines)
+        if not description:
+            description = str(error)
+        phase = ("autopkgtest", testname)
+    else:
+        description = None
+        error = None
+        match = None
+        phase = None
     if not description:
         description = "build failed stage %s" % failed_stage
-    phase = ("autopkgtest", testname)
     return SbuildFailure(
-        failed_stage, description, error=error, phase=phase, section=section,
-        match=match)
+        failed_stage,
+        description,
+        error=error,
+        phase=phase,
+        section=section,
+        match=match,
+    )
 
 
 def find_failure_apt_get_update(sbuildlog, failed_stage):
-    focus_section, match, error = find_apt_get_update_failure(
-        sbuildlog
-    )
+    focus_section, match, error = find_apt_get_update_failure(sbuildlog)
     if error:
         description = str(error)
     elif match:
-        description = match.line.rstrip('\n')
+        description = match.line.rstrip("\n")
     else:
         description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None,
+        failed_stage,
+        description,
+        error=error,
+        phase=None,
         section=sbuildlog.get_section(focus_section),
-        match=match)
+        match=match,
+    )
 
 
 def find_failure_arch_check(sbuildlog, failed_stage):
-    section = sbuildlog.get_section("check architectures",)
+    section = sbuildlog.get_section(
+        "check architectures",
+    )
     (match, error) = find_arch_check_failure_description(section.lines)
     if error:
         description = str(error)
     else:
         description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None,
-        section=section, match=match)
+        failed_stage, description, error=error, phase=None, section=section, match=match
+    )
 
 
 def find_failure_check_space(sbuildlog, failed_stage):
-    section = sbuildlog.get_section('cleanup')
+    section = sbuildlog.get_section("cleanup")
     (match, error) = find_check_space_failure_description(section.lines)
     if error:
         description = str(error)
     else:
         description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None, section=section,
-        match=match)
+        failed_stage, description, error=error, phase=None, section=section, match=match
+    )
 
 
 def find_failure_install_deps(sbuildlog, failed_stage):
-    (focus_section, match, error) = find_install_deps_failure_description(
-        sbuildlog
-    )
+    (focus_section, match, error) = find_install_deps_failure_description(sbuildlog)
     if error:
         description = str(error)
     elif match:
         if match.line.startswith("E: "):
-            description = match.line[3:].rstrip('\n')
+            description = match.line[3:].rstrip("\n")
         else:
-            description = match.line.rstrip('\n')
+            description = match.line.rstrip("\n")
     else:
         description = "build failed stage %s" % failed_stage
-    phase = ("build", )
+    phase = ("build",)
     return SbuildFailure(
-        failed_stage, description, error=error, phase=phase,
-        section=sbuildlog.get_section(focus_section), match=match)
+        failed_stage,
+        description,
+        error=error,
+        phase=phase,
+        section=sbuildlog.get_section(focus_section),
+        match=match,
+    )
 
 
 FAILED_STAGE_FAIL_FINDERS = {
@@ -779,13 +801,11 @@ FAILED_STAGE_FAIL_FINDERS = {
     "check-space": find_failure_check_space,
     "install-deps": find_failure_install_deps,
     "explain-bd-uninstallable": find_failure_install_deps,
-
     "autopkgtest": find_failure_autopkgtest,
-
     # We run autopkgtest as only post-build step at the moment.
     "run-post-build-commands": find_failure_autopkgtest,
     "post-build": find_failure_autopkgtest,
-    }
+}
 
 
 def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
@@ -798,35 +818,56 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
     if len(sbuildlog.sections) == 1:
         match, error = find_preamble_failure_description(sbuildlog.sections[0].lines)
         if error:
-            return SbuildFailure("unpack", str(error), error, section=sbuildlog.sections[0], match=match)
+            return SbuildFailure(
+                "unpack", str(error), error, section=sbuildlog.sections[0], match=match
+            )
 
     failed_stage = sbuildlog.get_failed_stage()
     try:
-        overall_failure = FAILED_STAGE_FAIL_FINDERS[failed_stage](sbuildlog, failed_stage)
+        overall_failure = FAILED_STAGE_FAIL_FINDERS[failed_stage](
+            sbuildlog, failed_stage
+        )
     except KeyError:
-        logging.warning('unknown failed stage: %s', failed_stage)
-        description = "build failed stage %s" % failed_stage
-        return SbuildFailure(failed_stage, description, error=None, phase=None, section=None, match=None)
+        if failed_stage is not None:
+            logging.warning("unknown failed stage: %s", failed_stage)
+            description = "build failed stage %s" % failed_stage
+            return SbuildFailure(
+                failed_stage, description, error=None, phase=None, section=None, match=None
+            )
     else:
         if overall_failure is not None:
             return overall_failure
 
-        description = "build failed"
-        phase = ("buildenv",)
-        if sbuildlog.section_titles() == [None]:
-            section = sbuildlog.sections[0]
-            match, error = find_preamble_failure_description(section.lines)
-            if error is not None:
-                description = str(error)
+    description = "build failed"
+    phase = ("buildenv",)
+    if sbuildlog.section_titles() == [None]:
+        section = sbuildlog.sections[0]
+        match, error = find_preamble_failure_description(section.lines)
+        if error is not None:
+            description = str(error)
+        else:
+            (match, error) = find_build_failure_description(section.lines)
+            if match is None:
+                error, description = find_brz_build_error(section.lines)
             else:
-                (match, error) = find_build_failure_description(section.lines)
-                if match is None:
-                    error, description = find_brz_build_error(section.lines)
-                else:
-                    description = match.line.rstrip('\n')
+                description = match.line.rstrip("\n")
 
-            return SbuildFailure(failed_stage, description, error=error, phase=phase, section=section, match=match)
-        return SbuildFailure(failed_stage, description, error=error, phase=phase, section=None, match=None)
+        return SbuildFailure(
+            failed_stage,
+            description,
+            error=error,
+            phase=phase,
+            section=section,
+            match=match,
+        )
+    return SbuildFailure(
+        failed_stage,
+        description,
+        error=error,
+        phase=phase,
+        section=None,
+        match=None,
+    )
 
 
 def parse_sbuild_log(f: BinaryIO) -> Iterator[SbuildLogSection]:
@@ -895,7 +936,7 @@ def strip_build_tail(lines, look_back=None):
     files = {}
     current_contents = []
 
-    header_re = re.compile(r'==\> (.*) \<==\n')
+    header_re = re.compile(r"==\> (.*) \<==\n")
     for i in range(len(lines) - 1, -1, -1):
         m = header_re.match(lines[i])
         if m:
@@ -917,7 +958,9 @@ class ArchitectureNotInList:
         return "Architecture %s not a build arch" % (self.arch,)
 
 
-def find_arch_check_failure_description(lines: List[str]) -> Tuple[SingleLineMatch, Optional[Problem]]:
+def find_arch_check_failure_description(
+    lines: List[str],
+) -> Tuple[SingleLineMatch, Optional[Problem]]:
     for offset, line in enumerate(lines):
         m = re.match(
             r"E: dsc: (.*) not in arch list or does not match any arch "
@@ -943,7 +986,9 @@ class InsufficientDiskSpace:
         )
 
 
-def find_check_space_failure_description(lines) -> Tuple[SingleLineMatch, Optional[Problem]]:
+def find_check_space_failure_description(
+    lines,
+) -> Tuple[SingleLineMatch, Optional[Problem]]:
     for offset, line in enumerate(lines):
         if line == "E: Disk space is probably not sufficient for building.\n":
             m = re.fullmatch(
@@ -953,7 +998,8 @@ def find_check_space_failure_description(lines) -> Tuple[SingleLineMatch, Option
             if m:
                 return (
                     SingleLineMatch.from_lines(lines, offset),
-                    InsufficientDiskSpace(int(m.group(1)), int(m.group(2))))
+                    InsufficientDiskSpace(int(m.group(1)), int(m.group(2))),
+                )
             return SingleLineMatch.from_lines(lines, offset), None
 
 
@@ -964,7 +1010,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser("analyse-sbuild-log")
     parser.add_argument("--debug", action="store_true", help="Display debug output.")
     parser.add_argument("--json", action="store_true", help="Output JSON.")
-    parser.add_argument("--context", "-c", type=int, default=5, help="Number of context lines to print.")
+    parser.add_argument(
+        "--context", "-c", type=int, default=5, help="Number of context lines to print."
+    )
     parser.add_argument("path", type=str)
     args = parser.parse_args()
 
@@ -991,11 +1039,21 @@ def main(argv=None):
     if failure.error:
         logging.info("Error: %s" % failure.error)
     if failure.match:
-        logging.info("Failed line: %d:" % (failure.section.offsets[0] + failure.match.lineno))
-        for i in range(max(0, failure.match.offset - args.context), min(len(failure.section.lines), failure.match.offset + args.context + 1)):
-            logging.info(" %s  %s", ">" if failure.match.offset == i else " ", failure.section.lines[i].rstrip('\n'))
+        logging.info(
+            "Failed line: %d:" % (failure.section.offsets[0] + failure.match.lineno)
+        )
+        for i in range(
+            max(0, failure.match.offset - args.context),
+            min(len(failure.section.lines), failure.match.offset + args.context + 1),
+        ):
+            logging.info(
+                " %s  %s",
+                ">" if failure.match.offset == i else " ",
+                failure.section.lines[i].rstrip("\n"),
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     sys.exit(main(sys.argv))
