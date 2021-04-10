@@ -293,7 +293,7 @@ def error_from_dose3_report(report):
         return UnsatisfiedAptConflicts(conflict)
 
 
-def find_install_deps_failure_description(sbuildlog):
+def find_install_deps_failure_description(sbuildlog) -> Tuple[Optional[str], Optional[SingleLineMatch], Optional[Problem]]:
     error = None
 
     DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
@@ -310,15 +310,15 @@ def find_install_deps_failure_description(sbuildlog):
         dose3_output = find_cudf_output(build_dependencies_lines)
         if dose3_output:
             error = error_from_dose3_report(dose3_output["report"])
-        return SECTION, None, error
+            return SECTION, None, error
+        match, error = find_apt_get_failure(build_dependencies_lines)
+        return SECTION, match, error
 
     for section in sbuildlog.sections:
         if section.title is None:
             continue
         if re.match("install (.*) build dependencies.*", section.title.lower()):
-            match, v_error = find_apt_get_failure(section.lines)
-            if error is None:
-                error = v_error
+            match, error = find_apt_get_failure(section.lines)
             if match is not None:
                 return section.title, match, error
 
