@@ -24,6 +24,7 @@ import logging
 
 from . import Problem, problem, SingleLineMatch
 from .apt import (
+    find_apt_get_failure,
     find_apt_get_update_failure,
     find_install_deps_failure_description,
 )
@@ -632,9 +633,10 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
             sbuildlog.get_section_lines(None)
         )
         return SbuildFailure("unpack", str(error), error, section=section, match=match)
+    (match, error) = find_apt_get_failure(section.lines)
     description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=None, phase=None, section=section, match=None
+        failed_stage, description, error=error, phase=None, section=section, match=match
     )
 
 
@@ -696,18 +698,23 @@ def find_failure_autopkgtest(sbuildlog, failed_stage):
         "autopkgtest": "autopkgtest",
     }[failed_stage]
     section = sbuildlog.get_section(focus_section)
-
-    (
-        match,
-        testname,
-        error,
-        description,
-    ) = find_autopkgtest_failure_description(section.lines)
-    if not description:
-        description = str(error)
+    if section is not None:
+        (
+            match,
+            testname,
+            error,
+            description,
+        ) = find_autopkgtest_failure_description(section.lines)
+        if not description:
+            description = str(error)
+        phase = ("autopkgtest", testname)
+    else:
+        description = None
+        error = None
+        match = None
+        phase = None
     if not description:
         description = "build failed stage %s" % failed_stage
-    phase = ("autopkgtest", testname)
     return SbuildFailure(
         failed_stage,
         description,
