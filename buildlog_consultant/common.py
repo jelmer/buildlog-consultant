@@ -2596,6 +2596,7 @@ secondary_build_failure_regexps = [
     r"configure.ac:[0-9]+: error: (.*)",
     r"Reconfigure the source tree (via './config' or 'perl Configure'), please.",
     r"dwz: Too few files for multifile optimization",
+    r"\[CJM/MatchManifest\] Aborted because of MANIFEST mismatch",
     r"dh_dwz: dwz -q -- .* returned exit code [0-9]+",
     r"help2man: can\'t get `-?-help\' info from .*",
     r"[^:]+: line [0-9]+:\s+[0-9]+ Segmentation fault.*",
