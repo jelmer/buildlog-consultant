@@ -1579,6 +1579,7 @@ build_failure_regexps = [
         r'\> Cannot run program "(.*)": error=2, No such file or directory',
         lambda m: MissingCommand(m.group(1)),
     ),
+    (r'(.*) binary \'(.*)\' not available .*', lambda m: MissingCommand(m.group(2))),
     ("Please install 'git' seperately and try again.", lambda m: MissingCommand("git")),
     (
         r"\> A problem occurred starting process \'command \'(.*)\'\'",
