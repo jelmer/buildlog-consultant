@@ -2392,6 +2392,10 @@ build_failure_regexps = [
         lambda m: MissingPkgConfig(m.group(1)),
     ),
     (
+        r'pkg-config does not know (.*) at .*\.',
+        lambda m: MissingPkgConfig(m.group(1)),
+    ),
+    (
         r"go runtime is required: https://golang.org/doc/install",
         lambda m: MissingGoRuntime(),
     ),
