@@ -1195,6 +1195,14 @@ error: invalid command 'test'
                 ],
             ),
         )
+        self.run_test(
+            ["- ExtUtils::Depends         ...missing. (would need 0.302)"], 1,
+            MissingPerlModule(None, "ExtUtils::Depends", None, "0.302"))
+        self.run_test(
+            ['Can\'t locate object method "new" via package "Dist::Inkt::Profile::TOBYINK" '
+             '(perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at '
+             '/usr/share/perl5/Dist/Inkt.pm line 208.'], 1,
+            MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None))
 
     def test_missing_perl_file(self):
         self.run_test(

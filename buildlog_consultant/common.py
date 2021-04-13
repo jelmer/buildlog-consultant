@@ -1688,12 +1688,17 @@ build_failure_regexps = [
         r"\[DynamicPrereqs\] Can't locate (.*) at inline delegation in .*",
         lambda m: MissingPerlModule(None, m.group(1), None)
     ),
+    (
+        r"Can't locate object method \"(.*)\" via package \"(.*)\" "
+        r"\(perhaps you forgot to load \"(.*)\"\?\) at .*.pm line [0-9]+\.",
+        lambda m: MissingPerlModule(None, m.group(2), None)
+    ),
     (r">\(error\): Could not expand \[(.*)\'", perl_expand_failed),
     (
         r"\[DZ\] could not load class (.*) for license (.*)",
         lambda m: MissingPerlModule(None, m.group(1), None),
     ),
-    (r'- (.*)\s+\.\.\.missing. \(would need (.*)\)',
+    (r'\- ([^\s]+)\s+\.\.\.missing. \(would need (.*)\)',
      lambda m: MissingPerlModule(None, m.group(1), None, minimum_version=m.group(2))
     ),
     (r"Required plugin bundle ([^ ]+) isn\'t installed.", perl_missing_plugin),
