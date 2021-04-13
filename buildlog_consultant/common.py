@@ -467,6 +467,7 @@ class MissingPerlModule:
     filename: str
     module: str
     inc: Optional[List[str]] = None
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.filename:
@@ -1691,6 +1692,9 @@ build_failure_regexps = [
     (
         r"\[DZ\] could not load class (.*) for license (.*)",
         lambda m: MissingPerlModule(None, m.group(1), None),
+    ),
+    (r'- (.*)\s+\.\.\.missing. \(would need (.*)\)',
+     lambda m: MissingPerlModule(None, m.group(1), None, minimum_version=m.group(2))
     ),
     (r"Required plugin bundle ([^ ]+) isn\'t installed.", perl_missing_plugin),
     (r"Required plugin ([^ ]+) isn\'t installed.", perl_missing_plugin),
