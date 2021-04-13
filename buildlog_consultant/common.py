@@ -1087,7 +1087,7 @@ class HaskellMissingDependencyMatcher(Matcher):
                 break
             deps.extend([x.strip() for x in line.split(",", 1)])
             linenos.append(linenos[-1] + 1)
-        return linenos, MissingHaskellDependencies(deps)
+        return linenos, MissingHaskellDependencies([dep for dep in deps if dep])
 
 
 def cmake_command_missing(m):
