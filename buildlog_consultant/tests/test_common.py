@@ -402,7 +402,7 @@ CMake Error at CMakeLists.txt:43 (include):
 
 -- Found KF5Activities: /usr/lib/x86_64-linux-gnu/cmake/KF5Activities/KF5ActivitiesConfig.cmake (found version "5.78.0") 
 -- Found KF5Config: /usr/lib/x86_64-linux-gnu/cmake/KF5Config/KF5ConfigConfig.cmake (found version "5.78.0") 
-""".splitlines(True), 8, CMakeFilesMissing(['KDEGitCommitHooks']))
+""".splitlines(True), 8, CMakeFilesMissing(['KDEGitCommitHooks.cmake']))
 
     def test_cmake_missing_cmake_files(self):
         self.run_test(

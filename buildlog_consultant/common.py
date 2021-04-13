@@ -1247,7 +1247,7 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find (.*)_STATIC_LIBRARIES using the following names: ([a-zA-z0-9_.]+)',
          lambda m: MissingStaticLibrary(m.group(1), m.group(2))),
         (r'Unknown CMake command "(.*)"\.', None),
-        ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1)])),
+        ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1) + '.cmake'])),
     ]
 
     @classmethod
