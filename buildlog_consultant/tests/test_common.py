@@ -387,6 +387,23 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingCommand("git"),
         )
 
+    def test_cmake_missing_include(self):
+        self.run_test(
+            """\
+-- Performing Test _OFFT_IS_64BIT
+-- Performing Test _OFFT_IS_64BIT - Success
+-- Performing Test HAVE_DATE_TIME
+-- Performing Test HAVE_DATE_TIME - Success
+CMake Error at CMakeLists.txt:43 (include):
+  include could not find load file:
+
+    KDEGitCommitHooks
+
+
+-- Found KF5Activities: /usr/lib/x86_64-linux-gnu/cmake/KF5Activities/KF5ActivitiesConfig.cmake (found version "5.78.0") 
+-- Found KF5Config: /usr/lib/x86_64-linux-gnu/cmake/KF5Config/KF5ConfigConfig.cmake (found version "5.78.0") 
+""".splitlines(True), 8, CMakeFilesMissing(['KDEGitCommitHooks']))
+
     def test_cmake_missing_cmake_files(self):
         self.run_test(
             """\
