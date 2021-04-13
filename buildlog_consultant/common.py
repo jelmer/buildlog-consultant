@@ -2339,6 +2339,10 @@ build_failure_regexps = [
         r"to build",
         lambda m: MissingLibrary("readline"),
     ),
+    (
+        r"    Could not find module ‘(.*)’",
+        lambda m: MissingHaskellDependencies([m.group(1)]),
+    ),
     HaskellMissingDependencyMatcher(),
     SetupPyCommandMissingMatcher(),
     CMakeErrorMatcher(),
