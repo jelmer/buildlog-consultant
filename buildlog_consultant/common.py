@@ -949,6 +949,23 @@ class MissingHaskellDependencies(Problem):
         return "Missing Haskell dependencies: %r" % self.deps
 
 
+class MissingHaskellModule(Problem):
+
+    kind = "missing-haskell-module"
+
+    def __init__(self, module):
+        self.module = module
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.mdule == other.module
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.module)
+
+    def __str__(self):
+        return "Missing Haskell module: %r" % self.module
+
+
 class Matcher(object):
     def match(self, line: List[str], i: int) -> Tuple[List[int], Optional[Problem]]:
         raise NotImplementedError(self.match)
@@ -2341,7 +2358,7 @@ build_failure_regexps = [
     ),
     (
         r"    Could not find module ‘(.*)’",
-        lambda m: MissingHaskellDependencies([m.group(1)]),
+        lambda m: MissingHaskellModule(m.group(1)),
     ),
     HaskellMissingDependencyMatcher(),
     SetupPyCommandMissingMatcher(),
