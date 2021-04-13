@@ -863,7 +863,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
     return SbuildFailure(
         failed_stage,
         description,
-        error=error,
+        error=None,
         phase=phase,
         section=None,
         match=None,
