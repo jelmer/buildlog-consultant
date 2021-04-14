@@ -2400,6 +2400,7 @@ build_failure_regexps = [
         r"    Could not find module ‘(.*)’",
         lambda m: MissingHaskellModule(m.group(1)),
     ),
+    (r'E: session: (.*): Chroot not found', lambda m: ChrootNotFound(m.group(1))),
     HaskellMissingDependencyMatcher(),
     SetupPyCommandMissingMatcher(),
     CMakeErrorMatcher(),
