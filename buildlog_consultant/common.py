@@ -1169,6 +1169,11 @@ class CMakeErrorMatcher(Matcher):
             r"--  Package \'(.*)\', required by \'(.*)\', not found",
             cmake_pkg_config_missing,
         ),
+        (r'Could not find a package configuration file provided by\s'
+         r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
+         r'\n\n(  .*\n)+\n.*$',
+         lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
+        ),
         (
             r"Could NOT find (.*) \(missing: .*\)",
             lambda m: MissingVagueDependency(m.group(1)),
