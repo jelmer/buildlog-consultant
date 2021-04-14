@@ -2492,6 +2492,10 @@ build_failure_regexps = [
         r"Error: package \'(.*)\' (.*) was found, but >= (.*) is required by \'(.*)\'",
         lambda m: MissingRPackage(m.group(1), m.group(3)),
     ),
+    (
+        r'there is no package called \'(.*)\'',
+       lambda m: MissingRPackage(m.group(1))
+    ),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
     (r'  namespace "(.*)" .* is being loaded, but \>= (.*) is required',
      lambda m: MissingRPackage(m.group(1), m.group(2))),
