@@ -1665,6 +1665,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
+        lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
+    ),
+    (
         r"dh: Unknown sequence --(.*) "
         r"\(options should not come before the sequence\)",
         dh_with_order,
