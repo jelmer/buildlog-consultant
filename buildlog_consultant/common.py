@@ -423,6 +423,15 @@ def cmake_pkg_config_missing(m):
     return MissingPkgConfig(m.group(1))
 
 
+@problem("missing-boost-components")
+class MissingBoostComponents:
+
+    components: List[str]
+
+    def __str__(self):
+        return "Missing Boost components: %r" % self.components
+
+
 @problem("missing-cmake-files")
 class CMakeFilesMissing:
 
@@ -1154,6 +1163,8 @@ class CMakeErrorMatcher(Matcher):
     regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):")
 
     cmake_errors = [
+        (r'Could NOT find Boost \(missing: (.*)\) \(found suitable version .*',
+         lambda m: MissingBoostComponents(m.group(1).split())),
         (
             r"--  Package \'(.*)\', required by \'(.*)\', not found",
             cmake_pkg_config_missing,
