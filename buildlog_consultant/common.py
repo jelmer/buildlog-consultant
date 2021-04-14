@@ -2408,6 +2408,10 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1)),
     ),
     (
+        r'Could not find executable (.*)',
+        lambda m: MissingCommand(m.group(1))
+    ),
+    (
         r"go: .*: Get \"(.*)\": x509: certificate signed by unknown authority",
         lambda m: UnknownCertificateAuthority(m.group(1)),
     ),
