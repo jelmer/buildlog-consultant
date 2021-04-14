@@ -2504,6 +2504,10 @@ build_failure_regexps = [
         r'Cannot find (.*) in @INC at (.*) line ([0-9]+)\.',
         lambda m: MissingPerlModule(None, m.group(1)),
     ),
+    (r'(.*::.*) (.*) is required to configure our .* dependency, '
+     r'please install it manually or upgrade your CPAN/CPANPLUS',
+     lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
+    ),
     (
         r"configure: error: Missing lib(.*)\.",
         lambda m: MissingLibrary(m.group(1)),
