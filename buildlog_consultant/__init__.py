@@ -42,11 +42,18 @@ def problem(kind, is_global=False):
             ret[name] = getattr(self, name)
         return ret
 
+    @classmethod
+    def from_json(cls, data):
+        return cls(**data)
+
     def _wrap(cls):
         ret = dataclass(cls)
         ret.kind = kind
         ret.is_global = is_global
-        ret.json = json
+        if not hasattr(ret, 'json'):
+            ret.json = json
+        if not hasattr(ret, 'from_json'):
+            ret.from_json = from_json
         problem_clses[ret.kind] = ret
         return ret
 

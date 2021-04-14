@@ -2663,8 +2663,6 @@ secondary_build_failure_regexps = [
     "^(E  +)?(SyntaxError|TypeError|ValueError|AttributeError|NameError|"
     r"django.core.exceptions..*|RuntimeError|subprocess.CalledProcessError|"
     r"testtools.matchers._impl.MismatchError|"
-    # Rust
-    r"error\[E[0-9]+\]: .*",
     r"PermissionError|IndexError|TypeError|AssertionError|IOError|ImportError|"
     r"SerialException|OSError|qtawesome.iconic_font.FontError|"
     "redis.exceptions.ConnectionError|builtins.OverflowError|ArgumentError|"
@@ -2674,6 +2672,8 @@ secondary_build_failure_regexps = [
     "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
     "datalad.support.exceptions.IncompleteResultsError|AssertionError"
     r"): .*",
+    # Rust
+    r"error\[E[0-9]+\]: .*",
     "^E   DeprecationWarning: .*",
     "^E       fixture '(.*)' not found",
     # Rake
@@ -2771,9 +2771,13 @@ secondary_build_failure_regexps = [
     r"diff: (.*): No such file or directory",
 ]
 
-compiled_secondary_build_failure_regexps = [
-    re.compile(regexp) for regexp in secondary_build_failure_regexps
-]
+compiled_secondary_build_failure_regexps = []
+
+for regexp in secondary_build_failure_regexps:
+    try:
+        compiled_secondary_build_failure_regexps.append(re.compile(regexp))
+    except re.error as e:
+        raise Exception("Error compiling %r: %s" % (regexp, e))
 
 
 def find_build_failure_description(  # noqa: C901

@@ -18,6 +18,7 @@
 
 import re
 
+from debian.changelog import Version
 from debian.deb822 import PkgRelation
 from typing import List, Optional, Tuple
 import yaml
@@ -252,6 +253,23 @@ class UnsatisfiedAptDependencies:
     @classmethod
     def from_str(cls, text):
         return cls(PkgRelation.parse_relations(text))
+
+    @classmethod
+    def from_json(cls, data):
+        relations = []
+        for relation in data['relations']:
+            sub = []
+            for entry in relation:
+                pkg = {
+                    'name': entry['name'],
+                    'archqual': entry.get('archqual'),
+                    'arch': entry.get('arch'),
+                    'restrictions': entry.get('restrictions'),
+                    'version': (entry['version'][0], Version(entry['version'][1])) if entry['version'] else None,
+                    }
+                sub.append(pkg)
+            relations.append(sub)
+        return cls(relations=relations)
 
     def __repr__(self):
         return "%s.from_str(%r)" % (
