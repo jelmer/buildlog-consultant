@@ -2663,6 +2663,8 @@ secondary_build_failure_regexps = [
     "^(E  +)?(SyntaxError|TypeError|ValueError|AttributeError|NameError|"
     r"django.core.exceptions..*|RuntimeError|subprocess.CalledProcessError|"
     r"testtools.matchers._impl.MismatchError|"
+    # Rust
+    r"error\[E[0-9]+\]: .*",
     r"PermissionError|IndexError|TypeError|AssertionError|IOError|ImportError|"
     r"SerialException|OSError|qtawesome.iconic_font.FontError|"
     "redis.exceptions.ConnectionError|builtins.OverflowError|ArgumentError|"
