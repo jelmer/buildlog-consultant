@@ -1831,6 +1831,14 @@ build_failure_regexps = [
         maven_missing_plugin,
     ),
     (
+        r'E: eatmydata: unable to find \'(.*)\' in PATH',
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
+        r'/usr/bin/eatmydata: [0-9]+: exec: (.*): not found',
+        command_missing
+    ),
+    (
         r"(.*): exec: \"(.*)\": executable file not found in \$PATH",
         lambda m: MissingCommand(m.group(2)),
     ),
@@ -2476,6 +2484,10 @@ build_failure_regexps = [
         lambda m: MissingPerlModule(None, m.group(1)),
     ),
     (
+        r'Cannot find (.*) in @INC at (.*) line ([0-9]+)\.',
+        lambda m: MissingPerlModule(None, m.group(1)),
+    ),
+    (
         r"configure: error: Missing lib(.*)\.",
         lambda m: MissingLibrary(m.group(1)),
     ),
@@ -2694,6 +2706,7 @@ secondary_build_failure_regexps = [
     r"mkdir: missing operand",
     r"Fatal error: .*",
     "Fatal Error: (.*)",
+    r"Alert: (.*)",
     r'ERROR: Test "(.*)" failed. Exiting.',
     # scons
     r"ERROR: test\(s\) failed in (.*)",
@@ -2752,7 +2765,7 @@ secondary_build_failure_regexps = [
     r"\[ERROR\] .*",
     r"dh_auto_(test|build): error: (.*)",
     r"tar: This does not look like a tar archive",
-    r"\[DZ\] no name was ever set",
+    r"\[DZ\] no (name|version) was ever set",
     r"diff: (.*): No such file or directory",
 ]
 
