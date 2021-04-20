@@ -1037,13 +1037,18 @@ class MultiLineConfigureError(Matcher):
         if lines[i].rstrip("\n") != "configure: error:":
             return [], None
 
-        for j, line in enumerate(lines[i + 1 :]):
+        relevant_linenos = []
+
+        for j, line in enumerate(lines[i + 1 :], i + 1):
+            if not line.strip():
+                continue
+            relevant_linenos.append(j)
             for submatcher, fn in self.submatchers:
                 m = submatcher.match(line.rstrip("\n"))
                 if m:
-                    return [i + j + 1], fn(m)
+                    return [j], fn(m)
 
-        return list(range(i + 1, len(lines))), None
+        return relevant_linenos, None
 
 
 class AutoconfUnexpectedMacroMatcher(Matcher):
@@ -1426,6 +1431,17 @@ class MissingPauseCredentials:
         return "Missing credentials for PAUSE"
 
 
+@problem("mismatch-gettext-versions")
+class MismatchGettextVersions:
+
+    makefile_version: str
+    autoconf_version: str
+
+    def __str__(self):
+        return "Mismatch versions (%s, %s)" % (
+            self.makefile_version, self.autoconf_version)
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -1644,8 +1660,16 @@ build_failure_regexps = [
         r"mono \(>=(.*)\) or \.Net",
         c_sharp_compiler_missing,
     ),
-    (r"configure: error: gmcs Not found", c_sharp_compiler_missing),
-    (r"configure: error: You need to install gmcs", c_sharp_compiler_missing),
+    (r"configure: error: (.*) Not found", lambda m: MissingVagueDependency(m.group(1))),
+    (r"configure: error: You need to install (.*)",
+     lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (r'configure: error: (.*) \((.*)\) not found\.',
+     lambda m: MissingVagueDependency(m.group(2))
+    ),
+    (r'configure: error: (.*) libraries are required for compilation',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
     (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
         lambda m: MissingPkgConfig("libkqueue"),
@@ -1935,7 +1959,7 @@ build_failure_regexps = [
     # line will have the actual line that failed.
     (r"ImportError: cannot import name (.*)", None),
     # Rust ?
-    (r"  = note: /usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
+    (r"\s*= note: /usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (r"/usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (
         r"Could not find gem \'([^ ]+) \(([^)]+)\)\', " r"which is required by gem.*",
@@ -2416,6 +2440,7 @@ build_failure_regexps = [
         missing_lazyfont_file,
     ),
     (r"qt.qpa.xcb: could not connect to display", lambda m: MissingXDisplay()),
+    (r'\(.*:[0-9]+\): Gtk-WARNING \*\*: [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}: cannot open display: ', lambda m: MissingXDisplay()),
     (
         r"Package (.*) was not found in the pkg-config search path.",
         lambda m: MissingPkgConfig(m.group(1)),
@@ -2457,6 +2482,11 @@ build_failure_regexps = [
         r"Bareword \"(.*)\" not allowed while \"strict subs\" in use at "
         r"Makefile.PL line ([0-9]+).",
         lambda m: MissingPerlPredeclared(m.group(1)),
+    ),
+    (
+        r'String found where operator expected at Makefile.PL line ([0-9]+), '
+        'near "([a-z0-9_]+).*"',
+        lambda m: MissingPerlPredeclared(m.group(2)),
     ),
     (r"  vignette builder 'knitr' not found", lambda m: MissingRPackage("knitr")),
     (
@@ -2545,11 +2575,22 @@ build_failure_regexps = [
      lambda m: InactiveKilled(int(m.group(1)))
      ),
 
-    (r'\[Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! '
+    (r'\[.*Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! '
      r'Please set it or specify an authority for this plugin. at inline delegation in '
      r'Dist::Zilla::Plugin::Authority for logger->log_fatal \(attribute declared in '
      r'/usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\.',
      lambda m: MissingPauseCredentials()),
+
+    (r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
+     None),
+
+    (r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
+     r'from gettext version (.*) but the autoconf macros are from gettext '
+     r'version (.*)',
+     lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
+
+    (r'You need to install (.*)',
+     lambda m: MissingVagueDependency(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -2790,6 +2831,7 @@ secondary_build_failure_regexps = [
     r"tar: This does not look like a tar archive",
     r"\[DZ\] no (name|version) was ever set",
     r"diff: (.*): No such file or directory",
+    r"gpg: signing failed: .*",
 ]
 
 compiled_secondary_build_failure_regexps = []

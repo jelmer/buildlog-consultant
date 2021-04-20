@@ -290,6 +290,16 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
+        self.run_test([
+            "configure: error:",
+            "",
+            "   Unable to find the Multi Emulator Super System (MESS).",
+            "",
+            "   Please install MESS, or specify the MESS command with",
+            "   a MESS environment variable.",
+            "",
+            "e.g. MESS=/path/to/program/mess ./configure"
+            ], 3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
 
     def test_interpreter_missing(self):
         self.run_test(
@@ -1140,6 +1150,10 @@ Call Stack (most recent call first):
             2,
             MissingPerlPredeclared("author_tests"),
         )
+        self.run_test(
+            ["String found where operator expected at Makefile.PL line 8, near \"readme_from    'lib/URL/Encode.pod'\""],
+            1, MissingPerlPredeclared("readme_from"))
+
         self.run_test(
             [
                 'Bareword "use_test_base" not allowed while "strict subs" in use at Makefile.PL line 12.'
