@@ -2337,6 +2337,10 @@ build_failure_regexps = [
         "RuntimeError: Could not find (.*) library\..*",
         lambda m: MissingVagueDependency(m.group(1))
     ),
+    (
+        r'RuntimeError: We need package (.*), but not importable',
+        lambda m: MissingPythonDistribution(m.group(1))
+    ),
 
     # Seen in cpl-plugin-giraf
     (
