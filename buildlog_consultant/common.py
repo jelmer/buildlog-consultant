@@ -2639,6 +2639,9 @@ build_failure_regexps = [
     (r'configure: error: .*Make sure you have (.*) installed\.',
      lambda m: MissingVagueDependency(m.group(1))
     ),
+    (r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
     (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
 ]
 
