@@ -2348,7 +2348,7 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1))
     ),
     (
-        "RuntimeError: Could not find (.*) library\.",
+        "RuntimeError: Could not find (.*) library\..*",
         lambda m: MissingVagueDependency(m.group(1))
     ),
 
@@ -2640,6 +2640,8 @@ build_failure_regexps = [
         r"configure: error: Unable to find (.*), please install (.*)",
         lambda m: MissingVagueDependency(m.group(2)),
     ),
+
+    (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
