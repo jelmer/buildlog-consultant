@@ -81,7 +81,7 @@ class MissingPythonDistribution:
         req = Requirement.parse(text)
         if len(req.specs) == 1 and req.specs[0][0] == ">=":
             return cls(req.name, python_version, req.specs[0][1])
-        return cls(text, python_version)
+        return cls(req.name, python_version)
 
     def __repr__(self):
         return "%s(%r, python_version=%r, minimum_version=%r)" % (
