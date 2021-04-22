@@ -2344,9 +2344,14 @@ build_failure_regexps = [
     (r"libtoolize:   error: \'(.*)\' does not exist.", file_not_found),
     # Seen in python-cogent
     (
-        "RuntimeError: Numpy required but not found.",
-        lambda m: MissingPythonModule("numpy"),
+        "RuntimeError: (.*) required but not found.",
+        lambda m: MissingVagueDependency(m.group(1))
     ),
+    (
+        "RuntimeError: Could not find (.*) library\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
     # Seen in cpl-plugin-giraf
     (
         r"ImportError: Numpy version (.*) or later must be " r"installed to use .*",
