@@ -1113,10 +1113,6 @@ def cmake_file_missing(m):
     return MissingFile(m.group(2))
 
 
-def cmake_package_config_file_missing(m):
-    return CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
-
-
 def cmake_compiler_failure(m):
     compiler_output = textwrap.dedent(m.group(3))
     match, error = find_build_failure_description(compiler_output.splitlines(True))
@@ -1177,7 +1173,7 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find a package configuration file provided by\s'
          r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
          r'\n\n(  .*\n)+\n.*$',
-         lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
+         lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()])
         ),
         (
             r"Could NOT find (.*) \(missing: .*\)",
@@ -1215,13 +1211,13 @@ class CMakeErrorMatcher(Matcher):
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
             r"with\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$",
-            cmake_package_config_file_missing,
+            lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
         ),
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
             r"\(requested\sversion\s.+\)\swith\sany\sof\sthe\sfollowing\snames:\n"
             r"\n(  .*\n)+\n.*$",
-            cmake_package_config_file_missing,
+            lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()]),
         ),
         (
             r"No CMAKE_(.*)_COMPILER could be found.\n"
@@ -1659,16 +1655,6 @@ build_failure_regexps = [
         r"configure: error: No C\# compiler found. You need to install either "
         r"mono \(>=(.*)\) or \.Net",
         c_sharp_compiler_missing,
-    ),
-    (r"configure: error: (.*) Not found", lambda m: MissingVagueDependency(m.group(1))),
-    (r"configure: error: You need to install (.*)",
-     lambda m: MissingVagueDependency(m.group(1)),
-    ),
-    (r'configure: error: (.*) \((.*)\) not found\.',
-     lambda m: MissingVagueDependency(m.group(2))
-    ),
-    (r'configure: error: (.*) libraries are required for compilation',
-     lambda m: MissingVagueDependency(m.group(1))
     ),
     (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
@@ -2640,7 +2626,19 @@ build_failure_regexps = [
         r"configure: error: Unable to find (.*), please install (.*)",
         lambda m: MissingVagueDependency(m.group(2)),
     ),
-
+    (r"configure: error: (.*) Not found", lambda m: MissingVagueDependency(m.group(1))),
+    (r"configure: error: You need to install (.*)",
+     lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (r'configure: error: (.*) \((.*)\) not found\.',
+     lambda m: MissingVagueDependency(m.group(2))
+    ),
+    (r'configure: error: (.*) libraries are required for compilation',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (r'configure: error: .*Make sure you have (.*) installed\.',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
     (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
 ]
 
