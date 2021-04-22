@@ -309,11 +309,13 @@ def error_from_dose3_report(report):
             relation = PkgRelation.parse_relations(
                 reason["missing"]["pkg"]["unsat-dependency"]
             )
+            fixup_relation(relation)
             missing.extend(relation)
         if "conflict" in reason:
             relation = PkgRelation.parse_relations(
                 reason["conflict"]["pkg1"]["unsat-conflict"]
             )
+            fixup_relation(relation)
             conflict.extend(relation)
     if missing:
         return UnsatisfiedAptDependencies(missing)
