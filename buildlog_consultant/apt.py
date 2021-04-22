@@ -288,6 +288,16 @@ class UnsatisfiedAptConflicts:
 
 
 def error_from_dose3_report(report):
+    def fixup_relation(rel):
+        for o in rel:
+            for d in o:
+                if d['version']:
+                    try:
+                        newoperator = {'<': '<<', '>': '>>'}[d['version'][0]]
+                    except KeyError:
+                        pass
+                    else:
+                        d['version'] = (newoperator, d['version'][1])
     packages = [entry["package"] for entry in report]
     assert packages == ["sbuild-build-depends-main-dummy"]
     if report[0]["status"] != "broken":
