@@ -2308,6 +2308,10 @@ build_failure_regexps = [
         r'Can\'t exec "(.*)": No such file or directory at (.*) line ([0-9]+).',
         command_missing,
     ),
+    (
+        r'E OSError: No command "(.*)" found on host .*',
+        command_missing
+    ),
     # PHPUnit
     (r'Cannot open file "(.*)".', file_not_found),
     (
@@ -2330,16 +2334,20 @@ build_failure_regexps = [
     (r"libtoolize:   error: \'(.*)\' does not exist.", file_not_found),
     # Seen in python-cogent
     (
-        "RuntimeError: (.*) required but not found.",
-        lambda m: MissingVagueDependency(m.group(1))
+        "(OSError|RuntimeError): (.*) required but not found.",
+        lambda m: MissingVagueDependency(m.group(2))
     ),
     (
-        "RuntimeError: Could not find (.*) library\..*",
-        lambda m: MissingVagueDependency(m.group(1))
+        "(OSError|RuntimeError): Could not find (.*) library\..*",
+        lambda m: MissingVagueDependency(m.group(2))
     ),
     (
-        r'RuntimeError: We need package (.*), but not importable',
+        r'(OSError|RuntimeError): We need package (.*), but not importable',
         lambda m: MissingPythonDistribution(m.group(1))
+    ),
+    (
+        r'(OSError|RuntimeError): No (.*) was found: .*',
+        lambda m: MissingVagueDependency(m.group(2))
     ),
 
     # Seen in cpl-plugin-giraf
@@ -2468,7 +2476,10 @@ build_failure_regexps = [
         r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
         lambda m: UnknownCertificateAuthority(m.group(1)),
     ),
-
+    (
+        r'curl: \(77\) error setting certificate verify locations:  CAfile: (.*) CApath: (.*)',
+        lambda m: MissingFile(m.group(1))
+    ),
     (
         r"\t\(Do you need to predeclare (.*)\?\)",
         lambda m: MissingPerlPredeclared(m.group(1)),
@@ -2587,6 +2598,11 @@ build_failure_regexps = [
     (r'You need to install (.*)',
      lambda m: MissingVagueDependency(m.group(1))),
 
+    (r'open3: exec of cme (.*) failed: No such file or directory '
+     r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
+     lambda m: MissingPerlModule('App::Cme::Command::' + m.group(1))
+    ),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -2648,6 +2664,7 @@ build_failure_regexps = [
     ),
     (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
     (r'ERROR:  Unable to locate (.*)\.', lambda m: MissingVagueDependency(m.group(1))),
+    ('\x1b\\[1;31merror: (.*) not found\x1b\\[0;32m', lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
