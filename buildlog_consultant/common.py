@@ -2600,7 +2600,7 @@ build_failure_regexps = [
 
     (r'open3: exec of cme (.*) failed: No such file or directory '
      r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
-     lambda m: MissingPerlModule('App::Cme::Command::' + m.group(1))
+     lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
     ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
