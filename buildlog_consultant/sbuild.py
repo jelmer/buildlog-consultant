@@ -1037,7 +1037,7 @@ def main(argv=None):
         failure = worker_failure_from_sbuild_log(sbuildlog)
 
         if args.json:
-            json.dump(failure.json(), sys.stdout)
+            json.dump(failure.json(), sys.stdout, indent=4)
 
     if failure.error:
         logging.info("Error: %s" % failure.error)

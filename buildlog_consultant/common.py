@@ -500,10 +500,6 @@ def perl_missing_plugin(m):
     return MissingPerlModule(None, m.group(1), None)
 
 
-def perl_missing_author_dep(m):
-    return MissingPerlModule(None, m.group(1), None)
-
-
 @problem("missing-perl-file")
 class MissingPerlFile:
 
@@ -1741,8 +1737,12 @@ build_failure_regexps = [
         perl_missing_file,
     ),
     (
-        r"Can\'t find author dependency (.*) at (.*) line ([0-9]+).",
-        perl_missing_author_dep,
+        r"Can\'t find author dependency ([^ ]+) at (.*) line ([0-9]+).",
+        lambda m: MissingPerlModule(None, m.group(1), None)
+    ),
+    (
+        r"Can\'t find author dependency ([^ ]+) version (.*) at (.*) line ([0-9]+).",
+        lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
     ),
     (
         r"> Could not find (.*)\. Please check that (.*) contains a valid JDK "
@@ -2598,6 +2598,10 @@ build_failure_regexps = [
     (r'You need to install (.*)',
      lambda m: MissingVagueDependency(m.group(1))),
 
+    (r'configure: error: You need (.*) installed',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
+
     (r'open3: exec of cme (.*) failed: No such file or directory '
      r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
      lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
@@ -2762,8 +2766,8 @@ secondary_build_failure_regexps = [
     "SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
     "pkg_resources.UnknownExtra|tarfile.ReadError|"
     "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
-    "datalad.support.exceptions.IncompleteResultsError|AssertionError"
-    r"): .*",
+    "datalad.support.exceptions.IncompleteResultsError|AssertionError|"
+    r"Cython.Compiler.Errors.CompileError): .*",
     # Rust
     r"error\[E[0-9]+\]: .*",
     "^E   DeprecationWarning: .*",
@@ -3006,7 +3010,7 @@ def main(argv=None):
                 ret["details"] = problem.json()
             except NotImplementedError:
                 ret["details"] = None
-        json.dump(ret, sys.stdout)
+        json.dump(ret, sys.stdout, indent=4)
     else:
         if not m:
             logging.info("No issues found")
