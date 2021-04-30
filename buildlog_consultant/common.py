@@ -1261,6 +1261,7 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingStaticLibrary(m.group(1), m.group(2))),
         ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1) + '.cmake'])),
         (r'(.*) and (.*) are required', lambda m: MissingVagueDependency(m.group(1))),
+        (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
