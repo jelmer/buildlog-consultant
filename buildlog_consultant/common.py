@@ -2670,6 +2670,8 @@ build_failure_regexps = [
     (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
     (r'ERROR:  Unable to locate (.*)\.', lambda m: MissingVagueDependency(m.group(1))),
     ('\x1b\\[1;31merror: (.*) not found\x1b\\[0;32m', lambda m: MissingVagueDependency(m.group(1))),
+    (r'You do not have (.*) correctly installed\. .*',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
