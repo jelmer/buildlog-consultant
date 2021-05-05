@@ -1017,7 +1017,7 @@ class SetupPyCommandMissingMatcher(Matcher):
         for j in range(i, max(0, i - 20), -1):
             if self.warning_match.fullmatch(lines[j].rstrip("\n")):
                 return [i], MissingSetupPyCommand(m.group(1))
-        return []
+        return [], None
 
 
 class MultiLineConfigureError(Matcher):
