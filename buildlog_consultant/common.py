@@ -1213,7 +1213,7 @@ class CMakeErrorMatcher(Matcher):
             r'.*Could not find a package configuration file provided by "(.*)"\s'
             r"\(requested\sversion\s.+\)\swith\sany\sof\sthe\sfollowing\snames:\n"
             r"\n(  .*\n)+\n.*$",
-            lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()]),
+            lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()]),
         ),
         (
             r"No CMAKE_(.*)_COMPILER could be found.\n"
