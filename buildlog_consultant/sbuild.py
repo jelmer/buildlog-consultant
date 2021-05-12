@@ -642,11 +642,10 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
 
 def find_failure_create_session(sbuildlog, failed_stage):
     section = sbuildlog.get_section(None)
-    match, description, error = find_creation_session_error(section.lines)
+    match, error = find_creation_session_error(section.lines)
     if error:
         phase = ("create-session",)
-    if description is None:
-        description = "build failed stage %s" % failed_stage
+    description = "build failed stage %s" % failed_stage
     return SbuildFailure(
         failed_stage,
         description,
