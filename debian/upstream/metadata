@@ -3,3 +3,4 @@ Bug-Database: https://github.com/jelmer/buildlog-consultant/issues
 Bug-Submit: https://github.com/jelmer/buildlog-consultant/issues/new
 Repository: https://github.com/jelmer/buildlog-consultant.git
 Repository-Browse: https://github.com/jelmer/buildlog-consultant
+Security-Contact: https://github.com/jelmer/buildlog-consultant/tree/HEAD/SECURITY.md
