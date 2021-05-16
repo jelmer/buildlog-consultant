@@ -18,6 +18,7 @@
 
 import re
 
+from debian.changelog import Version
 from debian.deb822 import PkgRelation
 from typing import List, Optional, Tuple
 import yaml
@@ -253,6 +254,23 @@ class UnsatisfiedAptDependencies:
     def from_str(cls, text):
         return cls(PkgRelation.parse_relations(text))
 
+    @classmethod
+    def from_json(cls, data):
+        relations = []
+        for relation in data['relations']:
+            sub = []
+            for entry in relation:
+                pkg = {
+                    'name': entry['name'],
+                    'archqual': entry.get('archqual'),
+                    'arch': entry.get('arch'),
+                    'restrictions': entry.get('restrictions'),
+                    'version': (entry['version'][0], Version(entry['version'][1])) if entry['version'] else None,
+                    }
+                sub.append(pkg)
+            relations.append(sub)
+        return cls(relations=relations)
+
     def __repr__(self):
         return "%s.from_str(%r)" % (
             type(self).__name__,
@@ -270,6 +288,16 @@ class UnsatisfiedAptConflicts:
 
 
 def error_from_dose3_report(report):
+    def fixup_relation(rel):
+        for o in rel:
+            for d in o:
+                if d['version']:
+                    try:
+                        newoperator = {'<': '<<', '>': '>>'}[d['version'][0]]
+                    except KeyError:
+                        pass
+                    else:
+                        d['version'] = (newoperator, d['version'][1])
     packages = [entry["package"] for entry in report]
     assert packages == ["sbuild-build-depends-main-dummy"]
     if report[0]["status"] != "broken":
@@ -281,11 +309,13 @@ def error_from_dose3_report(report):
             relation = PkgRelation.parse_relations(
                 reason["missing"]["pkg"]["unsat-dependency"]
             )
+            fixup_relation(relation)
             missing.extend(relation)
         if "conflict" in reason:
             relation = PkgRelation.parse_relations(
                 reason["conflict"]["pkg1"]["unsat-conflict"]
             )
+            fixup_relation(relation)
             conflict.extend(relation)
     if missing:
         return UnsatisfiedAptDependencies(missing)
