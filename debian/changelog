@@ -1,9 +1,9 @@
-buildlog-consultant (0.0.10-1) UNRELEASED; urgency=low
+buildlog-consultant (0.0.10-1) unstable; urgency=low
 
   * New upstream release.
   * Set upstream metadata fields: Security-Contact.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 16 May 2021 17:23:34 -0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 16 May 2021 18:56:40 +0100
 
 buildlog-consultant (0.0.9-1) unstable; urgency=low
 
