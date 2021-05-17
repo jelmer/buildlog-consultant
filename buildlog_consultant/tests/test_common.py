@@ -32,6 +32,7 @@ from ..common import (
     MissingJDKFile,
     MissingJDK,
     MissingJRE,
+    MissingIntrospectionTypelib,
     MissingPythonModule,
     MissingPythonDistribution,
     MissingGoPackage,
@@ -981,6 +982,12 @@ error: invalid command 'test'
             1,
             MissingValaPackage("glib-2.0"),
         )
+
+    def test_gir(self):
+        self.run_test(
+            ["ValueError: Namespace GnomeDesktop not available"],
+            1,
+            MissingIntrospectionTypelib("GnomeDesktop"))
 
     def test_missing_boost_components(self):
         self.run_test("""\

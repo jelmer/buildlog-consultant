@@ -1482,6 +1482,10 @@ build_failure_regexps = [
         r"ImportError: cannot import name (.*), introspection typelib not found",
         lambda m: MissingIntrospectionTypelib(m.group(1)),
     ),
+    (
+        r"ValueError: Namespace (.*) not available",
+        lambda m: MissingIntrospectionTypelib(m.group(1)),
+    ),
     ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E       fixture '(.*)' not found", lambda m: MissingPytestFixture(m.group(1))),
     (
