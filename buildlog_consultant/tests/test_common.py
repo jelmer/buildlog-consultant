@@ -280,6 +280,9 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             MissingVagueDependency("gnu flex", "http://www.gnu.org/software/flex/"),
         )
         self.run_test(
+            ["RuntimeError: cython is missing"], 1,
+            MissingVagueDependency("cython"))
+        self.run_test(
             [
                 "configure: error:",
                 "",

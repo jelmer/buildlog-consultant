@@ -441,6 +441,16 @@ class CMakeFilesMissing:
         return "Missing CMake package configuration files: %r" % (self.filenames,)
 
 
+@problem("missing-cmake-config")
+class MissingCMakeConfig:
+
+    name: str
+    version: str
+
+    def __str__(self):
+        return "Missing CMake package configuration for %s" % (self.name, )
+
+
 @problem("debhelper-argument-order")
 class DhWithOrderIncorrect:
     def __str__(self):
@@ -1202,7 +1212,7 @@ class CMakeErrorMatcher(Matcher):
         (
             r'Could not find a configuration file for package "(.*)".*'
             r'.*requested version "(.*)"\.',
-            lambda m: MissingPkgConfig(m.group(1), m.group(2)),
+            lambda m: MissingCMakeConfig(m.group(1), m.group(2)),
         ),
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
@@ -2341,6 +2351,10 @@ build_failure_regexps = [
     (
         "(OSError|RuntimeError): (.*) required but not found.",
         lambda m: MissingVagueDependency(m.group(2))
+    ),
+    (
+        "RuntimeError: (.*) is missing",
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
         "(OSError|RuntimeError): Could not find (.*) library\..*",
