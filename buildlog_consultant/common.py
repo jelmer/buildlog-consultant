@@ -1181,10 +1181,12 @@ class CMakeErrorMatcher(Matcher):
             r"--  Package \'(.*)\', required by \'(.*)\', not found",
             cmake_pkg_config_missing,
         ),
-        (r'Could not find a package configuration file provided by\s'
-         r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
-         r'\n\n(  .*\n)+\n.*$',
-         lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()], m.group(2))
+        (
+            r'Could not find a package configuration file provided by\s'
+            r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
+            r'\n\n(  .*\n)+\n.*$',
+            lambda m: CMakeFilesMissing(
+                [e.strip() for e in m.group(3).splitlines()], m.group(2))
         ),
         (
             r"Could NOT find (.*) \(missing: .*\)",
@@ -1747,8 +1749,10 @@ build_failure_regexps = [
         r"\[DZ\] could not load class (.*) for license (.*)",
         lambda m: MissingPerlModule(None, m.group(1), None),
     ),
-    (r'\- ([^\s]+)\s+\.\.\.missing. \(would need (.*)\)',
-     lambda m: MissingPerlModule(None, m.group(1), None, minimum_version=m.group(2))
+    (
+        r'\- ([^\s]+)\s+\.\.\.missing. \(would need (.*)\)',
+        lambda m: MissingPerlModule(
+            None, m.group(1), None, minimum_version=m.group(2))
     ),
     (r"Required plugin bundle ([^ ]+) isn\'t installed.", perl_missing_plugin),
     (r"Required plugin ([^ ]+) isn\'t installed.", perl_missing_plugin),
@@ -2362,7 +2366,7 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        "(OSError|RuntimeError): Could not find (.*) library\..*",
+        r"(OSError|RuntimeError): Could not find (.*) library\..*",
         lambda m: MissingVagueDependency(m.group(2))
     ),
     (
@@ -2564,9 +2568,10 @@ build_failure_regexps = [
         r'Cannot find (.*) in @INC at (.*) line ([0-9]+)\.',
         lambda m: MissingPerlModule(None, m.group(1)),
     ),
-    (r'(.*::.*) (.*) is required to configure our .* dependency, '
-     r'please install it manually or upgrade your CPAN/CPANPLUS',
-     lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
+    (
+        r'(.*::.*) (.*) is required to configure our .* dependency, '
+        r'please install it manually or upgrade your CPAN/CPANPLUS',
+        lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
     ),
     (
         r"configure: error: Missing lib(.*)\.",
@@ -2591,7 +2596,7 @@ build_failure_regexps = [
     ),
     (
         r'there is no package called \'(.*)\'',
-       lambda m: MissingRPackage(m.group(1))
+        lambda m: MissingRPackage(m.group(1))
     ),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
     (r'  namespace "(.*)" .* is being loaded, but \>= (.*) is required',
@@ -2614,21 +2619,25 @@ build_failure_regexps = [
     (r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
      None),
 
-    (r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
-     r'from gettext version (.*) but the autoconf macros are from gettext '
-     r'version (.*)',
-     lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
+    (
+        r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
+        r'from gettext version (.*) but the autoconf macros are from gettext '
+        r'version (.*)',
+        lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
 
-    (r'You need to install (.*)',
-     lambda m: MissingVagueDependency(m.group(1))),
+    (
+        r'You need to install (.*)',
+        lambda m: MissingVagueDependency(m.group(1))),
 
-    (r'configure: error: You need (.*) installed',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'configure: error: You need (.*) installed',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
 
-    (r'open3: exec of cme (.*) failed: No such file or directory '
-     r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
-     lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
+    (
+        r'open3: exec of cme (.*) failed: No such file or directory '
+        r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
+        lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
     ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
@@ -2675,20 +2684,25 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (r"configure: error: (.*) Not found", lambda m: MissingVagueDependency(m.group(1))),
-    (r"configure: error: You need to install (.*)",
-     lambda m: MissingVagueDependency(m.group(1)),
+    (
+        r"configure: error: You need to install (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
-    (r'configure: error: (.*) \((.*)\) not found\.',
-     lambda m: MissingVagueDependency(m.group(2))
+    (
+        r'configure: error: (.*) \((.*)\) not found\.',
+        lambda m: MissingVagueDependency(m.group(2))
     ),
-    (r'configure: error: (.*) libraries are required for compilation',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'configure: error: (.*) libraries are required for compilation',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
-    (r'configure: error: .*Make sure you have (.*) installed\.',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'configure: error: .*Make sure you have (.*) installed\.',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
-    (r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
     (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
     (r'ERROR:  Unable to locate (.*)\.', lambda m: MissingVagueDependency(m.group(1))),

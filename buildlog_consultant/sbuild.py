@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-from typing import List, Tuple, Iterator, BinaryIO, Optional, Union, Dict
+from typing import List, Tuple, Iterator, BinaryIO, Optional, Union
 
 from dataclasses import dataclass
 import logging

@@ -1002,8 +1002,8 @@ Call Stack (most recent call first):
   /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
   /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
   src/CMakeLists.txt:4 (find_package)
-""".splitlines(True), 4, MissingBoostComponents(
-        ['program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
+""".splitlines(True), 4, MissingBoostComponents([
+            'program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
 
     def test_pkg_config_missing(self):
         self.run_test(
