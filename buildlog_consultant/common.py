@@ -436,8 +436,11 @@ class MissingBoostComponents:
 class CMakeFilesMissing:
 
     filenames: List[str]
+    version: Optional[str] = None
 
     def __str__(self):
+        if self.version:
+            return "Missing CMake package configuration files (version %s): %r" % (self.version, self.filenames,)
         return "Missing CMake package configuration files: %r" % (self.filenames,)
 
 
@@ -448,6 +451,8 @@ class MissingCMakeConfig:
     version: str
 
     def __str__(self):
+        if self.version:
+            return "Missing CMake package configuration for %s (version %s)" % (self.name, self.version)
         return "Missing CMake package configuration for %s" % (self.name, )
 
 
@@ -1167,7 +1172,7 @@ class CMakeNeedExactVersion(Problem):
 
 class CMakeErrorMatcher(Matcher):
 
-    regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):")
+    regexp = re.compile(r"CMake (Error|Warning) at (.+):([0-9]+) \((.*)\):")
 
     cmake_errors = [
         (r'Could NOT find Boost \(missing: (.*)\) \(found suitable version .*',
@@ -1179,7 +1184,7 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find a package configuration file provided by\s'
          r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
          r'\n\n(  .*\n)+\n.*$',
-         lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()])
+         lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()], m.group(2))
         ),
         (
             r"Could NOT find (.*) \(missing: .*\)",
@@ -1210,8 +1215,8 @@ class CMakeErrorMatcher(Matcher):
             cmake_file_missing,
         ),
         (
-            r'Could not find a configuration file for package "(.*)".*'
-            r'.*requested version "(.*)"\.',
+            r'Could not find a configuration file for package "(.*)"\sthat\sis\s'
+            r'compatible\swith\srequested\sversion\s"(.*)"\.',
             lambda m: MissingCMakeConfig(m.group(1), m.group(2)),
         ),
         (
@@ -1221,9 +1226,9 @@ class CMakeErrorMatcher(Matcher):
         ),
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
-            r"\(requested\sversion\s.+\)\swith\sany\sof\sthe\sfollowing\snames:\n"
+            r"\(requested\sversion\s(.+\))\swith\sany\sof\sthe\sfollowing\snames:\n"
             r"\n(  .*\n)+\n.*$",
-            lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()]),
+            lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()], m.group(2)),
         ),
         (
             r"No CMAKE_(.*)_COMPILER could be found.\n"
@@ -1293,8 +1298,8 @@ class CMakeErrorMatcher(Matcher):
         if not m:
             return [], None
 
-        path = m.group(1)  # noqa: F841
-        start_lineno = int(m.group(2))  # noqa: F841
+        path = m.group(2)  # noqa: F841
+        start_lineno = int(m.group(3))  # noqa: F841
         linenos, error_lines = self._extract_error_lines(lines, i)
 
         error = None
@@ -2927,9 +2932,6 @@ def find_build_failure_description(  # noqa: C901
         missing_file_pat = re.compile(
             r"\s*The imported target \"(.*)\" references the file"
         )
-        conf_file_pat = re.compile(
-            r'\s*Could not find a configuration file for package "(.*)".*'
-        )
         binary_pat = re.compile(r"  Could NOT find (.*) \(missing: .*\)")
         cmake_files_pat = re.compile(
             "^  Could not find a package configuration file provided "
@@ -2960,20 +2962,6 @@ def find_build_failure_description(  # noqa: C901
                         MissingFile(filename),
                     )
                 continue
-            m = re.fullmatch(conf_file_pat, line)
-            if m:
-                package = m.group(1)
-                m = re.match(
-                    r'.*requested version "(.*)"\.', lines[lineno + 1].rstrip("\n")
-                )
-                if not m:
-                    logger.warn("expected version string in line %r", lines[lineno + 1])
-                    continue
-                version = m.group(1)
-                return (
-                    SingleLineMatch.from_lines(lines, lineno),
-                    MissingPkgConfig(package, version),
-                )
             if lineno + 1 < len(lines):
                 m = re.fullmatch(
                     cmake_files_pat,
