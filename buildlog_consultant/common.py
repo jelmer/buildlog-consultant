@@ -23,7 +23,7 @@ from typing import List, Optional, Tuple
 import re
 import textwrap
 
-from . import Problem, SingleLineMatch, problem
+from . import Problem, SingleLineMatch, problem, version_string
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class MissingPythonDistribution:
         req = Requirement.parse(text)
         if len(req.specs) == 1 and req.specs[0][0] == ">=":
             return cls(req.name, python_version, req.specs[0][1])
-        return cls(text, python_version)
+        return cls(req.name, python_version)
 
     def __repr__(self):
         return "%s(%r, python_version=%r, minimum_version=%r)" % (
@@ -423,6 +423,15 @@ def cmake_pkg_config_missing(m):
     return MissingPkgConfig(m.group(1))
 
 
+@problem("missing-boost-components")
+class MissingBoostComponents:
+
+    components: List[str]
+
+    def __str__(self):
+        return "Missing Boost components: %r" % self.components
+
+
 @problem("missing-cmake-files")
 class CMakeFilesMissing:
 
@@ -467,6 +476,7 @@ class MissingPerlModule:
     filename: str
     module: str
     inc: Optional[List[str]] = None
+    minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.filename:
@@ -487,10 +497,6 @@ def perl_expand_failed(m):
 
 
 def perl_missing_plugin(m):
-    return MissingPerlModule(None, m.group(1), None)
-
-
-def perl_missing_author_dep(m):
     return MissingPerlModule(None, m.group(1), None)
 
 
@@ -949,6 +955,23 @@ class MissingHaskellDependencies(Problem):
         return "Missing Haskell dependencies: %r" % self.deps
 
 
+class MissingHaskellModule(Problem):
+
+    kind = "missing-haskell-module"
+
+    def __init__(self, module):
+        self.module = module
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.mdule == other.module
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.module)
+
+    def __str__(self):
+        return "Missing Haskell module: %r" % self.module
+
+
 class Matcher(object):
     def match(self, line: List[str], i: int) -> Tuple[List[int], Optional[Problem]]:
         raise NotImplementedError(self.match)
@@ -994,7 +1017,7 @@ class SetupPyCommandMissingMatcher(Matcher):
         for j in range(i, max(0, i - 20), -1):
             if self.warning_match.fullmatch(lines[j].rstrip("\n")):
                 return [i], MissingSetupPyCommand(m.group(1))
-        return []
+        return [], None
 
 
 class MultiLineConfigureError(Matcher):
@@ -1010,13 +1033,18 @@ class MultiLineConfigureError(Matcher):
         if lines[i].rstrip("\n") != "configure: error:":
             return [], None
 
-        for j, line in enumerate(lines[i + 1 :]):
+        relevant_linenos = []
+
+        for j, line in enumerate(lines[i + 1 :], i + 1):
+            if not line.strip():
+                continue
+            relevant_linenos.append(j)
             for submatcher, fn in self.submatchers:
                 m = submatcher.match(line.rstrip("\n"))
                 if m:
-                    return [i + j + 1], fn(m)
+                    return [j], fn(m)
 
-        return list(range(i + 1, len(lines))), None
+        return relevant_linenos, None
 
 
 class AutoconfUnexpectedMacroMatcher(Matcher):
@@ -1070,7 +1098,7 @@ class HaskellMissingDependencyMatcher(Matcher):
                 break
             deps.extend([x.strip() for x in line.split(",", 1)])
             linenos.append(linenos[-1] + 1)
-        return linenos, MissingHaskellDependencies(deps)
+        return linenos, MissingHaskellDependencies([dep for dep in deps if dep])
 
 
 def cmake_command_missing(m):
@@ -1079,10 +1107,6 @@ def cmake_command_missing(m):
 
 def cmake_file_missing(m):
     return MissingFile(m.group(2))
-
-
-def cmake_package_config_file_missing(m):
-    return CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
 
 
 def cmake_compiler_failure(m):
@@ -1136,9 +1160,16 @@ class CMakeErrorMatcher(Matcher):
     regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):")
 
     cmake_errors = [
+        (r'Could NOT find Boost \(missing: (.*)\) \(found suitable version .*',
+         lambda m: MissingBoostComponents(m.group(1).split())),
         (
             r"--  Package \'(.*)\', required by \'(.*)\', not found",
             cmake_pkg_config_missing,
+        ),
+        (r'Could not find a package configuration file provided by\s'
+         r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
+         r'\n\n(  .*\n)+\n.*$',
+         lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()])
         ),
         (
             r"Could NOT find (.*) \(missing: .*\)",
@@ -1176,13 +1207,13 @@ class CMakeErrorMatcher(Matcher):
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
             r"with\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$",
-            cmake_package_config_file_missing,
+            lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
         ),
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
             r"\(requested\sversion\s.+\)\swith\sany\sof\sthe\sfollowing\snames:\n"
             r"\n(  .*\n)+\n.*$",
-            cmake_package_config_file_missing,
+            lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()]),
         ),
         (
             r"No CMAKE_(.*)_COMPILER could be found.\n"
@@ -1228,6 +1259,9 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find \'(.*)\' executable[\!,].*', lambda m: MissingCommand(m.group(1))),
         (r'Could not find (.*)_STATIC_LIBRARIES using the following names: ([a-zA-z0-9_.]+)',
          lambda m: MissingStaticLibrary(m.group(1), m.group(2))),
+        ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1) + '.cmake'])),
+        (r'(.*) and (.*) are required', lambda m: MissingVagueDependency(m.group(1))),
+        (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
@@ -1388,6 +1422,17 @@ class MissingPauseCredentials:
 
     def __str__(self):
         return "Missing credentials for PAUSE"
+
+
+@problem("mismatch-gettext-versions")
+class MismatchGettextVersions:
+
+    makefile_version: str
+    autoconf_version: str
+
+    def __str__(self):
+        return "Mismatch versions (%s, %s)" % (
+            self.makefile_version, self.autoconf_version)
 
 
 build_failure_regexps = [
@@ -1559,6 +1604,7 @@ build_failure_regexps = [
         r'\> Cannot run program "(.*)": error=2, No such file or directory',
         lambda m: MissingCommand(m.group(1)),
     ),
+    (r'(.*) binary \'(.*)\' not available .*', lambda m: MissingCommand(m.group(2))),
     ("Please install 'git' seperately and try again.", lambda m: MissingCommand("git")),
     (
         r"\> A problem occurred starting process \'command \'(.*)\'\'",
@@ -1607,8 +1653,6 @@ build_failure_regexps = [
         r"mono \(>=(.*)\) or \.Net",
         c_sharp_compiler_missing,
     ),
-    (r"configure: error: gmcs Not found", c_sharp_compiler_missing),
-    (r"configure: error: You need to install gmcs", c_sharp_compiler_missing),
     (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
         lambda m: MissingPkgConfig("libkqueue"),
@@ -1644,6 +1688,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
+        lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
+    ),
+    (
         r"dh: Unknown sequence --(.*) "
         r"\(options should not come before the sequence\)",
         dh_with_order,
@@ -1670,10 +1718,18 @@ build_failure_regexps = [
         r"\[DynamicPrereqs\] Can't locate (.*) at inline delegation in .*",
         lambda m: MissingPerlModule(None, m.group(1), None)
     ),
+    (
+        r"Can't locate object method \"(.*)\" via package \"(.*)\" "
+        r"\(perhaps you forgot to load \"(.*)\"\?\) at .*.pm line [0-9]+\.",
+        lambda m: MissingPerlModule(None, m.group(2), None)
+    ),
     (r">\(error\): Could not expand \[(.*)\'", perl_expand_failed),
     (
         r"\[DZ\] could not load class (.*) for license (.*)",
         lambda m: MissingPerlModule(None, m.group(1), None),
+    ),
+    (r'\- ([^\s]+)\s+\.\.\.missing. \(would need (.*)\)',
+     lambda m: MissingPerlModule(None, m.group(1), None, minimum_version=m.group(2))
     ),
     (r"Required plugin bundle ([^ ]+) isn\'t installed.", perl_missing_plugin),
     (r"Required plugin ([^ ]+) isn\'t installed.", perl_missing_plugin),
@@ -1682,8 +1738,12 @@ build_failure_regexps = [
         perl_missing_file,
     ),
     (
-        r"Can\'t find author dependency (.*) at (.*) line ([0-9]+).",
-        perl_missing_author_dep,
+        r"Can\'t find author dependency ([^ ]+) at (.*) line ([0-9]+).",
+        lambda m: MissingPerlModule(None, m.group(1), None)
+    ),
+    (
+        r"Can\'t find author dependency ([^ ]+) version (.*) at (.*) line ([0-9]+).",
+        lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
     ),
     (
         r"> Could not find (.*)\. Please check that (.*) contains a valid JDK "
@@ -1798,6 +1858,14 @@ build_failure_regexps = [
         maven_missing_plugin,
     ),
     (
+        r'E: eatmydata: unable to find \'(.*)\' in PATH',
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
+        r'/usr/bin/eatmydata: [0-9]+: exec: (.*): not found',
+        command_missing
+    ),
+    (
         r"(.*): exec: \"(.*)\": executable file not found in \$PATH",
         lambda m: MissingCommand(m.group(2)),
     ),
@@ -1878,7 +1946,7 @@ build_failure_regexps = [
     # line will have the actual line that failed.
     (r"ImportError: cannot import name (.*)", None),
     # Rust ?
-    (r"  = note: /usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
+    (r"\s*= note: /usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (r"/usr/bin/ld: cannot find -l(.*)", ld_missing_lib),
     (
         r"Could not find gem \'([^ ]+) \(([^)]+)\)\', " r"which is required by gem.*",
@@ -2241,6 +2309,10 @@ build_failure_regexps = [
         r'Can\'t exec "(.*)": No such file or directory at (.*) line ([0-9]+).',
         command_missing,
     ),
+    (
+        r'E OSError: No command "(.*)" found on host .*',
+        command_missing
+    ),
     # PHPUnit
     (r'Cannot open file "(.*)".', file_not_found),
     (
@@ -2263,9 +2335,22 @@ build_failure_regexps = [
     (r"libtoolize:   error: \'(.*)\' does not exist.", file_not_found),
     # Seen in python-cogent
     (
-        "RuntimeError: Numpy required but not found.",
-        lambda m: MissingPythonModule("numpy"),
+        "(OSError|RuntimeError): (.*) required but not found.",
+        lambda m: MissingVagueDependency(m.group(2))
     ),
+    (
+        "(OSError|RuntimeError): Could not find (.*) library\..*",
+        lambda m: MissingVagueDependency(m.group(2))
+    ),
+    (
+        r'(OSError|RuntimeError): We need package (.*), but not importable',
+        lambda m: MissingPythonDistribution(m.group(1))
+    ),
+    (
+        r'(OSError|RuntimeError): No (.*) was found: .*',
+        lambda m: MissingVagueDependency(m.group(2))
+    ),
+
     # Seen in cpl-plugin-giraf
     (
         r"ImportError: Numpy version (.*) or later must be " r"installed to use .*",
@@ -2339,6 +2424,11 @@ build_failure_regexps = [
         r"to build",
         lambda m: MissingLibrary("readline"),
     ),
+    (
+        r"    Could not find module ‘(.*)’",
+        lambda m: MissingHaskellModule(m.group(1)),
+    ),
+    (r'E: session: (.*): Chroot not found', lambda m: ChrootNotFound(m.group(1))),
     HaskellMissingDependencyMatcher(),
     SetupPyCommandMissingMatcher(),
     CMakeErrorMatcher(),
@@ -2354,8 +2444,13 @@ build_failure_regexps = [
         missing_lazyfont_file,
     ),
     (r"qt.qpa.xcb: could not connect to display", lambda m: MissingXDisplay()),
+    (r'\(.*:[0-9]+\): Gtk-WARNING \*\*: [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}: cannot open display: ', lambda m: MissingXDisplay()),
     (
         r"Package (.*) was not found in the pkg-config search path.",
+        lambda m: MissingPkgConfig(m.group(1)),
+    ),
+    (
+        r'pkg-config does not know (.*) at .*\.',
         lambda m: MissingPkgConfig(m.group(1)),
     ),
     (
@@ -2371,6 +2466,10 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1)),
     ),
     (
+        r'Could not find executable (.*)',
+        lambda m: MissingCommand(m.group(1))
+    ),
+    (
         r"go: .*: Get \"(.*)\": x509: certificate signed by unknown authority",
         lambda m: UnknownCertificateAuthority(m.group(1)),
     ),
@@ -2378,7 +2477,10 @@ build_failure_regexps = [
         r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
         lambda m: UnknownCertificateAuthority(m.group(1)),
     ),
-
+    (
+        r'curl: \(77\) error setting certificate verify locations:  CAfile: (.*) CApath: (.*)',
+        lambda m: MissingFile(m.group(1))
+    ),
     (
         r"\t\(Do you need to predeclare (.*)\?\)",
         lambda m: MissingPerlPredeclared(m.group(1)),
@@ -2387,6 +2489,11 @@ build_failure_regexps = [
         r"Bareword \"(.*)\" not allowed while \"strict subs\" in use at "
         r"Makefile.PL line ([0-9]+).",
         lambda m: MissingPerlPredeclared(m.group(1)),
+    ),
+    (
+        r'String found where operator expected at Makefile.PL line ([0-9]+), '
+        'near "([a-z0-9_]+).*"',
+        lambda m: MissingPerlPredeclared(m.group(2)),
     ),
     (r"  vignette builder 'knitr' not found", lambda m: MissingRPackage("knitr")),
     (
@@ -2431,6 +2538,14 @@ build_failure_regexps = [
         lambda m: MissingPerlModule(None, m.group(1)),
     ),
     (
+        r'Cannot find (.*) in @INC at (.*) line ([0-9]+)\.',
+        lambda m: MissingPerlModule(None, m.group(1)),
+    ),
+    (r'(.*::.*) (.*) is required to configure our .* dependency, '
+     r'please install it manually or upgrade your CPAN/CPANPLUS',
+     lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
+    ),
+    (
         r"configure: error: Missing lib(.*)\.",
         lambda m: MissingLibrary(m.group(1)),
     ),
@@ -2451,6 +2566,10 @@ build_failure_regexps = [
         r"Error: package \'(.*)\' (.*) was found, but >= (.*) is required by \'(.*)\'",
         lambda m: MissingRPackage(m.group(1), m.group(3)),
     ),
+    (
+        r'there is no package called \'(.*)\'',
+       lambda m: MissingRPackage(m.group(1))
+    ),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
     (r'  namespace "(.*)" .* is being loaded, but \>= (.*) is required',
      lambda m: MissingRPackage(m.group(1), m.group(2))),
@@ -2463,11 +2582,31 @@ build_failure_regexps = [
      lambda m: InactiveKilled(int(m.group(1)))
      ),
 
-    (r'\[Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! '
+    (r'\[.*Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! '
      r'Please set it or specify an authority for this plugin. at inline delegation in '
      r'Dist::Zilla::Plugin::Authority for logger->log_fatal \(attribute declared in '
      r'/usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\.',
      lambda m: MissingPauseCredentials()),
+
+    (r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
+     None),
+
+    (r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
+     r'from gettext version (.*) but the autoconf macros are from gettext '
+     r'version (.*)',
+     lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
+
+    (r'You need to install (.*)',
+     lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'configure: error: You need (.*) installed',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (r'open3: exec of cme (.*) failed: No such file or directory '
+     r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
+     lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
+    ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -2512,6 +2651,27 @@ build_failure_regexps = [
         r"configure: error: Unable to find (.*), please install (.*)",
         lambda m: MissingVagueDependency(m.group(2)),
     ),
+    (r"configure: error: (.*) Not found", lambda m: MissingVagueDependency(m.group(1))),
+    (r"configure: error: You need to install (.*)",
+     lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (r'configure: error: (.*) \((.*)\) not found\.',
+     lambda m: MissingVagueDependency(m.group(2))
+    ),
+    (r'configure: error: (.*) libraries are required for compilation',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (r'configure: error: .*Make sure you have (.*) installed\.',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
+     lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
+    (r'ERROR:  Unable to locate (.*)\.', lambda m: MissingVagueDependency(m.group(1))),
+    ('\x1b\\[1;31merror: (.*) not found\x1b\\[0;32m', lambda m: MissingVagueDependency(m.group(1))),
+    (r'You do not have (.*) correctly installed\. .*',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
@@ -2566,6 +2726,7 @@ secondary_build_failure_regexps = [
     r"configure.ac:[0-9]+: error: (.*)",
     r"Reconfigure the source tree (via './config' or 'perl Configure'), please.",
     r"dwz: Too few files for multifile optimization",
+    r"\[CJM/MatchManifest\] Aborted because of MANIFEST mismatch",
     r"dh_dwz: dwz -q -- .* returned exit code [0-9]+",
     r"help2man: can\'t get `-?-help\' info from .*",
     r"[^:]+: line [0-9]+:\s+[0-9]+ Segmentation fault.*",
@@ -2608,8 +2769,10 @@ secondary_build_failure_regexps = [
     "SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
     "pkg_resources.UnknownExtra|tarfile.ReadError|"
     "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
-    "datalad.support.exceptions.IncompleteResultsError|AssertionError"
-    r"): .*",
+    "datalad.support.exceptions.IncompleteResultsError|AssertionError|"
+    r"Cython.Compiler.Errors.CompileError): .*",
+    # Rust
+    r"error\[E[0-9]+\]: .*",
     "^E   DeprecationWarning: .*",
     "^E       fixture '(.*)' not found",
     # Rake
@@ -2644,6 +2807,7 @@ secondary_build_failure_regexps = [
     r"mkdir: missing operand",
     r"Fatal error: .*",
     "Fatal Error: (.*)",
+    r"Alert: (.*)",
     r'ERROR: Test "(.*)" failed. Exiting.',
     # scons
     r"ERROR: test\(s\) failed in (.*)",
@@ -2702,13 +2866,18 @@ secondary_build_failure_regexps = [
     r"\[ERROR\] .*",
     r"dh_auto_(test|build): error: (.*)",
     r"tar: This does not look like a tar archive",
-    r"\[DZ\] no name was ever set",
+    r"\[DZ\] no (name|version) was ever set",
     r"diff: (.*): No such file or directory",
+    r"gpg: signing failed: .*",
 ]
 
-compiled_secondary_build_failure_regexps = [
-    re.compile(regexp) for regexp in secondary_build_failure_regexps
-]
+compiled_secondary_build_failure_regexps = []
+
+for regexp in secondary_build_failure_regexps:
+    try:
+        compiled_secondary_build_failure_regexps.append(re.compile(regexp))
+    except re.error as e:
+        raise Exception("Error compiling %r: %s" % (regexp, e))
 
 
 def find_build_failure_description(  # noqa: C901
@@ -2821,6 +2990,9 @@ def main(argv=None):
     parser.add_argument("path", type=str)
     parser.add_argument("--context", "-c", type=int, default=5)
     parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version_string
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -2841,7 +3013,7 @@ def main(argv=None):
                 ret["details"] = problem.json()
             except NotImplementedError:
                 ret["details"] = None
-        json.dump(ret, sys.stdout)
+        json.dump(ret, sys.stdout, indent=4)
     else:
         if not m:
             logging.info("No issues found")

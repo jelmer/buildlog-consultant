@@ -40,6 +40,7 @@ from ..common import (
     MissingNodeModule,
     MissingCommand,
     MissingPkgConfig,
+    MissingBoostComponents,
     MissingVcVersionerVersion,
     MissingPerlFile,
     MissingPerlModule,
@@ -289,6 +290,16 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
+        self.run_test([
+            "configure: error:",
+            "",
+            "   Unable to find the Multi Emulator Super System (MESS).",
+            "",
+            "   Please install MESS, or specify the MESS command with",
+            "   a MESS environment variable.",
+            "",
+            "e.g. MESS=/path/to/program/mess ./configure"
+            ], 3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
 
     def test_interpreter_missing(self):
         self.run_test(
@@ -386,6 +397,23 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             MissingCommand("git"),
         )
+
+    def test_cmake_missing_include(self):
+        self.run_test(
+            """\
+-- Performing Test _OFFT_IS_64BIT
+-- Performing Test _OFFT_IS_64BIT - Success
+-- Performing Test HAVE_DATE_TIME
+-- Performing Test HAVE_DATE_TIME - Success
+CMake Error at CMakeLists.txt:43 (include):
+  include could not find load file:
+
+    KDEGitCommitHooks
+
+
+-- Found KF5Activities: /usr/lib/x86_64-linux-gnu/cmake/KF5Activities/KF5ActivitiesConfig.cmake (found version "5.78.0") 
+-- Found KF5Config: /usr/lib/x86_64-linux-gnu/cmake/KF5Config/KF5ConfigConfig.cmake (found version "5.78.0") 
+""".splitlines(True), 8, CMakeFilesMissing(['KDEGitCommitHooks.cmake']))
 
     def test_cmake_missing_cmake_files(self):
         self.run_test(
@@ -954,6 +982,19 @@ error: invalid command 'test'
             MissingValaPackage("glib-2.0"),
         )
 
+    def test_missing_boost_components(self):
+        self.run_test("""\
+CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
+  Could NOT find Boost (missing: program_options filesystem system graph
+  serialization iostreams) (found suitable version "1.74.0", minimum required
+  is "1.55.0")
+Call Stack (most recent call first):
+  /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
+  /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
+  src/CMakeLists.txt:4 (find_package)
+""".splitlines(True), 4, MissingBoostComponents(
+        ['program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
+
     def test_pkg_config_missing(self):
         self.run_test(
             [
@@ -1110,6 +1151,10 @@ error: invalid command 'test'
             MissingPerlPredeclared("author_tests"),
         )
         self.run_test(
+            ["String found where operator expected at Makefile.PL line 8, near \"readme_from    'lib/URL/Encode.pod'\""],
+            1, MissingPerlPredeclared("readme_from"))
+
+        self.run_test(
             [
                 'Bareword "use_test_base" not allowed while "strict subs" in use at Makefile.PL line 12.'
             ],
@@ -1195,6 +1240,14 @@ error: invalid command 'test'
                 ],
             ),
         )
+        self.run_test(
+            ["- ExtUtils::Depends         ...missing. (would need 0.302)"], 1,
+            MissingPerlModule(None, "ExtUtils::Depends", None, "0.302"))
+        self.run_test(
+            ['Can\'t locate object method "new" via package "Dist::Inkt::Profile::TOBYINK" '
+             '(perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at '
+             '/usr/share/perl5/Dist/Inkt.pm line 208.'], 1,
+            MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None))
 
     def test_missing_perl_file(self):
         self.run_test(

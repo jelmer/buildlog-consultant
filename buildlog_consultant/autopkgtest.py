@@ -196,7 +196,7 @@ def parse_autopkgtest_summary(lines):
             yield i, m.group(1), "PASS", None, []
             i += 1
             continue
-        m = re.match("([^ ]+)(?:[ ]+)(FAIL|PASS|SKIP) (.+)", line)
+        m = re.match("([^ ]+)(?:[ ]+)(FAIL|PASS|SKIP|FLAKY) (.+)", line)
         if not m:
             i += 1
             continue
@@ -417,7 +417,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
         ):
             if result in ("PASS", "SKIP"):
                 continue
-            assert result == "FAIL"
+            assert result in ("FAIL", "FLAKY")
             if reason == "timed out":
                 error = AutopkgtestTimedOut()
                 return (

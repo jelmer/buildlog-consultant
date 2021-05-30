@@ -1,3 +1,9 @@
+buildlog-consultant (0.0.10-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+
+ -- Debian Janitor <janitor@jelmer.uk>  Sun, 30 May 2021 20:30:23 -0000
+
 buildlog-consultant (0.0.9-1) unstable; urgency=low
 
   * New upstream release.

@@ -22,7 +22,7 @@ from typing import List, Tuple, Iterator, BinaryIO, Optional, Union, Dict
 from dataclasses import dataclass
 import logging
 
-from . import Problem, problem, SingleLineMatch
+from . import Problem, problem, SingleLineMatch, version_string
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
@@ -642,11 +642,10 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
 
 def find_failure_create_session(sbuildlog, failed_stage):
     section = sbuildlog.get_section(None)
-    match, description, error = find_creation_session_error(section.lines)
+    match, error = find_creation_session_error(section.lines)
     if error:
         phase = ("create-session",)
-    if description is None:
-        description = "build failed stage %s" % failed_stage
+    description = "build failed stage %s" % failed_stage
     return SbuildFailure(
         failed_stage,
         description,
@@ -863,7 +862,7 @@ def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
     return SbuildFailure(
         failed_stage,
         description,
-        error=error,
+        error=None,
         phase=phase,
         section=None,
         match=None,
@@ -1013,6 +1012,9 @@ def main(argv=None):
     parser.add_argument(
         "--context", "-c", type=int, default=5, help="Number of context lines to print."
     )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version_string
+    )
     parser.add_argument("path", type=str)
     args = parser.parse_args()
 
@@ -1034,7 +1036,7 @@ def main(argv=None):
         failure = worker_failure_from_sbuild_log(sbuildlog)
 
         if args.json:
-            json.dump(failure.json(), sys.stdout)
+            json.dump(failure.json(), sys.stdout, indent=4)
 
     if failure.error:
         logging.info("Error: %s" % failure.error)
