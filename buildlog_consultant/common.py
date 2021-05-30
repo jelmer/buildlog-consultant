@@ -1709,6 +1709,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
+        r"configure: error: Please install (.*) >= (.*)",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (
         ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
         lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
     ),
