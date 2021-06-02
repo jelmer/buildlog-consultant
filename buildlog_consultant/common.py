@@ -1183,7 +1183,7 @@ class CMakeErrorMatcher(Matcher):
         ),
         (
             r'Could not find a package configuration file provided by\s'
-            r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
+            r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\s+of\s+the\s+following\snames:'
             r'\n\n(  .*\n)+\n.*$',
             lambda m: CMakeFilesMissing(
                 [e.strip() for e in m.group(3).splitlines()], m.group(2))
@@ -1222,8 +1222,8 @@ class CMakeErrorMatcher(Matcher):
             lambda m: MissingCMakeConfig(m.group(1), m.group(2)),
         ),
         (
-            r'.*Could not find a package configuration file provided by "(.*)"\s'
-            r"with\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$",
+            r'.*Could not find a package configuration file provided by "(.*)"\s+'
+            r"with\s+any\s+of\s+the\s+following\s+names:\n\n(  .*\n)+\n.*$",
             lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
         ),
         (
@@ -1286,11 +1286,11 @@ class CMakeErrorMatcher(Matcher):
         linenos = [i]
         error_lines = []
         for j, line in enumerate(lines[i + 1 :]):
-            if line != "\n" and not line.startswith(" "):
+            if line.rstrip('\n') and not line.startswith(" "):
                 break
-            error_lines.append(line)
+            error_lines.append(line.rstrip('\n') + '\n')
             linenos.append(i + 1 + j)
-        while error_lines and error_lines[-1] == "\n":
+        while error_lines and error_lines[-1].rstrip('\n') == "":
             error_lines.pop(-1)
             linenos.pop(-1)
         return linenos, textwrap.dedent("".join(error_lines)).splitlines(True)
