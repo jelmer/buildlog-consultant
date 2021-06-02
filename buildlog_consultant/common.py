@@ -1713,6 +1713,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
+        r"configure: error: (.*) is required for (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
         lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
     ),
@@ -1889,6 +1893,10 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1)),
     ),
     (
+        r'\'(.*)\' not found in PATH at (.*) line ([0-9]+)\.',
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
         r'/usr/bin/eatmydata: [0-9]+: exec: (.*): not found',
         command_missing
     ),
@@ -2029,6 +2037,10 @@ build_failure_regexps = [
     (
         r'checking for (.*)\.\.\. configure: error: "Cannot check for existence of module (.*) without pkgconf"',
         lambda m: MissingCommand("pkgconf"),
+    ),
+    (
+        r'configure: error: Could not find \'(*.)\' in path\.',
+        lambda m: MissingCommand(m.group(1)),
     ),
     (
         r"autoreconf was not found; .*",
