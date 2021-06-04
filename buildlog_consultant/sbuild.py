@@ -517,6 +517,10 @@ BRZ_ERRORS = [
         lambda m, pl: UpstreamMetadataFileParseError(m.group(1), m.group(2)),
     ),
     (r"Debcargo failed to run\.", _parse_debcargo_failure),
+    (
+        r"\[Errno 28\] No space left on device",
+        lambda m, pl: NoSpaceOnDevice(),
+    ),
 ]
 
 
