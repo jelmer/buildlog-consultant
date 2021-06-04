@@ -1279,6 +1279,7 @@ class CMakeErrorMatcher(Matcher):
         ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1) + '.cmake'])),
         (r'(.*) and (.*) are required', lambda m: MissingVagueDependency(m.group(1))),
         (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
+        (r'Python module (.*) not found\!', lambda m: MissingPythonModule(m.group(1))),
     ]
 
     @classmethod
