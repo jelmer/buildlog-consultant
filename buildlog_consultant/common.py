@@ -1435,6 +1435,13 @@ class MissingXDisplay:
         return "No X Display"
 
 
+@problem("cancelled")
+class Cancelled:
+
+    def __str__(self):
+        return "Cancelled by runner or job manager"
+
+
 @problem("inactive-killed")
 class InactiveKilled:
 
@@ -2234,6 +2241,9 @@ build_failure_regexps = [
         r".*:([0-9]+): element include: XInclude error : "
         r"could not load (.*), and no fallback was found",
         None,
+    ),
+    (r"E: Child terminated by signal ‘Terminated’",
+     lambda m: Cancelled(),
     ),
     (r"E: Failed to execute “(.*)”: No such file or directory", command_missing),
     (r"E: The Debian version .* cannot be used as an ELPA version.", None),
