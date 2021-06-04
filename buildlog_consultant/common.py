@@ -2039,7 +2039,7 @@ build_failure_regexps = [
         lambda m: MissingCommand("pkgconf"),
     ),
     (
-        r'configure: error: Could not find \'(*.)\' in path\.',
+        r'configure: error: Could not find \'(.*)\' in path\.',
         lambda m: MissingCommand(m.group(1)),
     ),
     (
@@ -2641,6 +2641,10 @@ build_failure_regexps = [
         r'version (.*)',
         lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
 
+    (
+        r'You need to install the (.*) package to use this program\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
     (
         r'You need to install (.*)',
         lambda m: MissingVagueDependency(m.group(1))),
