@@ -1687,6 +1687,10 @@ build_failure_regexps = [
         meson_pkg_config_missing,
     ),
     (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: Program \'(.*)\' not found',
+        lambda m: MissingCommand(m.group(3))
+    ),
+    (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found, '
         "tried pkgconfig",
         meson_pkg_config_missing,
@@ -1713,12 +1717,37 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
+        r"configure: error: the required package (.*) is not installed",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required for building this package.",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required to compile .*",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
         r"configure: error: You must have (.*) installed",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
         r"configure: error: (.*) is required for (.*)",
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) >= (.*) not found",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: (.*) not found",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) ([0-9.]+) is required to build.*",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
         ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
