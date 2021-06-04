@@ -2696,6 +2696,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (
+        r"configure: error: Missing required program '(.*)'.*",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         r"configure: error: Missing (.*)\.",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
