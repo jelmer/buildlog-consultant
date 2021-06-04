@@ -92,6 +92,15 @@ class MissingPythonDistribution:
         )
 
 
+@problem("patch-application-failed")
+class PatchApplicationFailed:
+
+    patchname: str
+
+    def __str__(self):
+        return "Patch application failed: %s" % self.patchname
+
+
 def python_module_not_found(m):
     try:
         return MissingPythonModule(m.group(2), python_version=None)
@@ -1739,22 +1748,6 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r"configure: error: (.*) >= (.*) not found",
-        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
-    ),
-    (
-        r"configure: error: (.*) not found",
-        lambda m: MissingVagueDependency(m.group(1)),
-    ),
-    (
-        r"configure: error: (.*) ([0-9.]+) is required to build.*",
-        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
-    ),
-    (
-        ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
-        lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
-    ),
-    (
         r"dh: Unknown sequence --(.*) "
         r"\(options should not come before the sequence\)",
         dh_with_order,
@@ -2459,7 +2452,7 @@ build_failure_regexps = [
         r"Run \'pg_buildext updatecontrol\'.",
         need_pg_buildext_updatecontrol,
     ),
-    (r"Patch (.*) does not apply \(enforce with -f\)", None),
+    (r"Patch (.*) does not apply \(enforce with -f\)", lambda m: PatchApplicationFailed(m.group(1))),
     (
         r"convert convert: Unable to read font \((.*)\) "
         r"\[No such file or directory\].",
@@ -2697,6 +2690,23 @@ build_failure_regexps = [
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
+    (
+        r"configure: error: (.*) >= (.*) not found",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: (.*) not found",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) ([0-9.]+) is required to build.*",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
+        lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
+    ),
+
     (
         r"configure: error: Please install (.*) from (http:\/\/[^ ]+)",
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2)),

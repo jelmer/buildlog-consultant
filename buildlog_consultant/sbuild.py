@@ -29,7 +29,7 @@ from .apt import (
     find_install_deps_failure_description,
 )
 from .autopkgtest import find_autopkgtest_failure_description
-from .common import find_build_failure_description, NoSpaceOnDevice, ChrootNotFound
+from .common import find_build_failure_description, NoSpaceOnDevice, ChrootNotFound, PatchApplicationFailed
 
 __all__ = [
     "SbuildFailure",
@@ -147,15 +147,6 @@ class UnableToFindUpstreamTarball:
             self.package,
             self.version,
         )
-
-
-@problem("patch-application-failed")
-class PatchApplicationFailed:
-
-    patchname: str
-
-    def __str__(self):
-        return "Patch application failed: %s" % self.patchname
 
 
 @problem("source-format-unbuildable")
