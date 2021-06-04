@@ -1713,6 +1713,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
+        r"configure: error: You must have (.*) installed",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         r"configure: error: (.*) is required for (.*)",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
