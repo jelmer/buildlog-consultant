@@ -153,9 +153,11 @@ class UnableToFindUpstreamTarball:
 class SourceFormatUnbuildable:
 
     source_format: str
+    reason: str
 
     def __str__(self):
-        return "Source format %s unbuildable" % self.source_format
+        return "Source format %s unusable: %s" % (
+            self.source_format, self.reason)
 
 
 @problem("unsupported-source-format")
@@ -392,7 +394,7 @@ def find_preamble_failure_description(  # noqa: C901
             line,
         )
         if m:
-            err = SourceFormatUnbuildable(m.group(1))
+            err = SourceFormatUnbuildable(m.group(1), m.group(2))
             return SingleLineMatch.from_lines(lines, lineno), err
         m = re.match(
             "dpkg-source: error: cannot read (.*): " "No such file or directory",
