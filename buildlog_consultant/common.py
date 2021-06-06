@@ -1712,6 +1712,10 @@ build_failure_regexps = [
         lambda m: MissingCHeader(m.group(3))
     ),
     (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]',
+        lambda m: MissingCommand(m.group(3))
+    ),
+    (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found, '
         "tried pkgconfig",
         meson_pkg_config_missing,
