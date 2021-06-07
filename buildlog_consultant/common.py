@@ -2252,7 +2252,10 @@ build_failure_regexps = [
     ),
     (r"E: Child terminated by signal ‘Terminated’",
      lambda m: Cancelled(),
-    ),
+     ),
+    (r"E: Caught signal ‘Terminated’",
+     lambda m: Cancelled(),
+     ),
     (r"E: Failed to execute “(.*)”: No such file or directory", command_missing),
     (r"E: The Debian version .* cannot be used as an ELPA version.", None),
     # ImageMagick
