@@ -196,6 +196,8 @@ class MissingFile:
 
 
 def file_not_found(m):
+    if m.group(1) == 'git':
+        return MissingCommand(m.group(1))
     if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
         return MissingFile(m.group(1))
     return None
@@ -1738,6 +1740,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
+        r"(.*) was not found in your path\. Please install (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         r"configure: error: Please install (.*) >= (.*)",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
@@ -1853,6 +1859,10 @@ build_failure_regexps = [
     (
         r"python[0-9.]*: can\'t open file \'(.*)\': \[Errno 2\] "
         r"No such file or directory",
+        file_not_found,
+    ),
+    (
+        r"error: \[Errno 2\] No such file or directory: '(.*)'",
         file_not_found,
     ),
     (
