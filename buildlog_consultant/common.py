@@ -1583,6 +1583,10 @@ build_failure_regexps = [
         lambda m: MissingX11(),
     ),
     (
+        r"configure: error: \*\*\* No X11\! Install X-Windows development headers/libraries\! \*\*\*",
+        lambda m: MissingX11(),
+    ),
+    (
         r"  \*\*\* The (.*) script could not be found\. .*",
         lambda m: MissingCommand(m.group(1)),
     ),
