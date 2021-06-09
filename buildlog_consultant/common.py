@@ -1576,6 +1576,10 @@ build_failure_regexps = [
         r"\s*Module not found: Error: Can\'t resolve \'(.*)\' in \'(.*)\'",
         node_module_missing,
     ),
+    (
+        r"libtool/glibtool not found\!",
+        lambda m: MissingVagueDependency("libtool"),
+    ),
     (r"qmake: could not find a Qt installation of \'\'", lambda m: MissingQt()),
     (r"Cannot find X include files via .*", lambda m: MissingX11()),
     (
