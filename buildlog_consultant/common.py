@@ -1641,6 +1641,14 @@ build_failure_regexps = [
         lambda m: MissingCommand("git"),
     ),
     (
+        r"configure: error: Can't find \"(.*)\" in your PATH",
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
+        r"configure: error: Cannot find (.*) in your system path",
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
         r'\> Cannot run program "(.*)": error=2, No such file or directory',
         lambda m: MissingCommand(m.group(1)),
     ),
@@ -1740,6 +1748,34 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
+        r"configure: error: (.*) is missing -- (.*)",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: Cannot find (.*), check (.*)",
+        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
+    ),
+    (
+        r"configure: error: \*\*\* (.*) is required\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: (.*) is required, please get it from (.*)",
+        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
+    ),
+    (
+        r"configure: error: \*\*\* Unable to find (.* library)",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: unable to find (.*)\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: Perl Module (.*) not available",
+        lambda m: MissingPerlModule(None, m.group(1))
+    ),
+    (
         r"(.*) was not found in your path\. Please install (.*)",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
@@ -1754,6 +1790,18 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) is required for building this package.",
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required to build (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: \!\!\! Please install (.*) \!\!\!",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) version (.*) or higher is required",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
         r"configure: error: \*\*\* Cannot find (.*)",
