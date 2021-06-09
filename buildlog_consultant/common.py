@@ -1756,6 +1756,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
+        r"configure: error: \*\*\* Cannot find (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         r"configure: error: (.*) is required to compile .*",
         lambda m: MissingVagueDependency(m.group(1))
     ),
