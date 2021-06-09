@@ -1722,6 +1722,10 @@ build_failure_regexps = [
         lambda m: MissingCHeader(m.group(3))
     ),
     (
+        r'configure: error: (.+\.h) could not be found\. Please set CPPFLAGS\.',
+        lambda m: MissingCHeader(m.group(1))
+    ),
+    (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]',
         lambda m: MissingCommand(m.group(3))
     ),
