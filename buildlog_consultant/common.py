@@ -1916,6 +1916,11 @@ build_failure_regexps = [
         jre_missing,
     ),
     (
+        r"Error: environment variable \"JAVA_HOME\" must be set to a JDK "
+        r"\(>= v(.*)\) installation directory",
+        jdk_missing
+    ),
+    (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "
         r"No such file or directory",
         None,
@@ -2755,8 +2760,8 @@ build_failure_regexps = [
      lambda m: MissingPauseCredentials()),
 
     (r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
-     None),
-
+     file_not_found
+     ),
     (
         r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
         r'from gettext version (.*) but the autoconf macros are from gettext '
