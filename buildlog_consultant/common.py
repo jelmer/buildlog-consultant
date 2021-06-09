@@ -2770,6 +2770,13 @@ build_failure_regexps = [
         lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
     ),
 
+    (
+        r'CMake Error: CMake was unable to find a build program corresponding'
+        r' to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to '
+        'select a different build tool\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -2860,6 +2867,9 @@ build_failure_regexps = [
     ('\x1b\\[1;31merror: (.*) not found\x1b\\[0;32m', lambda m: MissingVagueDependency(m.group(1))),
     (r'You do not have (.*) correctly installed\. .*',
      lambda m: MissingVagueDependency(m.group(1))),
+    (r'Error: (.*) is not available on your system',
+     lambda m: MissingVagueDependency(m.group(1)),
+    ),
 ]
 
 
