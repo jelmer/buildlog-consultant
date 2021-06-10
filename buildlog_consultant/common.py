@@ -1800,12 +1800,28 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
+        r"configure: error: \*\*\* (.*) >= (.*) not installed.*",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: you should install (.*) first",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
         r"configure: error: (.*) is required for building this package.",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
         r"configure: error: (.*) is required to build (.*)",
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: cannot locate (.*) >= (.*)",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
     ),
     (
         r"configure: error: \!\!\! Please install (.*) \!\!\!",
@@ -2798,6 +2814,10 @@ build_failure_regexps = [
 
     # Intentionally at the bottom of the list.
     (
+        r"configure: error: (.*) not present.*",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
         r"configure: error: (.*) >= (.*) not found",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
     ),
@@ -3005,7 +3025,7 @@ secondary_build_failure_regexps = [
     r"can\'t load package: package \.: no Go files in /<<PKGBUILDDIR>>/(.*)",
     # Ld
     r"\/usr\/bin\/ld: cannot open output file (.*): No such file or directory",
-    r"configure: error: (.*)",
+    r"configure: error: (.+)",
     r"config.status: error: (.*)",
     r"E: Build killed with signal TERM after ([0-9]+) minutes of inactivity",
     r"    \[javac\] [^: ]+:[0-9]+: error: (.*)",
