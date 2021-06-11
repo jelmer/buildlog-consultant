@@ -92,6 +92,15 @@ class MissingPythonDistribution:
         )
 
 
+@problem("patch-application-failed")
+class PatchApplicationFailed:
+
+    patchname: str
+
+    def __str__(self):
+        return "Patch application failed: %s" % self.patchname
+
+
 def python_module_not_found(m):
     try:
         return MissingPythonModule(m.group(2), python_version=None)
@@ -187,6 +196,8 @@ class MissingFile:
 
 
 def file_not_found(m):
+    if m.group(1) == 'git':
+        return MissingCommand(m.group(1))
     if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
         return MissingFile(m.group(1))
     return None
@@ -436,9 +447,24 @@ class MissingBoostComponents:
 class CMakeFilesMissing:
 
     filenames: List[str]
+    version: Optional[str] = None
 
     def __str__(self):
+        if self.version:
+            return "Missing CMake package configuration files (version %s): %r" % (self.version, self.filenames,)
         return "Missing CMake package configuration files: %r" % (self.filenames,)
+
+
+@problem("missing-cmake-config")
+class MissingCMakeConfig:
+
+    name: str
+    version: str
+
+    def __str__(self):
+        if self.version:
+            return "Missing CMake package configuration for %s (version %s)" % (self.name, self.version)
+        return "Missing CMake package configuration for %s" % (self.name, )
 
 
 @problem("debhelper-argument-order")
@@ -1157,7 +1183,7 @@ class CMakeNeedExactVersion(Problem):
 
 class CMakeErrorMatcher(Matcher):
 
-    regexp = re.compile(r"CMake Error at (.*):([0-9]+) \((.*)\):")
+    regexp = re.compile(r"CMake (Error|Warning) at (.+):([0-9]+) \((.*)\):")
 
     cmake_errors = [
         (r'Could NOT find Boost \(missing: (.*)\) \(found suitable version .*',
@@ -1166,10 +1192,12 @@ class CMakeErrorMatcher(Matcher):
             r"--  Package \'(.*)\', required by \'(.*)\', not found",
             cmake_pkg_config_missing,
         ),
-        (r'Could not find a package configuration file provided by\s'
-         r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\sof\sthe\sfollowing\snames:'
-         r'\n\n(  .*\n)+\n.*$',
-         lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()])
+        (
+            r'Could not find a package configuration file provided by\s'
+            r'"(.*)" \(requested\sversion\s(.*)\)\swith\sany\s+of\s+the\s+following\snames:'
+            r'\n\n(  .*\n)+\n.*$',
+            lambda m: CMakeFilesMissing(
+                [e.strip() for e in m.group(3).splitlines()], m.group(2))
         ),
         (
             r"Could NOT find (.*) \(missing: .*\)",
@@ -1200,20 +1228,20 @@ class CMakeErrorMatcher(Matcher):
             cmake_file_missing,
         ),
         (
-            r'Could not find a configuration file for package "(.*)".*'
-            r'.*requested version "(.*)"\.',
-            lambda m: MissingPkgConfig(m.group(1), m.group(2)),
+            r'Could not find a configuration file for package "(.*)"\sthat\sis\s'
+            r'compatible\swith\srequested\sversion\s"(.*)"\.',
+            lambda m: MissingCMakeConfig(m.group(1), m.group(2)),
         ),
         (
-            r'.*Could not find a package configuration file provided by "(.*)"\s'
-            r"with\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$",
+            r'.*Could not find a package configuration file provided by "(.*)"\s+'
+            r"with\s+any\s+of\s+the\s+following\s+names:\n\n(  .*\n)+\n.*$",
             lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()])
         ),
         (
             r'.*Could not find a package configuration file provided by "(.*)"\s'
-            r"\(requested\sversion\s.+\)\swith\sany\sof\sthe\sfollowing\snames:\n"
+            r"\(requested\sversion\s(.+\))\swith\sany\sof\sthe\sfollowing\snames:\n"
             r"\n(  .*\n)+\n.*$",
-            lambda m: CMakeFilesMissing([e.strip() for e in m.group(2).splitlines()]),
+            lambda m: CMakeFilesMissing([e.strip() for e in m.group(3).splitlines()], m.group(2)),
         ),
         (
             r"No CMAKE_(.*)_COMPILER could be found.\n"
@@ -1262,6 +1290,7 @@ class CMakeErrorMatcher(Matcher):
         ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1) + '.cmake'])),
         (r'(.*) and (.*) are required', lambda m: MissingVagueDependency(m.group(1))),
         (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
+        (r'Python module (.*) not found\!', lambda m: MissingPythonModule(m.group(1))),
     ]
 
     @classmethod
@@ -1269,11 +1298,11 @@ class CMakeErrorMatcher(Matcher):
         linenos = [i]
         error_lines = []
         for j, line in enumerate(lines[i + 1 :]):
-            if line != "\n" and not line.startswith(" "):
+            if line.rstrip('\n') and not line.startswith(" "):
                 break
-            error_lines.append(line)
+            error_lines.append(line.rstrip('\n') + '\n')
             linenos.append(i + 1 + j)
-        while error_lines and error_lines[-1] == "\n":
+        while error_lines and error_lines[-1].rstrip('\n') == "":
             error_lines.pop(-1)
             linenos.pop(-1)
         return linenos, textwrap.dedent("".join(error_lines)).splitlines(True)
@@ -1283,8 +1312,8 @@ class CMakeErrorMatcher(Matcher):
         if not m:
             return [], None
 
-        path = m.group(1)  # noqa: F841
-        start_lineno = int(m.group(2))  # noqa: F841
+        path = m.group(2)  # noqa: F841
+        start_lineno = int(m.group(3))  # noqa: F841
         linenos, error_lines = self._extract_error_lines(lines, i)
 
         error = None
@@ -1408,6 +1437,13 @@ class MissingXDisplay:
         return "No X Display"
 
 
+@problem("cancelled")
+class Cancelled:
+
+    def __str__(self):
+        return "Cancelled by runner or job manager"
+
+
 @problem("inactive-killed")
 class InactiveKilled:
 
@@ -1482,6 +1518,10 @@ build_failure_regexps = [
         r"ImportError: cannot import name (.*), introspection typelib not found",
         lambda m: MissingIntrospectionTypelib(m.group(1)),
     ),
+    (
+        r"ValueError: Namespace (.*) not available",
+        lambda m: MissingIntrospectionTypelib(m.group(1)),
+    ),
     ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E       fixture '(.*)' not found", lambda m: MissingPytestFixture(m.group(1))),
     (
@@ -1536,10 +1576,18 @@ build_failure_regexps = [
         r"\s*Module not found: Error: Can\'t resolve \'(.*)\' in \'(.*)\'",
         node_module_missing,
     ),
+    (
+        r"libtool/glibtool not found\!",
+        lambda m: MissingVagueDependency("libtool"),
+    ),
     (r"qmake: could not find a Qt installation of \'\'", lambda m: MissingQt()),
     (r"Cannot find X include files via .*", lambda m: MissingX11()),
     (
         r"\*\*\* No X11\! Install X-Windows development headers/libraries\! \*\*\*",
+        lambda m: MissingX11(),
+    ),
+    (
+        r"configure: error: \*\*\* No X11\! Install X-Windows development headers/libraries\! \*\*\*",
         lambda m: MissingX11(),
     ),
     (
@@ -1599,6 +1647,14 @@ build_failure_regexps = [
     (
         r"\-\- Please install Git, make sure it is in your path, and then try again.",
         lambda m: MissingCommand("git"),
+    ),
+    (
+        r"configure: error: Can't find \"(.*)\" in your PATH",
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
+        r"configure: error: Cannot find (.*) in your system path",
+        lambda m: MissingCommand(m.group(1)),
     ),
     (
         r'\> Cannot run program "(.*)": error=2, No such file or directory',
@@ -1666,6 +1722,22 @@ build_failure_regexps = [
         meson_pkg_config_missing,
     ),
     (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: Program \'(.*)\' not found',
+        lambda m: MissingCommand(m.group(3))
+    ),
+    (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: C header \'(.*)\' not found',
+        lambda m: MissingCHeader(m.group(3))
+    ),
+    (
+        r'configure: error: (.+\.h) could not be found\. Please set CPPFLAGS\.',
+        lambda m: MissingCHeader(m.group(1))
+    ),
+    (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]',
+        lambda m: MissingCommand(m.group(3))
+    ),
+    (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found, '
         "tried pkgconfig",
         meson_pkg_config_missing,
@@ -1688,8 +1760,93 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
-        ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
-        lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
+        r"configure: error: (.*) is missing -- (.*)",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: Cannot find (.*), check (.*)",
+        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
+    ),
+    (
+        r"configure: error: \*\*\* (.*) is required\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: (.*) is required, please get it from (.*)",
+        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
+    ),
+    (
+        r"configure: error: \*\*\* Unable to find (.* library)",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: unable to find (.*)\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: Perl Module (.*) not available",
+        lambda m: MissingPerlModule(None, m.group(1))
+    ),
+    (
+        r"(.*) was not found in your path\. Please install (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: Please install (.*) >= (.*)",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (
+        r"configure: error: the required package (.*) is not installed",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: \*\*\* (.*) >= (.*) not installed.*",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: you should install (.*) first",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: (.*) is required for building this package.",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required to build (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: cannot locate (.*) >= (.*)",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: \!\!\! Please install (.*) \!\!\!",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) version (.*) or higher is required",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (
+        r"configure: error: \*\*\* Cannot find (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required to compile .*",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r"(configure: error|\*\*Error\*\*): You must have (.*) installed",
+        lambda m: MissingVagueDependency(m.group(2)),
+    ),
+    (
+        r"configure: error: (.*) is required for (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
         r"dh: Unknown sequence --(.*) "
@@ -1728,8 +1885,10 @@ build_failure_regexps = [
         r"\[DZ\] could not load class (.*) for license (.*)",
         lambda m: MissingPerlModule(None, m.group(1), None),
     ),
-    (r'\- ([^\s]+)\s+\.\.\.missing. \(would need (.*)\)',
-     lambda m: MissingPerlModule(None, m.group(1), None, minimum_version=m.group(2))
+    (
+        r'\- ([^\s]+)\s+\.\.\.missing. \(would need (.*)\)',
+        lambda m: MissingPerlModule(
+            None, m.group(1), None, minimum_version=m.group(2))
     ),
     (r"Required plugin bundle ([^ ]+) isn\'t installed.", perl_missing_plugin),
     (r"Required plugin ([^ ]+) isn\'t installed.", perl_missing_plugin),
@@ -1773,6 +1932,11 @@ build_failure_regexps = [
         jre_missing,
     ),
     (
+        r"Error: environment variable \"JAVA_HOME\" must be set to a JDK "
+        r"\(>= v(.*)\) installation directory",
+        jdk_missing
+    ),
+    (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "
         r"No such file or directory",
         None,
@@ -1780,6 +1944,10 @@ build_failure_regexps = [
     (
         r"python[0-9.]*: can\'t open file \'(.*)\': \[Errno 2\] "
         r"No such file or directory",
+        file_not_found,
+    ),
+    (
+        r"error: \[Errno 2\] No such file or directory: '(.*)'",
         file_not_found,
     ),
     (
@@ -1859,6 +2027,10 @@ build_failure_regexps = [
     ),
     (
         r'E: eatmydata: unable to find \'(.*)\' in PATH',
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
+        r'\'(.*)\' not found in PATH at (.*) line ([0-9]+)\.',
         lambda m: MissingCommand(m.group(1)),
     ),
     (
@@ -2002,6 +2174,10 @@ build_failure_regexps = [
     (
         r'checking for (.*)\.\.\. configure: error: "Cannot check for existence of module (.*) without pkgconf"',
         lambda m: MissingCommand("pkgconf"),
+    ),
+    (
+        r'configure: error: Could not find \'(.*)\' in path\.',
+        lambda m: MissingCommand(m.group(1)),
     ),
     (
         r"autoreconf was not found; .*",
@@ -2169,6 +2345,12 @@ build_failure_regexps = [
         r"could not load (.*), and no fallback was found",
         None,
     ),
+    (r"E: Child terminated by signal ‘Terminated’",
+     lambda m: Cancelled(),
+     ),
+    (r"E: Caught signal ‘Terminated’",
+     lambda m: Cancelled(),
+     ),
     (r"E: Failed to execute “(.*)”: No such file or directory", command_missing),
     (r"E: The Debian version .* cannot be used as an ELPA version.", None),
     # ImageMagick
@@ -2339,7 +2521,11 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2))
     ),
     (
-        "(OSError|RuntimeError): Could not find (.*) library\..*",
+        "RuntimeError: (.*) is missing",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"(OSError|RuntimeError): Could not find (.*) library\..*",
         lambda m: MissingVagueDependency(m.group(2))
     ),
     (
@@ -2382,7 +2568,7 @@ build_failure_regexps = [
         r"Run \'pg_buildext updatecontrol\'.",
         need_pg_buildext_updatecontrol,
     ),
-    (r"Patch (.*) does not apply \(enforce with -f\)", None),
+    (r"Patch (.*) does not apply \(enforce with -f\)", lambda m: PatchApplicationFailed(m.group(1))),
     (
         r"convert convert: Unable to read font \((.*)\) "
         r"\[No such file or directory\].",
@@ -2541,9 +2727,10 @@ build_failure_regexps = [
         r'Cannot find (.*) in @INC at (.*) line ([0-9]+)\.',
         lambda m: MissingPerlModule(None, m.group(1)),
     ),
-    (r'(.*::.*) (.*) is required to configure our .* dependency, '
-     r'please install it manually or upgrade your CPAN/CPANPLUS',
-     lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
+    (
+        r'(.*::.*) (.*) is required to configure our .* dependency, '
+        r'please install it manually or upgrade your CPAN/CPANPLUS',
+        lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2))
     ),
     (
         r"configure: error: Missing lib(.*)\.",
@@ -2568,7 +2755,7 @@ build_failure_regexps = [
     ),
     (
         r'there is no package called \'(.*)\'',
-       lambda m: MissingRPackage(m.group(1))
+        lambda m: MissingRPackage(m.group(1))
     ),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
     (r'  namespace "(.*)" .* is being loaded, but \>= (.*) is required',
@@ -2589,28 +2776,64 @@ build_failure_regexps = [
      lambda m: MissingPauseCredentials()),
 
     (r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
-     None),
+     file_not_found
+     ),
+    (
+        r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
+        r'from gettext version (.*) but the autoconf macros are from gettext '
+        r'version (.*)',
+        lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
 
-    (r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
-     r'from gettext version (.*) but the autoconf macros are from gettext '
-     r'version (.*)',
-     lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
+    (
+        r'You need to install the (.*) package to use this program\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r'You need to install (.*)',
+        lambda m: MissingVagueDependency(m.group(1))),
 
-    (r'You need to install (.*)',
-     lambda m: MissingVagueDependency(m.group(1))),
-
-    (r'configure: error: You need (.*) installed',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'configure: error: You need (.*) installed',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
 
-    (r'open3: exec of cme (.*) failed: No such file or directory '
-     r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
-     lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
+    (
+        r'open3: exec of cme (.*) failed: No such file or directory '
+        r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
+        lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
+    ),
+
+    (
+        r'CMake Error: CMake was unable to find a build program corresponding'
+        r' to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to '
+        'select a different build tool\.',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
+    (
+        r"configure: error: (.*) not present.*",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: (.*) >= (.*) not found",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: (.*) not found",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) ([0-9.]+) is required to build.*",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) (.*) or later required",
+        lambda m: MissingVagueDependency(m.group(3), minimum_version=m.group(4)),
+    ),
+
     (
         r"configure: error: Please install (.*) from (http:\/\/[^ ]+)",
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2)),
@@ -2644,6 +2867,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (
+        r"configure: error: Missing required program '(.*)'.*",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         r"configure: error: Missing (.*)\.",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
@@ -2652,26 +2879,34 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (r"configure: error: (.*) Not found", lambda m: MissingVagueDependency(m.group(1))),
-    (r"configure: error: You need to install (.*)",
-     lambda m: MissingVagueDependency(m.group(1)),
+    (
+        r"configure: error: You need to install (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
-    (r'configure: error: (.*) \((.*)\) not found\.',
-     lambda m: MissingVagueDependency(m.group(2))
+    (
+        r'configure: error: (.*) \((.*)\) not found\.',
+        lambda m: MissingVagueDependency(m.group(2))
     ),
-    (r'configure: error: (.*) libraries are required for compilation',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'configure: error: (.*) libraries are required for compilation',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
-    (r'configure: error: .*Make sure you have (.*) installed\.',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'configure: error: .*Make sure you have (.*) installed\.',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
-    (r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
-     lambda m: MissingVagueDependency(m.group(1))
+    (
+        r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
+        lambda m: MissingVagueDependency(m.group(1))
     ),
     (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
     (r'ERROR:  Unable to locate (.*)\.', lambda m: MissingVagueDependency(m.group(1))),
     ('\x1b\\[1;31merror: (.*) not found\x1b\\[0;32m', lambda m: MissingVagueDependency(m.group(1))),
     (r'You do not have (.*) correctly installed\. .*',
      lambda m: MissingVagueDependency(m.group(1))),
+    (r'Error: (.*) is not available on your system',
+     lambda m: MissingVagueDependency(m.group(1)),
+    ),
 ]
 
 
@@ -2790,7 +3025,7 @@ secondary_build_failure_regexps = [
     r"can\'t load package: package \.: no Go files in /<<PKGBUILDDIR>>/(.*)",
     # Ld
     r"\/usr\/bin\/ld: cannot open output file (.*): No such file or directory",
-    r"configure: error: (.*)",
+    r"configure: error: (.+)",
     r"config.status: error: (.*)",
     r"E: Build killed with signal TERM after ([0-9]+) minutes of inactivity",
     r"    \[javac\] [^: ]+:[0-9]+: error: (.*)",
@@ -2909,9 +3144,6 @@ def find_build_failure_description(  # noqa: C901
         missing_file_pat = re.compile(
             r"\s*The imported target \"(.*)\" references the file"
         )
-        conf_file_pat = re.compile(
-            r'\s*Could not find a configuration file for package "(.*)".*'
-        )
         binary_pat = re.compile(r"  Could NOT find (.*) \(missing: .*\)")
         cmake_files_pat = re.compile(
             "^  Could not find a package configuration file provided "
@@ -2942,20 +3174,6 @@ def find_build_failure_description(  # noqa: C901
                         MissingFile(filename),
                     )
                 continue
-            m = re.fullmatch(conf_file_pat, line)
-            if m:
-                package = m.group(1)
-                m = re.match(
-                    r'.*requested version "(.*)"\.', lines[lineno + 1].rstrip("\n")
-                )
-                if not m:
-                    logger.warn("expected version string in line %r", lines[lineno + 1])
-                    continue
-                version = m.group(1)
-                return (
-                    SingleLineMatch.from_lines(lines, lineno),
-                    MissingPkgConfig(package, version),
-                )
             if lineno + 1 < len(lines):
                 m = re.fullmatch(
                     cmake_files_pat,

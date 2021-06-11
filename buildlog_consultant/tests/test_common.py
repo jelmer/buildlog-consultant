@@ -32,6 +32,7 @@ from ..common import (
     MissingJDKFile,
     MissingJDK,
     MissingJRE,
+    MissingIntrospectionTypelib,
     MissingPythonModule,
     MissingPythonDistribution,
     MissingGoPackage,
@@ -278,6 +279,9 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             MissingVagueDependency("gnu flex", "http://www.gnu.org/software/flex/"),
         )
+        self.run_test(
+            ["RuntimeError: cython is missing"], 1,
+            MissingVagueDependency("cython"))
         self.run_test(
             [
                 "configure: error:",
@@ -982,6 +986,12 @@ error: invalid command 'test'
             MissingValaPackage("glib-2.0"),
         )
 
+    def test_gir(self):
+        self.run_test(
+            ["ValueError: Namespace GnomeDesktop not available"],
+            1,
+            MissingIntrospectionTypelib("GnomeDesktop"))
+
     def test_missing_boost_components(self):
         self.run_test("""\
 CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
@@ -992,8 +1002,8 @@ Call Stack (most recent call first):
   /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
   /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
   src/CMakeLists.txt:4 (find_package)
-""".splitlines(True), 4, MissingBoostComponents(
-        ['program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
+""".splitlines(True), 4, MissingBoostComponents([
+            'program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
 
     def test_pkg_config_missing(self):
         self.run_test(
