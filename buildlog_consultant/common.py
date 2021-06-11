@@ -1752,6 +1752,10 @@ build_failure_regexps = [
         meson_pkg_config_missing,
     ),
     (
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: Could not execute Vala compiler "(.*)"',
+        lambda m: MissingCommand(m.group(3))
+    ),
+    (
         r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
         r"need '([^']+)' \['>=\s*([^']+)'\] found '([^']+)'\.",
         lambda m: MissingPkgConfig(m.group(3), m.group(4)),
