@@ -151,7 +151,7 @@ def find_apt_get_failure(lines):  # noqa: C901
             "E: Unable to correct problems, you have held broken " "packages.",
         ):
             error = AptBrokenPackages(lines[lineno - 1].strip())
-            return SingleLineMatch.from_lines(lines, lineno), error
+            return SingleLineMatch.from_lines(lines, lineno - 1), error
         m = re.match("E: The repository '([^']+)' does not have a Release file.", line)
         if m:
             return SingleLineMatch.from_lines(lines, lineno), AptMissingReleaseFile(

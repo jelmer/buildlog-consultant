@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-from typing import List, Tuple, Iterator, BinaryIO, Optional, Union, Dict
+from typing import List, Tuple, Iterator, BinaryIO, Optional, Union
 
 from dataclasses import dataclass
 import logging
@@ -29,7 +29,7 @@ from .apt import (
     find_install_deps_failure_description,
 )
 from .autopkgtest import find_autopkgtest_failure_description
-from .common import find_build_failure_description, NoSpaceOnDevice, ChrootNotFound
+from .common import find_build_failure_description, NoSpaceOnDevice, ChrootNotFound, PatchApplicationFailed
 
 __all__ = [
     "SbuildFailure",
@@ -149,22 +149,15 @@ class UnableToFindUpstreamTarball:
         )
 
 
-@problem("patch-application-failed")
-class PatchApplicationFailed:
-
-    patchname: str
-
-    def __str__(self):
-        return "Patch application failed: %s" % self.patchname
-
-
 @problem("source-format-unbuildable")
 class SourceFormatUnbuildable:
 
     source_format: str
+    reason: str
 
     def __str__(self):
-        return "Source format %s unbuildable" % self.source_format
+        return "Source format %s unusable: %s" % (
+            self.source_format, self.reason)
 
 
 @problem("unsupported-source-format")
@@ -401,7 +394,7 @@ def find_preamble_failure_description(  # noqa: C901
             line,
         )
         if m:
-            err = SourceFormatUnbuildable(m.group(1))
+            err = SourceFormatUnbuildable(m.group(1), m.group(2))
             return SingleLineMatch.from_lines(lines, lineno), err
         m = re.match(
             "dpkg-source: error: cannot read (.*): " "No such file or directory",
@@ -517,6 +510,10 @@ BRZ_ERRORS = [
         lambda m, pl: UpstreamMetadataFileParseError(m.group(1), m.group(2)),
     ),
     (r"Debcargo failed to run\.", _parse_debcargo_failure),
+    (
+        r"\[Errno 28\] No space left on device",
+        lambda m, pl: NoSpaceOnDevice(),
+    ),
 ]
 
 
@@ -643,8 +640,7 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
 def find_failure_create_session(sbuildlog, failed_stage):
     section = sbuildlog.get_section(None)
     match, error = find_creation_session_error(section.lines)
-    if error:
-        phase = ("create-session",)
+    phase = ("create-session",)
     description = "build failed stage %s" % failed_stage
     return SbuildFailure(
         failed_stage,
