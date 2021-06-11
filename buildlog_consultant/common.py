@@ -1227,6 +1227,10 @@ class CMakeErrorMatcher(Matcher):
             ),
         ),
         (
+            r"(.*) couldn't be found \(missing: .*_LIBRARIES .*_INCLUDE_DIR\)",
+            lambda m: MissingVagueDependency(m.group(1)),
+        ),
+        (
             r"Could NOT find (.*): Found unsuitable version \"(.*)\",\sbut\s"
             r"required\sis\sat\sleast\s\"(.*)\" \(found\s(.*)\)",
             lambda m: MissingPkgConfig(m.group(1), m.group(3)),
