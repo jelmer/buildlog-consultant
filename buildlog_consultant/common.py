@@ -92,6 +92,15 @@ class MissingPythonDistribution:
         )
 
 
+@problem('vcs-control-directory-needed')
+class VcsControlDirectoryNeeded:
+
+    vcs: List[str]
+
+    def __str__(self):
+        return "Version control directory needed"
+
+
 @problem("patch-application-failed")
 class PatchApplicationFailed:
 
@@ -2808,6 +2817,11 @@ build_failure_regexps = [
         r' to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to '
         'select a different build tool\.',
         lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r"Dist currently only works with Git or Mercurial repos",
+        lambda m: VcsControlDirectoryNeeded(['git', 'hg']),
     ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
