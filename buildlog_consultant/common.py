@@ -1747,7 +1747,7 @@ build_failure_regexps = [
         lambda m: MissingCHeader(m.group(1))
     ),
     (
-        '.*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]',
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]',
         lambda m: MissingCommand(m.group(3))
     ),
     (
@@ -2823,7 +2823,7 @@ build_failure_regexps = [
     (
         r'CMake Error: CMake was unable to find a build program corresponding'
         r' to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to '
-        'select a different build tool\.',
+        r'select a different build tool\.',
         lambda m: MissingVagueDependency(m.group(1))
     ),
 
@@ -2928,7 +2928,7 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1))),
     (r'Error: (.*) is not available on your system',
      lambda m: MissingVagueDependency(m.group(1)),
-    ),
+     ),
 ]
 
 
