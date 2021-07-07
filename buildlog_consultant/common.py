@@ -2929,6 +2929,8 @@ build_failure_regexps = [
     (r'Error: (.*) is not available on your system',
      lambda m: MissingVagueDependency(m.group(1)),
      ),
+    (r'configure: error: .*Please install the \'(.*)\' package\.',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
