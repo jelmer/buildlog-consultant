@@ -1723,6 +1723,10 @@ build_failure_regexps = [
         c_sharp_compiler_missing,
     ),
     (
+        r'configure: error: No C\# compiler found',
+        c_sharp_compiler_missing,
+    ),
+    (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
         lambda m: MissingPkgConfig("libkqueue"),
     ),
@@ -2754,6 +2758,10 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(1)),
     ),
     (
+        r"configure: error: (.*) library is required",
+        lambda m: MissingLibrary(m.group(1)),
+    ),
+    (
         r"OSError: (.*): cannot open shared object file: No such file or directory",
         lambda m: MissingFile(m.group(1)),
     ),
@@ -2831,6 +2839,9 @@ build_failure_regexps = [
         r"Dist currently only works with Git or Mercurial repos",
         lambda m: VcsControlDirectoryNeeded(['git', 'hg']),
     ),
+
+    (r'configure: error: no suitable Python interpreter found',
+     lambda m: MissingCommand('python')),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -2930,6 +2941,12 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1)),
      ),
     (r'configure: error: .*Please install the \'(.*)\' package\.',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'configure: error: <(.*\.h)> is required',
+     lambda m: MissingCHeader(m.group(1))),
+    (r'configure: error: ([^ ]+) is required',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'configure: error: you should install ([^ ]+) first',
      lambda m: MissingVagueDependency(m.group(1))),
 ]
 
