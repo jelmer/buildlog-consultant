@@ -1059,6 +1059,10 @@ class MultiLineConfigureError(Matcher):
 
     submatchers = [
         (
+            re.compile(r"\s*Unable to find (.*) \(http(.*)\)"),
+            lambda m: MissingVagueDependency(m.group(1), url=m.group(2)),
+        ),
+        (
             re.compile(r"\s*Unable to find (.*)\."),
             lambda m: MissingVagueDependency(m.group(1)),
         ),
@@ -1735,6 +1739,10 @@ build_failure_regexps = [
         lambda m: MissingCommand("pkg-config"),
     ),
     (
+        r'configure: error: Required (.*) binary is missing. Please install (.*).',
+        lambda m: MissingCommand(m.group(1))
+    ),
+    (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found',
         meson_pkg_config_missing,
     ),
@@ -1762,6 +1770,10 @@ build_failure_regexps = [
     (
         r'.*meson.build:([0-9]+):([0-9]+): ERROR: Could not execute Vala compiler "(.*)"',
         lambda m: MissingCommand(m.group(3))
+    ),
+    (
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: python3 is missing modules: (.*)',
+        lambda m: MissingPerlModule(m.group(1))
     ),
     (
         r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
@@ -1851,6 +1863,11 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) version (.*) or higher is required",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (
+        r'configure: error: OpenSSL developer library \'libssl-dev\' or '
+        r'\'openssl-devel\' not installed; cannot continue.',
+        lambda m: MissingLibrary('ssl')
     ),
     (
         r"configure: error: \*\*\* Cannot find (.*)",
@@ -2800,8 +2817,9 @@ build_failure_regexps = [
      r'/usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\.',
      lambda m: MissingPauseCredentials()),
 
-    (r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
-     file_not_found
+    (
+        r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
+        file_not_found
      ),
     (
         r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
