@@ -56,6 +56,13 @@ class MissingPythonModule:
         )
 
 
+@problem("setuptools-scm-version-issue")
+class SetuptoolScmVersionIssue:
+
+    def __str__(self):
+        return "setuptools-scm was unable to find version"
+
+
 @problem("missing-python-distribution")
 class MissingPythonDistribution:
 
@@ -1611,6 +1618,10 @@ build_failure_regexps = [
         r"  \*\*\* The (.*) script could not be found\. .*",
         lambda m: MissingCommand(m.group(1)),
     ),
+    (
+        r"(.*)\" command could not be found. (.*)",
+        lambda m: MissingCommand(m.group(1)),
+    ),
     (r'\>\> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
     (
         r"npm ERR\! CLI for webpack must be installed.",
@@ -1996,6 +2007,10 @@ build_failure_regexps = [
     ),
     (r"OSError: \[Errno 28\] No space left on device", lambda m: NoSpaceOnDevice()),
     # python:setuptools_scm
+    (
+        r'LookupError: setuptools-scm was unable to detect version for \'.*\'\.',
+        lambda m: SetuptoolScmVersionIssue()
+     ),
     (r"OSError: 'git' was not found", lambda m: MissingCommand("git")),
     (r"OSError: No such file (.*)", file_not_found),
     (
