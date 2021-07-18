@@ -298,6 +298,11 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
              "the library. WANDIO can be obtained from "
              "http://research.wand.net.nz/software/libwandio.php"],
             1, MissingVagueDependency("libwandio", minimum_version="4.0.0"))
+        self.run_test(
+            ["configure: error: libpcap0.8 or greater is required to compile "
+             "libtrace. If you have installed it in a non-standard location please "
+             "use LDFLAGS to specify the location of the library"],
+            1, MissingVagueDependency("libpcap", minimum_version="0.8"))
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)

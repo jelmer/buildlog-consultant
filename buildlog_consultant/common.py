@@ -1855,7 +1855,11 @@ build_failure_regexps = [
         r"configure: error: (.*) version (.*) or higher is required",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
-    (r'configure: error: ([^ ]+) ([^ ]+) or better is required',
+    (r'configure: error: ([^ ]+) ([^ ]+) or better is required.*',
+     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
+    (r'configure: error: ([^ ]+) ([^ ]+) or greater is required.*',
+     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
+    (r'configure: error: ([^ ]+?)([0-9\.]+) or greater is required.*',
      lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     (
         r"configure: error: (.*) library is required",
