@@ -1812,14 +1812,6 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
     ),
     (
-        r"configure: error: \*\*\* (.*) is required\.",
-        lambda m: MissingVagueDependency(m.group(1))
-    ),
-    (
-        r"configure: error: (.*) is required, please get it from (.*)",
-        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
-    ),
-    (
         r"configure: error: \*\*\* Unable to find (.* library)",
         lambda m: MissingVagueDependency(m.group(1))
     ),
@@ -1852,18 +1844,6 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1))
     ),
     (
-        r"configure: error: (.*) is required for building this package.",
-        lambda m: MissingVagueDependency(m.group(1)),
-    ),
-    (
-        r"configure: error: (.*) is required to build (.*)",
-        lambda m: MissingVagueDependency(m.group(1)),
-    ),
-    (
-        r"configure: error: (.*) is required",
-        lambda m: MissingVagueDependency(m.group(1)),
-    ),
-    (
         r"configure: error: cannot locate (.*) >= (.*)",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
     ),
@@ -1874,6 +1854,12 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) version (.*) or higher is required",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (r'configure: error: ([^ ]+) ([^ ]+) or better is required',
+     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
+    (
+        r"configure: error: (.*) library is required",
+        lambda m: MissingLibrary(m.group(1)),
     ),
     (
         r'configure: error: OpenSSL developer library \'libssl-dev\' or '
@@ -1894,8 +1880,28 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (
+        r"configure: error: (.*) is required for building this package.",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required to build (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         r"configure: error: (.*) is required for (.*)",
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: \*\*\* (.*) is required\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
+        r"configure: error: (.*) is required, please get it from (.*)",
+        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
     ),
     (
         r"dh: Unknown sequence --(.*) "
@@ -2787,10 +2793,6 @@ build_failure_regexps = [
     ),
     (
         r"configure: error: Missing lib(.*)\.",
-        lambda m: MissingLibrary(m.group(1)),
-    ),
-    (
-        r"configure: error: (.*) library is required",
         lambda m: MissingLibrary(m.group(1)),
     ),
     (

@@ -291,6 +291,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             3,
             MissingVagueDependency("the Multi Emulator Super System (MESS)"),
         )
+        self.run_test(
+            ["configure: error: libwandio 4.0.0 or better is required to compile "
+             "this version of libtrace. If you have installed libwandio in a "
+             "non-standard location please use LDFLAGS to specify the location of "
+             "the library. WANDIO can be obtained from "
+             "http://research.wand.net.nz/software/libwandio.php"],
+            1, MissingVagueDependency("libwandio", minimum_version="4.0.0"))
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
