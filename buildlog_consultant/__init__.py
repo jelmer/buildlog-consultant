@@ -19,7 +19,7 @@
 
 from dataclasses import dataclass
 
-__version__ = (0, 0, 12)
+__version__ = (0, 0, 13)
 version_string = '.'.join(map(str, __version__))
 
 
