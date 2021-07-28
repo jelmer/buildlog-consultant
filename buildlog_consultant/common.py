@@ -1859,8 +1859,8 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     (r'configure: error: ([^ ]+) ([^ ]+) or greater is required.*',
      lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
-    (r'configure: error: ([^ ]+?)([0-9\.]+) or greater is required.*',
-     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
+    (r'configure: error: ([^ ]+) or greater is required.*',
+     lambda m: MissingVagueDependency(m.group(1))),
     (
         r"configure: error: (.*) library is required",
         lambda m: MissingLibrary(m.group(1)),
@@ -2881,6 +2881,9 @@ build_failure_regexps = [
 
     (r'configure: error: no suitable Python interpreter found',
      lambda m: MissingCommand('python')),
+
+    (r'  Failed to find (.*) development headers\.',
+     lambda m: MissingVagueDependency(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
