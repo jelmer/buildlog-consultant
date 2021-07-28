@@ -1688,6 +1688,10 @@ arch:all and the other not)""".splitlines(),
             1,
             MissingRPackage("BH", "1.75.0.0"),
         )
+        self.run_test(
+            ["  namespace 'alakazam' 1.1.0 is being loaded, but >= 1.1.0.999 is required"],
+            1,
+            MissingRPackage('alakazam', '1.1.0.999'))
 
     def test_mv_stat(self):
         self.run_test(

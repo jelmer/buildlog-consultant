@@ -1546,6 +1546,10 @@ build_failure_regexps = [
         r"ValueError: Namespace (.*) not available",
         lambda m: MissingIntrospectionTypelib(m.group(1)),
     ),
+    (
+        r'  namespace \'(.*)\' ([^ ]+) is being loaded, but \>= ([^ ]+) is required',
+        lambda m: MissingRPackage(m.group(1), minimum_version=m.group(3))
+    ),
     ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E       fixture '(.*)' not found", lambda m: MissingPytestFixture(m.group(1))),
     (
@@ -2821,8 +2825,6 @@ build_failure_regexps = [
         lambda m: MissingRPackage(m.group(1))
     ),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
-    (r'  namespace "(.*)" .* is being loaded, but \>= (.*) is required',
-     lambda m: MissingRPackage(m.group(1), m.group(2))),
     (
         r"Exception: cannot execute command due to missing interpreter: (.*)",
         command_missing,
