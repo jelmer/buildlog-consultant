@@ -477,6 +477,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             2,
             MissingVagueDependency("alut"),
         )
+        self.run_test(
+            ["CMake Error at CMakeLists.txt:213 (message):",
+             "  could not find zlib"], 2, MissingVagueDependency("zlib"))
 
     def test_dh_compat_dupe(self):
         self.run_test(
@@ -1270,6 +1273,10 @@ Call Stack (most recent call first):
              '(perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at '
              '/usr/share/perl5/Dist/Inkt.pm line 208.'], 1,
             MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None))
+        self.run_test(
+            ["Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) "
+             "does not appear to be installed"], 1,
+            MissingPerlModule(None, "Pod::Weaver::Plugin::WikiDoc"))
 
     def test_missing_perl_file(self):
         self.run_test(

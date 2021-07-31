@@ -1315,6 +1315,7 @@ class CMakeErrorMatcher(Matcher):
         (r'(.*) and (.*) are required', lambda m: MissingVagueDependency(m.group(1))),
         (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
         (r'Python module (.*) not found\!', lambda m: MissingPythonModule(m.group(1))),
+        (r'\s*could not find ([^\s]+)$', lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
@@ -2868,6 +2869,10 @@ build_failure_regexps = [
         r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
         lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
     ),
+
+    (
+        r'([^ ]+) \(for section ([^ ]+)\) does not appear to be installed',
+        lambda m: MissingPerlModule(None, m.group(1))),
 
     (
         r'CMake Error: CMake was unable to find a build program corresponding'
