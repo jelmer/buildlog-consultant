@@ -2754,6 +2754,10 @@ build_failure_regexps = [
         r"fatal: unable to auto-detect email address \(got \'.*\'\)",
         lambda m: MissingGitIdentity(),
     ),
+    (
+        r"E       fatal: unable to auto-detect email address \(got \'.*\'\)",
+        lambda m: MissingGitIdentity(),
+    ),
     (r"gpg: no default secret key: No secret key", lambda m: MissingSecretGpgKey()),
     (
         r"ERROR: FAILED--Further testing stopped: "
