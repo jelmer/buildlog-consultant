@@ -1920,6 +1920,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
     ),
     (
+        r"configure: error: .*, (lib[^ ]+) is required",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
         r"dh: Unknown sequence --(.*) "
         r"\(options should not come before the sequence\)",
         dh_with_order,
