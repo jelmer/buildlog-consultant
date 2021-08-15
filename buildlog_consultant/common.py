@@ -2453,6 +2453,9 @@ build_failure_regexps = [
     (r".*.scala:[0-9]+: error: (.*)", None),
     # JavaScript
     (r"error TS6053: File \'(.*)\' not found.", file_not_found),
+    # Mocha
+    (r"Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' "
+     "imported from (.*)", lambda m: MissingNodeModule(m.group(1))),
     (r"(.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: (.*)", None),
     (r"(.*.nim)\([0-9]+, [0-9]+\) Error: .*", None),
     (
