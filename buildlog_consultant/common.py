@@ -1496,6 +1496,13 @@ class MismatchGettextVersions:
             self.makefile_version, self.autoconf_version)
 
 
+@problem("disappeared-symbols")
+class DisappearedSymbols:
+
+    def __str__(self):
+        return "Disappeared symbols"
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -2371,7 +2378,7 @@ build_failure_regexps = [
     (
         "dpkg-gensymbols: error: some symbols or patterns disappeared in the "
         "symbols file: see diff output below",
-        None,
+        lambda m: DisappearedSymbols(),
     ),
     (
         r"Failed to copy \'(.*)\': No such file or directory at "
@@ -2387,11 +2394,6 @@ build_failure_regexps = [
     (
         r".*meson.build:[0-9]+:[0-9]: ERROR: Git program not found\.",
         lambda m: MissingCommand("git"),
-    ),
-    (
-        r"dpkg-gensymbols: error: some symbols or patterns disappeared in "
-        r"the symbols file: see diff output below",
-        None,
     ),
     (
         r"Failed: [pytest] section in setup.cfg files is no longer "

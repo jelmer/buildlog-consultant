@@ -21,6 +21,7 @@ from ..common import (
     find_build_failure_description,
     CcacheError,
     DebhelperPatternNotFound,
+    DisappearedSymbols,
     DuplicateDHCompatLevel,
     DhLinkDestinationIsDirectory,
     MissingConfigure,
@@ -1748,7 +1749,7 @@ arch:all and the other not)""".splitlines(),
                 "the symbols file: see diff output below"
             ],
             1,
-            None,
+            DisappearedSymbols(),
         )
 
     def test_autoconf_macro(self):
