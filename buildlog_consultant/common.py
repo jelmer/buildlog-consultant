@@ -1287,6 +1287,10 @@ class CMakeErrorMatcher(Matcher):
             r"patch: \*\*\*\* write error : No space left on device",
             lambda m: NoSpaceOnDevice(),
         ),
+        (
+            r".*\(No space left on device\)",
+            lambda m: NoSpaceOnDevice(),
+        ),
         (r'file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n', None),
         (r"Could NOT find (.*) \(missing: (.*)\)", None),
         (
