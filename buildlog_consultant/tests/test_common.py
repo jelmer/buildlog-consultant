@@ -1697,6 +1697,11 @@ arch:all and the other not)""".splitlines(),
             MissingRPackage("BH", "1.75.0.0"),
         )
         self.run_test(
+            [
+                "Error: package ‘AnnotationDbi’ 1.52.0 was found, but >= 1.53.1 is required by ‘GO.db’"
+            ], 1,
+            MissingRPackage("AnnotationDbi", "1.53.1"))
+        self.run_test(
             ["  namespace 'alakazam' 1.1.0 is being loaded, but >= 1.1.0.999 is required"],
             1,
             MissingRPackage('alakazam', '1.1.0.999'))
