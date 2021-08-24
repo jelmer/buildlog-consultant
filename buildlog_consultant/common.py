@@ -2903,6 +2903,15 @@ build_failure_regexps = [
         lambda m: VcsControlDirectoryNeeded(['git', 'hg']),
     ),
 
+    (
+        r"Exception: Versioning for this project requires either an sdist "
+        "tarball, or access to an upstream git repository\. It's also "
+        r"possible that there is a mismatch between the package name "
+        r"in setup.cfg and the argument given to pbr\.version\.VersionInfo\. "
+        r"Project name .* was given, but was not able to be found\.",
+        lambda m: VcsControlDirectoryNeeded(["git"])
+    ),
+
     (r'configure: error: no suitable Python interpreter found',
      lambda m: MissingCommand('python')),
 
