@@ -1507,6 +1507,15 @@ class DisappearedSymbols:
         return "Disappeared symbols"
 
 
+@problem("missing-gnulib-directory")
+class MissingGnulibDirectory:
+
+    directory: str
+
+    def __str__(self):
+        return "Missing gnulib directory %s" % self.directory
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -1800,7 +1809,7 @@ build_failure_regexps = [
     ),
     (
         r'.*meson.build:([0-9]+):([0-9]+): ERROR: python3 is missing modules: (.*)',
-        lambda m: MissingPerlModule(m.group(1))
+        lambda m: MissingPythonModule(m.group(1))
     ),
     (
         r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
@@ -2892,6 +2901,12 @@ build_failure_regexps = [
         lambda m: MissingPerlModule(None, m.group(1))),
 
     (
+        r'(.*) version (.*) required--this is only version (.*) '
+        r'at .*\.pm line [0-9]+\.',
+        lambda m: MissingPerlModule(None, m.group(1), m.group(2)),
+    ),
+
+    (
         r'CMake Error: CMake was unable to find a build program corresponding'
         r' to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to '
         r'select a different build tool\.',
@@ -2917,6 +2932,12 @@ build_failure_regexps = [
 
     (r'  Failed to find (.*) development headers\.',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'\*\*\* \Subdirectory \'(.*)\' does not yet exist. '
+     r'Use \'./gitsub.sh pull\' to create it, or set the '
+     r'environment variable GNULIB_SRCDIR\.',
+     lambda m: MissingGnulibDirectory(m.group(1))
+    ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
