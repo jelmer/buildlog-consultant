@@ -3077,6 +3077,8 @@ secondary_build_failure_regexps = [
     ),
     r".*:[0-9]+: \*\*\* empty variable name.  Stop.",
     r"error: can't copy '(.*)': doesn't exist or not a regular file",
+    # Erlang
+    r'  (.*_test): (.+)\.\.\.\*failed\*',
     # Clojure
     r"Could not locate (.*) or (.*) on classpath\.",
     # QMake
@@ -3107,7 +3109,7 @@ secondary_build_failure_regexps = [
     r"dpkg-gencontrol: error: (.*)",
     r".*:[0-9]+:[0-9]+: (error|ERROR): (.*)",
     r"FAIL: (.*)",
-    r"FAIL (.*) \(.*\)",
+    r"\s*FAIL (.*) \(.*\)",
     r"FAIL\s+(.*) \[.*\] ?",
     r"TEST FAILURE",
     r"make\[[0-9]+\]: \*\*\* \[.*\] Error [0-9]+",
@@ -3157,6 +3159,7 @@ secondary_build_failure_regexps = [
     r"============================ no tests ran in ([0-9.]+)s =============================",
     # Perl
     r"  Failed tests:  [0-9-]+",
+    r"Failed (.*\.t): output changed",
     # Go
     "FAIL\t(.*)\t[0-9.]+s",
     r".*.go:[0-9]+:[0-9]+: (?!note:).*",
