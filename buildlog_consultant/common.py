@@ -1607,6 +1607,10 @@ build_failure_regexps = [
         c_header_missing,
     ),
     (
+        r'fatal: not a git repository \(or any parent up to mount point \/\)',
+        lambda m: VcsControlDirectoryNeeded(['git']),
+    ),
+    (
         r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory",
         c_header_missing,
     ),
@@ -1781,6 +1785,10 @@ build_failure_regexps = [
     (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found',
         meson_pkg_config_missing,
+    ),
+    (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: python3 "(.*)" missing',
+        lambda m: MissingPythonModule(m.group(3), python_version=3),
     ),
     (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Program \'(.*)\' not found',
