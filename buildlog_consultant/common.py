@@ -2947,9 +2947,16 @@ build_failure_regexps = [
      lambda m: MissingGnulibDirectory(m.group(1))
     ),
 
+    (r'configure: error: Cap\'n Proto compiler \(capnp\) not found.',
+     lambda m: MissingCommand('capnp')),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
+    (r'configure: error: ([^ ]+) development files not found',
+     lambda m: MissingVagueDependency(m.group(1))),
+    ('configure: error: \'(.*)\' command was not found',
+     lambda m: MissingCommand(m.group(1))),
     (
         r"configure: error: (.*) not present.*",
         lambda m: MissingVagueDependency(m.group(1))
@@ -2957,6 +2964,10 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) >= (.*) not found",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: (.*) headers not found",
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
         r"configure: error: (.*) not found",

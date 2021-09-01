@@ -214,6 +214,15 @@ class DebcargoFailure:
             return "Debcargo failed"
 
 
+@problem("changelog-parse-failed")
+class ChangelogParseError:
+
+    reason: str
+
+    def __str__(self):
+        return "Changelog failed to parse: %s" % self.reason
+
+
 @problem("uscan-failed")
 class UScanFailed:
 
@@ -529,7 +538,9 @@ def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem
             error = fn(m, prior_lines)
             return (error, str(error))
     if line.startswith("UScan failed to run"):
-        return (None, line)
+        return (UScanFailed(None, line[len("UScan failed to run: "):]), line)
+    if line.startswith('Unable to parse changelog: '):
+        return ChangelogParseError(line[len("Unable to parse changelog: "):], line)
     return (None, line.split("\n")[0])
 
 
