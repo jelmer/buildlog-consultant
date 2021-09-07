@@ -1466,6 +1466,15 @@ class MissingXDisplay:
         return "No X Display"
 
 
+@problem("missing-lua-module")
+class MissingLuaModule:
+
+    module: str
+
+    def __str__(self):
+        return "Missing Lua Module: %s" % self.module
+
+
 @problem("cancelled")
 class Cancelled:
 
@@ -2950,6 +2959,9 @@ build_failure_regexps = [
     (r'configure: error: Cap\'n Proto compiler \(capnp\) not found.',
      lambda m: MissingCommand('capnp')),
 
+    (r'lua: (.*):(\d+): module \'(.*)\' not found:',
+     lambda m: MissingLuaModule(m.group(3))),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -3096,6 +3108,8 @@ secondary_build_failure_regexps = [
     ),
     r".*:[0-9]+: \*\*\* empty variable name.  Stop.",
     r"error: can't copy '(.*)': doesn't exist or not a regular file",
+    r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. "
+    r"Try adding AC_PREREQ\(\[(.*)\]\) to your configure\.ac\.",
     # Erlang
     r'  (.*_test): (.+)\.\.\.\*failed\*',
     # Clojure
