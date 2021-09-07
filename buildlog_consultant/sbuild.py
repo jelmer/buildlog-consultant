@@ -540,7 +540,7 @@ def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem
     if line.startswith("UScan failed to run"):
         return (UScanFailed(None, line[len("UScan failed to run: "):]), line)
     if line.startswith('Unable to parse changelog: '):
-        return ChangelogParseError(line[len("Unable to parse changelog: "):], line)
+        return (ChangelogParseError(line[len("Unable to parse changelog: "):]), line)
     return (None, line.split("\n")[0])
 
 
