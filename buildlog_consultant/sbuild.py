@@ -481,6 +481,15 @@ def _parse_debcargo_failure(m, pl):
     return DebcargoFailure("Debcargo failed to run")
 
 
+@problem("uscan-too-many-requests")
+class UScanTooManyRequests:
+
+    url: str
+
+    def __str__(self):
+        return "UScan: %s: too many requests" % self.url
+
+
 BRZ_ERRORS = [
     (
         "Unable to find the needed upstream tarball for "
@@ -490,6 +499,11 @@ BRZ_ERRORS = [
     (
         "Unknown mercurial extra fields in (.*): b'(.*)'.",
         lambda m, pl: UnknownMercurialExtraFields(m.group(2)),
+    ),
+    (
+        "UScan failed to run: In watchfile (.*), reading webpage "
+        "(.*) failed: 429 too many requests\.",
+        lambda m, pl: UScanTooManyRequests(m.group(2))
     ),
     (
         "UScan failed to run: OpenPGP signature did not verify..",
