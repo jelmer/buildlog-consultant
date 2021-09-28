@@ -2194,7 +2194,7 @@ build_failure_regexps = [
         r_too_old,
     ),
     (r'b\'convert convert: '
-     r'Unable to read font \((.*)\) \[No such file or directory\]\.',
+     r'Unable to read font \((.*)\) \[No such file or directory\]\.\\n\'',
      file_not_found),
     (r"mv: cannot stat \'(.*)\': No such file or directory", file_not_found),
     (r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", None),
