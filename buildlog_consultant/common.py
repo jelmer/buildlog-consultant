@@ -2716,9 +2716,13 @@ build_failure_regexps = [
     ),
     (r"dpkg: error: .*: No space left on device", lambda m: NoSpaceOnDevice()),
     (
-        r"You need the GNU readline library(ftp://ftp.gnu.org/gnu/readline/ ) "
+        r"You need the GNU readline library\(ftp://ftp.gnu.org/gnu/readline/\s+) "
         r"to build",
         lambda m: MissingLibrary("readline"),
+    ),
+    (
+        r'configure: error: Could not find lib(.*)',
+        lambda m: MissingLibrary(m.group(1))
     ),
     (
         r"    Could not find module ‘(.*)’",
