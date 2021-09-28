@@ -3115,6 +3115,8 @@ secondary_build_failure_regexps = [
     ),
     r".*:[0-9]+: \*\*\* empty variable name.  Stop.",
     r"error: can't copy '(.*)': doesn't exist or not a regular file",
+    r"error: ([0-9]+) test executed, ([0-9]+) fatal tests failed, "
+    r"([0-9]+) nonfatal test failed\.",
     r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. "
     r"Try adding AC_PREREQ\(\[(.*)\]\) to your configure\.ac\.",
     # Erlang
@@ -3149,8 +3151,10 @@ secondary_build_failure_regexps = [
     r"dpkg-gencontrol: error: (.*)",
     r".*:[0-9]+:[0-9]+: (error|ERROR): (.*)",
     r"FAIL: (.*)",
+    r"FAIL\!  : (.*)",
     r"\s*FAIL (.*) \(.*\)",
     r"FAIL\s+(.*) \[.*\] ?",
+    r"([0-9]+)% tests passed, ([0-9]+) tests failed out of ([0-9]+)",
     r"TEST FAILURE",
     r"make\[[0-9]+\]: \*\*\* \[.*\] Error [0-9]+",
     r"make\[[0-9]+\]: \*\*\* \[.*\] Aborted",
