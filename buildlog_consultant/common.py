@@ -2944,7 +2944,7 @@ build_failure_regexps = [
 
     (
         r"Exception: Versioning for this project requires either an sdist "
-        "tarball, or access to an upstream git repository\. It's also "
+        r"tarball, or access to an upstream git repository\. It's also "
         r"possible that there is a mismatch between the package name "
         r"in setup.cfg and the argument given to pbr\.version\.VersionInfo\. "
         r"Project name .* was given, but was not able to be found\.",
@@ -2961,7 +2961,7 @@ build_failure_regexps = [
      r'Use \'./gitsub.sh pull\' to create it, or set the '
      r'environment variable GNULIB_SRCDIR\.',
      lambda m: MissingGnulibDirectory(m.group(1))
-    ),
+     ),
 
     (r'configure: error: Cap\'n Proto compiler \(capnp\) not found.',
      lambda m: MissingCommand('capnp')),

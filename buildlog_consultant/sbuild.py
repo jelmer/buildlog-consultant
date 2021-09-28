@@ -501,8 +501,8 @@ BRZ_ERRORS = [
         lambda m, pl: UnknownMercurialExtraFields(m.group(2)),
     ),
     (
-        "UScan failed to run: In watchfile (.*), reading webpage "
-        "(.*) failed: 429 too many requests\.",
+        r"UScan failed to run: In watchfile (.*), reading webpage "
+        r"(.*) failed: 429 too many requests\.",
         lambda m, pl: UScanTooManyRequests(m.group(2))
     ),
     (
