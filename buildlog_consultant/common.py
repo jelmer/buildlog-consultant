@@ -2260,6 +2260,10 @@ build_failure_regexps = [
         lambda m: MissingRubyGem(m.group(1)),
     ),
     (
+        r"Exception: (.*) not in path[!.]*",
+        lambda m: MissingCommand(m.group(1))
+    ),
+    (
         r"[^:]+:[0-9]+:in \`find_spec_for_exe\': can\'t find gem "
         r"(.*) \(([^)]+)\) with executable (.*) \(Gem::GemNotFoundException\)",
         ruby_missing_gem,
