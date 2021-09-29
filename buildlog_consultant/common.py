@@ -1752,6 +1752,9 @@ build_failure_regexps = [
         lambda m: MissingCommand("pkg-config"),
     ),
     (r"Error: pkg-config not found\!", lambda m: MissingCommand("pkg-config")),
+    # Tox
+    (r"ERROR: InterpreterNotFound: (.*)",
+     lambda m: MissingCommand(m.group(1))),
     (r"ERROR: unable to find python", lambda m: MissingCommand("python")),
     (r" ERROR: BLAS not found\!", lambda m: MissingLibrary("blas")),
     AutoconfUnexpectedMacroMatcher(),
