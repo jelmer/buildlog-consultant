@@ -2950,6 +2950,11 @@ build_failure_regexps = [
     ),
 
     (
+        r'GitHubMeta: need a .git\/config file, and you don\'t have one',
+        lambda m: VcsControlDirectoryNeeded(['git'])
+    ),
+
+    (
         r"Exception: Versioning for this project requires either an sdist "
         r"tarball, or access to an upstream git repository\. It's also "
         r"possible that there is a mismatch between the package name "
