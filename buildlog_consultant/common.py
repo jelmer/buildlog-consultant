@@ -1345,7 +1345,6 @@ class CMakeErrorMatcher(Matcher):
         start_lineno = int(m.group(3))  # noqa: F841
         linenos, error_lines = self._extract_error_lines(lines, i)
 
-        error = None
         for r, fn in self.cmake_errors:
             m = re.match(r, "".join(error_lines), flags=re.DOTALL)
             if m:
@@ -1355,7 +1354,7 @@ class CMakeErrorMatcher(Matcher):
                     error = fn(m)
                 return linenos, error
 
-        return [], None
+        return linenos, None
 
 
 @problem("missing-fortran-compiler")
