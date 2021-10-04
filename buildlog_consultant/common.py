@@ -3438,13 +3438,18 @@ def main(argv=None):
         if not m:
             logging.info("No issues found")
         else:
-            logging.info("Issue found at line %d:", m.lineno)
+            if len(m.linenos) == 1:
+                logging.info("Issue found at line %d:", m.lineno)
+            else:
+                logging.info(
+                    "Issue found at lines %d-%d:", m.linenos[0], m.linenos[-1])
             for i in range(
-                max(0, m.offset - args.context),
-                min(len(lines), m.offset + args.context + 1),
+                max(0, m.offsets[0] - args.context),
+                min(len(lines), m.offsets[-1] + args.context + 1),
             ):
                 logging.info(
-                    " %s  %s", ">" if m.offset == i else " ", lines[i].rstrip("\n")
+                    " %s  %s", ">" if i in m.offsets else " ",
+                    lines[i].rstrip("\n")
                 )
 
         if problem:
