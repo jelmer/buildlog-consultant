@@ -23,7 +23,14 @@ from typing import List, Optional, Tuple
 import re
 import textwrap
 
-from . import Problem, SingleLineMatch, problem, version_string
+from . import (
+    Problem,
+    Match,
+    MultiLineMatch,
+    SingleLineMatch,
+    problem,
+    version_string,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -3313,7 +3320,7 @@ for regexp in secondary_build_failure_regexps:
 
 def find_build_failure_description(  # noqa: C901
     lines: List[str],
-) -> Tuple[Optional[SingleLineMatch], Optional["Problem"]]:
+) -> Tuple[Optional[Match], Optional["Problem"]]:
     """Find the key failure line in build output.
 
     Returns:
@@ -3332,8 +3339,7 @@ def find_build_failure_description(  # noqa: C901
         for matcher in compiled_build_failure_regexps:
             linenos, err = matcher.match(lines, lineno)
             if linenos:
-                lineno = linenos[-1]  # For now
-                return SingleLineMatch.from_lines(lines, lineno), err
+                return MultiLineMatch.from_lines(lines, linenos), err
 
     # TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
     if cmake:

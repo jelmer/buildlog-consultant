@@ -60,7 +60,12 @@ def problem(kind, is_global=False):
     return _wrap
 
 
-class SingleLineMatch(object):
+class Match:
+
+    line: str
+
+
+class SingleLineMatch(Match):
 
     offset: int
     line: str
@@ -86,3 +91,31 @@ class SingleLineMatch(object):
     @classmethod
     def from_lines(cls, lines, offset):
         return cls(offset, lines[offset])
+
+
+class MultiLineMatch(Match):
+
+    offset: int
+    line: str
+
+    def __init__(self, offset: int, line: str):
+        self.offset = offset
+        self.line = line
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (type(self).__name__, self.offset, self.line)
+
+    def __eq__(self, other):
+        return (
+            isinstance(self, type(other))
+            and self.offset == other.offset
+            and self.line == other.line
+        )
+
+    @property
+    def lineno(self) -> int:
+        return self.offset + 1
+
+    @classmethod
+    def from_lines(cls, lines, offsets):
+        return cls(offsets[-1], lines[offsets[-1]])
