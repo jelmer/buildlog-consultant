@@ -1855,6 +1855,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
+        r"configure: error: Library requirements \((.*)\) not met\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
         r"configure: error: (.*) is missing -- (.*)",
         lambda m: MissingVagueDependency(m.group(1))
     ),
