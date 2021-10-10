@@ -193,7 +193,13 @@ class MissingVagueDependency:
 
 @problem("missing-qt")
 class MissingQt:
+
+    minimum_version: Optional[str] = None
+
     def __str__(self):
+        if self.minimum_version:
+            return "Missing QT installation (at least %s)" % (
+                self.minimum_version)
         return "Missing QT installation"
 
 
@@ -1327,6 +1333,25 @@ class CMakeErrorMatcher(Matcher):
         (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
         (r'Python module (.*) not found\!', lambda m: MissingPythonModule(m.group(1))),
         (r'\s*could not find ([^\s]+)$', lambda m: MissingVagueDependency(m.group(1))),
+        (r'Found unsuitable Qt version "" from NOTFOUND, '
+         r'this code requires Qt 4.x', lambda m: MissingQt('4')),
+        (r'(.*) executable not found\! Please install (.*)\.',
+         lambda m: MissingCommand(m.group(2))),
+        (r'Could not find the OpenGL external dependency\.',
+         lambda m: MissingLibrary('GL')),
+        (r'(.*) tool not found', lambda m: MissingCommand(m.group(1))),
+        (r'(.*) must be installed before configuration \& building can '
+         r'proceed', lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) development files not found\.',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'.* but no (.*) dev libraries found',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'Failed to find (.*) \(missing: .*\)',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'Could not find required (.*) package\!',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'Cannot find (.*), giving up\. .*',
+         lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
@@ -2673,6 +2698,8 @@ build_failure_regexps = [
     (r"\w+Numpy is required to build.*", lambda m: MissingPythonModule("numpy")),
     # autoconf
     (r"configure.ac:[0-9]+: error: required file \'(.*)\' not found", file_not_found),
+    (r'/usr/bin/m4:(.*):([0-9]+): cannot open `(.*)\': '
+     r'No such file or directory', lambda m: MissingFile(m.group(3))),
     # automake
     (r"Makefile.am: error: required file \'(.*)\' not found", file_not_found),
     # sphinx
@@ -3311,6 +3338,8 @@ secondary_build_failure_regexps = [
     r"\[DZ\] no (name|version) was ever set",
     r"diff: (.*): No such file or directory",
     r"gpg: signing failed: .*",
+    # mh_install
+    r"Cannot find the jar to install: (.*)",
 ]
 
 compiled_secondary_build_failure_regexps = []
