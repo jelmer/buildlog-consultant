@@ -431,6 +431,13 @@ def find_preamble_failure_description(  # noqa: C901
             err = MissingRevision(m.group(2).encode())
             return SingleLineMatch.from_lines(lines, lineno), err
 
+        m = re.match(
+            r'fatal: ambiguous argument \'(.*)\': '
+            r'unknown revision or path not in the working tree.', line)
+        if m:
+            err = PristineTarTreeMissing(m.group(1))
+            return SingleLineMatch.from_lines(lines, lineno), err
+
         m = re.match("dpkg-source: error: (.*)", line)
         if m:
             err = DpkgSourcePackFailed(m.group(1))
@@ -565,6 +572,15 @@ class MissingRevision:
 
     def __str__(self):
         return "Missing revision: %r" % self.revision
+
+
+@problem("pristine-tar-missing-tree")
+class PristineTarTreeMissing:
+
+    treeish: str
+
+    def __str__(self):
+        return "pristine-tar can not find tree %r" % self.treeish
 
 
 def find_creation_session_error(lines):
@@ -828,7 +844,7 @@ FAILED_STAGE_FAIL_FINDERS = {
 }
 
 
-def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
+def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailure:  # noqa: C901
     if isinstance(f, SbuildLog):
         sbuildlog = f
     else:
