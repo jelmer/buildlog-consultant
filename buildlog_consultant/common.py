@@ -1651,6 +1651,10 @@ build_failure_regexps = [
         lambda m: VcsControlDirectoryNeeded(['git']),
     ),
     (
+        r'fatal: not a git repository \(or any of the parent directories\): \.git',
+        lambda m: VcsControlDirectoryNeeded(['.git']),
+    ),
+    (
         r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory",
         c_header_missing,
     ),
