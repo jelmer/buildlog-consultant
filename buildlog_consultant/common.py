@@ -1328,7 +1328,7 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find \'(.*)\' executable[\!,].*', lambda m: MissingCommand(m.group(1))),
         (r'Could not find (.*)_STATIC_LIBRARIES using the following names: ([a-zA-z0-9_.]+)',
          lambda m: MissingStaticLibrary(m.group(1), m.group(2))),
-        ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1) + '.cmake'])),
+        ('include could not find (requested|load) file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(2) + '.cmake' if not m.group(2).endswith('.cmake') else m.group(2)])),
         (r'(.*) and (.*) are required', lambda m: MissingVagueDependency(m.group(1))),
         (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
         (r'Python module (.*) not found\!', lambda m: MissingPythonModule(m.group(1))),
@@ -1352,6 +1352,13 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'Cannot find (.*), giving up\. .*',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'The development\sfiles\sfor\s(.*)\sare\s'
+         r'required\sto\sbuild (.*)\.',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) required to compile (.*)',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) requires (.*)',
+         lambda m: MissingVagueDependency(m.group(2))),
     ]
 
     @classmethod
