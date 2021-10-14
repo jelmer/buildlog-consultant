@@ -1704,6 +1704,10 @@ build_failure_regexps = [
         lambda m: MissingX11(),
     ),
     (
+        r"configure: error: The Java compiler javac failed.*",
+        lambda m: MissingCommand('javac')
+    ),
+    (
         r"  \*\*\* The (.*) script could not be found\. .*",
         lambda m: MissingCommand(m.group(1)),
     ),
