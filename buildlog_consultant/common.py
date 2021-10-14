@@ -1462,6 +1462,15 @@ class MissingLatexFile:
         return "Missing LaTeX file: %s" % self.filename
 
 
+@problem("missing-fontspec")
+class MissingFontspec:
+
+    fontspec: str
+
+    def __str__(self):
+        return "Missing font spec: %s" % self.fontspec
+
+
 @problem("missing-dh-compat-level")
 class MissingDHCompatLevel:
 
@@ -2925,6 +2934,10 @@ build_failure_regexps = [
     (
         r"\! LaTeX Error: File `(.*)\' not found\.",
         lambda m: MissingLatexFile(m.group(1)),
+    ),
+    (
+        r"\! Package fontspec Error: The font \"(.*)\" cannot be found\.",
+        lambda m: MissingFontspec(m.group(1)),
     ),
     (r"  vignette builder \'(.*)\' not found", lambda m: MissingRPackage(m.group(1))),
     (
