@@ -2449,6 +2449,11 @@ build_failure_regexps = [
         None,
     ),
     (
+        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; "
+        r"(.*):\((.*)\) first defined here",
+        None,
+    ),
+    (
         r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; "
         r"(.*):\((.*)\) first defined here",
         None,

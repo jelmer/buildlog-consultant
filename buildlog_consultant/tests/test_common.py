@@ -1538,6 +1538,14 @@ Call Stack (most recent call first):
             ],
             1,
         )
+        self.run_test(
+            [
+                "/usr/bin/ld: ../lib/libaxe.a(stream.c.o):(.bss+0x10): "
+                "multiple definition of `gsl_message_mask'; "
+                "../lib/libaxe.a(error.c.o):(.bss+0x8): first defined here"
+            ],
+            1,
+        )
 
     def test_missing_ruby_gem(self):
         self.run_test(
