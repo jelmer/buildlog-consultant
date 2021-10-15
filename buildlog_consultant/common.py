@@ -1340,6 +1340,8 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find the OpenGL external dependency\.',
          lambda m: MissingLibrary('GL')),
         (r'(.*) tool not found', lambda m: MissingCommand(m.group(1))),
+        (r'-- Unable to find git\.  Setting git revision to \'unknown\'\.',
+         lambda m: MissingCommand('git')),
         (r'(.*) must be installed before configuration \& building can '
          r'proceed', lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) development files not found\.',
@@ -1663,11 +1665,11 @@ build_failure_regexps = [
         c_header_missing,
     ),
     (
-        r'fatal: not a git repository \(or any parent up to mount point \/\)',
+        r'.*fatal: not a git repository \(or any parent up to mount point \/\)',
         lambda m: VcsControlDirectoryNeeded(['git']),
     ),
     (
-        r'fatal: not a git repository \(or any of the parent directories\): \.git',
+        r'.*fatal: not a git repository \(or any of the parent directories\): \.git',
         lambda m: VcsControlDirectoryNeeded(['.git']),
     ),
     (
@@ -1786,8 +1788,8 @@ build_failure_regexps = [
     (r'An error has occurred: FatalError: git failed\. '
      r'Is it installed, and are you in a Git repository directory\?',
      lambda m: MissingCommand("git")),
-    ("Please install 'git' seperately and try again.",
-     lambda m: MissingCommand("git")),
+    ("Please install '(.*)' seperately and try again.",
+     lambda m: MissingCommand(m.group(1))),
     (
         r"\> A problem occurred starting process \'command \'(.*)\'\'",
         lambda m: MissingCommand(m.group(1)),
@@ -1989,7 +1991,38 @@ build_failure_regexps = [
     ),
 
     (
-        r"(configure: error|\*\*Error\*\*): You must have (.*) installed",
+        r'\s*You must have (.*) installed to compile .*\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'\*\*\* No (.*) found, please in(s?)tall it \*\*\*',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'\*\* ERROR \*\* : You must have `(.*)\' installed on your system\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'autogen\.sh: ERROR: You must have `(.*)\' installed to compile '
+        r'this package\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'autogen\.sh: You must have (.*) installed\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'\s*Error\! You need to have (.*) installed\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r"(configure: error|\*\*Error\*\*): You must have (.*) installed.*",
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (
