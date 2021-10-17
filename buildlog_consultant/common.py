@@ -3092,6 +3092,9 @@ build_failure_regexps = [
 
     (r'psql:.*\.sql:[0-9]+: ERROR:  (.*)', None),
 
+    (r'intltoolize: \'(.*)\' is out of date: use \'--force\' to overwrite',
+     None),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
