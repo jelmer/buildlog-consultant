@@ -3090,6 +3090,8 @@ build_failure_regexps = [
 
     (r'(.*\.gir):In (.*): error: (.*)', None),
 
+    (r'psql:.*\.sql:[0-9]+: ERROR:  (.*)', None),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
