@@ -318,10 +318,6 @@ class MissingGoPackage:
         return "Missing Go package: %s" % self.package
 
 
-def missing_go_package(m):
-    return MissingGoPackage(m.group(1))
-
-
 @problem("missing-c-header")
 class MissingCHeader:
 
@@ -1654,7 +1650,9 @@ build_failure_regexps = [
     ),
     ("E   ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
     (r"/usr/bin/python3: No module named (.*)", python3_module_not_found),
-    ('.*:[0-9]+: cannot find package "(.*)" in any of:', missing_go_package),
+    ('(.*:[0-9]+|package .*): cannot find package "(.*)" in any of:',
+     lambda m: MissingGoPackage(m.group(2))),
+
     (
         r'ImportError: Error importing plugin ".*": No module named (.*)',
         python_module_not_found,
@@ -2782,7 +2780,6 @@ build_failure_regexps = [
     # gpg
     (r"gpg: can\'t connect to the agent: File name too long", None),
     (r"(.*.lua):[0-9]+: assertion failed", None),
-    (r"\*\*\* error: gettext infrastructure mismatch: .*", None),
     (r"\s+\^\-\-\-\-\^ SC[0-4][0-9][0-9][0-9]: .*", None),
     (
         r"Error: (.*) needs updating from (.*)\. "
@@ -3011,9 +3008,9 @@ build_failure_regexps = [
         file_not_found
      ),
     (
-        r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
-        r'from gettext version (.*) but the autoconf macros are from gettext '
-        r'version (.*)',
+        r'\*\*\* error: gettext infrastructure mismatch: using a Makefile\.in\.in '
+        r'from gettext version ([0-9.]+) but the autoconf macros are from gettext '
+        r'version ([0-9.]+)',
         lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
 
     (
@@ -3088,6 +3085,10 @@ build_failure_regexps = [
 
     (r'lua: (.*):(\d+): module \'(.*)\' not found:',
      lambda m: MissingLuaModule(m.group(3))),
+
+    (r'Unknown key\(s\) in sphinx_gallery_conf:', None),
+
+    (r'(.*\.gir):In (.*): error: (.*)', None),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -3325,6 +3326,7 @@ secondary_build_failure_regexps = [
     r"  Failed tests:  [0-9-]+",
     r"Failed (.*\.t): output changed",
     # Go
+    r'no packages to test',
     "FAIL\t(.*)\t[0-9.]+s",
     r".*.go:[0-9]+:[0-9]+: (?!note:).*",
     r"can\'t load package: package \.: no Go files in /<<PKGBUILDDIR>>/(.*)",
@@ -3411,6 +3413,7 @@ secondary_build_failure_regexps = [
     r"gpg: signing failed: .*",
     # mh_install
     r"Cannot find the jar to install: (.*)",
+    r"ERROR: .*",
 ]
 
 compiled_secondary_build_failure_regexps = []

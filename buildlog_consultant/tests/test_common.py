@@ -24,6 +24,7 @@ from ..common import (
     DisappearedSymbols,
     DuplicateDHCompatLevel,
     DhLinkDestinationIsDirectory,
+    MismatchGettextVersions,
     MissingConfigure,
     MissingJavaScriptRuntime,
     MissingJVM,
@@ -304,6 +305,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
              "libtrace. If you have installed it in a non-standard location please "
              "use LDFLAGS to specify the location of the library"],
             1, MissingVagueDependency("libpcap0.8"))
+
+    def test_gettext_mismatch(self):
+        self.run_test(
+            ["*** error: gettext infrastructure mismatch: using a "
+             "Makefile.in.in from gettext version 0.19 but the autoconf "
+             "macros are from gettext version 0.20"],
+            1, MismatchGettextVersions('0.19', '0.20'))
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
@@ -1822,17 +1830,6 @@ arch:all and the other not)""".splitlines(),
             ],
             1,
             MissingAutomakeInput("gtk-doc.make"),
-        )
-
-    def test_gettext_infrastructure(self):
-        self.run_test(
-            [
-                "*** error: gettext infrastructure mismatch: "
-                "using a Makefile.in.in from gettext version "
-                "0.19 but the autoconf macros are from gettext version 0.20"
-            ],
-            1,
-            None,
         )
 
     def test_shellcheck(self):
