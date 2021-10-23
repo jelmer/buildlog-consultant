@@ -1029,6 +1029,19 @@ Call Stack (most recent call first):
 """.splitlines(True), 4, MissingBoostComponents([
             'program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
 
+    def test_pkg_config_too_old(self):
+        self.run_test(
+            [
+                "checking for pkg-config... no",
+                "",
+                "*** Your version of pkg-config is too old. You need atleast",
+                "*** pkg-config 0.9.0 or newer. You can download pkg-config",
+                "*** from the freedesktop.org software repository at",
+                "***",
+                "***    https://www.freedesktop.org/wiki/Software/pkg-config/",
+                "***"
+            ], 4, MissingVagueDependency("pkg-config", minimum_version="0.9.0"))
+
     def test_pkg_config_missing(self):
         self.run_test(
             [

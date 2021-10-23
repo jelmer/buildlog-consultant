@@ -1812,6 +1812,8 @@ build_failure_regexps = [
         lambda m: MissingCommand("pkg-config"),
     ),
     (r"Error: pkg-config not found\!", lambda m: MissingCommand("pkg-config")),
+    (r"\*\*\* pkg-config (.*) or newer\. You can download pkg-config",
+     lambda m: MissingVagueDependency('pkg-config', minimum_version=m.group(1))),
     # Tox
     (r"ERROR: InterpreterNotFound: (.*)",
      lambda m: MissingCommand(m.group(1))),
