@@ -3049,6 +3049,12 @@ build_failure_regexps = [
     ),
 
     (
+        r'Bailout called\.  Further testing stopped:  '
+        r'YOU ARE MISSING REQUIRED MODULES: \[ ([^,]+)(.*) \]:',
+        lambda m: MissingPerlModule(None, m.group(1))
+    ),
+
+    (
         r'CMake Error: CMake was unable to find a build program corresponding'
         r' to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to '
         r'select a different build tool\.',
