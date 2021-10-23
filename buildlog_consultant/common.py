@@ -2864,6 +2864,10 @@ build_failure_regexps = [
         lambda m: MissingPkgConfig(m.group(1)),
     ),
     (
+        r'\*\*\* Please install (.*) \(atleast version (.*)\) or adjust',
+        lambda m: MissingPkgConfig(m.group(1), m.group(2))
+    ),
+    (
         r"go runtime is required: https://golang.org/doc/install",
         lambda m: MissingGoRuntime(),
     ),
@@ -3096,6 +3100,9 @@ build_failure_regexps = [
 
     (r'intltoolize: \'(.*)\' is out of date: use \'--force\' to overwrite',
      None),
+
+    (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
+     lambda m: MissingPkgConfig(m.group(1), minimum_version=m.group(2))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
