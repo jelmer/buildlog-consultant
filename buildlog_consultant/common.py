@@ -1570,6 +1570,13 @@ class MissingGnulibDirectory:
         return "Missing gnulib directory %s" % self.directory
 
 
+@problem("missing-go.mod-file")
+class MissingGoModFile:
+
+    def __str__(self):
+        return "go.mod file is missing"
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -3109,6 +3116,9 @@ build_failure_regexps = [
 
     (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
      lambda m: MissingPkgConfig(m.group(1), minimum_version=m.group(2))),
+
+    (r'go: go.mod file not found in current directory or any parent directory; '
+     r'see \'go help modules\'', lambda m: MissingGoModFile()),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 

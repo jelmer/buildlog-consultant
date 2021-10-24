@@ -61,6 +61,7 @@ from ..common import (
     MissingAutoconfMacro,
     MissingSprocketsFile,
     MissingAutomakeInput,
+    MissingGoModFile,
     NeedPgBuildExtUpdateControl,
     DhMissingUninstalled,
     DhUntilUnsupported,
@@ -143,6 +144,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             UpstartFilePresent("debian/sddm.upstart"),
         )
+
+    def test_missing_go_mod_file(self):
+        self.run_test(
+            [
+                "go: go.mod file not found in current directory or any "
+                "parent directory; see 'go help modules'"
+            ], 1, MissingGoModFile())
 
     def test_missing_javascript_runtime(self):
         self.run_test(
