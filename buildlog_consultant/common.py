@@ -3275,6 +3275,7 @@ secondary_build_failure_regexps = [
     # inkscape
     r"Unknown option .*",
     # CTest
+    r'not ok [0-9]+ .*',
     r"Errors while running CTest",
     r"dh_auto_install: error: .*",
     r"dh_quilt_patch: error: (.*)",
