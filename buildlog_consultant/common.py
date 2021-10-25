@@ -2988,8 +2988,8 @@ build_failure_regexps = [
         lambda m: MissingLatexFile(m.group(1)),
     ),
     (
-        r"\! Package fontspec Error: The font \"(.*)\" cannot be found\.",
-        lambda m: MissingFontspec(m.group(1)),
+        r"(\!|.*:[0-9]+:) Package fontspec Error: The font \"(.*)\" cannot be found\.",
+        lambda m: MissingFontspec(m.group(2)),
     ),
     (r"  vignette builder \'(.*)\' not found", lambda m: MissingRPackage(m.group(1))),
     (
