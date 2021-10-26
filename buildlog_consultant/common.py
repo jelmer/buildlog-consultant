@@ -2747,6 +2747,11 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2))
     ),
     (
+        r'RuntimeError: The (.*) executable cannot be found\. '
+        r'Please check if it is in the system path\.',
+        lambda m: MissingCommand(m.group(1).lower())
+    ),
+    (
         "RuntimeError: (.*) is missing",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
@@ -3326,6 +3331,7 @@ secondary_build_failure_regexps = [
     r"[^:]+: error: (.*)",
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
+    r"-- Error \(.*\.R:[0-9]+:[0-9]+\): \(.*\) [-]*",
     r"^FAILED \(.*\)",
     r"FAILED .*",
     r"cat: (.*): No such file or directory",
