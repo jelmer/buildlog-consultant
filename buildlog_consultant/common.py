@@ -3332,6 +3332,7 @@ secondary_build_failure_regexps = [
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
     r"-- Error \(.*\.R:[0-9]+:[0-9]+\): \(.*\) [-]*",
+    r"^Error \[ERR_.*\]: .*",
     r"^FAILED \(.*\)",
     r"FAILED .*",
     r"cat: (.*): No such file or directory",
