@@ -1754,7 +1754,7 @@ build_failure_regexps = [
     (r".*\.sh: \d+: ([^ ]+): not found", command_missing),
     (r".*: 1: cd: can\'t cd to (.*)", directory_not_found),
     (r"\/bin\/bash: (.*): command not found", command_missing),
-    (r"bash: (.*): command not found", command_missing),
+    (r"bash: ([^ ]+): command not found", command_missing),
     (r"env: ‘(.*)’: No such file or directory", interpreter_missing),
     (
         r"\/bin\/bash: .*: (.*): bad interpreter: No such file or directory",
@@ -2585,6 +2585,7 @@ build_failure_regexps = [
     (r"convert convert: Improper image header \(.*\).", None),
     (r"convert convert: invalid primitive argument \([0-9]+\).", None),
     (r"convert convert: Unexpected end-of-file \(\)\.", None),
+    (r"convert convert: Unrecognized option \((.*)\)\.", None),
     (r"ERROR: Sphinx requires at least Python (.*) to run.", None),
     (
         r"convert convert: No encode delegate for this image format \((.*)\) "
