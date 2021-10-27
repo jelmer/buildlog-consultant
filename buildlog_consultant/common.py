@@ -1336,6 +1336,10 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find the OpenGL external dependency\.',
          lambda m: MissingLibrary('GL')),
         (r'(.*) tool not found', lambda m: MissingCommand(m.group(1))),
+        (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
+         lambda m: MissingPkgConfig(m.group(1), m.group(2))),
+        (r'--   No package \'(.*)\' found',
+         lambda m: MissingPkgConfig(m.group(1))),
         (r'-- Unable to find git\.  Setting git revision to \'unknown\'\.',
          lambda m: MissingCommand('git')),
         (r'(.*) must be installed before configuration \& building can '
@@ -1777,8 +1781,8 @@ build_failure_regexps = [
         lambda m: MissingCommand("git"),
     ),
     (
-        r"configure: error: Can't find \"(.*)\" in your PATH",
-        lambda m: MissingCommand(m.group(1)),
+        r"configure: error: (Can't|Cannot) find \"(.*)\" in your PATH.*",
+        lambda m: MissingCommand(m.group(2)),
     ),
     (
         r"configure: error: Cannot find (.*) in your system path",
@@ -3238,6 +3242,8 @@ build_failure_regexps = [
     (r'configure: error: ([^ ]+) is required',
      lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: you should install ([^ ]+) first',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'configure: error: .*You need (.*) installed.',
      lambda m: MissingVagueDependency(m.group(1))),
 ]
 
