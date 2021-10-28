@@ -1670,8 +1670,12 @@ build_failure_regexps = [
     ),
     ("ImportError: No module named (.*)", python_module_not_found),
     (
-        r"[^:]+:\d+:\d+: fatal error: (.+\.h|.+\.hpp): No such file or directory",
+        r"[^:]+:\d+:\d+: fatal error: (.+\.h|.+\.hh|.+\.hpp): No such file or directory",
         c_header_missing,
+    ),
+    (
+        r"[^:]+:\d+:\d+: fatal error: (.+\.xpm): No such file or directory",
+        None,
     ),
     (
         r'.*fatal: not a git repository \(or any parent up to mount point \/\)',
@@ -1752,6 +1756,7 @@ build_failure_regexps = [
     ),
     (r".*: line \d+: ([^ ]+): command not found", command_missing),
     (r".*: line \d+: ([^ ]+): Permission denied", None),
+    (r"make\[[0-9]+\]: .*: Permission denied", None),
     (r'/usr/bin/texi2dvi: TeX neither supports -recorder nor outputs \\openout lines in its log file', None),
     (r"\/bin\/sh: \d+: ([^ ]+): not found", command_missing),
     (r"sh: \d+: ([^ ]+): not found", command_missing),
@@ -2074,6 +2079,7 @@ build_failure_regexps = [
         r"\(level [0-9]+ requested\)",
         None,
     ),
+    (r'\{standard input\}: Error: (.*)', None),
     (r"dh: Unknown sequence (.*) \(choose from: .*\)", None),
     (r".*: .*: No space left on device", install_no_space),
     (r"^No space left on device.", install_no_space),
@@ -2496,6 +2502,7 @@ build_failure_regexps = [
         r"(.*): first defined here",
         None,
     ),
+    (r"ar: libdeps specified more than once", None),
     (
         r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; "
         r"(.*):\((.*)\) first defined here",
@@ -2590,12 +2597,22 @@ build_failure_regexps = [
     (r"convert convert: invalid primitive argument \([0-9]+\).", None),
     (r"convert convert: Unexpected end-of-file \(\)\.", None),
     (r"convert convert: Unrecognized option \((.*)\)\.", None),
-    (r"ERROR: Sphinx requires at least Python (.*) to run.", None),
+    (r"convert convert: Unrecognized channel type \((.*)\)\.", None),
+    (
+        r"convert convert: Unable to read font \((.*)\) "
+        r"\[No such file or directory\].",
+        file_not_found,
+    ),
+    (
+        r"convert convert: Unable to open file (.*) \[No such file or directory\]\.",
+        file_not_found,
+    ),
     (
         r"convert convert: No encode delegate for this image format \((.*)\) "
         r"\[No such file or directory\].",
         imagemagick_delegate_missing,
     ),
+    (r"ERROR: Sphinx requires at least Python (.*) to run.", None),
     (r"Can\'t find (.*) directory in (.*)", None),
     (
         r"/bin/sh: [0-9]: cannot create (.*): Directory nonexistent",
@@ -2696,6 +2713,7 @@ build_failure_regexps = [
     (r"/bin/sh: 0: Can\'t open (.*)", file_not_found),
     (r"/bin/sh: [0-9]+: cannot open (.*): No such file", file_not_found),
     (r".*: line [0-9]+: (.*): No such file or directory", file_not_found),
+    (r"/bin/sh: [0-9]+: Syntax error: .*", None),
     (r"error: No member named \$memberName", None),
     (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "
@@ -2806,11 +2824,6 @@ build_failure_regexps = [
         need_pg_buildext_updatecontrol,
     ),
     (r"Patch (.*) does not apply \(enforce with -f\)", lambda m: PatchApplicationFailed(m.group(1))),
-    (
-        r"convert convert: Unable to read font \((.*)\) "
-        r"\[No such file or directory\].",
-        file_not_found,
-    ),
     (
         r"java.io.FileNotFoundException: (.*) \(No such file or directory\)",
         file_not_found,
@@ -2994,6 +3007,11 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1)),
     ),
     (
+        r"  '\! LaTeX Error: File `(.*)' not found.'",
+        lambda m: MissingLatexFile(m.group(1)),
+    ),
+
+    (
         r"\! LaTeX Error: File `(.*)\' not found\.",
         lambda m: MissingLatexFile(m.group(1)),
     ),
@@ -3010,6 +3028,7 @@ build_failure_regexps = [
         r'there is no package called \'(.*)\'',
         lambda m: MissingRPackage(m.group(1))
     ),
+    (r"Error in .*: there is no package called ‘(.*)’", lambda m: MissingRPackage(m.group(1))),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
     (
         r"Exception: cannot execute command due to missing interpreter: (.*)",
@@ -3117,7 +3136,7 @@ build_failure_regexps = [
 
     (r'Unknown key\(s\) in sphinx_gallery_conf:', None),
 
-    (r'(.*\.gir):In (.*): error: (.*)', None),
+    (r'(.+\.gir):In (.*): error: (.*)', None),
 
     (r'psql:.*\.sql:[0-9]+: ERROR:  (.*)', None),
 
@@ -3129,6 +3148,16 @@ build_failure_regexps = [
 
     (r'go: go.mod file not found in current directory or any parent directory; '
      r'see \'go help modules\'', lambda m: MissingGoModFile()),
+
+    (r'(c\+\+|collect2|cc1|g\+\+): fatal error: .*', None),
+
+    (r'fatal: making (.*): failed to create tests\/decode.trs', None),
+
+    # ocaml
+    (r'Please specify at most one of .*', None),
+
+    # Python lint
+    (r'.*\.py:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9] .*', None),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -3245,6 +3274,10 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: .*You need (.*) installed.',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r"[^:]+: error: (.*)", None),
+    (r"[^:]+:[0-9]+: error: (.*)", None),
+    (r"[^:]+:[0-9]+:[0-9]+: error: (.*)", None),
 ]
 
 
@@ -3265,6 +3298,7 @@ for entry in build_failure_regexps:
 # Regexps that hint at an error of some sort, but not the error itself.
 secondary_build_failure_regexps = [
     # Java
+    r"Killed",
     r'Exception in thread "(.*)" (.*): (.*);',
     r"error: Unrecognized option: \'.*\'",
     r".*: No space left on device",
@@ -3281,9 +3315,12 @@ secondary_build_failure_regexps = [
     r"error: ([0-9]+) test executed, ([0-9]+) fatal tests failed, "
     r"([0-9]+) nonfatal test failed\.",
     r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. "
+    r'.*\.rst:toctree contains ref to nonexisting file \'.*\'',
+    r'.*\.rst:[0-9]+:term not in glossary: .*',
     r"Try adding AC_PREREQ\(\[(.*)\]\) to your configure\.ac\.",
     # Erlang
     r'  (.*_test): (.+)\.\.\.\*failed\*',
+    r'(.*\.erl):[0-9]+:[0-9]+: erlang:.*',
     # Clojure
     r"Could not locate (.*) or (.*) on classpath\.",
     # QMake
@@ -3314,6 +3351,7 @@ secondary_build_failure_regexps = [
     r".*(No space left on device).*",
     r"dpkg-gencontrol: error: (.*)",
     r".*:[0-9]+:[0-9]+: (error|ERROR): (.*)",
+    r".*[.]+FAILED .*",
     r"FAIL: (.*)",
     r"FAIL\!  : (.*)",
     r"\s*FAIL (.*) \(.*\)",
@@ -3324,7 +3362,7 @@ secondary_build_failure_regexps = [
     r"make\[[0-9]+\]: \*\*\* \[.*\] Aborted",
     r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:"
     r"exit code=[0-9]+: .*",
-    r"chmod: cannot access \'.*\': No such file or directory",
+    r"chmod: cannot access \'.*\': .*",
     r"dh_autoreconf: autoreconf .* returned exit code [0-9]+",
     r"make: \*\*\* \[.*\] Error [0-9]+",
     r".*:[0-9]+: \*\*\* missing separator\.  Stop\.",
@@ -3335,9 +3373,6 @@ secondary_build_failure_regexps = [
     r"Failed [0-9]+ tests? out of [0-9]+, [0-9.]+% okay.",
     r"Failed [0-9]+\/[0-9]+ test programs. [0-9]+/[0-9]+ subtests failed.",
     r"Original error was: (.*)",
-    r"[^:]+: error: (.*)",
-    r"[^:]+:[0-9]+: error: (.*)",
-    r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
     r"-- Error \(.*\.R:[0-9]+:[0-9]+\): \(.*\) [-]*",
     r"^Error \[ERR_.*\]: .*",
     r"^FAILED \(.*\)",
@@ -3355,7 +3390,7 @@ secondary_build_failure_regexps = [
     "pkg_resources.UnknownExtra|tarfile.ReadError|"
     "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
     "datalad.support.exceptions.IncompleteResultsError|AssertionError|"
-    r"Cython.Compiler.Errors.CompileError): .*",
+    r"Cython.Compiler.Errors.CompileError|UnicodeDecodeError): .*",
     # Rust
     r"error\[E[0-9]+\]: .*",
     "^E   DeprecationWarning: .*",
@@ -3411,6 +3446,8 @@ secondary_build_failure_regexps = [
     # lt (C++)
     r".*: .*:[0-9]+: .*: Assertion `.*\' failed.",
     r"(.*).xml: FAILED:",
+    r" BROKEN .*",
+    r'failed: [0-9]+-.*',
     # ninja
     r"ninja: build stopped: subcommand failed.",
     r".*\.s:[0-9]+: Error: .*",
