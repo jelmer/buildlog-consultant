@@ -3143,6 +3143,10 @@ build_failure_regexps = [
     (r'intltoolize: \'(.*)\' is out of date: use \'--force\' to overwrite',
      None),
 
+    (r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:", None),
+    (r"E: pybuild pybuild:[0-9]+: cannot detect build system, please "
+     r"use --system option or set PYBUILD_SYSTEM env\. variable", None),
+
     (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
      lambda m: MissingPkgConfig(m.group(1), minimum_version=m.group(2))),
 
@@ -3274,10 +3278,6 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: .*You need (.*) installed.',
      lambda m: MissingVagueDependency(m.group(1))),
-
-    (r"[^:]+: error: (.*)", None),
-    (r"[^:]+:[0-9]+: error: (.*)", None),
-    (r"[^:]+:[0-9]+:[0-9]+: error: (.*)", None),
 ]
 
 
@@ -3297,6 +3297,10 @@ for entry in build_failure_regexps:
 
 # Regexps that hint at an error of some sort, but not the error itself.
 secondary_build_failure_regexps = [
+    r"[^:]+: error: (.*)",
+    r"[^:]+:[0-9]+: error: (.*)",
+    r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
+
     # Java
     r"Killed",
     r'Exception in thread "(.*)" (.*): (.*);',
@@ -3360,7 +3364,6 @@ secondary_build_failure_regexps = [
     r"TEST FAILURE",
     r"make\[[0-9]+\]: \*\*\* \[.*\] Error [0-9]+",
     r"make\[[0-9]+\]: \*\*\* \[.*\] Aborted",
-    r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:"
     r"exit code=[0-9]+: .*",
     r"chmod: cannot access \'.*\': .*",
     r"dh_autoreconf: autoreconf .* returned exit code [0-9]+",
