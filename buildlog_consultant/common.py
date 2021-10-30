@@ -2502,6 +2502,7 @@ build_failure_regexps = [
         r"(.*): first defined here",
         None,
     ),
+    (r".+\.go:[0-9]+: undefined reference to `(.*)'", None),
     (r"ar: libdeps specified more than once", None),
     (
         r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; "
