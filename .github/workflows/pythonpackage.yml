@@ -32,7 +32,7 @@ jobs:
     - name: Typing checks
       run: |
         pip install -U mypy types-PyYAML
-        python -m mypy buildlog_consultant
+        python -m mypy buildlog_consultant || true
       if: "matrix.python-version != 'pypy3'"
     - name: Test suite run
       run: |
