@@ -23,7 +23,14 @@ from typing import List, Optional, Tuple
 import re
 import textwrap
 
-from . import Problem, SingleLineMatch, problem, version_string
+from . import (
+    Problem,
+    Match,
+    MultiLineMatch,
+    SingleLineMatch,
+    problem,
+    version_string,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -54,6 +61,13 @@ class MissingPythonModule:
             self.python_version,
             self.minimum_version,
         )
+
+
+@problem("setuptools-scm-version-issue")
+class SetuptoolScmVersionIssue:
+
+    def __str__(self):
+        return "setuptools-scm was unable to find version"
 
 
 @problem("missing-python-distribution")
@@ -90,6 +104,15 @@ class MissingPythonDistribution:
             self.python_version,
             self.minimum_version,
         )
+
+
+@problem('vcs-control-directory-needed')
+class VcsControlDirectoryNeeded:
+
+    vcs: List[str]
+
+    def __str__(self):
+        return "Version control directory needed"
 
 
 @problem("patch-application-failed")
@@ -170,7 +193,13 @@ class MissingVagueDependency:
 
 @problem("missing-qt")
 class MissingQt:
+
+    minimum_version: Optional[str] = None
+
     def __str__(self):
+        if self.minimum_version:
+            return "Missing QT installation (at least %s)" % (
+                self.minimum_version)
         return "Missing QT installation"
 
 
@@ -287,10 +316,6 @@ class MissingGoPackage:
 
     def __str__(self):
         return "Missing Go package: %s" % self.package
-
-
-def missing_go_package(m):
-    return MissingGoPackage(m.group(1))
 
 
 @problem("missing-c-header")
@@ -1050,6 +1075,10 @@ class MultiLineConfigureError(Matcher):
 
     submatchers = [
         (
+            re.compile(r"\s*Unable to find (.*) \(http(.*)\)"),
+            lambda m: MissingVagueDependency(m.group(1), url=m.group(2)),
+        ),
+        (
             re.compile(r"\s*Unable to find (.*)\."),
             lambda m: MissingVagueDependency(m.group(1)),
         ),
@@ -1218,6 +1247,10 @@ class CMakeErrorMatcher(Matcher):
             ),
         ),
         (
+            r"(.*) couldn't be found \(missing: .*_LIBRARIES .*_INCLUDE_DIR\)",
+            lambda m: MissingVagueDependency(m.group(1)),
+        ),
+        (
             r"Could NOT find (.*): Found unsuitable version \"(.*)\",\sbut\s"
             r"required\sis\sat\sleast\s\"(.*)\" \(found\s(.*)\)",
             lambda m: MissingPkgConfig(m.group(1), m.group(3)),
@@ -1263,6 +1296,10 @@ class CMakeErrorMatcher(Matcher):
             r"patch: \*\*\*\* write error : No space left on device",
             lambda m: NoSpaceOnDevice(),
         ),
+        (
+            r".*\(No space left on device\)",
+            lambda m: NoSpaceOnDevice(),
+        ),
         (r'file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n', None),
         (r"Could NOT find (.*) \(missing: (.*)\)", None),
         (
@@ -1287,10 +1324,43 @@ class CMakeErrorMatcher(Matcher):
         (r'Could not find \'(.*)\' executable[\!,].*', lambda m: MissingCommand(m.group(1))),
         (r'Could not find (.*)_STATIC_LIBRARIES using the following names: ([a-zA-z0-9_.]+)',
          lambda m: MissingStaticLibrary(m.group(1), m.group(2))),
-        ('include could not find load file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(1) + '.cmake'])),
+        ('include could not find (requested|load) file:\n\n  (.*)\n', lambda m: CMakeFilesMissing([m.group(2) + '.cmake' if not m.group(2).endswith('.cmake') else m.group(2)])),
         (r'(.*) and (.*) are required', lambda m: MissingVagueDependency(m.group(1))),
         (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
         (r'Python module (.*) not found\!', lambda m: MissingPythonModule(m.group(1))),
+        (r'\s*could not find ([^\s]+)$', lambda m: MissingVagueDependency(m.group(1))),
+        (r'Found unsuitable Qt version "" from NOTFOUND, '
+         r'this code requires Qt 4.x', lambda m: MissingQt('4')),
+        (r'(.*) executable not found\! Please install (.*)\.',
+         lambda m: MissingCommand(m.group(2))),
+        (r'Could not find the OpenGL external dependency\.',
+         lambda m: MissingLibrary('GL')),
+        (r'(.*) tool not found', lambda m: MissingCommand(m.group(1))),
+        (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
+         lambda m: MissingPkgConfig(m.group(1), m.group(2))),
+        (r'--   No package \'(.*)\' found',
+         lambda m: MissingPkgConfig(m.group(1))),
+        (r'-- Unable to find git\.  Setting git revision to \'unknown\'\.',
+         lambda m: MissingCommand('git')),
+        (r'(.*) must be installed before configuration \& building can '
+         r'proceed', lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) development files not found\.',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'.* but no (.*) dev libraries found',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'Failed to find (.*) \(missing: .*\)',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'Could not find required (.*) package\!',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'Cannot find (.*), giving up\. .*',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'The development\sfiles\sfor\s(.*)\sare\s'
+         r'required\sto\sbuild (.*)\.',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) required to compile (.*)',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) requires (.*)',
+         lambda m: MissingVagueDependency(m.group(2))),
     ]
 
     @classmethod
@@ -1316,7 +1386,6 @@ class CMakeErrorMatcher(Matcher):
         start_lineno = int(m.group(3))  # noqa: F841
         linenos, error_lines = self._extract_error_lines(lines, i)
 
-        error = None
         for r, fn in self.cmake_errors:
             m = re.match(r, "".join(error_lines), flags=re.DOTALL)
             if m:
@@ -1326,7 +1395,7 @@ class CMakeErrorMatcher(Matcher):
                     error = fn(m)
                 return linenos, error
 
-        return [], None
+        return linenos, None
 
 
 @problem("missing-fortran-compiler")
@@ -1395,6 +1464,15 @@ class MissingLatexFile:
         return "Missing LaTeX file: %s" % self.filename
 
 
+@problem("missing-fontspec")
+class MissingFontspec:
+
+    fontspec: str
+
+    def __str__(self):
+        return "Missing font spec: %s" % self.fontspec
+
+
 @problem("missing-dh-compat-level")
 class MissingDHCompatLevel:
 
@@ -1437,6 +1515,15 @@ class MissingXDisplay:
         return "No X Display"
 
 
+@problem("missing-lua-module")
+class MissingLuaModule:
+
+    module: str
+
+    def __str__(self):
+        return "Missing Lua Module: %s" % self.module
+
+
 @problem("cancelled")
 class Cancelled:
 
@@ -1469,6 +1556,29 @@ class MismatchGettextVersions:
     def __str__(self):
         return "Mismatch versions (%s, %s)" % (
             self.makefile_version, self.autoconf_version)
+
+
+@problem("disappeared-symbols")
+class DisappearedSymbols:
+
+    def __str__(self):
+        return "Disappeared symbols"
+
+
+@problem("missing-gnulib-directory")
+class MissingGnulibDirectory:
+
+    directory: str
+
+    def __str__(self):
+        return "Missing gnulib directory %s" % self.directory
+
+
+@problem("missing-go.mod-file")
+class MissingGoModFile:
+
+    def __str__(self):
+        return "go.mod file is missing"
 
 
 build_failure_regexps = [
@@ -1522,6 +1632,10 @@ build_failure_regexps = [
         r"ValueError: Namespace (.*) not available",
         lambda m: MissingIntrospectionTypelib(m.group(1)),
     ),
+    (
+        r'  namespace \'(.*)\' ([^ ]+) is being loaded, but \>= ([^ ]+) is required',
+        lambda m: MissingRPackage(m.group(1), minimum_version=m.group(3))
+    ),
     ("ImportError: cannot import name '(.*)' from '(.*)'", python_submodule_not_found),
     ("E       fixture '(.*)' not found", lambda m: MissingPytestFixture(m.group(1))),
     (
@@ -1547,15 +1661,29 @@ build_failure_regexps = [
     ),
     ("E   ModuleNotFoundError: No module named '(.*)'", python3_module_not_found),
     (r"/usr/bin/python3: No module named (.*)", python3_module_not_found),
-    ('.*:[0-9]+: cannot find package "(.*)" in any of:', missing_go_package),
+    ('(.*:[0-9]+|package .*): cannot find package "(.*)" in any of:',
+     lambda m: MissingGoPackage(m.group(2))),
+
     (
         r'ImportError: Error importing plugin ".*": No module named (.*)',
         python_module_not_found,
     ),
     ("ImportError: No module named (.*)", python_module_not_found),
     (
-        r"[^:]+:\d+:\d+: fatal error: (.+\.h|.+\.hpp): No such file or directory",
+        r"[^:]+:\d+:\d+: fatal error: (.+\.h|.+\.hh|.+\.hpp): No such file or directory",
         c_header_missing,
+    ),
+    (
+        r"[^:]+:\d+:\d+: fatal error: (.+\.xpm): No such file or directory",
+        None,
+    ),
+    (
+        r'.*fatal: not a git repository \(or any parent up to mount point \/\)',
+        lambda m: VcsControlDirectoryNeeded(['git']),
+    ),
+    (
+        r'.*fatal: not a git repository \(or any of the parent directories\): \.git',
+        lambda m: VcsControlDirectoryNeeded(['.git']),
     ),
     (
         r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory",
@@ -1591,7 +1719,15 @@ build_failure_regexps = [
         lambda m: MissingX11(),
     ),
     (
+        r"configure: error: The Java compiler javac failed.*",
+        lambda m: MissingCommand('javac')
+    ),
+    (
         r"  \*\*\* The (.*) script could not be found\. .*",
+        lambda m: MissingCommand(m.group(1)),
+    ),
+    (
+        r"(.*)\" command could not be found. (.*)",
         lambda m: MissingCommand(m.group(1)),
     ),
     (r'\>\> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
@@ -1620,13 +1756,14 @@ build_failure_regexps = [
     ),
     (r".*: line \d+: ([^ ]+): command not found", command_missing),
     (r".*: line \d+: ([^ ]+): Permission denied", None),
+    (r"make\[[0-9]+\]: .*: Permission denied", None),
     (r'/usr/bin/texi2dvi: TeX neither supports -recorder nor outputs \\openout lines in its log file', None),
     (r"\/bin\/sh: \d+: ([^ ]+): not found", command_missing),
     (r"sh: \d+: ([^ ]+): not found", command_missing),
     (r".*\.sh: \d+: ([^ ]+): not found", command_missing),
     (r".*: 1: cd: can\'t cd to (.*)", directory_not_found),
     (r"\/bin\/bash: (.*): command not found", command_missing),
-    (r"bash: (.*): command not found", command_missing),
+    (r"bash: ([^ ]+): command not found", command_missing),
     (r"env: ‘(.*)’: No such file or directory", interpreter_missing),
     (
         r"\/bin\/bash: .*: (.*): bad interpreter: No such file or directory",
@@ -1649,8 +1786,8 @@ build_failure_regexps = [
         lambda m: MissingCommand("git"),
     ),
     (
-        r"configure: error: Can't find \"(.*)\" in your PATH",
-        lambda m: MissingCommand(m.group(1)),
+        r"configure: error: (Can't|Cannot) find \"(.*)\" in your PATH.*",
+        lambda m: MissingCommand(m.group(2)),
     ),
     (
         r"configure: error: Cannot find (.*) in your system path",
@@ -1660,8 +1797,13 @@ build_failure_regexps = [
         r'\> Cannot run program "(.*)": error=2, No such file or directory',
         lambda m: MissingCommand(m.group(1)),
     ),
-    (r'(.*) binary \'(.*)\' not available .*', lambda m: MissingCommand(m.group(2))),
-    ("Please install 'git' seperately and try again.", lambda m: MissingCommand("git")),
+    (r'(.*) binary \'(.*)\' not available .*',
+     lambda m: MissingCommand(m.group(2))),
+    (r'An error has occurred: FatalError: git failed\. '
+     r'Is it installed, and are you in a Git repository directory\?',
+     lambda m: MissingCommand("git")),
+    ("Please install '(.*)' seperately and try again.",
+     lambda m: MissingCommand(m.group(1))),
     (
         r"\> A problem occurred starting process \'command \'(.*)\'\'",
         lambda m: MissingCommand(m.group(1)),
@@ -1686,6 +1828,11 @@ build_failure_regexps = [
         lambda m: MissingCommand("pkg-config"),
     ),
     (r"Error: pkg-config not found\!", lambda m: MissingCommand("pkg-config")),
+    (r"\*\*\* pkg-config (.*) or newer\. You can download pkg-config",
+     lambda m: MissingVagueDependency('pkg-config', minimum_version=m.group(1))),
+    # Tox
+    (r"ERROR: InterpreterNotFound: (.*)",
+     lambda m: MissingCommand(m.group(1))),
     (r"ERROR: unable to find python", lambda m: MissingCommand("python")),
     (r" ERROR: BLAS not found\!", lambda m: MissingLibrary("blas")),
     AutoconfUnexpectedMacroMatcher(),
@@ -1710,6 +1857,10 @@ build_failure_regexps = [
         c_sharp_compiler_missing,
     ),
     (
+        r'configure: error: No C\# compiler found',
+        c_sharp_compiler_missing,
+    ),
+    (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
         lambda m: MissingPkgConfig("libkqueue"),
     ),
@@ -1718,8 +1869,16 @@ build_failure_regexps = [
         lambda m: MissingCommand("pkg-config"),
     ),
     (
+        r'configure: error: Required (.*) binary is missing. Please install (.*).',
+        lambda m: MissingCommand(m.group(1))
+    ),
+    (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found',
         meson_pkg_config_missing,
+    ),
+    (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: python3 "(.*)" missing',
+        lambda m: MissingPythonModule(m.group(3), python_version=3),
     ),
     (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Program \'(.*)\' not found',
@@ -1734,13 +1893,21 @@ build_failure_regexps = [
         lambda m: MissingCHeader(m.group(1))
     ),
     (
-        '.*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]',
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]',
         lambda m: MissingCommand(m.group(3))
     ),
     (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found, '
         "tried pkgconfig",
         meson_pkg_config_missing,
+    ),
+    (
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: Could not execute Vala compiler "(.*)"',
+        lambda m: MissingCommand(m.group(3))
+    ),
+    (
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: python3 is missing modules: (.*)',
+        lambda m: MissingPythonModule(m.group(1))
     ),
     (
         r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, "
@@ -1760,19 +1927,15 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
     ),
     (
+        r"configure: error: Library requirements \((.*)\) not met\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
         r"configure: error: (.*) is missing -- (.*)",
         lambda m: MissingVagueDependency(m.group(1))
     ),
     (
         r"configure: error: Cannot find (.*), check (.*)",
-        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
-    ),
-    (
-        r"configure: error: \*\*\* (.*) is required\.",
-        lambda m: MissingVagueDependency(m.group(1))
-    ),
-    (
-        r"configure: error: (.*) is required, please get it from (.*)",
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
     ),
     (
@@ -1808,6 +1971,77 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1))
     ),
     (
+        r"configure: error: cannot locate (.*) >= (.*)",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: \!\!\! Please install (.*) \!\!\!",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) version (.*) or higher is required",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
+    ),
+    (r'configure: error: ([^ ]+) ([^ ]+) or better is required.*',
+     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
+    (r'configure: error: ([^ ]+) ([^ ]+) or greater is required.*',
+     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
+    (r'configure: error: ([^ ]+) or greater is required.*',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (
+        r"configure: error: (.*) library is required",
+        lambda m: MissingLibrary(m.group(1)),
+    ),
+    (
+        r'configure: error: OpenSSL developer library \'libssl-dev\' or '
+        r'\'openssl-devel\' not installed; cannot continue.',
+        lambda m: MissingLibrary('ssl')
+    ),
+    (
+        r"configure: error: \*\*\* Cannot find (.*)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) is required to compile .*",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'\s*You must have (.*) installed to compile .*\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'\*\*\* No (.*) found, please in(s?)tall it \*\*\*',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'\*\* ERROR \*\* : You must have `(.*)\' installed on your system\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'autogen\.sh: ERROR: You must have `(.*)\' installed to compile '
+        r'this package\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'autogen\.sh: You must have (.*) installed\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r'\s*Error\! You need to have (.*) installed\.',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
+        r"(configure: error|\*\*Error\*\*): You must have (.*) installed.*",
+        lambda m: MissingVagueDependency(m.group(2)),
+    ),
+    (
         r"configure: error: (.*) is required for building this package.",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
@@ -1820,32 +2054,19 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r"configure: error: cannot locate (.*) >= (.*)",
-        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
-    ),
-    (
-        r"configure: error: \!\!\! Please install (.*) \!\!\!",
+        r"configure: error: (.*) is required for (.*)",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r"configure: error: (.*) version (.*) or higher is required",
-        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
-    ),
-    (
-        r"configure: error: \*\*\* Cannot find (.*)",
-        lambda m: MissingVagueDependency(m.group(1)),
-    ),
-    (
-        r"configure: error: (.*) is required to compile .*",
+        r"configure: error: \*\*\* (.*) is required\.",
         lambda m: MissingVagueDependency(m.group(1))
     ),
-
     (
-        r"(configure: error|\*\*Error\*\*): You must have (.*) installed",
-        lambda m: MissingVagueDependency(m.group(2)),
+        r"configure: error: (.*) is required, please get it from (.*)",
+        lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
     ),
     (
-        r"configure: error: (.*) is required for (.*)",
+        r"configure: error: .*, (lib[^ ]+) is required",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
@@ -1858,6 +2079,7 @@ build_failure_regexps = [
         r"\(level [0-9]+ requested\)",
         None,
     ),
+    (r'\{standard input\}: Error: (.*)', None),
     (r"dh: Unknown sequence (.*) \(choose from: .*\)", None),
     (r".*: .*: No space left on device", install_no_space),
     (r"^No space left on device.", install_no_space),
@@ -1958,6 +2180,10 @@ build_failure_regexps = [
     ),
     (r"OSError: \[Errno 28\] No space left on device", lambda m: NoSpaceOnDevice()),
     # python:setuptools_scm
+    (
+        r'LookupError: setuptools-scm was unable to detect version for \'.*\'\.',
+        lambda m: SetuptoolScmVersionIssue()
+     ),
     (r"OSError: 'git' was not found", lambda m: MissingCommand("git")),
     (r"OSError: No such file (.*)", file_not_found),
     (
@@ -2084,6 +2310,9 @@ build_failure_regexps = [
         r"  namespace ‘(.*)’ ([^ ]+) is already loaded, but >= ([^ ]+) " r"is required",
         r_too_old,
     ),
+    (r'b\'convert convert: '
+     r'Unable to read font \((.*)\) \[No such file or directory\]\.\\n\'',
+     file_not_found),
     (r"mv: cannot stat \'(.*)\': No such file or directory", file_not_found),
     (r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", None),
     (
@@ -2143,6 +2372,10 @@ build_failure_regexps = [
         r"Could not find gem \'(.*)\' in any of the gem sources listed in "
         r"your Gemfile\. \(Bundler::GemNotFound\)",
         lambda m: MissingRubyGem(m.group(1)),
+    ),
+    (
+        r"Exception: (.*) not in path[!.]*",
+        lambda m: MissingCommand(m.group(1))
     ),
     (
         r"[^:]+:[0-9]+:in \`find_spec_for_exe\': can\'t find gem "
@@ -2269,6 +2502,13 @@ build_failure_regexps = [
         r"(.*): first defined here",
         None,
     ),
+    (r".+\.go:[0-9]+: undefined reference to `(.*)'", None),
+    (r"ar: libdeps specified more than once", None),
+    (
+        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; "
+        r"(.*):\((.*)\) first defined here",
+        None,
+    ),
     (
         r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; "
         r"(.*):\((.*)\) first defined here",
@@ -2303,7 +2543,7 @@ build_failure_regexps = [
     (
         "dpkg-gensymbols: error: some symbols or patterns disappeared in the "
         "symbols file: see diff output below",
-        None,
+        lambda m: DisappearedSymbols(),
     ),
     (
         r"Failed to copy \'(.*)\': No such file or directory at "
@@ -2319,11 +2559,6 @@ build_failure_regexps = [
     (
         r".*meson.build:[0-9]+:[0-9]: ERROR: Git program not found\.",
         lambda m: MissingCommand("git"),
-    ),
-    (
-        r"dpkg-gensymbols: error: some symbols or patterns disappeared in "
-        r"the symbols file: see diff output below",
-        None,
     ),
     (
         r"Failed: [pytest] section in setup.cfg files is no longer "
@@ -2362,12 +2597,23 @@ build_failure_regexps = [
     (r"convert convert: Improper image header \(.*\).", None),
     (r"convert convert: invalid primitive argument \([0-9]+\).", None),
     (r"convert convert: Unexpected end-of-file \(\)\.", None),
-    (r"ERROR: Sphinx requires at least Python (.*) to run.", None),
+    (r"convert convert: Unrecognized option \((.*)\)\.", None),
+    (r"convert convert: Unrecognized channel type \((.*)\)\.", None),
+    (
+        r"convert convert: Unable to read font \((.*)\) "
+        r"\[No such file or directory\].",
+        file_not_found,
+    ),
+    (
+        r"convert convert: Unable to open file (.*) \[No such file or directory\]\.",
+        file_not_found,
+    ),
     (
         r"convert convert: No encode delegate for this image format \((.*)\) "
         r"\[No such file or directory\].",
         imagemagick_delegate_missing,
     ),
+    (r"ERROR: Sphinx requires at least Python (.*) to run.", None),
     (r"Can\'t find (.*) directory in (.*)", None),
     (
         r"/bin/sh: [0-9]: cannot create (.*): Directory nonexistent",
@@ -2383,6 +2629,9 @@ build_failure_regexps = [
     (r".*.scala:[0-9]+: error: (.*)", None),
     # JavaScript
     (r"error TS6053: File \'(.*)\' not found.", file_not_found),
+    # Mocha
+    (r"Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' "
+     "imported from (.*)", lambda m: MissingNodeModule(m.group(1))),
     (r"(.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: (.*)", None),
     (r"(.*.nim)\([0-9]+, [0-9]+\) Error: .*", None),
     (
@@ -2465,6 +2714,7 @@ build_failure_regexps = [
     (r"/bin/sh: 0: Can\'t open (.*)", file_not_found),
     (r"/bin/sh: [0-9]+: cannot open (.*): No such file", file_not_found),
     (r".*: line [0-9]+: (.*): No such file or directory", file_not_found),
+    (r"/bin/sh: [0-9]+: Syntax error: .*", None),
     (r"error: No member named \$memberName", None),
     (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "
@@ -2521,6 +2771,11 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2))
     ),
     (
+        r'RuntimeError: The (.*) executable cannot be found\. '
+        r'Please check if it is in the system path\.',
+        lambda m: MissingCommand(m.group(1).lower())
+    ),
+    (
         "RuntimeError: (.*) is missing",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
@@ -2546,6 +2801,8 @@ build_failure_regexps = [
     (r"\w+Numpy is required to build.*", lambda m: MissingPythonModule("numpy")),
     # autoconf
     (r"configure.ac:[0-9]+: error: required file \'(.*)\' not found", file_not_found),
+    (r'/usr/bin/m4:(.*):([0-9]+): cannot open `(.*)\': '
+     r'No such file or directory', lambda m: MissingFile(m.group(3))),
     # automake
     (r"Makefile.am: error: required file \'(.*)\' not found", file_not_found),
     # sphinx
@@ -2561,7 +2818,6 @@ build_failure_regexps = [
     # gpg
     (r"gpg: can\'t connect to the agent: File name too long", None),
     (r"(.*.lua):[0-9]+: assertion failed", None),
-    (r"\*\*\* error: gettext infrastructure mismatch: .*", None),
     (r"\s+\^\-\-\-\-\^ SC[0-4][0-9][0-9][0-9]: .*", None),
     (
         r"Error: (.*) needs updating from (.*)\. "
@@ -2569,11 +2825,6 @@ build_failure_regexps = [
         need_pg_buildext_updatecontrol,
     ),
     (r"Patch (.*) does not apply \(enforce with -f\)", lambda m: PatchApplicationFailed(m.group(1))),
-    (
-        r"convert convert: Unable to read font \((.*)\) "
-        r"\[No such file or directory\].",
-        file_not_found,
-    ),
     (
         r"java.io.FileNotFoundException: (.*) \(No such file or directory\)",
         file_not_found,
@@ -2606,9 +2857,13 @@ build_failure_regexps = [
     ),
     (r"dpkg: error: .*: No space left on device", lambda m: NoSpaceOnDevice()),
     (
-        r"You need the GNU readline library(ftp://ftp.gnu.org/gnu/readline/ ) "
+        r"You need the GNU readline library\(ftp://ftp.gnu.org/gnu/readline/\s+\) "
         r"to build",
         lambda m: MissingLibrary("readline"),
+    ),
+    (
+        r'configure: error: Could not find lib(.*)',
+        lambda m: MissingLibrary(m.group(1))
     ),
     (
         r"    Could not find module ‘(.*)’",
@@ -2638,6 +2893,10 @@ build_failure_regexps = [
     (
         r'pkg-config does not know (.*) at .*\.',
         lambda m: MissingPkgConfig(m.group(1)),
+    ),
+    (
+        r'\*\*\* Please install (.*) \(atleast version (.*)\) or adjust',
+        lambda m: MissingPkgConfig(m.group(1), m.group(2))
     ),
     (
         r"go runtime is required: https://golang.org/doc/install",
@@ -2684,6 +2943,10 @@ build_failure_regexps = [
     (r"  vignette builder 'knitr' not found", lambda m: MissingRPackage("knitr")),
     (
         r"fatal: unable to auto-detect email address \(got \'.*\'\)",
+        lambda m: MissingGitIdentity(),
+    ),
+    (
+        r"E       fatal: unable to auto-detect email address \(got \'.*\'\)",
         lambda m: MissingGitIdentity(),
     ),
     (r"gpg: no default secret key: No secret key", lambda m: MissingSecretGpgKey()),
@@ -2745,21 +3008,29 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1)),
     ),
     (
+        r"  '\! LaTeX Error: File `(.*)' not found.'",
+        lambda m: MissingLatexFile(m.group(1)),
+    ),
+
+    (
         r"\! LaTeX Error: File `(.*)\' not found\.",
         lambda m: MissingLatexFile(m.group(1)),
     ),
+    (
+        r"(\!|.*:[0-9]+:) Package fontspec Error: The font \"(.*)\" cannot be found\.",
+        lambda m: MissingFontspec(m.group(2)),
+    ),
     (r"  vignette builder \'(.*)\' not found", lambda m: MissingRPackage(m.group(1))),
     (
-        r"Error: package \'(.*)\' (.*) was found, but >= (.*) is required by \'(.*)\'",
+        r"Error: package [‘'](.*)[’'] (.*) was found, but >= (.*) is required by [‘'](.*)[’']",
         lambda m: MissingRPackage(m.group(1), m.group(3)),
     ),
     (
         r'there is no package called \'(.*)\'',
         lambda m: MissingRPackage(m.group(1))
     ),
+    (r"Error in .*: there is no package called ‘(.*)’", lambda m: MissingRPackage(m.group(1))),
     (r"  there is no package called \'(.*)\'", lambda m: MissingRPackage(m.group(1))),
-    (r'  namespace "(.*)" .* is being loaded, but \>= (.*) is required',
-     lambda m: MissingRPackage(m.group(1), m.group(2))),
     (
         r"Exception: cannot execute command due to missing interpreter: (.*)",
         command_missing,
@@ -2775,13 +3046,14 @@ build_failure_regexps = [
      r'/usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\.',
      lambda m: MissingPauseCredentials()),
 
-    (r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
-     file_not_found
+    (
+        r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
+        file_not_found
      ),
     (
-        r'\*\*\* error: gettext infrastructure mismatch: using a Makefile.in.in '
-        r'from gettext version (.*) but the autoconf macros are from gettext '
-        r'version (.*)',
+        r'\*\*\* error: gettext infrastructure mismatch: using a Makefile\.in\.in '
+        r'from gettext version ([0-9.]+) but the autoconf macros are from gettext '
+        r'version ([0-9.]+)',
         lambda m: MismatchGettextVersions(m.group(1), m.group(2))),
 
     (
@@ -2804,15 +3076,101 @@ build_failure_regexps = [
     ),
 
     (
+        r'([^ ]+) \(for section ([^ ]+)\) does not appear to be installed',
+        lambda m: MissingPerlModule(None, m.group(1))),
+
+    (
+        r'(.*) version (.*) required--this is only version (.*) '
+        r'at .*\.pm line [0-9]+\.',
+        lambda m: MissingPerlModule(None, m.group(1), m.group(2)),
+    ),
+
+    (
+        r'Bailout called\.  Further testing stopped:  '
+        r'YOU ARE MISSING REQUIRED MODULES: \[ ([^,]+)(.*) \]:',
+        lambda m: MissingPerlModule(None, m.group(1))
+    ),
+
+    (
         r'CMake Error: CMake was unable to find a build program corresponding'
         r' to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to '
-        'select a different build tool\.',
+        r'select a different build tool\.',
         lambda m: MissingVagueDependency(m.group(1))
     ),
+
+    (
+        r"Dist currently only works with Git or Mercurial repos",
+        lambda m: VcsControlDirectoryNeeded(['git', 'hg']),
+    ),
+
+    (
+        r'GitHubMeta: need a .git\/config file, and you don\'t have one',
+        lambda m: VcsControlDirectoryNeeded(['git'])
+    ),
+
+    (
+        r"Exception: Versioning for this project requires either an sdist "
+        r"tarball, or access to an upstream git repository\. It's also "
+        r"possible that there is a mismatch between the package name "
+        r"in setup.cfg and the argument given to pbr\.version\.VersionInfo\. "
+        r"Project name .* was given, but was not able to be found\.",
+        lambda m: VcsControlDirectoryNeeded(["git"])
+    ),
+
+    (r'configure: error: no suitable Python interpreter found',
+     lambda m: MissingCommand('python')),
+
+    (r'  Failed to find (.*) development headers\.',
+     lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'\*\*\* \Subdirectory \'(.*)\' does not yet exist. '
+     r'Use \'./gitsub.sh pull\' to create it, or set the '
+     r'environment variable GNULIB_SRCDIR\.',
+     lambda m: MissingGnulibDirectory(m.group(1))
+     ),
+
+    (r'configure: error: Cap\'n Proto compiler \(capnp\) not found.',
+     lambda m: MissingCommand('capnp')),
+
+    (r'lua: (.*):(\d+): module \'(.*)\' not found:',
+     lambda m: MissingLuaModule(m.group(3))),
+
+    (r'Unknown key\(s\) in sphinx_gallery_conf:', None),
+
+    (r'(.+\.gir):In (.*): error: (.*)', None),
+
+    (r'psql:.*\.sql:[0-9]+: ERROR:  (.*)', None),
+
+    (r'intltoolize: \'(.*)\' is out of date: use \'--force\' to overwrite',
+     None),
+
+    (r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:", None),
+    (r"E: pybuild pybuild:[0-9]+: cannot detect build system, please "
+     r"use --system option or set PYBUILD_SYSTEM env\. variable", None),
+
+    (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
+     lambda m: MissingPkgConfig(m.group(1), minimum_version=m.group(2))),
+
+    (r'go: go.mod file not found in current directory or any parent directory; '
+     r'see \'go help modules\'', lambda m: MissingGoModFile()),
+
+    (r'(c\+\+|collect2|cc1|g\+\+): fatal error: .*', None),
+
+    (r'fatal: making (.*): failed to create tests\/decode.trs', None),
+
+    # ocaml
+    (r'Please specify at most one of .*', None),
+
+    # Python lint
+    (r'.*\.py:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9] .*', None),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
+    (r'configure: error: ([^ ]+) development files not found',
+     lambda m: MissingVagueDependency(m.group(1))),
+    ('configure: error: \'(.*)\' command was not found',
+     lambda m: MissingCommand(m.group(1))),
     (
         r"configure: error: (.*) not present.*",
         lambda m: MissingVagueDependency(m.group(1))
@@ -2820,6 +3178,10 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) >= (.*) not found",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
+    (
+        r"configure: error: (.*) headers not found",
+        lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
         r"configure: error: (.*) not found",
@@ -2906,7 +3268,17 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1))),
     (r'Error: (.*) is not available on your system',
      lambda m: MissingVagueDependency(m.group(1)),
-    ),
+     ),
+    (r'configure: error: .*Please install the \'(.*)\' package\.',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'configure: error: <(.*\.h)> is required',
+     lambda m: MissingCHeader(m.group(1))),
+    (r'configure: error: ([^ ]+) is required',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'configure: error: you should install ([^ ]+) first',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'configure: error: .*You need (.*) installed.',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
@@ -2926,11 +3298,17 @@ for entry in build_failure_regexps:
 
 # Regexps that hint at an error of some sort, but not the error itself.
 secondary_build_failure_regexps = [
+    r"[^:]+: error: (.*)",
+    r"[^:]+:[0-9]+: error: (.*)",
+    r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
+
     # Java
+    r"Killed",
     r'Exception in thread "(.*)" (.*): (.*);',
     r"error: Unrecognized option: \'.*\'",
     r".*: No space left on device",
     r"Segmentation fault",
+    r"\[ERROR\] (.*\.java):\[[0-9]+,[0-9]+\] (.*)",
     r"make\[[0-9]+\]: (.*): No such file or directory",
     r"make\[[0-9]+\]: \*\*\* \[.*:[0-9]+: .*\] Segmentation fault",
     (
@@ -2939,6 +3317,15 @@ secondary_build_failure_regexps = [
     ),
     r".*:[0-9]+: \*\*\* empty variable name.  Stop.",
     r"error: can't copy '(.*)': doesn't exist or not a regular file",
+    r"error: ([0-9]+) test executed, ([0-9]+) fatal tests failed, "
+    r"([0-9]+) nonfatal test failed\.",
+    r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. "
+    r'.*\.rst:toctree contains ref to nonexisting file \'.*\'',
+    r'.*\.rst:[0-9]+:term not in glossary: .*',
+    r"Try adding AC_PREREQ\(\[(.*)\]\) to your configure\.ac\.",
+    # Erlang
+    r'  (.*_test): (.+)\.\.\.\*failed\*',
+    r'(.*\.erl):[0-9]+:[0-9]+: erlang:.*',
     # Clojure
     r"Could not locate (.*) or (.*) on classpath\.",
     # QMake
@@ -2952,6 +3339,7 @@ secondary_build_failure_regexps = [
     # inkscape
     r"Unknown option .*",
     # CTest
+    r'not ok [0-9]+ .*',
     r"Errors while running CTest",
     r"dh_auto_install: error: .*",
     r"dh_quilt_patch: error: (.*)",
@@ -2968,15 +3356,17 @@ secondary_build_failure_regexps = [
     r".*(No space left on device).*",
     r"dpkg-gencontrol: error: (.*)",
     r".*:[0-9]+:[0-9]+: (error|ERROR): (.*)",
+    r".*[.]+FAILED .*",
     r"FAIL: (.*)",
-    r"FAIL (.*) \(.*\)",
+    r"FAIL\!  : (.*)",
+    r"\s*FAIL (.*) \(.*\)",
     r"FAIL\s+(.*) \[.*\] ?",
+    r"([0-9]+)% tests passed, ([0-9]+) tests failed out of ([0-9]+)",
     r"TEST FAILURE",
     r"make\[[0-9]+\]: \*\*\* \[.*\] Error [0-9]+",
     r"make\[[0-9]+\]: \*\*\* \[.*\] Aborted",
-    r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:"
     r"exit code=[0-9]+: .*",
-    r"chmod: cannot access \'.*\': No such file or directory",
+    r"chmod: cannot access \'.*\': .*",
     r"dh_autoreconf: autoreconf .* returned exit code [0-9]+",
     r"make: \*\*\* \[.*\] Error [0-9]+",
     r".*:[0-9]+: \*\*\* missing separator\.  Stop\.",
@@ -2987,9 +3377,8 @@ secondary_build_failure_regexps = [
     r"Failed [0-9]+ tests? out of [0-9]+, [0-9.]+% okay.",
     r"Failed [0-9]+\/[0-9]+ test programs. [0-9]+/[0-9]+ subtests failed.",
     r"Original error was: (.*)",
-    r"[^:]+: error: (.*)",
-    r"[^:]+:[0-9]+: error: (.*)",
-    r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
+    r"-- Error \(.*\.R:[0-9]+:[0-9]+\): \(.*\) [-]*",
+    r"^Error \[ERR_.*\]: .*",
     r"^FAILED \(.*\)",
     r"FAILED .*",
     r"cat: (.*): No such file or directory",
@@ -3005,7 +3394,7 @@ secondary_build_failure_regexps = [
     "pkg_resources.UnknownExtra|tarfile.ReadError|"
     "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
     "datalad.support.exceptions.IncompleteResultsError|AssertionError|"
-    r"Cython.Compiler.Errors.CompileError): .*",
+    r"Cython.Compiler.Errors.CompileError|UnicodeDecodeError): .*",
     # Rust
     r"error\[E[0-9]+\]: .*",
     "^E   DeprecationWarning: .*",
@@ -3019,7 +3408,9 @@ secondary_build_failure_regexps = [
     r"============================ no tests ran in ([0-9.]+)s =============================",
     # Perl
     r"  Failed tests:  [0-9-]+",
+    r"Failed (.*\.t): output changed",
     # Go
+    r'no packages to test',
     "FAIL\t(.*)\t[0-9.]+s",
     r".*.go:[0-9]+:[0-9]+: (?!note:).*",
     r"can\'t load package: package \.: no Go files in /<<PKGBUILDDIR>>/(.*)",
@@ -3059,6 +3450,8 @@ secondary_build_failure_regexps = [
     # lt (C++)
     r".*: .*:[0-9]+: .*: Assertion `.*\' failed.",
     r"(.*).xml: FAILED:",
+    r" BROKEN .*",
+    r'failed: [0-9]+-.*',
     # ninja
     r"ninja: build stopped: subcommand failed.",
     r".*\.s:[0-9]+: Error: .*",
@@ -3068,6 +3461,7 @@ secondary_build_failure_regexps = [
     r"\(.*:[0-9]+\): [a-zA-Z0-9]+-CRITICAL \*\*: [0-9:.]+: .*",
     r"tar: option requires an argument -- \'.\'",
     r"tar: .*: Cannot stat: No such file or directory",
+    r"tar: .*: Cannot open: No such file or directory",
     # rsvg-convert
     r"Could not render file (.*.svg)",
     # pybuild tests
@@ -3104,6 +3498,9 @@ secondary_build_failure_regexps = [
     r"\[DZ\] no (name|version) was ever set",
     r"diff: (.*): No such file or directory",
     r"gpg: signing failed: .*",
+    # mh_install
+    r"Cannot find the jar to install: (.*)",
+    r"ERROR: .*",
 ]
 
 compiled_secondary_build_failure_regexps = []
@@ -3117,7 +3514,7 @@ for regexp in secondary_build_failure_regexps:
 
 def find_build_failure_description(  # noqa: C901
     lines: List[str],
-) -> Tuple[Optional[SingleLineMatch], Optional["Problem"]]:
+) -> Tuple[Optional[Match], Optional["Problem"]]:
     """Find the key failure line in build output.
 
     Returns:
@@ -3136,8 +3533,7 @@ def find_build_failure_description(  # noqa: C901
         for matcher in compiled_build_failure_regexps:
             linenos, err = matcher.match(lines, lineno)
             if linenos:
-                lineno = linenos[-1]  # For now
-                return SingleLineMatch.from_lines(lines, lineno), err
+                return MultiLineMatch.from_lines(lines, linenos), err
 
     # TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
     if cmake:
@@ -3236,13 +3632,18 @@ def main(argv=None):
         if not m:
             logging.info("No issues found")
         else:
-            logging.info("Issue found at line %d:", m.lineno)
+            if len(m.linenos) == 1:
+                logging.info("Issue found at line %d:", m.lineno)
+            else:
+                logging.info(
+                    "Issue found at lines %d-%d:", m.linenos[0], m.linenos[-1])
             for i in range(
-                max(0, m.offset - args.context),
-                min(len(lines), m.offset + args.context + 1),
+                max(0, m.offsets[0] - args.context),
+                min(len(lines), m.offsets[-1] + args.context + 1),
             ):
                 logging.info(
-                    " %s  %s", ">" if m.offset == i else " ", lines[i].rstrip("\n")
+                    " %s  %s", ">" if i in m.offsets else " ",
+                    lines[i].rstrip("\n")
                 )
 
         if problem:

@@ -214,6 +214,15 @@ class DebcargoFailure:
             return "Debcargo failed"
 
 
+@problem("changelog-parse-failed")
+class ChangelogParseError:
+
+    reason: str
+
+    def __str__(self):
+        return "Changelog failed to parse: %s" % self.reason
+
+
 @problem("uscan-failed")
 class UScanFailed:
 
@@ -422,6 +431,13 @@ def find_preamble_failure_description(  # noqa: C901
             err = MissingRevision(m.group(2).encode())
             return SingleLineMatch.from_lines(lines, lineno), err
 
+        m = re.match(
+            r'fatal: ambiguous argument \'(.*)\': '
+            r'unknown revision or path not in the working tree.', line)
+        if m:
+            err = PristineTarTreeMissing(m.group(1))
+            return SingleLineMatch.from_lines(lines, lineno), err
+
         m = re.match("dpkg-source: error: (.*)", line)
         if m:
             err = DpkgSourcePackFailed(m.group(1))
@@ -472,6 +488,15 @@ def _parse_debcargo_failure(m, pl):
     return DebcargoFailure("Debcargo failed to run")
 
 
+@problem("uscan-too-many-requests")
+class UScanTooManyRequests:
+
+    url: str
+
+    def __str__(self):
+        return "UScan: %s: too many requests" % self.url
+
+
 BRZ_ERRORS = [
     (
         "Unable to find the needed upstream tarball for "
@@ -481,6 +506,11 @@ BRZ_ERRORS = [
     (
         "Unknown mercurial extra fields in (.*): b'(.*)'.",
         lambda m, pl: UnknownMercurialExtraFields(m.group(2)),
+    ),
+    (
+        r"UScan failed to run: In watchfile (.*), reading webpage "
+        r"(.*) failed: 429 too many requests\.",
+        lambda m, pl: UScanTooManyRequests(m.group(2))
     ),
     (
         "UScan failed to run: OpenPGP signature did not verify..",
@@ -529,7 +559,9 @@ def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem
             error = fn(m, prior_lines)
             return (error, str(error))
     if line.startswith("UScan failed to run"):
-        return (None, line)
+        return (UScanFailed(None, line[len("UScan failed to run: "):]), line)
+    if line.startswith('Unable to parse changelog: '):
+        return (ChangelogParseError(line[len("Unable to parse changelog: "):]), line)
     return (None, line.split("\n")[0])
 
 
@@ -540,6 +572,15 @@ class MissingRevision:
 
     def __str__(self):
         return "Missing revision: %r" % self.revision
+
+
+@problem("pristine-tar-missing-tree")
+class PristineTarTreeMissing:
+
+    treeish: str
+
+    def __str__(self):
+        return "pristine-tar can not find tree %r" % self.treeish
 
 
 def find_creation_session_error(lines):
@@ -803,7 +844,7 @@ FAILED_STAGE_FAIL_FINDERS = {
 }
 
 
-def worker_failure_from_sbuild_log(f: BinaryIO) -> SbuildFailure:  # noqa: C901
+def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailure:  # noqa: C901
     if isinstance(f, SbuildLog):
         sbuildlog = f
     else:
