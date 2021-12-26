@@ -21,8 +21,10 @@ from ..common import (
     find_build_failure_description,
     CcacheError,
     DebhelperPatternNotFound,
+    DisappearedSymbols,
     DuplicateDHCompatLevel,
     DhLinkDestinationIsDirectory,
+    MismatchGettextVersions,
     MissingConfigure,
     MissingJavaScriptRuntime,
     MissingJVM,
@@ -59,6 +61,7 @@ from ..common import (
     MissingAutoconfMacro,
     MissingSprocketsFile,
     MissingAutomakeInput,
+    MissingGoModFile,
     NeedPgBuildExtUpdateControl,
     DhMissingUninstalled,
     DhUntilUnsupported,
@@ -141,6 +144,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             UpstartFilePresent("debian/sddm.upstart"),
         )
+
+    def test_missing_go_mod_file(self):
+        self.run_test(
+            [
+                "go: go.mod file not found in current directory or any "
+                "parent directory; see 'go help modules'"
+            ], 1, MissingGoModFile())
 
     def test_missing_javascript_runtime(self):
         self.run_test(
@@ -291,6 +301,25 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             3,
             MissingVagueDependency("the Multi Emulator Super System (MESS)"),
         )
+        self.run_test(
+            ["configure: error: libwandio 4.0.0 or better is required to compile "
+             "this version of libtrace. If you have installed libwandio in a "
+             "non-standard location please use LDFLAGS to specify the location of "
+             "the library. WANDIO can be obtained from "
+             "http://research.wand.net.nz/software/libwandio.php"],
+            1, MissingVagueDependency("libwandio", minimum_version="4.0.0"))
+        self.run_test(
+            ["configure: error: libpcap0.8 or greater is required to compile "
+             "libtrace. If you have installed it in a non-standard location please "
+             "use LDFLAGS to specify the location of the library"],
+            1, MissingVagueDependency("libpcap0.8"))
+
+    def test_gettext_mismatch(self):
+        self.run_test(
+            ["*** error: gettext infrastructure mismatch: using a "
+             "Makefile.in.in from gettext version 0.19 but the autoconf "
+             "macros are from gettext version 0.20"],
+            1, MismatchGettextVersions('0.19', '0.20'))
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
@@ -465,6 +494,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             2,
             MissingVagueDependency("alut"),
         )
+        self.run_test(
+            ["CMake Error at CMakeLists.txt:213 (message):",
+             "  could not find zlib"], 2, MissingVagueDependency("zlib"))
 
     def test_dh_compat_dupe(self):
         self.run_test(
@@ -1005,6 +1037,19 @@ Call Stack (most recent call first):
 """.splitlines(True), 4, MissingBoostComponents([
             'program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
 
+    def test_pkg_config_too_old(self):
+        self.run_test(
+            [
+                "checking for pkg-config... no",
+                "",
+                "*** Your version of pkg-config is too old. You need atleast",
+                "*** pkg-config 0.9.0 or newer. You can download pkg-config",
+                "*** from the freedesktop.org software repository at",
+                "***",
+                "***    https://www.freedesktop.org/wiki/Software/pkg-config/",
+                "***"
+            ], 4, MissingVagueDependency("pkg-config", minimum_version="0.9.0"))
+
     def test_pkg_config_missing(self):
         self.run_test(
             [
@@ -1258,6 +1303,10 @@ Call Stack (most recent call first):
              '(perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at '
              '/usr/share/perl5/Dist/Inkt.pm line 208.'], 1,
             MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None))
+        self.run_test(
+            ["Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) "
+             "does not appear to be installed"], 1,
+            MissingPerlModule(None, "Pod::Weaver::Plugin::WikiDoc"))
 
     def test_missing_perl_file(self):
         self.run_test(
@@ -1518,6 +1567,14 @@ Call Stack (most recent call first):
             ],
             1,
         )
+        self.run_test(
+            [
+                "/usr/bin/ld: ../lib/libaxe.a(stream.c.o):(.bss+0x10): "
+                "multiple definition of `gsl_message_mask'; "
+                "../lib/libaxe.a(error.c.o):(.bss+0x8): first defined here"
+            ],
+            1,
+        )
 
     def test_missing_ruby_gem(self):
         self.run_test(
@@ -1676,6 +1733,15 @@ arch:all and the other not)""".splitlines(),
             1,
             MissingRPackage("BH", "1.75.0.0"),
         )
+        self.run_test(
+            [
+                "Error: package ‘AnnotationDbi’ 1.52.0 was found, but >= 1.53.1 is required by ‘GO.db’"
+            ], 1,
+            MissingRPackage("AnnotationDbi", "1.53.1"))
+        self.run_test(
+            ["  namespace 'alakazam' 1.1.0 is being loaded, but >= 1.1.0.999 is required"],
+            1,
+            MissingRPackage('alakazam', '1.1.0.999'))
 
     def test_mv_stat(self):
         self.run_test(
@@ -1725,7 +1791,7 @@ arch:all and the other not)""".splitlines(),
                 "the symbols file: see diff output below"
             ],
             1,
-            None,
+            DisappearedSymbols(),
         )
 
     def test_autoconf_macro(self):
@@ -1785,17 +1851,6 @@ arch:all and the other not)""".splitlines(),
             ],
             1,
             MissingAutomakeInput("gtk-doc.make"),
-        )
-
-    def test_gettext_infrastructure(self):
-        self.run_test(
-            [
-                "*** error: gettext infrastructure mismatch: "
-                "using a Makefile.in.in from gettext version "
-                "0.19 but the autoconf macros are from gettext version 0.20"
-            ],
-            1,
-            None,
         )
 
     def test_shellcheck(self):

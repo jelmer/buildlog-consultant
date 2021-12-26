@@ -4,3 +4,6 @@ Currently supported container formats:
 
  * sbuild
  * plain
+
+For a longer introduction, see the
+[blog post](https://www.jelmer.uk/buildlog-consultant.html).

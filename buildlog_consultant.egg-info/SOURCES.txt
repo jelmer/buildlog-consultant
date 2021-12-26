@@ -4,6 +4,7 @@ AUTHORS
 CODE_OF_CONDUCT.md
 LICENSE
 MANIFEST.in
+Makefile
 README.md
 SECURITY.md
 releaser.conf
