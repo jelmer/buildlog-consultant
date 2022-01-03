@@ -1329,6 +1329,8 @@ class CMakeErrorMatcher(Matcher):
         (r'Please check your (.*) installation', lambda m: MissingVagueDependency(m.group(1))),
         (r'Python module (.*) not found\!', lambda m: MissingPythonModule(m.group(1))),
         (r'\s*could not find ([^\s]+)$', lambda m: MissingVagueDependency(m.group(1))),
+        (r'Please install (.*) before installing (.*)\.',
+         lambda m: MissingVagueDependency(m.group(1))),
         (r'Found unsuitable Qt version "" from NOTFOUND, '
          r'this code requires Qt 4.x', lambda m: MissingQt('4')),
         (r'(.*) executable not found\! Please install (.*)\.',
@@ -3144,7 +3146,6 @@ build_failure_regexps = [
     (r'intltoolize: \'(.*)\' is out of date: use \'--force\' to overwrite',
      None),
 
-    (r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:", None),
     (r"E: pybuild pybuild:[0-9]+: cannot detect build system, please "
      r"use --system option or set PYBUILD_SYSTEM env\. variable", None),
 
@@ -3298,6 +3299,7 @@ for entry in build_failure_regexps:
 
 # Regexps that hint at an error of some sort, but not the error itself.
 secondary_build_failure_regexps = [
+    r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:",
     r"[^:]+: error: (.*)",
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
