@@ -1693,6 +1693,8 @@ build_failure_regexps = [
     ),
     ("✖ \x1b\\[31mERROR:\x1b\\[39m Cannot find module '(.*)'", node_module_missing),
     ("✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
+    ("\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
+     node_module_missing),
     ('\\[31mError: No test files found: "(.*)"\\[39m', None),
     (r'\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
     (r"\s*Error: Cannot find module \'(.*)\'", node_module_missing),
