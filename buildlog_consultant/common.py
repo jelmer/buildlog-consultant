@@ -1363,6 +1363,8 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) requires (.*)',
          lambda m: MissingVagueDependency(m.group(2))),
+        (r'Could not find ([A-Za-z-]+)',
+         lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
@@ -1515,6 +1517,15 @@ class UnknownCertificateAuthority:
 class MissingXDisplay:
     def __str__(self):
         return "No X Display"
+
+
+@problem("missing-postgresql-extension")
+class MissingPostgresExtension:
+
+    extension: str
+
+    def __str__(self):
+        return "Missing postgres extension: %s" % self.extension
 
 
 @problem("missing-lua-module")
@@ -1788,6 +1799,10 @@ build_failure_regexps = [
     (
         r"\-\- Please install Git, make sure it is in your path, and then try again.",
         lambda m: MissingCommand("git"),
+    ),
+    (
+        r'\+ERROR:  could not access file "(.*)": No such file or directory',
+        lambda m: MissingPostgresExtension(m.group(1)),
     ),
     (
         r"configure: error: (Can't|Cannot) find \"(.*)\" in your PATH.*",
@@ -2893,6 +2908,10 @@ build_failure_regexps = [
     (
         r"Package (.*) was not found in the pkg-config search path.",
         lambda m: MissingPkgConfig(m.group(1)),
+    ),
+    (
+        r"Can't open display",
+        lambda m: MissingXDisplay(),
     ),
     (
         r'pkg-config does not know (.*) at .*\.',
