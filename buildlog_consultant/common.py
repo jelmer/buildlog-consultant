@@ -1356,6 +1356,8 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'Cannot find (.*), giving up\. .*',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'Cannot find (.*)\. (.*) is required for (.*)',
+         lambda m: MissingVagueDependency(m.group(1))),
         (r'The development\sfiles\sfor\s(.*)\sare\s'
          r'required\sto\sbuild (.*)\.',
          lambda m: MissingVagueDependency(m.group(1))),
@@ -2031,6 +2033,11 @@ build_failure_regexps = [
     ),
 
     (
+        r'You must install (.*) to compile (.*)',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
         r'\*\*\* No (.*) found, please in(s?)tall it \*\*\*',
         lambda m: MissingVagueDependency(m.group(1))
     ),
@@ -2606,6 +2613,7 @@ build_failure_regexps = [
      lambda m: Cancelled(),
      ),
     (r"E: Failed to execute “(.*)”: No such file or directory", command_missing),
+    (r"E ImportError: Bad (.*) executable", command_missing),
     (r"E: The Debian version .* cannot be used as an ELPA version.", None),
     # ImageMagick
     (
@@ -2804,7 +2812,7 @@ build_failure_regexps = [
     ),
     (
         r'(OSError|RuntimeError): We need package (.*), but not importable',
-        lambda m: MissingPythonDistribution(m.group(1))
+        lambda m: MissingPythonDistribution(m.group(2))
     ),
     (
         r'(OSError|RuntimeError): No (.*) was found: .*',
@@ -3223,7 +3231,7 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2)),
     ),
     (
-        r"configure: error: Required package (.*) is not available\.",
+        r"configure: error: Required package (.*) (is ?)not available\.",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
@@ -3300,6 +3308,10 @@ build_failure_regexps = [
     (r'configure: error: you should install ([^ ]+) first',
      lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: .*You need (.*) installed.',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'To build (.*) you need (.*)',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'.*Can\'t ([^\. ]+)\. (.*)',
      lambda m: MissingVagueDependency(m.group(1))),
 ]
 
