@@ -2364,6 +2364,8 @@ build_failure_regexps = [
         command_missing,
     ),
     (r".*: error: (.*) command not found", command_missing),
+    (r'error: command \'(.*)\' failed: No such file or directory',
+     command_missing),
     (
         r"dh_install: Please use dh_missing " "--list-missing/--fail-missing instead",
         None,
@@ -2807,6 +2809,14 @@ build_failure_regexps = [
         r'RuntimeError: The (.*) executable cannot be found\. '
         r'Please check if it is in the system path\.',
         lambda m: MissingCommand(m.group(1).lower())
+    ),
+    (
+        r'Cannot find Git. Git is required for .*',
+        lambda m: MissingCommand('git')
+    ),
+    (
+        r'E ImportError: Bad (.*) executable\.',
+        lambda m: MissingCommand('git')
     ),
     (
         "RuntimeError: (.*) is missing",
