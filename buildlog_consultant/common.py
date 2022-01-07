@@ -2373,8 +2373,10 @@ build_failure_regexps = [
     # line will have the actual line that failed.
     (r"ImportError: cannot import name (.*)", None),
     # Rust ?
-    (r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+).*", ld_missing_lib),
-    (r"/usr/bin/ld: cannot find -l([^ ]+).*", ld_missing_lib),
+    (r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+): .*", ld_missing_lib),
+    (r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+)", ld_missing_lib),
+    (r"/usr/bin/ld: cannot find -l([^ ]+): .*", ld_missing_lib),
+    (r"/usr/bin/ld: cannot find -l([^ ]+)", ld_missing_lib),
     (
         r"Could not find gem \'([^ ]+) \(([^)]+)\)\', " r"which is required by gem.*",
         ruby_missing_gem,
