@@ -1906,6 +1906,10 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(3))
     ),
     (
+        '.*meson.build:([0-9]+):([0-9]+): ERROR: Git program not found, .*',
+        lambda m: MissingCommand('git')
+    ),
+    (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: C header \'(.*)\' not found',
         lambda m: MissingCHeader(m.group(3))
     ),
