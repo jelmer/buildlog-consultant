@@ -3482,6 +3482,7 @@ secondary_build_failure_regexps = [
     r"mkdir: cannot create directory [‘'](.*)['’]: No such file or directory",
     r"mkdir: cannot create directory [‘'](.*)['’]: File exists",
     r"mkdir: missing operand",
+    r"rmdir: failed to remove '.*': No such file or directory",
     r"Fatal error: .*",
     "Fatal Error: (.*)",
     r"Alert: (.*)",
