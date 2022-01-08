@@ -1331,6 +1331,8 @@ class CMakeErrorMatcher(Matcher):
         (r'\s*could not find ([^\s]+)$', lambda m: MissingVagueDependency(m.group(1))),
         (r'Please install (.*) before installing (.*)\.',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r"Please get (.*) from (www\..*)",
+         lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
         (r'Found unsuitable Qt version "" from NOTFOUND, '
          r'this code requires Qt 4.x', lambda m: MissingQt('4')),
         (r'(.*) executable not found\! Please install (.*)\.',
