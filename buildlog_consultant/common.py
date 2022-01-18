@@ -407,6 +407,15 @@ def javascript_runtime_missing(m):
     return MissingJavaScriptRuntime()
 
 
+@problem("missing-php-extension")
+class MissingPHPExtension:
+
+    extension: str
+
+    def __str__(self):
+        return "Missing PHP Extension: %s" % self.extension
+
+
 @problem("missing-pkg-config-package")
 class MissingPkgConfig:
 
@@ -3211,6 +3220,9 @@ build_failure_regexps = [
 
     # Python lint
     (r'.*\.py:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9] .*', None),
+
+    (r'PHPUnit requires the \"(.*)\" extension\.',
+     lambda m: MissingPHPExtension(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
