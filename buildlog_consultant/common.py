@@ -3045,6 +3045,12 @@ build_failure_regexps = [
         lambda m: MissingVcVersionerVersion(),
     ),
     (
+        r"vcversioner: no VCS could be detected in '(.*)' and "
+        r"'(.*)/version.txt' isn't present\.",
+        lambda m: MissingVcVersionerVersion(),
+    ),
+
+    (
         r"You don't have a working TeX binary \(tex\) installed anywhere in",
         lambda m: MissingCommand("tex"),
     ),
