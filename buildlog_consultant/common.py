@@ -3223,6 +3223,9 @@ build_failure_regexps = [
     (r'go: go.mod file not found in current directory or any parent directory; '
      r'see \'go help modules\'', lambda m: MissingGoModFile()),
 
+    (r'go: cannot find main module, but found Gopkg.lock in (.*)',
+     lambda m: MissingGoModFile()),
+
     (r'(c\+\+|collect2|cc1|g\+\+): fatal error: .*', None),
 
     (r'fatal: making (.*): failed to create tests\/decode.trs', None),
