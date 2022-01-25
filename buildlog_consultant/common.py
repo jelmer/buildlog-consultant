@@ -910,6 +910,13 @@ def jvm_missing(m):
     return MissingJVM()
 
 
+@problem("missing-perl-manifest")
+class MissingPerlManifest:
+
+    def __str__(self):
+        return "missing Perl MANIFEST"
+
+
 @problem("upstart-file-present")
 class UpstartFilePresent:
 
@@ -2523,6 +2530,11 @@ build_failure_regexps = [
         r"ERROR: JAVA_HOME is set to an invalid directory: "
         r"/usr/lib/jvm/default-java/",
         jvm_missing,
+    ),
+    (
+        r'Error: The file "MANIFEST" is missing from this distribution\. '
+        r'The MANIFEST lists all files included in the distribution\.',
+        lambda m: MissingPerlManifest()
     ),
     (
         r"dh_installdocs: --link-doc not allowed between (.*) and (.*) "
