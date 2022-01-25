@@ -2989,6 +2989,10 @@ build_failure_regexps = [
         lambda m: UnknownCertificateAuthority(m.group(1)),
     ),
     (
+        r".*.go:[0-9]+:[0-9]+: .*: Get \"(.*)\": x509: certificate signed by unknown authority",
+        lambda m: UnknownCertificateAuthority(m.group(1)),
+    ),
+    (
         r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
         lambda m: UnknownCertificateAuthority(m.group(1)),
     ),
