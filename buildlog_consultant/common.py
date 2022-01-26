@@ -3399,6 +3399,8 @@ secondary_build_failure_regexps = [
     r".*: No space left on device",
     r"Segmentation fault",
     r"\[ERROR\] (.*\.java):\[[0-9]+,[0-9]+\] (.*)",
+    r"make: \*\*\* No targets specified and no makefile found\.  Stop\.",
+    r"make\[[0-9]+\]: \*\*\* No targets specified and no makefile found\.  Stop\.",
     r"make: \*\*\* No rule to make target " r"\'(.*)\'\.  Stop\.",
     r"make\[[0-9]+\]: (.*): No such file or directory",
     r"make\[[0-9]+\]: \*\*\* \[.*:[0-9]+: .*\] Segmentation fault",
