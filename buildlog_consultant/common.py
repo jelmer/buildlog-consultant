@@ -3238,6 +3238,7 @@ build_failure_regexps = [
     (r'Unknown key\(s\) in sphinx_gallery_conf:', None),
 
     (r'(.+\.gir):In (.*): error: (.*)', None),
+    (r'(.+\.gir):[0-9]+\.[0-9]+-[0-9]+\.[0-9]+: error: (.*)', None),
 
     (r'psql:.*\.sql:[0-9]+: ERROR:  (.*)', None),
 
@@ -3417,6 +3418,12 @@ secondary_build_failure_regexps = [
     r"[^:]+: error: (.*)",
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
+
+    # ocaml
+    r"\*\*\* omake error:",
+
+    # latex
+    r"\! LaTeX Error: .*",
 
     # Java
     r"Killed",
