@@ -416,6 +416,15 @@ class MissingPHPExtension:
         return "Missing PHP Extension: %s" % self.extension
 
 
+@problem("minimum-autoconf-too-old")
+class MinimumAutoconfTooOld:
+
+    minimum_version: str
+
+    def __str__(self):
+        return "configure.{ac,in} should require newer autoconf %s" % self.minimum_version
+
+
 @problem("missing-pkg-config-package")
 class MissingPkgConfig:
 
@@ -509,6 +518,17 @@ class DhWithOrderIncorrect:
 
 def dh_with_order(m):
     return DhWithOrderIncorrect()
+
+
+@problem("unsupported-debhelper-compat-level")
+class UnsupportedDebhelperCompatLevel:
+
+    oldest_supported: int
+    requested: int
+
+    def __str__(self):
+        return "Request debhelper compat level %d lower than supported %d" % (
+            self.requested, self.oldest_supported)
 
 
 @problem("no-space-on-device", is_global=True)
@@ -2123,9 +2143,9 @@ build_failure_regexps = [
         dh_with_order,
     ),
     (
-        r"dh: Compatibility levels before [0-9]+ are no longer supported "
-        r"\(level [0-9]+ requested\)",
-        None,
+        r"dh: Compatibility levels before ([0-9]+) are no longer supported "
+        r"\(level ([0-9]+) requested\)",
+        lambda m: UnsupportedDebhelperCompatLevel(int(m.group(1)), int(m.group(2))),
     ),
     (r'\{standard input\}: Error: (.*)', None),
     (r"dh: Unknown sequence (.*) \(choose from: .*\)", None),
@@ -3249,6 +3269,12 @@ build_failure_regexps = [
     (r'PHPUnit requires the \"(.*)\" extension\.',
      lambda m: MissingPHPExtension(m.group(1))),
 
+    (r'     \[exec\] PHPUnit requires the "(.*)" extension\.',
+     lambda m: MissingPHPExtension(m.group(1))),
+
+    (r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. ",
+     lambda m: MinimumAutoconfTooOld(m.group(1))),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -3412,7 +3438,6 @@ secondary_build_failure_regexps = [
     r"error: can't copy '(.*)': doesn't exist or not a regular file",
     r"error: ([0-9]+) test executed, ([0-9]+) fatal tests failed, "
     r"([0-9]+) nonfatal test failed\.",
-    r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. "
     r'.*\.rst:toctree contains ref to nonexisting file \'.*\'',
     r'.*\.rst:[0-9]+:term not in glossary: .*',
     r"Try adding AC_PREREQ\(\[(.*)\]\) to your configure\.ac\.",
