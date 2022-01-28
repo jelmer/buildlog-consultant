@@ -550,6 +550,15 @@ class MissingPerlPredeclared:
         return "missing predeclared function: %s" % self.name
 
 
+@problem("missing-perl-distribution-file")
+class MissingPerlDistributionFile:
+
+    filename: str
+
+    def __str__(self):
+        return "Missing perl distribution file: %s" % self.filename
+
+
 @problem("missing-perl-module")
 class MissingPerlModule:
 
@@ -3275,6 +3284,11 @@ build_failure_regexps = [
 
     (r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. ",
      lambda m: MinimumAutoconfTooOld(m.group(1))),
+
+    (r'# Error: The file "(MANIFEST|META.yml)" is missing from '
+     'this distribution\. .*',
+     lambda m: MissingPerlDistributionFile(m.group(1)),
+     ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
