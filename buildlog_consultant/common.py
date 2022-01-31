@@ -1408,6 +1408,8 @@ class CMakeErrorMatcher(Matcher):
         (r'The development\sfiles\sfor\s(.*)\sare\s'
          r'required\sto\sbuild (.*)\.',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'Required library (.*) not found\.',
+         lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) required to compile (.*)',
          lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) requires (.*)',
@@ -1943,6 +1945,10 @@ build_failure_regexps = [
     (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found',
         meson_pkg_config_missing,
+    ),
+    (
+        r".*meson.build:([0-9]+):([0-9]+): Unknown compiler\(s\): \[\['(.*)'.*\]",
+        lambda m: MissingCommand(m.group(3))
     ),
     (
         '.*meson.build:([0-9]+):([0-9]+): ERROR: python3 "(.*)" missing',
@@ -3411,6 +3417,10 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1))),
     (r'([^ ]+) >= (.*) is required',
      lambda m: MissingVagueDependency(m.group(1), m.group(2))),
+    (r'.*: ERROR: (.*) needs to be installed to run these tests',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'ERROR: Unable to locate (.*)\.',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
@@ -3435,8 +3445,14 @@ secondary_build_failure_regexps = [
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
 
+    r"fontmake: Error: In '(.*)': (.*)",
+
+    r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
+
     # ocaml
     r"\*\*\* omake error:",
+    r".*ocamlc.*: OCam has been configured with -force-safe-string: "
+    r"-unsafe-string is not available\.",
 
     # latex
     r"\! LaTeX Error: .*",
