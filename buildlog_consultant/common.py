@@ -3432,6 +3432,24 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r'E ImportError: Unable to find ([^ ]+) shared library',
      lambda m: MissingLibrary(m.group(1))),
+    (r'([^ ]+) library not found on the system',
+     lambda m: MissingLibrary(m.group(1))),
+    (r'Please get ([^ ]+) from (www\..*)\.',
+     lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
+    (r'Please install ([^ ]+) so that it is on the PATH and try again\.',
+     lambda m: MissingCommand(m.group(1))),
+    (r'Could not find ([A-Za-z-]+)',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'No ([^ ]+) includes and libraries found',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'Required library (.*) not found\.',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'Missing ([^ ]+) boost library, .*',
+     lambda m: MissingLibrary(m.group(1))),
+    (r'\*\*\* (.*) not found, please install it \*\*\*',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'   > Cannot find \'\.git\' directory',
+     lambda m: VcsControlDirectoryNeeded(['git'])),
 ]
 
 
@@ -3459,6 +3477,11 @@ secondary_build_failure_regexps = [
     r"fontmake: Error: In '(.*)': (.*)",
 
     r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
+
+    r'#   Failed test at t\/.*\.t line [0-9]+\.',
+
+    r'Gradle build daemon disappeared unexpectedly '
+    r'\(it may have been killed or may have crashed\)',
 
     # ocaml
     r"\*\*\* omake error:",
@@ -3670,6 +3693,7 @@ secondary_build_failure_regexps = [
     # mh_install
     r"Cannot find the jar to install: (.*)",
     r"ERROR: .*",
+    r"> error: (.*)",
 ]
 
 compiled_secondary_build_failure_regexps = []
