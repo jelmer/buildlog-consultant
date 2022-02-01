@@ -3296,6 +3296,20 @@ build_failure_regexps = [
      lambda m: MissingPerlDistributionFile(m.group(1)),
      ),
 
+    (r'\s*> Cannot find \'\.git\' directory',
+     lambda m: VcsControlDirectoryNeeded(['git'])),
+    (r'Unable to find the \'(.*)\' executable\. .*',
+     lambda m: MissingCommand(m.group(1))),
+    (r'\[@RSRCHBOY\/CopyrightYearFromGit\]  -  '
+     r'412 No \.git subdirectory found',
+     lambda m: VcsControlDirectoryNeeded(['git'])),
+    (r'"(.*)" failed to start: "No such file or directory" '
+     r'at .*.pm line [0-9]+\.',
+     lambda m: MissingCommand(m.group(1))),
+    (r'Can\'t find ([^ ]+)\.', lambda m: MissingCommand(m.group(1))),
+    (r'Error: spawn (.*) ENOENT',
+     lambda m: MissingCommand(m.group(1))),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -3448,17 +3462,6 @@ build_failure_regexps = [
      lambda m: MissingLibrary(m.group(1))),
     (r'\*\*\* (.*) not found, please install it \*\*\*',
      lambda m: MissingVagueDependency(m.group(1))),
-    (r'\s*> Cannot find \'\.git\' directory',
-     lambda m: VcsControlDirectoryNeeded(['git'])),
-    (r'Unable to find the \'(.*)\' executable\. .*',
-     lambda m: MissingCommand(m.group(1))),
-    (r'\[@RSRCHBOY\/CopyrightYearFromGit\]  -  '
-     r'412 No \.git subdirectory found',
-     lambda m: VcsControlDirectoryNeeded(['git'])),
-    (r'"(.*)" failed to start: "No such file or directory" '
-     r'at .*.pm line [0-9]+\.',
-     lambda m: MissingCommand(m.group(1))),
-    (r'Can\'t find ([^ ]+)\.', lambda m: MissingCommand(m.group(1))),
 ]
 
 
