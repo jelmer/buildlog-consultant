@@ -3458,6 +3458,7 @@ build_failure_regexps = [
     (r'"(.*)" failed to start: "No such file or directory" '
      r'at .*.pm line [0-9]+\.',
      lambda m: MissingCommand(m.group(1))),
+    (r'Can\'t find ([^ ]+)\.', lambda m: MissingCommand(m.group(1))),
 ]
 
 
