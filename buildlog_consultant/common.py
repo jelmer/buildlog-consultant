@@ -3421,6 +3421,17 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1))),
     (r'ERROR: Unable to locate (.*)\.',
      lambda m: MissingVagueDependency(m.group(1))),
+    (r'ERROR: Cannot find command \'(.*)\' - do you '
+     r'have \'(.*)\' installed and in your PATH\?',
+     lambda m: MissingCommand(m.group(1))),
+    (r'ValueError: no ([^ ]+) installed, .*',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'([^ ]+) executable not found\. .*',
+     lambda m: MissingCommand(m.group(1))),
+    (r'ERROR: InvocationError for command could not find executable (.*)',
+     lambda m: MissingCommand(m.group(1))),
+    (r'E ImportError: Unable to find ([^ ]+) shared library',
+     lambda m: MissingLibrary(m.group(1))),
 ]
 
 
