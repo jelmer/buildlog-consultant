@@ -3303,6 +3303,8 @@ build_failure_regexps = [
     (r'\[@RSRCHBOY\/CopyrightYearFromGit\]  -  '
      r'412 No \.git subdirectory found',
      lambda m: VcsControlDirectoryNeeded(['git'])),
+    (r'Couldn\'t find version control data \(git/hg/bzr/svn supported\)',
+     lambda m: VcsControlDirectoryNeeded(['git', 'hg', 'bzr', 'svn'])),
     (r'"(.*)" failed to start: "No such file or directory" '
      r'at .*.pm line [0-9]+\.',
      lambda m: MissingCommand(m.group(1))),
@@ -3462,6 +3464,10 @@ build_failure_regexps = [
      lambda m: MissingLibrary(m.group(1))),
     (r'\*\*\* (.*) not found, please install it \*\*\*',
      lambda m: MissingVagueDependency(m.group(1))),
+    (
+        r"configure: error: could not find ([^ ]+)",
+        lambda m: MissingVagueDependency(m.group(1)),
+    ),
 ]
 
 
