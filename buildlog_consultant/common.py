@@ -3450,6 +3450,10 @@ build_failure_regexps = [
      lambda m: MissingLibrary(m.group(1))),
     (r'([^ ]+) library not found on the system',
      lambda m: MissingLibrary(m.group(1))),
+    (r'([^ ]+) library not found\.',
+     lambda m: MissingLibrary(m.group(1))),
+    (r'.*Please install ([^ ]+) libraries\.',
+     lambda m: MissingVagueDependency(m.group(1))),
     (r'Please get ([^ ]+) from (www\..*)\.',
      lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
     (r'Please install ([^ ]+) so that it is on the PATH and try again\.',
@@ -3468,6 +3472,8 @@ build_failure_regexps = [
         r"configure: error: could not find ([^ ]+)",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
+    (r'([^ ]+) is required for ([^ ]+)\.',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
