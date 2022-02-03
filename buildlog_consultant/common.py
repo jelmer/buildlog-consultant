@@ -3315,6 +3315,8 @@ build_failure_regexps = [
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
+    (r'([^ ]+) package not found\. Please install from (https://[^ ]+)',
+     lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
     (r'configure: error: ([^ ]+) development files not found',
      lambda m: MissingVagueDependency(m.group(1))),
     ('configure: error: \'(.*)\' command was not found',
