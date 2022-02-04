@@ -1150,9 +1150,10 @@ class MultiLineConfigureError(Matcher):
 class AutoconfUnexpectedMacroMatcher(Matcher):
 
     regexp1 = re.compile(
-        r"\.\/configure: line [0-9]+: syntax error near unexpected token `.+\'"
+        r".*\.\/configure: line [0-9]+: syntax error near unexpected token `.+\'"
     )
-    regexp2 = re.compile(r"\.\/configure: line [0-9]+: `\s*([A-Z0-9_]+)\(.*")
+    regexp2 = re.compile(r".*\.\/configure: line [0-9]+: `\s*([A-Z0-9_]+)\(.*")
+
 
     def match(self, lines, i):
         m = self.regexp1.fullmatch(lines[i].rstrip("\n"))
@@ -3317,6 +3318,8 @@ build_failure_regexps = [
     # Intentionally at the bottom of the list.
     (r'([^ ]+) package not found\. Please install from (https://[^ ]+)',
      lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
+    (r'([^ ]+) package not found\. Please use \'pip install .*\' first',
+     lambda m: MissingPythonDistribution(m.group(1))),
     (r'configure: error: ([^ ]+) development files not found',
      lambda m: MissingVagueDependency(m.group(1))),
     ('configure: error: \'(.*)\' command was not found',

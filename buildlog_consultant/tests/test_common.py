@@ -1814,6 +1814,13 @@ arch:all and the other not)""".splitlines(),
             3,
             MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True),
         )
+        self.run_test(
+            [
+                "checking for libexif to use... ./configure: line 15968: syntax error near unexpected token `LIBEXIF,libexif'",
+                "./configure: line 15968: `\t\t\t\t\t\tPKG_CHECK_MODULES(LIBEXIF,libexif >= 0.6.18,have_LIBEXIF=yes,:)'",
+            ],
+            2,
+            MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True))
 
     def test_config_status_input(self):
         self.run_test(
