@@ -72,6 +72,7 @@ from ..common import (
     DirectoryNonExistant,
     UnknownCertificateAuthority,
     MissingGitIdentity,
+    VcsControlDirectoryNeeded,
 )
 import unittest
 
@@ -172,6 +173,12 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             DirectoryNonExistant("rollup-plugin"),
         )
+
+    def test_vcs_control_directory(self):
+        self.run_test(
+            ["   > Cannot find '.git' directory"],
+            1,
+            VcsControlDirectoryNeeded(['git']))
 
     def test_missing_sprockets_file(self):
         self.run_test(
@@ -823,6 +830,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingNodeModule("fs-extra"),
         )
+        self.run_test(
+            ["\x1b[1m\x1b[31m[!] \x1b[1mError: Cannot find module '@rollup/plugin-buble'"],
+            1, MissingNodeModule('@rollup/plugin-buble'))
 
     def test_setup_py_command(self):
         self.run_test(
