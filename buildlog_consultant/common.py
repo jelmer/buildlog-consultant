@@ -2269,6 +2269,10 @@ build_failure_regexps = [
         r'LookupError: setuptools-scm was unable to detect version for \'.*\'\.',
         lambda m: SetuptoolScmVersionIssue()
      ),
+    (
+        r'LookupError: setuptools-scm was unable to detect version for .*\.',
+        lambda m: SetuptoolScmVersionIssue(),
+     ),
     (r"OSError: 'git' was not found", lambda m: MissingCommand("git")),
     (r"OSError: No such file (.*)", file_not_found),
     (
@@ -2386,6 +2390,8 @@ build_failure_regexps = [
         r"Error in library\(.*\) : there is no package called \'(.*)\'",
         r_missing_package,
     ),
+    (r'Error in .* : there is no package called \'(.*)\'',
+     r_missing_package),
     (r"there is no package called \'(.*)\'", r_missing_package),
     (
         r"  namespace ‘(.*)’ ([^ ]+) is being loaded, but >= ([^ ]+) is required",
@@ -3307,6 +3313,9 @@ build_failure_regexps = [
      lambda m: VcsControlDirectoryNeeded(['git'])),
     (r'Couldn\'t find version control data \(git/hg/bzr/svn supported\)',
      lambda m: VcsControlDirectoryNeeded(['git', 'hg', 'bzr', 'svn'])),
+    (r'RuntimeError: Unable to determine package version. '
+     r'No local Git clone detected, and no version file found at .*',
+     lambda m: VcsControlDirectoryNeeded(['git'])),
     (r'"(.*)" failed to start: "No such file or directory" '
      r'at .*.pm line [0-9]+\.',
      lambda m: MissingCommand(m.group(1))),
@@ -3472,6 +3481,8 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1))),
     (r'Missing ([^ ]+) boost library, .*',
      lambda m: MissingLibrary(m.group(1))),
+    (r'configure: error: ([^ ]+) needed\!',
+     lambda m: MissingVagueDependency(m.group(1))),
     (r'\*\*\* (.*) not found, please install it \*\*\*',
      lambda m: MissingVagueDependency(m.group(1))),
     (
