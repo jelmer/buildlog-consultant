@@ -1207,6 +1207,8 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(2))),
         (r'Could not find ([A-Za-z-]+)',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.+) is required for (.*)\.',
+         lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
@@ -1806,6 +1808,10 @@ build_failure_regexps = [
     (
         ".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) require (.*) >= (.*), (.*) which were not found.",
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
+    ),
+    (
+        r"ERROR: (.*) is not installed\. Install at least (.*) version (.+) to continue\.",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(3))
     ),
     (
         r"configure: error: Library requirements \((.*)\) not met\.",
