@@ -505,10 +505,6 @@ class MissingPerlModule:
             return "Missing Perl Module: %s" % self.module
 
 
-def perl_missing_module(m):
-    return MissingPerlModule(m.group(1) + ".pm", m.group(2), m.group(3).split(" "))
-
-
 @problem("missing-perl-file")
 class MissingPerlFile:
 
@@ -1557,7 +1553,9 @@ build_failure_regexps = [
         lambda m: MissingCHeader(m.group(1)),
     ),
     ("✖ \x1b\\[31mERROR:\x1b\\[39m Cannot find module '(.*)'", node_module_missing),
+    ("\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
+    ('\x1b\\[1m\x1b\\[31m\\[\\!\\] \x1b\\[1mError: Cannot find module \'(.*)\'', node_module_missing),
     ("✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
      node_module_missing),
@@ -1977,13 +1975,13 @@ build_failure_regexps = [
     (r"^No space left on device.", lambda m: NoSpaceOnDevice()),
     (
         r".*Can\'t locate (.*).pm in @INC \(you may need to install the "
-        r"(.*) module\) \(@INC contains: (.*)\) at .* line .*.",
-        perl_missing_module,
+        r"(.*) module\) \(@INC contains: (.*)\) at .* line [0-9]+\.",
+        lambda m: MissingPerlModule(m.group(1) + ".pm", m.group(2), m.group(3).split(" ")),
     ),
     (
         r".*Can\'t locate (.*).pm in @INC \(you may need to install the "
         r"(.*) module\) \(@INC contains: (.*)\)\.",
-        perl_missing_module,
+        lambda m: MissingPerlModule(m.group(1) + ".pm", m.group(2), m.group(3).split(" ")),
     ),
     (
         r"\[DynamicPrereqs\] Can't locate (.*) at inline delegation in .*",
@@ -3146,6 +3144,13 @@ build_failure_regexps = [
     (r'Error: spawn (.*) ENOENT',
      lambda m: MissingCommand(m.group(1))),
 
+    (r'E ImportError: Failed to initialize: Bad (.*) executable\.',
+     lambda m: MissingCommand(m.group(1))),
+
+    (r'ESLint couldn\'t find the config "(.*)" to extend from\. '
+     r'Please check that the name of the config is correct\.',
+     None),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -3314,6 +3319,10 @@ build_failure_regexps = [
     ),
     (r'([^ ]+) is required for ([^ ]+)\.',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'configure: error: \*\*\* No ([^.])\! '
+     r'Install (.*) development headers/libraries! \*\*\*',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
@@ -3337,6 +3346,7 @@ secondary_build_failure_regexps = [
     r"[^:]+: error: (.*)",
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
+    r"error TS[0-9]+: (.*)",
 
     r"fontmake: Error: In '(.*)': (.*)",
 

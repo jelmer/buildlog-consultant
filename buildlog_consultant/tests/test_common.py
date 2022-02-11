@@ -1314,6 +1314,23 @@ Call Stack (most recent call first):
              '/usr/share/perl5/Dist/Inkt.pm line 208.'], 1,
             MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None))
         self.run_test(
+            ["Can't locate ExtUtils/Depends.pm in @INC (you may need to "
+             "install the ExtUtils::Depends module) (@INC contains: "
+             "/etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.32.1 "
+             "/usr/local/share/perl/5.32.1 /usr/lib/x86_64-linux-gnu/perl5/5.32 "
+             "/usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base "
+             "/usr/lib/x86_64-linux-gnu/perl/5.32 "
+             "/usr/share/perl/5.32 /usr/local/lib/site_perl) at "
+             "(eval 11) line 1."], 1, MissingPerlModule(
+                 "ExtUtils/Depends.pm", "ExtUtils::Depends", [
+                     "/etc/perl",
+                     "/usr/local/lib/x86_64-linux-gnu/perl/5.32.1",
+                     "/usr/local/share/perl/5.32.1",
+                     "/usr/lib/x86_64-linux-gnu/perl5/5.32",
+                     "/usr/share/perl5", "/usr/lib/x86_64-linux-gnu/perl-base",
+                     "/usr/lib/x86_64-linux-gnu/perl/5.32",
+                     "/usr/share/perl/5.32", "/usr/local/lib/site_perl"]))
+        self.run_test(
             ["Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) "
              "does not appear to be installed"], 1,
             MissingPerlModule(None, "Pod::Weaver::Plugin::WikiDoc"))
