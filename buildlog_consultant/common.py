@@ -3042,7 +3042,7 @@ build_failure_regexps = [
     (
         r'(.*) version (.*) required--this is only version (.*) '
         r'at .*\.pm line [0-9]+\.',
-        lambda m: MissingPerlModule(None, m.group(1), m.group(2)),
+        lambda m: MissingPerlModule(None, m.group(1), minimum_version=m.group(2)),
     ),
 
     (

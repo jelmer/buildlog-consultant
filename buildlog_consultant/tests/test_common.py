@@ -1334,6 +1334,10 @@ Call Stack (most recent call first):
             ["Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) "
              "does not appear to be installed"], 1,
             MissingPerlModule(None, "Pod::Weaver::Plugin::WikiDoc"))
+        self.run_test(
+            ["List::Util version 1.56 required--this is only version 1.55 "
+             "at /build/tmpttq5hhpt/package/blib/lib/List/AllUtils.pm line 8."],
+            1, MissingPerlModule(None, "List::Util", minimum_version="1.56"))
 
     def test_missing_perl_file(self):
         self.run_test(
