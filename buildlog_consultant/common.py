@@ -490,7 +490,7 @@ class MissingPerlDistributionFile:
 @problem("missing-perl-module")
 class MissingPerlModule:
 
-    filename: str
+    filename: Optional[str]
     module: str
     inc: Optional[List[str]] = None
     minimum_version: Optional[str] = None
@@ -906,6 +906,19 @@ class SetupPyCommandMissingMatcher(Matcher):
             if self.warning_match.fullmatch(lines[j].rstrip("\n")):
                 return [i], MissingSetupPyCommand(m.group(1))
         return [], None
+
+
+class MultiLinePerlMissingModulesError(Matcher):
+
+    def match(self, lines, i):
+        if lines[i].rstrip("\n") != "# The following modules are not available.":
+            return [], None
+        if lines[i+1].rstrip("\n") != "# `perl Makefile.PL | cpanm` will install them:":
+            return [], None
+
+        relevant_linenos = [i, i + 1, i + 2]
+
+        return relevant_linenos, MissingPerlModule(lines[i+2].strip())
 
 
 class MultiLineConfigureError(Matcher):
@@ -1563,6 +1576,11 @@ build_failure_regexps = [
     (r'\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
     (r"\s*Error: Cannot find module \'(.*)\'", node_module_missing),
     (r">> Error: Cannot find module \'(.*)\'", node_module_missing),
+    (r'    Cannot find module \'(.*)\' from \'.*\'',
+     lambda m: MissingNodeModule(m.group(1))),
+    (r'>> Error: Grunt attempted to load a \.coffee file '
+     r'but CoffeeScript was not installed\.',
+     lambda m: MissingNodePackage('coffeescript')),
     (
         r">> Got an unexpected exception from the coffee-script compiler. "
         r"The original exception was: Error: Cannot find module \'(.*)\'",
@@ -1686,6 +1704,7 @@ build_failure_regexps = [
         lambda m: MissingCommand("git"),
     ),
     MultiLineConfigureError(),
+    MultiLinePerlMissingModulesError(),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"configure: error: (doxygen|asciidoc) is not available "
