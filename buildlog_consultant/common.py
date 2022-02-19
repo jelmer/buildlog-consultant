@@ -1591,6 +1591,10 @@ build_failure_regexps = [
         node_module_missing,
     ),
     (
+        r"  Module (.*) in the transform option was not found\.",
+        node_module_missing,
+    ),
+    (
         r"libtool/glibtool not found\!",
         lambda m: MissingVagueDependency("libtool"),
     ),
@@ -3384,8 +3388,9 @@ secondary_build_failure_regexps = [
     # latex
     r"\! LaTeX Error: .*",
 
-    # Java
     r"Killed",
+
+    # Java
     r'Exception in thread "(.*)" (.*): (.*);',
     r"error: Unrecognized option: \'.*\'",
     r".*: No space left on device",
