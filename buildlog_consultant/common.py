@@ -1586,6 +1586,8 @@ build_failure_regexps = [
     (r'\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
     (r"\s*Error: Cannot find module \'(.*)\'", node_module_missing),
     (r">> Error: Cannot find module \'(.*)\'", node_module_missing),
+    (r'Error: Failed to load parser \'.*\' declared in \'.*\': '
+     r'Cannot find module \'(.*)\'', lambda m: MissingNodeModule(m.group(1))),
     (r'    Cannot find module \'(.*)\' from \'.*\'',
      lambda m: MissingNodeModule(m.group(1))),
     (r'>> Error: Grunt attempted to load a \.coffee file '
@@ -1621,6 +1623,10 @@ build_failure_regexps = [
     (
         r"configure: error: The Java compiler javac failed.*",
         lambda m: MissingCommand('javac')
+    ),
+    (
+        r"ERROR: InvocationError for command could not find executable (.*)",
+        lambda m: MissingCommand(m.group(1))
     ),
     (
         r"  \*\*\* The (.*) script could not be found\. .*",
@@ -3191,6 +3197,26 @@ build_failure_regexps = [
     (r'ESLint couldn\'t find the config "(.*)" to extend from\. '
      r'Please check that the name of the config is correct\.',
      None),
+    (
+        r'E OSError: no library called "cairo-2" was found',
+        lambda m: MissingLibrary(m.group(1))
+    ),
+    (
+        r"ERROR: \[Errno 2\] No such file or directory: '(.*)'",
+        file_not_found,
+    ),
+    (
+        r"error: \[Errno 2\] No such file or directory: '(.*)'",
+        file_not_found,
+    ),
+    (
+        r"ERROR: (.*): commands failed",
+        lambda m: MissingCommand(m.group(1))
+    ),
+    (
+        r'We need the Python library (.+) to be installed\. .*',
+        lambda m: MissingPythonDistribution(m.group(1))
+    ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -3200,6 +3226,10 @@ build_failure_regexps = [
     (r'([^ ]+) package not found\. Please use \'pip install .*\' first',
      lambda m: MissingPythonDistribution(m.group(1))),
     (r'configure: error: ([^ ]+) development files not found',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'Exception: ([^ ]+) development files not found\..*',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'Exception: Couldn\'t find (.*) source libs\!',
      lambda m: MissingVagueDependency(m.group(1))),
     ('configure: error: \'(.*)\' command was not found',
      lambda m: MissingCommand(m.group(1))),
@@ -3366,6 +3396,9 @@ build_failure_regexps = [
 
     (r'configure: error: \*\*\* No ([^.])\! '
      r'Install (.*) development headers/libraries! \*\*\*',
+     lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'configure: error: \'(.*)\' cannot be found',
      lambda m: MissingVagueDependency(m.group(1))),
 ]
 
