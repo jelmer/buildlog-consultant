@@ -1187,6 +1187,10 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingPkgConfig(m.group(1), m.group(2))),
         (r'--   No package \'(.*)\' found',
          lambda m: MissingPkgConfig(m.group(1))),
+        (r'([^ ]+) library not found\.',
+         lambda m: MissingLibrary(m.group(1))),
+        (r'Please install (.*) so that it is on the PATH and try again\.',
+         command_missing),
         (r'-- Unable to find git\.  Setting git revision to \'unknown\'\.',
          lambda m: MissingCommand('git')),
         (r'(.*) must be installed before configuration \& building can '
@@ -1218,6 +1222,12 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'(.+) is required for (.*)\.',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'No (.+) version could be found in your system\.',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'([^ ]+) >= (.*) is required',
+         lambda m: MissingVagueDependency(m.group(1), m.group(2))),
+        (r'([^ ]+) binary not found\!',
+         lambda m: MissingCommand(m.group(1))),
     ]
 
     @classmethod
@@ -2121,6 +2131,14 @@ build_failure_regexps = [
         r'Can\'t open perl script "(.*)": No such file or directory',
         lambda m: MissingPerlFile(m.group(1))
      ),
+
+    (
+        MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
+        "\x1b\[1;31mCould not resolve dependencies for project .*: "
+        "The following artifacts could not be resolved: (.*): "
+        "Could not find artifact (.*) in (.*) \((.*)\)\x1b\[m -> \x1b\[1m\[Help 1\]\x1b\[m",
+        maven_missing_artifact,
+    ),
     # Maven
     (
         MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
@@ -3272,6 +3290,9 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1))
     ),
     (
+        r'error: Cannot find (.*) in the usual places. .*',
+        lambda m: MissingVagueDependency(m.group(1))),
+    (
         r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
         lambda m: MissingVagueDependency(m.group(1))
     ),
@@ -3370,6 +3391,8 @@ secondary_build_failure_regexps = [
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
     r"error TS[0-9]+: (.*)",
+
+    r"  [0-9]+:[0-9]+\s+error\s+.+",
 
     r"fontmake: Error: In '(.*)': (.*)",
 
@@ -3586,6 +3609,7 @@ secondary_build_failure_regexps = [
     r"dh_auto_(test|build): error: (.*)",
     r"tar: This does not look like a tar archive",
     r"\[DZ\] no (name|version) was ever set",
+    r"\[Runtime\] No -phase or -relationship specified at .* line [0-9]+\.",
     r"diff: (.*): No such file or directory",
     r"gpg: signing failed: .*",
     # mh_install
