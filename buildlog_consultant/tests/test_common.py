@@ -84,7 +84,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             self.assertEqual(match.line, lines[lineno - 1])
             self.assertEqual(lineno, match.lineno)
         else:
-            self.assertIs(match, None)
+            self.assertIsNone(match)
         if err:
             self.assertEqual(actual_err, err)
         else:
