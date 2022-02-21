@@ -959,7 +959,6 @@ class AutoconfUnexpectedMacroMatcher(Matcher):
     )
     regexp2 = re.compile(r".*\.\/configure: line [0-9]+: `\s*([A-Z0-9_]+)\(.*")
 
-
     def match(self, lines, i):
         m = self.regexp1.fullmatch(lines[i].rstrip("\n"))
         if not m:
@@ -2140,9 +2139,9 @@ build_failure_regexps = [
 
     (
         MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
-        "\x1b\[1;31mCould not resolve dependencies for project .*: "
+        "\x1b\\[1;31mCould not resolve dependencies for project .*: "
         "The following artifacts could not be resolved: (.*): "
-        "Could not find artifact (.*) in (.*) \((.*)\)\x1b\[m -> \x1b\[1m\[Help 1\]\x1b\[m",
+        "Could not find artifact (.*) in (.*) \\((.*)\\)\x1b\\[m -> \x1b\\[1m\\[Help 1\\]\x1b\\[m",
         maven_missing_artifact,
     ),
     # Maven
@@ -3168,7 +3167,7 @@ build_failure_regexps = [
      lambda m: MinimumAutoconfTooOld(m.group(1))),
 
     (r'# Error: The file "(MANIFEST|META.yml)" is missing from '
-     'this distribution\. .*',
+     'this distribution\\. .*',
      lambda m: MissingPerlDistributionFile(m.group(1)),
      ),
 
