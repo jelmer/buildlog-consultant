@@ -844,7 +844,7 @@ FAILED_STAGE_FAIL_FINDERS = {
 }
 
 
-def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailure:  # noqa: C901
+def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailure:
     if isinstance(f, SbuildLog):
         sbuildlog = f
     else:
