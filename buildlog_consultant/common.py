@@ -196,11 +196,23 @@ class MissingFile:
         return "Missing file: %s" % self.path
 
 
+@problem("missing-command-or-build-file")
+class MissingCommandOrBuildFile:
+
+    filename: str
+
+    def __str__(self):
+        return "Missing command or build file: %s" % self.filename
+
+
 def file_not_found(m):
     if m.group(1) == 'git':
         return MissingCommand(m.group(1))
     if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
         return MissingFile(m.group(1))
+    if '/' not in m.group(1):
+        # Maybe a missing command?
+        return MissingCommandOrBuildFile(m.group(1))
     return None
 
 
