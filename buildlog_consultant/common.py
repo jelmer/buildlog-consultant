@@ -1579,7 +1579,7 @@ build_failure_regexps = [
         lambda m: MissingPythonModule(m.group(1), python_version=3)
      ),
     (
-        r"/usr/bin/python3: No module named (.*)",
+        r"/usr/bin/python3: No module named ([^ ]+).*",
         lambda m: MissingPythonModule(m.group(1), python_version=3)
      ),
     ('(.*:[0-9]+|package .*): cannot find package "(.*)" in any of:',
