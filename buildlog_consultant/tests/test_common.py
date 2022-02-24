@@ -981,6 +981,8 @@ error: invalid command 'test'
             1,
             MissingCommand("git"),
         )
+        self.run_test(
+            ["ERROR:   flake8: commands failed"], 1, MissingCommand("flake8"))
 
     def test_ts_error(self):
         self.run_test(

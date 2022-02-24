@@ -3244,7 +3244,7 @@ build_failure_regexps = [
         file_not_found_maybe_executable,
     ),
     (
-        r"ERROR: (.*): commands failed",
+        r"ERROR:\s+(.*): commands failed",
         lambda m: MissingCommand(m.group(1))
     ),
     (

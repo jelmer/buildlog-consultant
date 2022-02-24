@@ -23,7 +23,7 @@ from debian.deb822 import PkgRelation
 from typing import List, Optional, Tuple
 import yaml
 
-from . import Problem, SingleLineMatch, problem
+from . import Problem, SingleLineMatch, problem, Match
 from .common import NoSpaceOnDevice
 
 
@@ -124,7 +124,7 @@ class AptBrokenPackages(Problem):
         return isinstance(other, type(self)) and self.description == other.description
 
 
-def find_apt_get_failure(lines):  # noqa: C901
+def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Problem]]:  # noqa: C901
     """Find the key failure line in apt-get-output.
 
     Returns:
