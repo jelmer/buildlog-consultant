@@ -1535,6 +1535,10 @@ build_failure_regexps = [
         python2_reqs_not_found,
     ),
     (
+        r"E ImportError: (.*) could not be imported\.",
+        lambda m: MissingPythonModule(m.group(1))
+    ),
+    (
         r"ImportError: cannot import name (.*), introspection typelib not found",
         lambda m: MissingIntrospectionTypelib(m.group(1)),
     ),
@@ -2138,7 +2142,11 @@ build_failure_regexps = [
     (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "
         r"No such file or directory",
-        None,
+        file_not_found,
+    ),
+    (
+        r"Cannot find source directory \((.*)\)",
+        file_not_found,
     ),
     (
         r"python[0-9.]*: can\'t open file \'(.*)\': \[Errno 2\] "
@@ -2494,6 +2502,7 @@ build_failure_regexps = [
         r"Use override targets instead.",
         None,
     ),
+    ("\(.*\): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): error: undefined reference to '(.*)'", None),
     (
@@ -2798,6 +2807,12 @@ build_failure_regexps = [
     (
         r'(OSError|RuntimeError): No (.*) was found: .*',
         lambda m: MissingVagueDependency(m.group(2))
+    ),
+
+    (
+        r"meson.build:[0-9]+:[0-9]+: ERROR: "
+        r"Meson version is (.*) but project requires >= (.*)\.",
+        lambda m: MissingVagueDependency("meson", m.group(2))
     ),
 
     # Seen in cpl-plugin-giraf
@@ -3201,10 +3216,15 @@ build_failure_regexps = [
     (r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. ",
      lambda m: MinimumAutoconfTooOld(m.group(1))),
 
+    (r"configure.(ac|in):[0-9]+: error: Autoconf version (.*) or higher is required",
+     lambda m: MissingVagueDependency("autoconf", m.group(2))),
+
     (r'# Error: The file "(MANIFEST|META.yml)" is missing from '
      'this distribution\\. .*',
      lambda m: MissingPerlDistributionFile(m.group(1)),
      ),
+
+    (r"^  ([^ ]+) does not exist$", file_not_found),
 
     (r'\s*> Cannot find \'\.git\' directory',
      lambda m: VcsControlDirectoryNeeded(['git'])),
@@ -3434,6 +3454,9 @@ build_failure_regexps = [
 
     (r'configure: error: \'(.*)\' cannot be found',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r".* (/<<BUILDDIR>>/.*): No such file or directory",
+     file_not_found),
 ]
 
 
