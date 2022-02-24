@@ -205,9 +205,27 @@ class MissingCommandOrBuildFile:
         return "Missing command or build file: %s" % self.filename
 
 
+@problem("missing-build-file")
+class MissingBuildFile:
+
+    filename: str
+
+    def __str__(self):
+        return "Missing build file: %s" % self.filename
+
+
 def file_not_found(m):
-    if m.group(1) == 'git':
-        return MissingCommand(m.group(1))
+    if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
+        return MissingFile(m.group(1))
+    elif m.group(1).startswith("/<<PKGBUILDDIR>>/"):
+        return MissingBuildFile(m.group(1)[len("/<<PKGBUILDDIR>>/"):])
+    if '/' not in m.group(1):
+        # Maybe a missing command?
+        return MissingBuildFile(m.group(1))
+    return None
+
+
+def file_not_found_maybe_executable(m):
     if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
         return MissingFile(m.group(1))
     if '/' not in m.group(1):
@@ -997,7 +1015,7 @@ class PythonFileNotFoundErrorMatcher(Matcher):
             return [], None
         if i - 2 >= 0 and "subprocess" in lines[i - 2]:
             return [i], MissingCommand(m.group(1))
-        return [i], file_not_found(m)
+        return [i], file_not_found_maybe_executable(m)
 
 
 class HaskellMissingDependencyMatcher(Matcher):
@@ -1483,7 +1501,7 @@ build_failure_regexps = [
         r"make: \*\*\* No rule to make target " r"\'(\/.*)\'\.  Stop\.",
         file_not_found,
     ),
-    (r"[^:]+:\d+: (.*): No such file or directory", file_not_found),
+    (r"[^:]+:\d+: (.*): No such file or directory", file_not_found_maybe_executable),
     (
         r"(distutils.errors.DistutilsError|error): "
         r"Could not find suitable distribution "
@@ -2129,7 +2147,7 @@ build_failure_regexps = [
     ),
     (
         r"error: \[Errno 2\] No such file or directory: '(.*)'",
-        file_not_found,
+        file_not_found_maybe_executable,
     ),
     (
         r".*:[0-9]+:[0-9]+: ERROR: \<ExternalProgram \'python3\' -> "
@@ -2148,7 +2166,7 @@ build_failure_regexps = [
         lambda m: SetuptoolScmVersionIssue(),
      ),
     (r"OSError: 'git' was not found", lambda m: MissingCommand("git")),
-    (r"OSError: No such file (.*)", file_not_found),
+    (r"OSError: No such file (.*)", file_not_found_maybe_executable),
     (
         r"Could not open \'(.*)\': No such file or directory at "
         r"\/usr\/share\/perl\/[0-9.]+\/ExtUtils\/MM_Unix.pm line [0-9]+.",
@@ -2296,9 +2314,9 @@ build_failure_regexps = [
         r"will not overwrite just-created \'(.*)\' with \'(.*)\'",
         None,
     ),
-    (r"IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
-    (r"error: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
-    (r"E   IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
+    (r"IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found_maybe_executable),
+    (r"error: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found_maybe_executable),
+    (r"E   IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found_maybe_executable),
     ("FAIL\t(.+\\/.+\\/.+)\t([0-9.]+)s", None),
     (
         r'dh_(.*): Cannot find \(any matches for\) "(.*)" \(tried in (.*)\)',
@@ -2396,11 +2414,6 @@ build_failure_regexps = [
     (
         r"autoreconf was not found; .*",
         lambda m: MissingCommand("autoreconf"),
-    ),
-    (
-        r"python3.[0-9]+: can\'t open file \'(.*)\': "
-        "[Errno 2] No such file or directory",
-        file_not_found,
     ),
     (r"g\+\+: error: (.*): No such file or directory", file_not_found),
     (r"strip: \'(.*)\': No such file", file_not_found),
@@ -2698,9 +2711,9 @@ build_failure_regexps = [
     (r"flag provided but not defined: .*", None),
     (r'CMake Error: The source directory "(.*)" does not exist.', lambda m: DirectoryNonExistant(m.group(1))),
     (r".*: [0-9]+: cd: can\'t cd to (.*)", lambda m: DirectoryNonExistant(m.group(1))),
-    (r"/bin/sh: 0: Can\'t open (.*)", file_not_found),
-    (r"/bin/sh: [0-9]+: cannot open (.*): No such file", file_not_found),
-    (r".*: line [0-9]+: (.*): No such file or directory", file_not_found),
+    (r"/bin/sh: 0: Can\'t open (.*)", file_not_found_maybe_executable),
+    (r"/bin/sh: [0-9]+: cannot open (.*): No such file", file_not_found_maybe_executable),
+    (r".*: line [0-9]+: (.*): No such file or directory", file_not_found_maybe_executable),
     (r"/bin/sh: [0-9]+: Syntax error: .*", None),
     (r"error: No member named \$memberName", None),
     (
@@ -3224,11 +3237,11 @@ build_failure_regexps = [
     ),
     (
         r"ERROR: \[Errno 2\] No such file or directory: '(.*)'",
-        file_not_found,
+        file_not_found_maybe_executable,
     ),
     (
         r"error: \[Errno 2\] No such file or directory: '(.*)'",
-        file_not_found,
+        file_not_found_maybe_executable,
     ),
     (
         r"ERROR: (.*): commands failed",

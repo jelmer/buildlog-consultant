@@ -25,6 +25,7 @@ from ..common import (
     DuplicateDHCompatLevel,
     DhLinkDestinationIsDirectory,
     MismatchGettextVersions,
+    MissingBuildFile,
     MissingConfigure,
     MissingJavaScriptRuntime,
     MissingJVM,
@@ -42,6 +43,7 @@ from ..common import (
     MissingMavenArtifacts,
     MissingNodeModule,
     MissingCommand,
+    MissingCommandOrBuildFile,
     MissingPkgConfig,
     MissingBoostComponents,
     MissingVcVersionerVersion,
@@ -97,6 +99,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
                 "needed by 'dan-nno.autopgen.bin'.  Stop."
             ],
             1,
+            MissingBuildFile('nno.autopgen.bin'),
         )
         self.run_test(
             [
@@ -204,7 +207,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
         self.run_test(
             ["/<<PKGBUILDDIR>>/build.xml:59: " "/<<PKGBUILDDIR>>/lib does not exist."],
             1,
-            None,
+            MissingBuildFile('lib')
         )
 
     def test_vignette_builder(self):
@@ -277,6 +280,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
                 "[Errno 2] No such file or directory"
             ],
             1,
+            MissingBuildFile('setup.py')
         )
         self.run_test(
             [
