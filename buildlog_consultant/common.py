@@ -1276,6 +1276,12 @@ class MissingCSharpCompiler:
         return "No C# compiler found"
 
 
+@problem("missing-rust-compiler")
+class MissingRustCompiler:
+    def __str__(self):
+        return "No Rust compiler found"
+
+
 @problem("missing-libtool")
 class MissingLibtool:
     def __str__(self):
@@ -1770,6 +1776,10 @@ build_failure_regexps = [
     (
         r'configure: error: No C\# compiler found',
         lambda m: MissingCSharpCompiler(),
+    ),
+    (
+        r'error: can\'t find Rust compiler',
+        lambda m: MissingRustCompiler(),
     ),
     (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
