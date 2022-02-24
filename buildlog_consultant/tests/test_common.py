@@ -25,6 +25,7 @@ from ..common import (
     DuplicateDHCompatLevel,
     DhLinkDestinationIsDirectory,
     MismatchGettextVersions,
+    MissingBuildFile,
     MissingConfigure,
     MissingJavaScriptRuntime,
     MissingJVM,
@@ -42,6 +43,7 @@ from ..common import (
     MissingMavenArtifacts,
     MissingNodeModule,
     MissingCommand,
+    MissingCommandOrBuildFile,
     MissingPkgConfig,
     MissingBoostComponents,
     MissingVcVersionerVersion,
@@ -72,6 +74,7 @@ from ..common import (
     DirectoryNonExistant,
     UnknownCertificateAuthority,
     MissingGitIdentity,
+    VcsControlDirectoryNeeded,
 )
 import unittest
 
@@ -83,7 +86,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             self.assertEqual(match.line, lines[lineno - 1])
             self.assertEqual(lineno, match.lineno)
         else:
-            self.assertIs(match, None)
+            self.assertIsNone(match)
         if err:
             self.assertEqual(actual_err, err)
         else:
@@ -96,6 +99,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
                 "needed by 'dan-nno.autopgen.bin'.  Stop."
             ],
             1,
+            MissingBuildFile('nno.autopgen.bin'),
         )
         self.run_test(
             [
@@ -173,6 +177,12 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             DirectoryNonExistant("rollup-plugin"),
         )
 
+    def test_vcs_control_directory(self):
+        self.run_test(
+            ["   > Cannot find '.git' directory"],
+            1,
+            VcsControlDirectoryNeeded(['git']))
+
     def test_missing_sprockets_file(self):
         self.run_test(
             [
@@ -197,7 +207,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
         self.run_test(
             ["/<<PKGBUILDDIR>>/build.xml:59: " "/<<PKGBUILDDIR>>/lib does not exist."],
             1,
-            None,
+            MissingBuildFile('lib')
         )
 
     def test_vignette_builder(self):
@@ -270,6 +280,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
                 "[Errno 2] No such file or directory"
             ],
             1,
+            MissingBuildFile('setup.py')
         )
         self.run_test(
             [
@@ -823,6 +834,9 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingNodeModule("fs-extra"),
         )
+        self.run_test(
+            ["\x1b[1m\x1b[31m[!] \x1b[1mError: Cannot find module '@rollup/plugin-buble'"],
+            1, MissingNodeModule('@rollup/plugin-buble'))
 
     def test_setup_py_command(self):
         self.run_test(
@@ -1304,9 +1318,30 @@ Call Stack (most recent call first):
              '/usr/share/perl5/Dist/Inkt.pm line 208.'], 1,
             MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None))
         self.run_test(
+            ["Can't locate ExtUtils/Depends.pm in @INC (you may need to "
+             "install the ExtUtils::Depends module) (@INC contains: "
+             "/etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.32.1 "
+             "/usr/local/share/perl/5.32.1 /usr/lib/x86_64-linux-gnu/perl5/5.32 "
+             "/usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base "
+             "/usr/lib/x86_64-linux-gnu/perl/5.32 "
+             "/usr/share/perl/5.32 /usr/local/lib/site_perl) at "
+             "(eval 11) line 1."], 1, MissingPerlModule(
+                 "ExtUtils/Depends.pm", "ExtUtils::Depends", [
+                     "/etc/perl",
+                     "/usr/local/lib/x86_64-linux-gnu/perl/5.32.1",
+                     "/usr/local/share/perl/5.32.1",
+                     "/usr/lib/x86_64-linux-gnu/perl5/5.32",
+                     "/usr/share/perl5", "/usr/lib/x86_64-linux-gnu/perl-base",
+                     "/usr/lib/x86_64-linux-gnu/perl/5.32",
+                     "/usr/share/perl/5.32", "/usr/local/lib/site_perl"]))
+        self.run_test(
             ["Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) "
              "does not appear to be installed"], 1,
             MissingPerlModule(None, "Pod::Weaver::Plugin::WikiDoc"))
+        self.run_test(
+            ["List::Util version 1.56 required--this is only version 1.55 "
+             "at /build/tmpttq5hhpt/package/blib/lib/List/AllUtils.pm line 8."],
+            1, MissingPerlModule(None, "List::Util", minimum_version="1.56"))
 
     def test_missing_perl_file(self):
         self.run_test(
@@ -1814,6 +1849,13 @@ arch:all and the other not)""".splitlines(),
             3,
             MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True),
         )
+        self.run_test(
+            [
+                "checking for libexif to use... ./configure: line 15968: syntax error near unexpected token `LIBEXIF,libexif'",
+                "./configure: line 15968: `\t\t\t\t\t\tPKG_CHECK_MODULES(LIBEXIF,libexif >= 0.6.18,have_LIBEXIF=yes,:)'",
+            ],
+            2,
+            MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True))
 
     def test_config_status_input(self):
         self.run_test(
