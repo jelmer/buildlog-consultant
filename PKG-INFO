@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: buildlog-consultant
-Version: 0.0.17
+Version: 0.0.18
 Summary: buildlog parser and analyser
 Home-page: https://github.com/jelmer/buildlog-consultant
 Author: Jelmer Vernooij
