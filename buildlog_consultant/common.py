@@ -201,6 +201,10 @@ class MissingCommandOrBuildFile:
 
     filename: str
 
+    @property
+    def command(self):
+        return self.filename
+
     def __str__(self):
         return "Missing command or build file: %s" % self.filename
 
