@@ -1604,7 +1604,7 @@ build_failure_regexps = [
     ),
     (
         r"[^:]+:\d+:\d+: fatal error: (.+\.xpm): No such file or directory",
-        None,
+        file_not_found,
     ),
     (
         r'.*fatal: not a git repository \(or any parent up to mount point \/\)',
@@ -2320,7 +2320,7 @@ build_failure_regexps = [
      r'Unable to read font \((.*)\) \[No such file or directory\]\.\\n\'',
      file_not_found),
     (r"mv: cannot stat \'(.*)\': No such file or directory", file_not_found),
-    (r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", None),
+    (r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", file_not_found),
     (
         r"(/usr/bin/install|mv): "
         r"will not overwrite just-created \'(.*)\' with \'(.*)\'",
@@ -2577,7 +2577,7 @@ build_failure_regexps = [
         r"supported, change to [tool:pytest] instead.",
         None,
     ),
-    (r"cp: cannot stat \'(.*)\': No such file or directory", None),
+    (r"cp: cannot stat \'(.*)\': No such file or directory", file_not_found),
     (r"cp: \'(.*)\' and \'(.*)\' are the same file", None),
     (r"PHP Fatal error: (.*)", None),
     (r"sed: no input files", None),
@@ -2787,6 +2787,10 @@ build_failure_regexps = [
         r'RuntimeError: The (.*) executable cannot be found\. '
         r'Please check if it is in the system path\.',
         lambda m: MissingCommand(m.group(1).lower())
+    ),
+    (
+        r'.*: [0-9]+: cannot open (.*): No such file',
+        file_not_found,
     ),
     (
         r'Cannot find Git. Git is required for .*',
