@@ -2051,9 +2051,9 @@ build_failure_regexps = [
         lambda m: DhWithOrderIncorrect(),
     ),
     (
-        r"dh: Compatibility levels before ([0-9]+) are no longer supported "
+        r"(dh: |dh_.*: error: )Compatibility levels before ([0-9]+) are no longer supported "
         r"\(level ([0-9]+) requested\)",
-        lambda m: UnsupportedDebhelperCompatLevel(int(m.group(1)), int(m.group(2))),
+        lambda m: UnsupportedDebhelperCompatLevel(int(m.group(2)), int(m.group(3))),
     ),
     (r'\{standard input\}: Error: (.*)', None),
     (r"dh: Unknown sequence (.*) \(choose from: .*\)", None),

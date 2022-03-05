@@ -32,6 +32,7 @@ from ..common import (
     MissingConfigStatusInput,
     MissingCHeader,
     MissingDHCompatLevel,
+    UnsupportedDebhelperCompatLevel,
     MissingJDKFile,
     MissingJDK,
     MissingJRE,
@@ -525,6 +526,12 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingDHCompatLevel("dh_clean"),
         )
+
+    def test_dh_compat_too_old(self):
+        self.run_test([
+            "dh_clean: error: Compatibility levels before 7 are no longer "
+            "supported (level 5 requested)"], 1,
+            UnsupportedDebhelperCompatLevel(7, 5))
 
     def test_dh_udeb_shared_library(self):
         self.run_test(
