@@ -1258,7 +1258,7 @@ class CMakeErrorMatcher(Matcher):
         (r'No (.+) version could be found in your system\.',
          lambda m: MissingVagueDependency(m.group(1))),
         (r'([^ ]+) >= (.*) is required',
-         lambda m: MissingVagueDependency(m.group(1), m.group(2))),
+         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
         (r'([^ ]+) binary not found\!',
          lambda m: MissingCommand(m.group(1))),
     ]
@@ -2819,8 +2819,8 @@ build_failure_regexps = [
 
     (
         r"meson.build:[0-9]+:[0-9]+: ERROR: "
-        r"Meson version is (.*) but project requires >= (.*)\.",
-        lambda m: MissingVagueDependency("meson", m.group(2))
+        r"Meson version is (.*) but project requires >=\s*(.*)\.",
+        lambda m: MissingVagueDependency("meson", minimum_version=m.group(2))
     ),
 
     # Seen in cpl-plugin-giraf

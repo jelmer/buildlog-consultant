@@ -423,6 +423,12 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingCommand("git"),
         )
 
+    def test_meson_version(self):
+        self.run_test(
+            ["meson.build:1:0: ERROR: Meson version is 0.49.2 but "
+             "project requires >=0.50."], 1,
+            MissingVagueDependency("meson", minimum_version="0.50"))
+
     def test_need_pgbuildext(self):
         self.run_test(
             [
@@ -1891,7 +1897,7 @@ arch:all and the other not)""".splitlines(),
                 "No such file or directory"
             ],
             1,
-            None,
+            MissingBuildFile("debian/patches/lshw-gtk.desktop"),
         )
 
     def test_automake_input(self):
