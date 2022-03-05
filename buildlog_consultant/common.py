@@ -3110,6 +3110,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1))),
 
     (
+        r"configure: error: You don't seem to have the (.*) library installed\..*",
+        lambda m: MissingVagueDependency(m.group(1))),
+
+    (
         r'configure: error: You need (.*) installed',
         lambda m: MissingVagueDependency(m.group(1))
     ),
