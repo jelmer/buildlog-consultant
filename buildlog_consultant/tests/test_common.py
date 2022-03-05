@@ -1900,6 +1900,12 @@ arch:all and the other not)""".splitlines(),
             MissingBuildFile("debian/patches/lshw-gtk.desktop"),
         )
 
+    def test_bash_redir_missing(self):
+        self.run_test(
+            ["/bin/bash: idna-tables-properties.csv: "
+             "No such file or directory"],
+            1, MissingBuildFile("idna-tables-properties.csv"))
+
     def test_automake_input(self):
         self.run_test(
             [

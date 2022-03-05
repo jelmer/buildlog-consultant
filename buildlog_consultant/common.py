@@ -2717,7 +2717,7 @@ build_failure_regexps = [
         None,
     ),
     (r"rm: cannot remove \'(.*)\': Is a directory", None),
-    (r"rm: cannot remove \'(.*)\': No such file or directory", None),
+    (r"rm: cannot remove \'(.*)\': No such file or directory", file_not_found),
     # Invalid option from Python
     (r"error: option .* not recognized", None),
     # Invalid option from go
@@ -3465,6 +3465,18 @@ build_failure_regexps = [
 
     (r".* (/<<BUILDDIR>>/.*): No such file or directory",
      file_not_found),
+
+    (r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
+     file_not_found),
+
+    (r"[^:]+: cannot stat \'.*\': No such file or directory", file_not_found),
+    (r"cat: (.*): No such file or directory", file_not_found),
+
+    (r"ls: cannot access \'(.*)\': No such file or directory", file_not_found),
+    (r"Problem opening (.*): No such file or directory at (.*) line ([0-9]+)\.",
+     file_not_found),
+
+    (r"/bin/bash: (.*): No such file or directory", file_not_found),
 ]
 
 
@@ -3493,8 +3505,6 @@ secondary_build_failure_regexps = [
     r"  [0-9]+:[0-9]+\s+error\s+.+",
 
     r"fontmake: Error: In '(.*)': (.*)",
-
-    r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
 
     r'#   Failed test at t\/.*\.t line [0-9]+\.',
 
@@ -3580,7 +3590,6 @@ secondary_build_failure_regexps = [
     r"dh_autoreconf: autoreconf .* returned exit code [0-9]+",
     r"make: \*\*\* \[.*\] Error [0-9]+",
     r".*:[0-9]+: \*\*\* missing separator\.  Stop\.",
-    r"[^:]+: cannot stat \'.*\': No such file or directory",
     r"[0-9]+ tests: [0-9]+ ok, [0-9]+ failure\(s\), [0-9]+ test\(s\) skipped",
     r"\*\*Error:\*\* (.*)",
     r"^Error: (.*)",
@@ -3591,7 +3600,6 @@ secondary_build_failure_regexps = [
     r"^Error \[ERR_.*\]: .*",
     r"^FAILED \(.*\)",
     r"FAILED .*",
-    r"cat: (.*): No such file or directory",
     # Random Python errors
     "^(E  +)?(SyntaxError|TypeError|ValueError|AttributeError|NameError|"
     r"django.core.exceptions..*|RuntimeError|subprocess.CalledProcessError|"
@@ -3654,8 +3662,6 @@ secondary_build_failure_regexps = [
     r"ERROR: There are no scenarios; must have at least one.",
     # perl
     r"Execution of (.*) aborted due to compilation errors.",
-    r"ls: cannot access \'(.*)\': No such file or directory",
-    r"Problem opening (.*): No such file or directory at (.*) line ([0-9]+)\.",
     # Mocha
     r"     AssertionError \[ERR_ASSERTION\]: Missing expected exception.",
     # lt (C++)
@@ -3805,6 +3811,7 @@ def find_build_failure_description(  # noqa: C901
         for regexp in compiled_secondary_build_failure_regexps:
             m = regexp.fullmatch(line)
             if m:
+                logger.debug('regex %r matched line %r', regexp, line)
                 return SingleLineMatch.from_lines(lines, lineno), None
     return None, None
 
