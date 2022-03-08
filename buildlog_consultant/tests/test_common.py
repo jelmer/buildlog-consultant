@@ -1872,6 +1872,11 @@ arch:all and the other not)""".splitlines(),
             2,
             MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True))
 
+    def test_autoconf_version(self):
+        self.run_test(
+            ["configure.ac:13: error: Autoconf version 2.71 or higher is required"], 1,
+            MissingVagueDependency("autoconf", minimum_version="2.71"))
+
     def test_config_status_input(self):
         self.run_test(
             ["config.status: error: cannot find input file: " "`po/Makefile.in.in'"],

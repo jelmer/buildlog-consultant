@@ -3229,7 +3229,7 @@ build_failure_regexps = [
      lambda m: MinimumAutoconfTooOld(m.group(1))),
 
     (r"configure.(ac|in):[0-9]+: error: Autoconf version (.*) or higher is required",
-     lambda m: MissingVagueDependency("autoconf", m.group(2))),
+     lambda m: MissingVagueDependency("autoconf", minimum_version=m.group(2))),
 
     (r'# Error: The file "(MANIFEST|META.yml)" is missing from '
      'this distribution\\. .*',
@@ -3282,6 +3282,12 @@ build_failure_regexps = [
     (
         r'We need the Python library (.+) to be installed\. .*',
         lambda m: MissingPythonDistribution(m.group(1))
+    ),
+
+    # Waf
+    (
+        r'Checking for header (.+\.h|.+\.hpp)\s+: not found ',
+        lambda m: MissingCHeader(m.group(1))
     ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
