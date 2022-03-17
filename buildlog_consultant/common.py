@@ -3290,6 +3290,11 @@ build_failure_regexps = [
         lambda m: MissingCHeader(m.group(1))
     ),
 
+    (
+        r'000: File does not exist (.*)',
+        file_not_found,
+    ),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
