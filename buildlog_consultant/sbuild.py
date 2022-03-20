@@ -570,6 +570,13 @@ class MissingRevision:
 
     revision: bytes
 
+    def json(self):
+        return {'revision': self.revision.decode('utf-8')}
+
+    @classmethod
+    def from_json(cls, json):
+        return cls(revision=json['revision'].encode('utf-8'))
+
     def __str__(self):
         return "Missing revision: %r" % self.revision
 

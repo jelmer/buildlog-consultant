@@ -423,6 +423,11 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingCommand("git"),
         )
 
+    def test_meson_missing_lib(self):
+        self.run_test(
+            ["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
+            1, MissingLibrary("vulkan-1"))
+
     def test_meson_version(self):
         self.run_test(
             ["meson.build:1:0: ERROR: Meson version is 0.49.2 but "

@@ -1886,6 +1886,10 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(3)),
     ),
     (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: C\\+\\++ shared or static library '(.*)' not found",
+        lambda m: MissingLibrary(m.group(3)),
+    ),
+    (
         ".*meson.build:([0-9]+):([0-9]+): ERROR: Pkg-config binary for machine .* not found. Giving up.",
         lambda m: MissingCommand("pkg-config"),
     ),
@@ -3735,6 +3739,7 @@ secondary_build_failure_regexps = [
     r"Cannot find the jar to install: (.*)",
     r"ERROR: .*",
     r"> error: (.*)",
+    r"(.*\.hs):[0-9]+:[0-9]+: error:",
 ]
 
 compiled_secondary_build_failure_regexps = []
