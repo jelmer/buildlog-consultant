@@ -1882,6 +1882,12 @@ arch:all and the other not)""".splitlines(),
             ["configure.ac:13: error: Autoconf version 2.71 or higher is required"], 1,
             MissingVagueDependency("autoconf", minimum_version="2.71"))
 
+    def test_claws_version(self):
+        self.run_test(
+            ["configure: error: libetpan 0.57 not found"], 1,
+            MissingVagueDependency(
+                'libetpan', minimum_version='0.57'))
+
     def test_config_status_input(self):
         self.run_test(
             ["config.status: error: cannot find input file: " "`po/Makefile.in.in'"],

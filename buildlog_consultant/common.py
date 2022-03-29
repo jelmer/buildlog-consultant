@@ -1249,6 +1249,12 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) required to compile (.*)',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) requires (.*) ([0-9].*) or newer. See (https://.*)\s*',
+         lambda m: MissingVagueDependency(
+             m.group(2), minimum_version=m.group(3), url=m.group(4))),
+        (r'(.*) requires (.*) ([0-9].*) or newer.\s*',
+         lambda m: MissingVagueDependency(
+             m.group(2), minimum_version=m.group(3))),
         (r'(.*) requires (.*)',
          lambda m: MissingVagueDependency(m.group(2))),
         (r'Could not find ([A-Za-z-]+)',
@@ -3325,6 +3331,10 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) headers not found",
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) ([0-9].*) not found",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
         r"configure: error: (.*) not found",
