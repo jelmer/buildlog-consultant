@@ -55,3 +55,21 @@ class FindBrzBuildErrorTests(unittest.TestCase):
             line, "debcargo can't find crate version-check (version: 0.9.2)"
         )
         self.assertEqual(err, MissingDebcargoCrate("version-check", "0.9.2"))
+
+    def test_missing_debcargo_crate2(self):
+        lines = """\
+Running 'sbuild -A -s -v'
+Building using working tree
+Building package in merge mode
+Using crate name: utf8parse, version 0.10.1+git20220116.1.dfac57e
+    Updating crates.io index
+    Updating crates.io index
+\x1b[1;31mdebcargo failed: Couldn't find any crate matching utf8parse =0.10.1
+Try `debcargo update` to update the crates.io index.\x1b[0m
+brz: ERROR: Debcargo failed to run.
+""".splitlines(True)
+        err, line = find_brz_build_error(lines)
+        self.assertEqual(
+            line, "debcargo can't find crate utf8parse (version: 0.10.1)"
+        )
+        self.assertEqual(err, MissingDebcargoCrate("utf8parse", "0.10.1"))

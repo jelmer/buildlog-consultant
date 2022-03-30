@@ -482,8 +482,8 @@ def _parse_debcargo_failure(m, pl):
             extra.insert(0, line)
         else:
             extra = []
-        if extra and extra[-1] == (
-            " Try `debcargo update` to update the crates.io index."
+        if extra and extra[-1].strip() == (
+            "Try `debcargo update` to update the crates.io index."
         ):
             n = re.match(r"Couldn\'t find any crate matching (.*)", extra[-2])
             if n:
