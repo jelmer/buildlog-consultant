@@ -44,7 +44,6 @@ from ..common import (
     MissingMavenArtifacts,
     MissingNodeModule,
     MissingCommand,
-    MissingCommandOrBuildFile,
     MissingPkgConfig,
     MissingBoostComponents,
     MissingVcVersionerVersion,

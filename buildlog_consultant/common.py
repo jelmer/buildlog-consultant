@@ -2516,7 +2516,7 @@ build_failure_regexps = [
         r"Use override targets instead.",
         None,
     ),
-    ("\(.*\): undefined reference to `(.*)'", None),
+    (r"\(.*\): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): error: undefined reference to '(.*)'", None),
     (
