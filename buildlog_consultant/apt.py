@@ -23,7 +23,7 @@ from debian.deb822 import PkgRelation
 from typing import List, Optional, Tuple
 import yaml
 
-from . import Problem, SingleLineMatch, problem, Match
+from . import Problem, SingleLineMatch, problem, Match, MultiLineMatch
 from .common import NoSpaceOnDevice
 
 
@@ -111,17 +111,21 @@ class AptBrokenPackages(Problem):
 
     kind = "apt-broken-packages"
 
-    def __init__(self, description):
+    def __init__(self, description, broken=None):
         self.description = description
+        self.broken = broken
 
     def __str__(self):
+        if self.broken:
+            return "Broken apt packages: %r" % self.broken
         return "Broken apt packages: %s" % (self.description,)
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.description)
+        return "%s(%r, %r)" % (type(self).__name__, self.description, self.broken)
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and self.description == other.description
+        return (isinstance(other, type(self)) and
+                self.description == other.description and self.broken == other.broken)
 
 
 def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Problem]]:  # noqa: C901
@@ -146,12 +150,26 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
                     problem = AptFetchFailure(m.group(1), m.group(2))
                 return SingleLineMatch.from_lines(lines, lineno), problem
             return SingleLineMatch.from_lines(lines, lineno), None
-        if line in (
-            "E: Broken packages",
-            "E: Unable to correct problems, you have held broken " "packages.",
-        ):
+        if line == "E: Broken packages":
             error = AptBrokenPackages(lines[lineno - 1].strip())
             return SingleLineMatch.from_lines(lines, lineno - 1), error
+        if line == "E: Unable to correct problems, you have held broken packages.":
+            offsets = []
+            broken = []
+            for j in range(lineno - 1, 0, -1):
+                m = re.match('\s*Depends: (.*) but it is not (going to be installed|installable)', lines[j])
+                if m:
+                    offsets.append(j)
+                    broken.append(m.group(1))
+                    continue
+                m = re.match('\s*(.*) : Depends: (.*) but it is not (going to be installed|installable)', lines[j])
+                if m:
+                    offsets.append(j)
+                    broken.append(m.group(2))
+                    continue
+                break
+            error = AptBrokenPackages(lines[lineno].strip(), broken)
+            return MultiLineMatch.from_lines(lines, offsets + [lineno]), error
         m = re.match("E: The repository '([^']+)' does not have a Release file.", line)
         if m:
             return SingleLineMatch.from_lines(lines, lineno), AptMissingReleaseFile(
@@ -353,3 +371,40 @@ def find_install_deps_failure_description(sbuildlog) -> Tuple[Optional[str], Opt
                 return section.title, match, error
 
     return section.title, None, error
+
+
+if __name__ == '__main__':
+    import argparse
+    import logging
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Display debug output.")
+    parser.add_argument(
+        "--context", "-c", type=int, default=5, help="Number of context lines to print."
+    )
+
+    parser.add_argument("path", type=str)
+    args = parser.parse_args()
+    if args.debug:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.INFO
+
+    logging.basicConfig(level=loglevel, format="%(message)s")
+
+    with open(args.path, "r") as f:
+        lines = list(f.readlines())
+    match, error = find_apt_get_failure(lines)
+
+    if error:
+        logging.info("Error: %s", error)
+    if match:
+        logging.info("Failed line: %d:", match.lineno)
+        for i in range(
+            max(0, match.offset - args.context),
+            min(len(lines), match.offset + args.context + 1),
+        ):
+            logging.info(
+                " %s  %s",
+                ">" if match.offset == i else " ",
+                lines[i].rstrip("\n"),
+            )
