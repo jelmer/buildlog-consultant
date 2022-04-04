@@ -45,7 +45,7 @@ from ..common import (
     MissingNodeModule,
     MissingCommand,
     MissingPkgConfig,
-    MissingBoostComponents,
+    MissingCMakeComponents,
     MissingVcVersionerVersion,
     MissingPerlFile,
     MissingPerlModule,
@@ -490,6 +490,13 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             CMakeFilesMissing(["sensor_msgsConfig.cmake", "sensor_msgs-config.cmake"]),
         )
+        self.run_test(
+            """\
+CMake Error at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:230 (message):
+  Could NOT find KF5 (missing: Plasma PlasmaQuick Wayland ModemManagerQt
+  NetworkManagerQt) (found suitable version "5.92.0", minimum required is
+  "5.86")
+""".splitlines(True), 4, MissingCMakeComponents("KF5", ["Plasma", "PlasmaQuick", "Wayland", "ModemManagerQt", "NetworkManagerQt"]))
 
     def test_cmake_missing_exact_version(self):
         self.run_test(
@@ -1067,7 +1074,7 @@ Call Stack (most recent call first):
   /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
   /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
   src/CMakeLists.txt:4 (find_package)
-""".splitlines(True), 4, MissingBoostComponents([
+""".splitlines(True), 4, MissingCMakeComponents("Boost", [
             'program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
 
     def test_pkg_config_too_old(self):
