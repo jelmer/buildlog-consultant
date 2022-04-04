@@ -1094,7 +1094,7 @@ class CMakeErrorMatcher(Matcher):
         (r'Could NOT find Boost \(missing: (.*)\) \(found suitable version .*',
          lambda m: MissingBoostComponents(m.group(1).split())),
         (
-            r"--  Package \'(.*)\', required by \'(.*)\', not found",
+            r"\s*--\s+Package \'(.*)\', required by \'(.*)\', not found",
             lambda m: MissingPkgConfig(m.group(1)),
         ),
         (
@@ -1267,6 +1267,8 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
         (r'([^ ]+) binary not found\!',
          lambda m: MissingCommand(m.group(1))),
+        (r'error: could not find git for clone of .*',
+         lambda m: MissingCommand('git'))
     ]
 
     @classmethod
@@ -3337,6 +3339,21 @@ build_failure_regexps = [
         lambda m: ESModuleMustUseImport(m.group(1)),
     ),
 
+    (r".* (/<<BUILDDIR>>/.*): No such file or directory",
+     file_not_found),
+
+    (r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
+     file_not_found),
+
+    (r"[^:]+: cannot stat \'.*\': No such file or directory", file_not_found),
+    (r"cat: (.*): No such file or directory", file_not_found),
+
+    (r"ls: cannot access \'(.*)\': No such file or directory", file_not_found),
+    (r"Problem opening (.*): No such file or directory at (.*) line ([0-9]+)\.",
+     file_not_found),
+
+    (r"/bin/bash: (.*): No such file or directory", file_not_found),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -3492,7 +3509,7 @@ build_failure_regexps = [
      lambda m: MissingLibrary(m.group(1))),
     (r'([^ ]+) library not found on the system',
      lambda m: MissingLibrary(m.group(1))),
-    (r'([^ ]+) library not found\.',
+    (r'([^ ]+) library not found(\.?)',
      lambda m: MissingLibrary(m.group(1))),
     (r'.*Please install ([^ ]+) libraries\.',
      lambda m: MissingVagueDependency(m.group(1))),
@@ -3526,20 +3543,14 @@ build_failure_regexps = [
     (r'configure: error: \'(.*)\' cannot be found',
      lambda m: MissingVagueDependency(m.group(1))),
 
-    (r".* (/<<BUILDDIR>>/.*): No such file or directory",
-     file_not_found),
+    (r'.*Please install (.*) libraries\.',
+     lambda m: MissingVagueDependency(m.group(1))),
 
-    (r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
-     file_not_found),
+    (r'No (.*) includes and libraries found',
+     lambda m: MissingVagueDependency(m.group(1))),
 
-    (r"[^:]+: cannot stat \'.*\': No such file or directory", file_not_found),
-    (r"cat: (.*): No such file or directory", file_not_found),
-
-    (r"ls: cannot access \'(.*)\': No such file or directory", file_not_found),
-    (r"Problem opening (.*): No such file or directory at (.*) line ([0-9]+)\.",
-     file_not_found),
-
-    (r"/bin/bash: (.*): No such file or directory", file_not_found),
+    (r'No (.*) version could be found in your system\.',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
