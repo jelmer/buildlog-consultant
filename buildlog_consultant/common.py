@@ -1501,6 +1501,16 @@ class OutdatedGoModFile:
         return "go.mod file is outdated"
 
 
+@problem("code-coverage-too-low")
+class CodeCoverageTooLow:
+
+    actual: float
+    required: float
+
+    def __str__(self):
+        return "Code coverage too low: %f < %f" % (self.actual, self.required)
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -3305,6 +3315,12 @@ build_failure_regexps = [
         file_not_found,
     ),
 
+    (
+        r'ERROR: Coverage for lines \(([0-9.]+)%\) does not meet '
+        r'global threshold \(([0-9]+%\)',
+        lambda m: CodeCoverageTooLow(float(m.group(1)), float(m.group(2)))
+    ),
+
     # ADD NEW REGEXES ABOVE THIS LINE
 
     # Intentionally at the bottom of the list.
@@ -3425,6 +3441,8 @@ build_failure_regexps = [
     (r'Error: (.*) is not available on your system',
      lambda m: MissingVagueDependency(m.group(1)),
      ),
+    (r'ERROR: (.*) (.*) or later is required',
+     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     (r'configure: error: .*Please install the \'(.*)\' package\.',
      lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: <(.*\.h)> is required',
