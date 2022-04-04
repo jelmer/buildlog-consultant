@@ -1654,6 +1654,7 @@ build_failure_regexps = [
     (r'\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
     (r"\s*Error: Cannot find module \'(.*)\'", node_module_missing),
     (r">> Error: Cannot find module \'(.*)\'", node_module_missing),
+    (r">> Error: Cannot find module \'(.*)\' from '.*'", node_module_missing),
     (r'Error: Failed to load parser \'.*\' declared in \'.*\': '
      r'Cannot find module \'(.*)\'', lambda m: MissingNodeModule(m.group(1))),
     (r'    Cannot find module \'(.*)\' from \'.*\'',
