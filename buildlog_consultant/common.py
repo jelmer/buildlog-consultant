@@ -1511,6 +1511,15 @@ class CodeCoverageTooLow:
         return "Code coverage too low: %f < %f" % (self.actual, self.required)
 
 
+@problem("esmodule-must-use-import")
+class ESModuleMustUseImport:
+
+    path: str
+
+    def __str__(self):
+        return "ESM-only module %s must use import()" % self.path
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -3317,8 +3326,14 @@ build_failure_regexps = [
 
     (
         r'ERROR: Coverage for lines \(([0-9.]+)%\) does not meet '
-        r'global threshold \(([0-9]+%\)',
+        r'global threshold \(([0-9]+)%\)',
         lambda m: CodeCoverageTooLow(float(m.group(1)), float(m.group(2)))
+    ),
+
+    (
+        r'Error \[ERR_REQUIRE_ESM\]: '
+        r'Must use import to load ES Module: (.*)',
+        lambda m: ESModuleMustUseImport(m.group(1)),
     ),
 
     # ADD NEW REGEXES ABOVE THIS LINE
