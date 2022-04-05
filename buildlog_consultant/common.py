@@ -3555,9 +3555,6 @@ build_failure_regexps = [
     (r'configure: error: \'(.*)\' cannot be found',
      lambda m: MissingVagueDependency(m.group(1))),
 
-    (r'.*Please install (.*) libraries\.',
-     lambda m: MissingVagueDependency(m.group(1))),
-
     (r'No (.*) includes and libraries found',
      lambda m: MissingVagueDependency(m.group(1))),
 
