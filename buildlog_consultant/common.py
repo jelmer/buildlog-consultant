@@ -1092,8 +1092,9 @@ class CMakeErrorMatcher(Matcher):
     regexp = re.compile(r"CMake (Error|Warning) at (.+):([0-9]+) \((.*)\):")
 
     cmake_errors = [
-        (r'Could NOT find (.*) \(missing: (.*)\) \(found suitable version .*',
-         lambda m: MissingCMakeComponents(m.group(1), m.group(2).split())),
+        (
+            r'Could NOT find (.*) \(missing:\s(.*)\)\s\(found\ssuitable\sversion\s.*',
+            lambda m: MissingCMakeComponents(m.group(1), m.group(2).split())),
         (
             r"\s*--\s+Package \'(.*)\', required by \'(.*)\', not found",
             lambda m: MissingPkgConfig(m.group(1)),
@@ -1106,8 +1107,8 @@ class CMakeErrorMatcher(Matcher):
                 [e.strip() for e in m.group(3).splitlines()], m.group(2))
         ),
         (
-            r"Could NOT find (.*) \(missing: .*\)",
-            lambda m: MissingVagueDependency(m.group(1)),
+            r"Could NOT find (.*) \(missing: (.*)\)",
+            lambda m: MissingCMakeComponents(m.group(1), m.group(2).split()),
         ),
         (
             r'The (.+) compiler\n\n  "(.*)"\n\nis not able to compile a '
@@ -1178,7 +1179,6 @@ class CMakeErrorMatcher(Matcher):
             lambda m: NoSpaceOnDevice(),
         ),
         (r'file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n', None),
-        (r"Could NOT find (.*) \(missing: (.*)\)", None),
         (
             r"Missing (.*)\.  Either your\n"
             r"lib(.*) version is too old, or lib(.*) wasn\'t found in the place you\n"
@@ -1646,7 +1646,7 @@ build_failure_regexps = [
         r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory",
         lambda m: MissingCHeader(m.group(1)),
     ),
-    ("✖ \x1b\\[31mERROR:\x1b\\[39m Cannot find module '(.*)'", node_module_missing),
+    (".*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
     ('\x1b\\[1m\x1b\\[31m\\[\\!\\] \x1b\\[1mError: Cannot find module \'(.*)\'', node_module_missing),
@@ -2222,6 +2222,7 @@ build_failure_regexps = [
         lambda m: MissingPerlFile(m.group(1))
      ),
 
+    # Maven
     (
         MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
         "\x1b\\[1;31mCould not resolve dependencies for project .*: "
@@ -2229,7 +2230,14 @@ build_failure_regexps = [
         "Could not find artifact (.*) in (.*) \\((.*)\\)\x1b\\[m -> \x1b\\[1m\\[Help 1\\]\x1b\\[m",
         maven_missing_artifact,
     ),
-    # Maven
+
+    (
+       MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
+       "\x1b\\[1;31mCould not resolve dependencies for project .*: "
+       "Could not find artifact (.*)\x1b\\[m .*",
+       maven_missing_artifact,
+    ),
+
     (
         MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
         r"Could not resolve dependencies for project .*: "
@@ -3354,6 +3362,9 @@ build_failure_regexps = [
      file_not_found),
 
     (r"/bin/bash: (.*): No such file or directory", file_not_found),
+    (r'\(The package \"(.*)\" was not found when loaded as a Node module '
+     r'from the directory \".*\"\.\)', lambda m: MissingNodePackage(m.group(1))),
+    (r'\+\-\- UNMET DEPENDENCY (.*)', lambda m: MissingNodePackage(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
