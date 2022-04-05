@@ -3513,6 +3513,8 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r'ValueError: no ([^ ]+) installed, .*',
      lambda m: MissingVagueDependency(m.group(1))),
+    (r'ValueError: Unable to find (.+)',
+     lambda m: MissingVagueDependency(m.group(1))),
     (r'([^ ]+) executable not found\. .*',
      lambda m: MissingCommand(m.group(1))),
     (r'ERROR: InvocationError for command could not find executable (.*)',
@@ -3560,6 +3562,11 @@ build_failure_regexps = [
 
     (r'No (.*) version could be found in your system\.',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'You need (.+)', lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'We need the Python library (.+) to be installed\..*',
+     lambda m: MissingPythonDistribution(m.group(1))),
 ]
 
 
