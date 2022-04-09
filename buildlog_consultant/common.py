@@ -1256,6 +1256,8 @@ class CMakeErrorMatcher(Matcher):
         (r'(.*) requires (.*) ([0-9].*) or newer.\s*',
          lambda m: MissingVagueDependency(
              m.group(2), minimum_version=m.group(3))),
+         (r'(.*) library missing',
+         lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) requires (.*)',
          lambda m: MissingVagueDependency(m.group(2))),
         (r'Could not find ([A-Za-z-]+)',
@@ -1760,6 +1762,7 @@ build_failure_regexps = [
     (r"make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
     (r".*: failed to exec \'(.*)\': No such file or directory", command_missing),
     (r"No package \'([^\']+)\' found", pkg_config_missing),
+    (r"--\s* No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"\-\- Please install Git, make sure it is in your path, and then try again.",
         lambda m: MissingCommand("git"),
