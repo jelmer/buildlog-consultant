@@ -157,12 +157,12 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
             offsets = []
             broken = []
             for j in range(lineno - 1, 0, -1):
-                m = re.match('\s*Depends: (.*) but it is not (going to be installed|installable)', lines[j])
+                m = re.match(r'\s*Depends: (.*) but it is not (going to be installed|installable)', lines[j])
                 if m:
                     offsets.append(j)
                     broken.append(m.group(1))
                     continue
-                m = re.match('\s*(.*) : Depends: (.*) but it is not (going to be installed|installable)', lines[j])
+                m = re.match(r'\s*(.*) : Depends: (.*) but it is not (going to be installed|installable)', lines[j])
                 if m:
                     offsets.append(j)
                     broken.append(m.group(2))
