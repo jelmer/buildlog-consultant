@@ -3242,6 +3242,10 @@ build_failure_regexps = [
     (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
      lambda m: MissingPkgConfig(m.group(1), minimum_version=m.group(2))),
 
+    (r'.*Could not find (.*) lib/headers, please set '
+     r'.* or ensure (.*).pc is in PKG_CONFIG_PATH\.',
+     lambda m: MissingPkgConfig(m.group(2))),
+
     (r'go: go.mod file not found in current directory or any parent directory; '
      r'see \'go help modules\'', lambda m: MissingGoModFile()),
 
