@@ -449,26 +449,41 @@ def find_preamble_failure_description(  # noqa: C901
 @problem("debcargo-unacceptable-predicate")
 class DebcargoUnacceptablePredicate:
 
+    crate: str
     predicate: str
 
     def __str__(self):
         return "Cannot represent prerelease part of dependency: %s" % (self.predicate)
 
 
+@problem("debcargo-unacceptable-comparator")
+class DebcargoUnacceptableComparator:
+
+    crate: str
+    comparator: str
+
+    def __str__(self):
+        return "Cannot represent prerelease part of dependency: %s" % (self.comparator)
+
+
 def _parse_debcargo_failure(m, pl):
     MORE_TAIL = "\x1b[0m\n"
-    MORE_HEAD = "\x1b[1;31mSomething failed: "
+    MORE_HEAD1 = "\x1b[1;31mSomething failed: "
+    MORE_HEAD2 = "\x1b[1;31mdebcargo failed: "
     if pl[-1].endswith(MORE_TAIL):
         extra = [pl[-1][: -len(MORE_TAIL)]]
         for line in reversed(pl[:-1]):
-            if extra[0].startswith(MORE_HEAD):
-                extra[0] = extra[0][len(MORE_HEAD) :]
+            if extra[0].startswith(MORE_HEAD1):
+                extra[0] = extra[0][len(MORE_HEAD1) :]
+                break
+            if extra[0].startswith(MORE_HEAD2):
+                extra[0] = extra[0][len(MORE_HEAD2) :]
                 break
             extra.insert(0, line)
         else:
             extra = []
-        if extra and extra[-1] == (
-            " Try `debcargo update` to update the crates.io index."
+        if extra and extra[-1].strip() == (
+            "Try `debcargo update` to update the crates.io index."
         ):
             n = re.match(r"Couldn\'t find any crate matching (.*)", extra[-2])
             if n:
@@ -481,7 +496,13 @@ def _parse_debcargo_failure(m, pl):
                 extra[0],
             )
             if m:
-                return DebcargoUnacceptablePredicate(m.group(2))
+                return DebcargoUnacceptablePredicate(m.group(1), m.group(2))
+            m = re.match(
+                r"Cannot represent prerelease part of dependency: (.*) Comparator \{ (.*) \}",
+                extra[0],
+            )
+            if m:
+                return DebcargoUnacceptableComparator(m.group(1), m.group(2))
         else:
             return DebcargoFailure("".join(extra))
 
@@ -569,6 +590,13 @@ def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem
 class MissingRevision:
 
     revision: bytes
+
+    def json(self):
+        return {'revision': self.revision.decode('utf-8')}
+
+    @classmethod
+    def from_json(cls, json):
+        return cls(revision=json['revision'].encode('utf-8'))
 
     def __str__(self):
         return "Missing revision: %r" % self.revision
