@@ -32,6 +32,7 @@ from ..common import (
     MissingConfigStatusInput,
     MissingCHeader,
     MissingDHCompatLevel,
+    UnsupportedDebhelperCompatLevel,
     MissingJDKFile,
     MissingJDK,
     MissingJRE,
@@ -43,9 +44,8 @@ from ..common import (
     MissingMavenArtifacts,
     MissingNodeModule,
     MissingCommand,
-    MissingCommandOrBuildFile,
     MissingPkgConfig,
-    MissingBoostComponents,
+    MissingCMakeComponents,
     MissingVcVersionerVersion,
     MissingPerlFile,
     MissingPerlModule,
@@ -422,6 +422,17 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             MissingCommand("git"),
         )
 
+    def test_meson_missing_lib(self):
+        self.run_test(
+            ["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
+            1, MissingLibrary("vulkan-1"))
+
+    def test_meson_version(self):
+        self.run_test(
+            ["meson.build:1:0: ERROR: Meson version is 0.49.2 but "
+             "project requires >=0.50."], 1,
+            MissingVagueDependency("meson", minimum_version="0.50"))
+
     def test_need_pgbuildext(self):
         self.run_test(
             [
@@ -479,6 +490,13 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             1,
             CMakeFilesMissing(["sensor_msgsConfig.cmake", "sensor_msgs-config.cmake"]),
         )
+        self.run_test(
+            """\
+CMake Error at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:230 (message):
+  Could NOT find KF5 (missing: Plasma PlasmaQuick Wayland ModemManagerQt
+  NetworkManagerQt) (found suitable version "5.92.0", minimum required is
+  "5.86")
+""".splitlines(True), 4, MissingCMakeComponents("KF5", ["Plasma", "PlasmaQuick", "Wayland", "ModemManagerQt", "NetworkManagerQt"]))
 
     def test_cmake_missing_exact_version(self):
         self.run_test(
@@ -525,6 +543,12 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             1,
             MissingDHCompatLevel("dh_clean"),
         )
+
+    def test_dh_compat_too_old(self):
+        self.run_test([
+            "dh_clean: error: Compatibility levels before 7 are no longer "
+            "supported (level 5 requested)"], 1,
+            UnsupportedDebhelperCompatLevel(7, 5))
 
     def test_dh_udeb_shared_library(self):
         self.run_test(
@@ -981,6 +1005,8 @@ error: invalid command 'test'
             1,
             MissingCommand("git"),
         )
+        self.run_test(
+            ["ERROR:   flake8: commands failed"], 1, MissingCommand("flake8"))
 
     def test_ts_error(self):
         self.run_test(
@@ -1048,7 +1074,7 @@ Call Stack (most recent call first):
   /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
   /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
   src/CMakeLists.txt:4 (find_package)
-""".splitlines(True), 4, MissingBoostComponents([
+""".splitlines(True), 4, MissingCMakeComponents("Boost", [
             'program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
 
     def test_pkg_config_too_old(self):
@@ -1857,6 +1883,17 @@ arch:all and the other not)""".splitlines(),
             2,
             MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True))
 
+    def test_autoconf_version(self):
+        self.run_test(
+            ["configure.ac:13: error: Autoconf version 2.71 or higher is required"], 1,
+            MissingVagueDependency("autoconf", minimum_version="2.71"))
+
+    def test_claws_version(self):
+        self.run_test(
+            ["configure: error: libetpan 0.57 not found"], 1,
+            MissingVagueDependency(
+                'libetpan', minimum_version='0.57'))
+
     def test_config_status_input(self):
         self.run_test(
             ["config.status: error: cannot find input file: " "`po/Makefile.in.in'"],
@@ -1882,8 +1919,14 @@ arch:all and the other not)""".splitlines(),
                 "No such file or directory"
             ],
             1,
-            None,
+            MissingBuildFile("debian/patches/lshw-gtk.desktop"),
         )
+
+    def test_bash_redir_missing(self):
+        self.run_test(
+            ["/bin/bash: idna-tables-properties.csv: "
+             "No such file or directory"],
+            1, MissingBuildFile("idna-tables-properties.csv"))
 
     def test_automake_input(self):
         self.run_test(

@@ -201,6 +201,10 @@ class MissingCommandOrBuildFile:
 
     filename: str
 
+    @property
+    def command(self):
+        return self.filename
+
     def __str__(self):
         return "Missing command or build file: %s" % self.filename
 
@@ -443,13 +447,14 @@ def pkg_config_missing(m):
     return None
 
 
-@problem("missing-boost-components")
-class MissingBoostComponents:
+@problem("missing-cmake-components")
+class MissingCMakeComponents:
 
+    name: str
     components: List[str]
 
     def __str__(self):
-        return "Missing Boost components: %r" % self.components
+        return "Missing %s components: %r" % (self.name, self.components)
 
 
 @problem("missing-cmake-files")
@@ -1087,10 +1092,11 @@ class CMakeErrorMatcher(Matcher):
     regexp = re.compile(r"CMake (Error|Warning) at (.+):([0-9]+) \((.*)\):")
 
     cmake_errors = [
-        (r'Could NOT find Boost \(missing: (.*)\) \(found suitable version .*',
-         lambda m: MissingBoostComponents(m.group(1).split())),
         (
-            r"--  Package \'(.*)\', required by \'(.*)\', not found",
+            r'Could NOT find (.*) \(missing:\s(.*)\)\s\(found\ssuitable\sversion\s.*',
+            lambda m: MissingCMakeComponents(m.group(1), m.group(2).split())),
+        (
+            r"\s*--\s+Package \'(.*)\', required by \'(.*)\', not found",
             lambda m: MissingPkgConfig(m.group(1)),
         ),
         (
@@ -1101,8 +1107,8 @@ class CMakeErrorMatcher(Matcher):
                 [e.strip() for e in m.group(3).splitlines()], m.group(2))
         ),
         (
-            r"Could NOT find (.*) \(missing: .*\)",
-            lambda m: MissingVagueDependency(m.group(1)),
+            r"Could NOT find (.*) \(missing: (.*)\)",
+            lambda m: MissingCMakeComponents(m.group(1), m.group(2).split()),
         ),
         (
             r'The (.+) compiler\n\n  "(.*)"\n\nis not able to compile a '
@@ -1173,7 +1179,6 @@ class CMakeErrorMatcher(Matcher):
             lambda m: NoSpaceOnDevice(),
         ),
         (r'file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n', None),
-        (r"Could NOT find (.*) \(missing: (.*)\)", None),
         (
             r"Missing (.*)\.  Either your\n"
             r"lib(.*) version is too old, or lib(.*) wasn\'t found in the place you\n"
@@ -1245,6 +1250,12 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) required to compile (.*)',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'(.*) requires (.*) ([0-9].*) or newer. See (https://.*)\s*',
+         lambda m: MissingVagueDependency(m.group(2), minimum_version=m.group(3), url=m.group(4))),
+        (r'(.*) requires (.*) ([0-9].*) or newer.\s*',
+         lambda m: MissingVagueDependency(m.group(2), minimum_version=m.group(3))),
+        (r'(.*) library missing',
+         lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) requires (.*)',
          lambda m: MissingVagueDependency(m.group(2))),
         (r'Could not find ([A-Za-z-]+)',
@@ -1254,9 +1265,11 @@ class CMakeErrorMatcher(Matcher):
         (r'No (.+) version could be found in your system\.',
          lambda m: MissingVagueDependency(m.group(1))),
         (r'([^ ]+) >= (.*) is required',
-         lambda m: MissingVagueDependency(m.group(1), m.group(2))),
+         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
         (r'([^ ]+) binary not found\!',
          lambda m: MissingCommand(m.group(1))),
+        (r'error: could not find git for clone of .*',
+         lambda m: MissingCommand('git'))
     ]
 
     @classmethod
@@ -1491,6 +1504,25 @@ class OutdatedGoModFile:
         return "go.mod file is outdated"
 
 
+@problem("code-coverage-too-low")
+class CodeCoverageTooLow:
+
+    actual: float
+    required: float
+
+    def __str__(self):
+        return "Code coverage too low: %f < %f" % (self.actual, self.required)
+
+
+@problem("esmodule-must-use-import")
+class ESModuleMustUseImport:
+
+    path: str
+
+    def __str__(self):
+        return "ESM-only module %s must use import()" % self.path
+
+
 build_failure_regexps = [
     (
         r"make\[[0-9]+\]: \*\*\* No rule to make target "
@@ -1533,6 +1565,10 @@ build_failure_regexps = [
         r"\(.* \(/usr/lib/python2.[0-9]/dist-packages\), "
         r"Requirement.parse\(\'(.*)\'\)\)\!",
         python2_reqs_not_found,
+    ),
+    (
+        r"E ImportError: (.*) could not be imported\.",
+        lambda m: MissingPythonModule(m.group(1))
     ),
     (
         r"ImportError: cannot import name (.*), introspection typelib not found",
@@ -1579,7 +1615,7 @@ build_failure_regexps = [
         lambda m: MissingPythonModule(m.group(1), python_version=3)
      ),
     (
-        r"/usr/bin/python3: No module named (.*)",
+        r"/usr/bin/python3: No module named ([^ ]+).*",
         lambda m: MissingPythonModule(m.group(1), python_version=3)
      ),
     ('(.*:[0-9]+|package .*): cannot find package "(.*)" in any of:',
@@ -1596,7 +1632,7 @@ build_failure_regexps = [
     ),
     (
         r"[^:]+:\d+:\d+: fatal error: (.+\.xpm): No such file or directory",
-        None,
+        file_not_found,
     ),
     (
         r'.*fatal: not a git repository \(or any parent up to mount point \/\)',
@@ -1604,13 +1640,13 @@ build_failure_regexps = [
     ),
     (
         r'.*fatal: not a git repository \(or any of the parent directories\): \.git',
-        lambda m: VcsControlDirectoryNeeded(['.git']),
+        lambda m: VcsControlDirectoryNeeded(['git']),
     ),
     (
         r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory",
         lambda m: MissingCHeader(m.group(1)),
     ),
-    ("✖ \x1b\\[31mERROR:\x1b\\[39m Cannot find module '(.*)'", node_module_missing),
+    (".*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
     ('\x1b\\[1m\x1b\\[31m\\[\\!\\] \x1b\\[1mError: Cannot find module \'(.*)\'', node_module_missing),
@@ -1621,6 +1657,7 @@ build_failure_regexps = [
     (r'\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
     (r"\s*Error: Cannot find module \'(.*)\'", node_module_missing),
     (r">> Error: Cannot find module \'(.*)\'", node_module_missing),
+    (r">> Error: Cannot find module \'(.*)\' from '.*'", node_module_missing),
     (r'Error: Failed to load parser \'.*\' declared in \'.*\': '
      r'Cannot find module \'(.*)\'', lambda m: MissingNodeModule(m.group(1))),
     (r'    Cannot find module \'(.*)\' from \'.*\'',
@@ -1723,6 +1760,7 @@ build_failure_regexps = [
     (r"make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
     (r".*: failed to exec \'(.*)\': No such file or directory", command_missing),
     (r"No package \'([^\']+)\' found", pkg_config_missing),
+    (r"--\s* No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"\-\- Please install Git, make sure it is in your path, and then try again.",
         lambda m: MissingCommand("git"),
@@ -1875,6 +1913,10 @@ build_failure_regexps = [
     ),
     (
         ".*meson.build:([0-9]+):([0-9]+): ERROR: C shared or static library '(.*)' not found",
+        lambda m: MissingLibrary(m.group(3)),
+    ),
+    (
+        ".*meson.build:([0-9]+):([0-9]+): ERROR: C\\+\\++ shared or static library '(.*)' not found",
         lambda m: MissingLibrary(m.group(3)),
     ),
     (
@@ -2043,9 +2085,9 @@ build_failure_regexps = [
         lambda m: DhWithOrderIncorrect(),
     ),
     (
-        r"dh: Compatibility levels before ([0-9]+) are no longer supported "
+        r"(dh: |dh_.*: error: )Compatibility levels before ([0-9]+) are no longer supported "
         r"\(level ([0-9]+) requested\)",
-        lambda m: UnsupportedDebhelperCompatLevel(int(m.group(1)), int(m.group(2))),
+        lambda m: UnsupportedDebhelperCompatLevel(int(m.group(2)), int(m.group(3))),
     ),
     (r'\{standard input\}: Error: (.*)', None),
     (r"dh: Unknown sequence (.*) \(choose from: .*\)", None),
@@ -2138,7 +2180,11 @@ build_failure_regexps = [
     (
         r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': "
         r"No such file or directory",
-        None,
+        file_not_found,
+    ),
+    (
+        r"Cannot find source directory \((.*)\)",
+        file_not_found,
     ),
     (
         r"python[0-9.]*: can\'t open file \'(.*)\': \[Errno 2\] "
@@ -2177,6 +2223,7 @@ build_failure_regexps = [
         lambda m: MissingPerlFile(m.group(1))
      ),
 
+    # Maven
     (
         MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
         "\x1b\\[1;31mCould not resolve dependencies for project .*: "
@@ -2184,7 +2231,14 @@ build_failure_regexps = [
         "Could not find artifact (.*) in (.*) \\((.*)\\)\x1b\\[m -> \x1b\\[1m\\[Help 1\\]\x1b\\[m",
         maven_missing_artifact,
     ),
-    # Maven
+
+    (
+       MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
+       "\x1b\\[1;31mCould not resolve dependencies for project .*: "
+       "Could not find artifact (.*)\x1b\\[m .*",
+       maven_missing_artifact,
+    ),
+
     (
         MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
         r"Could not resolve dependencies for project .*: "
@@ -2308,7 +2362,7 @@ build_failure_regexps = [
      r'Unable to read font \((.*)\) \[No such file or directory\]\.\\n\'',
      file_not_found),
     (r"mv: cannot stat \'(.*)\': No such file or directory", file_not_found),
-    (r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", None),
+    (r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", file_not_found),
     (
         r"(/usr/bin/install|mv): "
         r"will not overwrite just-created \'(.*)\' with \'(.*)\'",
@@ -2494,6 +2548,7 @@ build_failure_regexps = [
         r"Use override targets instead.",
         None,
     ),
+    (r"\(.*\): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): undefined reference to `(.*)'", None),
     ("(.*):([0-9]+): error: undefined reference to '(.*)'", None),
     (
@@ -2564,7 +2619,7 @@ build_failure_regexps = [
         r"supported, change to [tool:pytest] instead.",
         None,
     ),
-    (r"cp: cannot stat \'(.*)\': No such file or directory", None),
+    (r"cp: cannot stat \'(.*)\': No such file or directory", file_not_found),
     (r"cp: \'(.*)\' and \'(.*)\' are the same file", None),
     (r"PHP Fatal error: (.*)", None),
     (r"sed: no input files", None),
@@ -2704,7 +2759,7 @@ build_failure_regexps = [
         None,
     ),
     (r"rm: cannot remove \'(.*)\': Is a directory", None),
-    (r"rm: cannot remove \'(.*)\': No such file or directory", None),
+    (r"rm: cannot remove \'(.*)\': No such file or directory", file_not_found),
     # Invalid option from Python
     (r"error: option .* not recognized", None),
     # Invalid option from go
@@ -2776,6 +2831,10 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1).lower())
     ),
     (
+        r'.*: [0-9]+: cannot open (.*): No such file',
+        file_not_found,
+    ),
+    (
         r'Cannot find Git. Git is required for .*',
         lambda m: MissingCommand('git')
     ),
@@ -2798,6 +2857,12 @@ build_failure_regexps = [
     (
         r'(OSError|RuntimeError): No (.*) was found: .*',
         lambda m: MissingVagueDependency(m.group(2))
+    ),
+
+    (
+        r"meson.build:[0-9]+:[0-9]+: ERROR: "
+        r"Meson version is (.*) but project requires >=\s*(.*)\.",
+        lambda m: MissingVagueDependency("meson", minimum_version=m.group(2))
     ),
 
     # Seen in cpl-plugin-giraf
@@ -3087,6 +3152,10 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1))),
 
     (
+        r"configure: error: You don't seem to have the (.*) library installed\..*",
+        lambda m: MissingVagueDependency(m.group(1))),
+
+    (
         r'configure: error: You need (.*) installed',
         lambda m: MissingVagueDependency(m.group(1))
     ),
@@ -3201,10 +3270,15 @@ build_failure_regexps = [
     (r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. ",
      lambda m: MinimumAutoconfTooOld(m.group(1))),
 
+    (r"configure.(ac|in):[0-9]+: error: Autoconf version (.*) or higher is required",
+     lambda m: MissingVagueDependency("autoconf", minimum_version=m.group(2))),
+
     (r'# Error: The file "(MANIFEST|META.yml)" is missing from '
      'this distribution\\. .*',
      lambda m: MissingPerlDistributionFile(m.group(1)),
      ),
+
+    (r"^  ([^ ]+) does not exist$", file_not_found),
 
     (r'\s*> Cannot find \'\.git\' directory',
      lambda m: VcsControlDirectoryNeeded(['git'])),
@@ -3244,13 +3318,54 @@ build_failure_regexps = [
         file_not_found_maybe_executable,
     ),
     (
-        r"ERROR: (.*): commands failed",
+        r"ERROR:\s+(.*): commands failed",
         lambda m: MissingCommand(m.group(1))
     ),
     (
         r'We need the Python library (.+) to be installed\. .*',
         lambda m: MissingPythonDistribution(m.group(1))
     ),
+
+    # Waf
+    (
+        r'Checking for header (.+\.h|.+\.hpp)\s+: not found ',
+        lambda m: MissingCHeader(m.group(1))
+    ),
+
+    (
+        r'000: File does not exist (.*)',
+        file_not_found,
+    ),
+
+    (
+        r'ERROR: Coverage for lines \(([0-9.]+)%\) does not meet '
+        r'global threshold \(([0-9]+)%\)',
+        lambda m: CodeCoverageTooLow(float(m.group(1)), float(m.group(2)))
+    ),
+
+    (
+        r'Error \[ERR_REQUIRE_ESM\]: '
+        r'Must use import to load ES Module: (.*)',
+        lambda m: ESModuleMustUseImport(m.group(1)),
+    ),
+
+    (r".* (/<<BUILDDIR>>/.*): No such file or directory",
+     file_not_found),
+
+    (r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
+     file_not_found),
+
+    (r"[^:]+: cannot stat \'.*\': No such file or directory", file_not_found),
+    (r"cat: (.*): No such file or directory", file_not_found),
+
+    (r"ls: cannot access \'(.*)\': No such file or directory", file_not_found),
+    (r"Problem opening (.*): No such file or directory at (.*) line ([0-9]+)\.",
+     file_not_found),
+
+    (r"/bin/bash: (.*): No such file or directory", file_not_found),
+    (r'\(The package \"(.*)\" was not found when loaded as a Node module '
+     r'from the directory \".*\"\.\)', lambda m: MissingNodePackage(m.group(1))),
+    (r'\+\-\- UNMET DEPENDENCY (.*)', lambda m: MissingNodePackage(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -3278,6 +3393,10 @@ build_failure_regexps = [
     (
         r"configure: error: (.*) headers not found",
         lambda m: MissingVagueDependency(m.group(1)),
+    ),
+    (
+        r"configure: error: (.*) ([0-9].*) not found",
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
         r"configure: error: (.*) not found",
@@ -3368,6 +3487,8 @@ build_failure_regexps = [
     (r'Error: (.*) is not available on your system',
      lambda m: MissingVagueDependency(m.group(1)),
      ),
+    (r'ERROR: (.*) (.*) or later is required',
+     lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     (r'configure: error: .*Please install the \'(.*)\' package\.',
      lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: <(.*\.h)> is required',
@@ -3393,6 +3514,8 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r'ValueError: no ([^ ]+) installed, .*',
      lambda m: MissingVagueDependency(m.group(1))),
+    (r'ValueError: Unable to find (.+)',
+     lambda m: MissingVagueDependency(m.group(1))),
     (r'([^ ]+) executable not found\. .*',
      lambda m: MissingCommand(m.group(1))),
     (r'ERROR: InvocationError for command could not find executable (.*)',
@@ -3401,7 +3524,7 @@ build_failure_regexps = [
      lambda m: MissingLibrary(m.group(1))),
     (r'([^ ]+) library not found on the system',
      lambda m: MissingLibrary(m.group(1))),
-    (r'([^ ]+) library not found\.',
+    (r'([^ ]+) library not found(\.?)',
      lambda m: MissingLibrary(m.group(1))),
     (r'.*Please install ([^ ]+) libraries\.',
      lambda m: MissingVagueDependency(m.group(1))),
@@ -3434,6 +3557,17 @@ build_failure_regexps = [
 
     (r'configure: error: \'(.*)\' cannot be found',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'No (.*) includes and libraries found',
+     lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'No (.*) version could be found in your system\.',
+     lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'You need (.+)', lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'We need the Python library (.+) to be installed\..*',
+     lambda m: MissingPythonDistribution(m.group(1))),
 ]
 
 
@@ -3462,8 +3596,6 @@ secondary_build_failure_regexps = [
     r"  [0-9]+:[0-9]+\s+error\s+.+",
 
     r"fontmake: Error: In '(.*)': (.*)",
-
-    r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
 
     r'#   Failed test at t\/.*\.t line [0-9]+\.',
 
@@ -3549,7 +3681,6 @@ secondary_build_failure_regexps = [
     r"dh_autoreconf: autoreconf .* returned exit code [0-9]+",
     r"make: \*\*\* \[.*\] Error [0-9]+",
     r".*:[0-9]+: \*\*\* missing separator\.  Stop\.",
-    r"[^:]+: cannot stat \'.*\': No such file or directory",
     r"[0-9]+ tests: [0-9]+ ok, [0-9]+ failure\(s\), [0-9]+ test\(s\) skipped",
     r"\*\*Error:\*\* (.*)",
     r"^Error: (.*)",
@@ -3560,7 +3691,6 @@ secondary_build_failure_regexps = [
     r"^Error \[ERR_.*\]: .*",
     r"^FAILED \(.*\)",
     r"FAILED .*",
-    r"cat: (.*): No such file or directory",
     # Random Python errors
     "^(E  +)?(SyntaxError|TypeError|ValueError|AttributeError|NameError|"
     r"django.core.exceptions..*|RuntimeError|subprocess.CalledProcessError|"
@@ -3623,8 +3753,6 @@ secondary_build_failure_regexps = [
     r"ERROR: There are no scenarios; must have at least one.",
     # perl
     r"Execution of (.*) aborted due to compilation errors.",
-    r"ls: cannot access \'(.*)\': No such file or directory",
-    r"Problem opening (.*): No such file or directory at (.*) line ([0-9]+)\.",
     # Mocha
     r"     AssertionError \[ERR_ASSERTION\]: Missing expected exception.",
     # lt (C++)
@@ -3683,6 +3811,7 @@ secondary_build_failure_regexps = [
     r"Cannot find the jar to install: (.*)",
     r"ERROR: .*",
     r"> error: (.*)",
+    r"(.*\.hs):[0-9]+:[0-9]+: error:",
 ]
 
 compiled_secondary_build_failure_regexps = []
@@ -3774,6 +3903,7 @@ def find_build_failure_description(  # noqa: C901
         for regexp in compiled_secondary_build_failure_regexps:
             m = regexp.fullmatch(line)
             if m:
+                logger.debug('regex %r matched line %r', regexp, line)
                 return SingleLineMatch.from_lines(lines, lineno), None
     return None, None
 
