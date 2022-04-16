@@ -175,6 +175,15 @@ class MissingQt:
         return "Missing QT installation"
 
 
+@problem("missing-qt-modules")
+class MissingQtModules:
+
+    modules: List[str]
+
+    def __str__(self):
+        return "Missing QT modules: %r" % self.modules
+
+
 @problem("missing-x11")
 class MissingX11:
     def __str__(self):
@@ -2717,7 +2726,6 @@ build_failure_regexps = [
     ),
     (r"Trying patch (.*) at level 1 \.\.\. 0 \.\.\. 2 \.\.\. failure.", None),
     # QMake
-    (r"Project ERROR: Unknown module\(s\) in QT: (.*)", None),
     (r"Project ERROR: (.*) development package not found", pkg_config_missing),
     (r"Package \'(.*)\', required by \'(.*)\', not found\n", pkg_config_missing),
     (r"pkg-config cannot find (.*)", pkg_config_missing),
@@ -3370,6 +3378,9 @@ build_failure_regexps = [
     (r'\(The package \"(.*)\" was not found when loaded as a Node module '
      r'from the directory \".*\"\.\)', lambda m: MissingNodePackage(m.group(1))),
     (r'\+\-\- UNMET DEPENDENCY (.*)', lambda m: MissingNodePackage(m.group(1))),
+
+    (r'Project ERROR: Unknown module\(s\) in QT: (.*)',
+     lambda m: MissingQtModules(m.group(1).split())),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
