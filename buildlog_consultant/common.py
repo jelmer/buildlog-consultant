@@ -1871,7 +1871,7 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1))
     ),
     (
-        '.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found',
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found',
         lambda m: MissingPkgConfig(m.group(3))
     ),
     (
@@ -1935,6 +1935,10 @@ build_failure_regexps = [
     (
         ".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) require (.*) >= (.*), (.*) which were not found.",
         lambda m: MissingVagueDependency(m.group(4), minimum_version=m.group(5)),
+    ),
+    (
+        ".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) is required to .*",
+        lambda m: MissingVagueDependency(m.group(4))
     ),
     (
         r"ERROR: (.*) is not installed\. Install at least (.*) version (.+) to continue\.",
