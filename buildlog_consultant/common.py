@@ -1875,6 +1875,10 @@ build_failure_regexps = [
         lambda m: MissingPkgConfig(m.group(3))
     ),
     (
+        r'.*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: No XSLT processor found, .*',
+        lambda m: MissingVagueDependency('xsltproc'),
+    ),
+    (
         r".*meson.build:([0-9]+):([0-9]+): Unknown compiler\(s\): \[\['(.*)'.*\]",
         lambda m: MissingCommand(m.group(3))
     ),
@@ -3611,6 +3615,8 @@ secondary_build_failure_regexps = [
     r"[^:]+:[0-9]+: error: (.*)",
     r"[^:]+:[0-9]+:[0-9]+: error: (.*)",
     r"error TS[0-9]+: (.*)",
+
+    r'mount: .*: mount failed: Operation not permitted\.',
 
     r"  [0-9]+:[0-9]+\s+error\s+.+",
 
