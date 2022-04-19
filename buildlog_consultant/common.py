@@ -2972,7 +2972,7 @@ build_failure_regexps = [
     (r"qt.qpa.xcb: could not connect to display", lambda m: MissingXDisplay()),
     (r'\(.*:[0-9]+\): Gtk-WARNING \*\*: [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}: cannot open display: ', lambda m: MissingXDisplay()),
     (
-        r"Package (.*) was not found in the pkg-config search path.",
+        r"\s*Package (.*) was not found in the pkg-config search path.",
         lambda m: MissingPkgConfig(m.group(1)),
     ),
     (
