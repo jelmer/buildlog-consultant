@@ -3338,10 +3338,6 @@ build_failure_regexps = [
         file_not_found_maybe_executable,
     ),
     (
-        r"ERROR:\s+(.*): commands failed",
-        lambda m: MissingCommand(m.group(1))
-    ),
-    (
         r'We need the Python library (.+) to be installed\. .*',
         lambda m: MissingPythonDistribution(m.group(1))
     ),
