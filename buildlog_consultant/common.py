@@ -2658,7 +2658,7 @@ build_failure_regexps = [
      lambda m: Cancelled(),
      ),
     (r"E: Failed to execute “(.*)”: No such file or directory", command_missing),
-    (r"E ImportError: Bad (.*) executable", command_missing),
+    (r"E ImportError: Bad (.*) executable(\.?)", command_missing),
     (r"E: The Debian version .* cannot be used as an ELPA version.", None),
     # ImageMagick
     (

@@ -1005,6 +1005,12 @@ error: invalid command 'test'
             1,
             MissingCommand("git"),
         )
+        self.run_test(
+            ["E ImportError: Bad git executable"], 1,
+            MissingCommand("git"))
+        self.run_test(
+            ["E ImportError: Bad git executable."], 1,
+            MissingCommand("git"))
 
     def test_ts_error(self):
         self.run_test(
