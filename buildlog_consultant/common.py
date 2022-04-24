@@ -3934,7 +3934,7 @@ def main(argv=None):
     import json
 
     parser = argparse.ArgumentParser("analyse-build-log")
-    parser.add_argument("path", type=str)
+    parser.add_argument("path", type=str, default="-", nargs="?")
     parser.add_argument("--context", "-c", type=int, default=5)
     parser.add_argument("--json", action="store_true", help="Output JSON.")
     parser.add_argument(
@@ -3943,6 +3943,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    if args.path == '-':
+        args.path = '/dev/stdin'
 
     with open(args.path, "r") as f:
         lines = list(f.readlines())
