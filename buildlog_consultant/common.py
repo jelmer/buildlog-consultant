@@ -1859,6 +1859,10 @@ build_failure_regexps = [
         lambda m: MissingRustCompiler(),
     ),
     (
+        r'error: failed to get `(.*)` as a dependency of package `(.*)`',
+        lambda m: MissingCargoCrate(m.group(1))
+    ),
+    (
         r"configure: error: (.*) requires libkqueue \(or system kqueue\). .*",
         lambda m: MissingPkgConfig("libkqueue"),
     ),
