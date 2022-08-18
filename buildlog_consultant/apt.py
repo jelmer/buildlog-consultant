@@ -124,8 +124,9 @@ class AptBrokenPackages(Problem):
         return "%s(%r, %r)" % (type(self).__name__, self.description, self.broken)
 
     def __eq__(self, other):
-        return (isinstance(other, type(self)) and
-                self.description == other.description and self.broken == other.broken)
+        return (isinstance(other, type(self))
+                and self.description == other.description
+                and self.broken == other.broken)
 
 
 def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Problem]]:  # noqa: C901
@@ -283,8 +284,10 @@ class UnsatisfiedAptDependencies:
                     'archqual': entry.get('archqual'),
                     'arch': entry.get('arch'),
                     'restrictions': entry.get('restrictions'),
-                    'version': (entry['version'][0], Version(entry['version'][1])) if entry['version'] else None,
-                    }
+                    'version':
+                        (entry['version'][0], Version(entry['version'][1]))
+                        if entry['version'] else None,
+                }
                 sub.append(pkg)
             relations.append(sub)
         return cls(relations=relations)

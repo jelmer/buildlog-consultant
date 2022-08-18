@@ -30,7 +30,7 @@ from . import (
     SingleLineMatch,
     problem,
     version_string,
-    )
+)
 
 
 logger = logging.getLogger(__name__)
@@ -955,14 +955,16 @@ class SetupPyCommandMissingMatcher(Matcher):
 class MultiLinePerlMissingModulesError(Matcher):
 
     def match(self, lines, i):
-        if lines[i].rstrip("\n") != "# The following modules are not available.":
+        if lines[i].rstrip("\n") != (
+                "# The following modules are not available."):
             return [], None
-        if lines[i+1].rstrip("\n") != "# `perl Makefile.PL | cpanm` will install them:":
+        if lines[i + 1].rstrip("\n") != (
+                "# `perl Makefile.PL | cpanm` will install them:"):
             return [], None
 
         relevant_linenos = [i, i + 1, i + 2]
 
-        return relevant_linenos, MissingPerlModule(lines[i+2].strip())
+        return relevant_linenos, MissingPerlModule(lines[i + 2].strip())
 
 
 class MultiLineConfigureError(Matcher):
@@ -1594,7 +1596,7 @@ build_failure_regexps = [
     (
         "ImportError: cannot import name '(.*)' from '(.*)'",
         lambda m: MissingPythonModule(m.group(2) + "." + m.group(1), python_version=None)
-     ),
+    ),
     ("E       fixture '(.*)' not found", lambda m: MissingPytestFixture(m.group(1))),
     (
         "E   ImportError: cannot import name '(.*)' from '(.*)'",
@@ -1622,11 +1624,11 @@ build_failure_regexps = [
     (
         "E   ModuleNotFoundError: No module named '(.*)'",
         lambda m: MissingPythonModule(m.group(1), python_version=3)
-     ),
+    ),
     (
         r"/usr/bin/python3: No module named ([^ ]+).*",
         lambda m: MissingPythonModule(m.group(1), python_version=3)
-     ),
+    ),
     ('(.*:[0-9]+|package .*): cannot find package "(.*)" in any of:',
      lambda m: MissingGoPackage(m.group(2))),
 
@@ -2132,7 +2134,7 @@ build_failure_regexps = [
     (
         r">\(error\): Could not expand \[(.*)\'",
         lambda m: MissingPerlModule(None, m.group(1).strip().strip("'"), None)
-     ),
+    ),
     (
         r"\[DZ\] could not load class (.*) for license (.*)",
         lambda m: MissingPerlModule(None, m.group(1), None),
@@ -2145,11 +2147,11 @@ build_failure_regexps = [
     (
         r"Required plugin bundle ([^ ]+) isn\'t installed.",
         lambda m: MissingPerlModule(None, m.group(1), None)
-     ),
+    ),
     (
         r"Required plugin ([^ ]+) isn\'t installed.",
         lambda m: MissingPerlModule(None, m.group(1), None)
-     ),
+    ),
     (
         r".*Can\'t locate (.*) in @INC \(@INC contains: (.*)\) at .* line .*.",
         lambda m: MissingPerlFile(m.group(1), m.group(2).split(" ")),
@@ -2223,22 +2225,22 @@ build_failure_regexps = [
     (
         r'LookupError: setuptools-scm was unable to detect version for \'.*\'\.',
         lambda m: SetuptoolScmVersionIssue()
-     ),
+    ),
     (
         r'LookupError: setuptools-scm was unable to detect version for .*\.',
         lambda m: SetuptoolScmVersionIssue(),
-     ),
+    ),
     (r"OSError: 'git' was not found", lambda m: MissingCommand("git")),
     (r"OSError: No such file (.*)", file_not_found_maybe_executable),
     (
         r"Could not open \'(.*)\': No such file or directory at "
         r"\/usr\/share\/perl\/[0-9.]+\/ExtUtils\/MM_Unix.pm line [0-9]+.",
         lambda m: MissingPerlFile(m.group(1))
-     ),
+    ),
     (
         r'Can\'t open perl script "(.*)": No such file or directory',
         lambda m: MissingPerlFile(m.group(1))
-     ),
+    ),
 
     # Maven
     (
@@ -2250,10 +2252,10 @@ build_failure_regexps = [
     ),
 
     (
-       MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
-       "\x1b\\[1;31mCould not resolve dependencies for project .*: "
-       "Could not find artifact (.*)\x1b\\[m .*",
-       maven_missing_artifact,
+        MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
+        "\x1b\\[1;31mCould not resolve dependencies for project .*: "
+        "Could not find artifact (.*)\x1b\\[m .*",
+        maven_missing_artifact,
     ),
 
     (
@@ -2393,7 +2395,7 @@ build_failure_regexps = [
         r'dh_(.*): Cannot find \(any matches for\) "(.*)" \(tried in (.*)\)',
         lambda m: DebhelperPatternNotFound(
             m.group(2), m.group(1), [d.strip() for d in m.group(3).split(",")])
-     ),
+    ),
     (
         r'Can\'t exec "(.*)": No such file or directory at '
         r"/usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line [0-9]+.",
@@ -2703,7 +2705,10 @@ build_failure_regexps = [
     (r"error TS6053: File \'(.*)\' not found.", file_not_found),
     # Mocha
     (r"Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' "
-     "imported from (.*)", lambda m: MissingNodeModule(m.group(1))),
+     "imported from (.*)", lambda m: MissingNodePackage(m.group(1))),
+    (r'\s*Uncaught Error \[ERR_MODULE_NOT_FOUND\]: '
+     r'Cannot find package \'(.*)\' imported from (.*)',
+     lambda m: MissingNodePackage(m.group(1))),
     (r"(.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: (.*)", None),
     (r"(.*.nim)\([0-9]+, [0-9]+\) Error: .*", None),
     (
@@ -3139,9 +3144,9 @@ build_failure_regexps = [
         command_missing,
     ),
     (
-     r'E: Build killed with signal TERM after ([0-9]+) minutes of inactivity',
-     lambda m: InactiveKilled(int(m.group(1)))
-     ),
+        r'E: Build killed with signal TERM after ([0-9]+) minutes of inactivity',
+        lambda m: InactiveKilled(int(m.group(1)))
+    ),
 
     (r'\[.*Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! '
      r'Please set it or specify an authority for this plugin. at inline delegation in '
@@ -3152,7 +3157,7 @@ build_failure_regexps = [
     (
         r'npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'',
         file_not_found
-     ),
+    ),
     (
         r'\*\*\* error: gettext infrastructure mismatch: using a Makefile\.in\.in '
         r'from gettext version ([0-9.]+) but the autoconf macros are from gettext '
@@ -3532,6 +3537,8 @@ build_failure_regexps = [
      r'have \'(.*)\' installed and in your PATH\?',
      lambda m: MissingCommand(m.group(1))),
     (r'ValueError: no ([^ ]+) installed, .*',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'This project needs (.*) in order to build\. .*',
      lambda m: MissingVagueDependency(m.group(1))),
     (r'ValueError: Unable to find (.+)',
      lambda m: MissingVagueDependency(m.group(1))),
