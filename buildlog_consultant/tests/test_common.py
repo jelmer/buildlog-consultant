@@ -343,7 +343,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             "   a MESS environment variable.",
             "",
             "e.g. MESS=/path/to/program/mess ./configure"
-            ], 3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
+        ], 3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
 
     def test_interpreter_missing(self):
         self.run_test(
