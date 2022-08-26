@@ -1708,6 +1708,10 @@ build_failure_regexps = [
         lambda m: MissingCommand('javac')
     ),
     (
+        r"configure: error: No ([^ ]+) command found",
+        lambda m: MissingCommand(m.group(1))
+    ),
+    (
         r"ERROR: InvocationError for command could not find executable (.*)",
         lambda m: MissingCommand(m.group(1))
     ),
@@ -1718,6 +1722,10 @@ build_failure_regexps = [
     (
         r"(.*)\" command could not be found. (.*)",
         lambda m: MissingCommand(m.group(1)),
+    ),
+    (
+        r"configure: error: cannot find lib ([^ ]+)",
+        lambda m: MissingLibrary(m.group(1))
     ),
     (r'\>\> Local Npm module \"(.*)" not found. Is it installed?', node_module_missing),
     (
@@ -2454,6 +2462,10 @@ build_failure_regexps = [
         lambda m: MissingCommand(m.group(1))
     ),
     (
+        r"Exception: Building sdist requires that ([^ ]+) be installed\.",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
         r"[^:]+:[0-9]+:in \`find_spec_for_exe\': can\'t find gem "
         r"(.*) \(([^)]+)\) with executable (.*) \(Gem::GemNotFoundException\)",
         ruby_missing_gem,
@@ -2529,7 +2541,7 @@ build_failure_regexps = [
         lambda m: MissingAutomakeInput(m.group(1)),
     ),
     (
-        r"configure.(in|ac):[0-9]+: error: possibly undefined macro: (.*)",
+        r"configure(|\.in|\.ac):[0-9]+: error: possibly undefined macro: (.*)",
         lambda m: MissingAutoconfMacro(m.group(2)),
     ),
     (
@@ -3472,6 +3484,14 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(2)),
     ),
     (
+        r"configure: error: (.*) requires ([^ ]+)\.",
+        lambda m: MissingVagueDependency(m.group(2))
+    ),
+    (
+        r"(.*) cannot be discovered in ([^ ]+)",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
         r"configure: error: Missing required program '(.*)'.*",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
@@ -3597,6 +3617,9 @@ build_failure_regexps = [
     (r'You need (.+)', lambda m: MissingVagueDependency(m.group(1))),
 
     (r'configure: error: ([^ ]+) is needed',
+     lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'configure: error: Cannot find ([^ ]+)\.',
      lambda m: MissingVagueDependency(m.group(1))),
 
     (r'We need the Python library (.+) to be installed\..*',
