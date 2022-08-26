@@ -3596,6 +3596,9 @@ build_failure_regexps = [
 
     (r'You need (.+)', lambda m: MissingVagueDependency(m.group(1))),
 
+    (r'configure: error: ([^ ]+) is needed',
+     lambda m: MissingVagueDependency(m.group(1))),
+
     (r'We need the Python library (.+) to be installed\..*',
      lambda m: MissingPythonDistribution(m.group(1))),
 ]
