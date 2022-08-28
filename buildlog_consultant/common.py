@@ -870,6 +870,13 @@ class DebianVersionRejected:
         return "Debian Version Rejected; %s" % self.version
 
 
+@problem("valac-cannot-compile")
+class ValaCompilerCannotCompile:
+
+    def __str__(self):
+        return "valac can not compile"
+
+
 class MissingHaskellDependencies(Problem):
 
     kind = "missing-haskell-dependencies"
@@ -3406,6 +3413,10 @@ build_failure_regexps = [
 
     (r'Project ERROR: Unknown module\(s\) in QT: (.*)',
      lambda m: MissingQtModules(m.group(1).split())),
+
+    (r'(.*):(\d+):(\d+): '
+     r'ERROR: Vala compiler \'.*\' can not compile programs',
+     lambda m: ValaCompilerCannotCompile()),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
