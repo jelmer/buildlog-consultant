@@ -2118,6 +2118,11 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), url=m.group(2))
     ),
     (
+        r".*meson.build:\d+:\d+: ERROR: "
+        r"Assert failed: (.*) support explicitly required, but (.*) not found",
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+    (
         r"configure: error: .*, (lib[^ ]+) is required",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
