@@ -1602,6 +1602,10 @@ build_failure_regexps = [
         lambda m: MissingPythonModule(m.group(1))
     ),
     (
+        r"ImportError: could not find any library for ([^ ]+) .*",
+        lambda m: MissingLibrary(m.group(1)),
+    ),
+    (
         r"ImportError: cannot import name (.*), introspection typelib not found",
         lambda m: MissingIntrospectionTypelib(m.group(1)),
     ),
