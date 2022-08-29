@@ -1641,6 +1641,10 @@ build_failure_regexps = [
         lambda m: MissingPythonModule(m.group(1).strip("'")),
     ),
     (
+        r"Could not import (.*)\.",
+        lambda m: MissingPythonModule(m.group(1))
+    ),
+    (
         r"^(.*): Error while finding module specification for "
         r"'(.*)' \(ModuleNotFoundError: No module named '(.*)'\)",
         python_cmd_module_not_found,
@@ -3574,6 +3578,11 @@ build_failure_regexps = [
         r'Makefile:[0-9]+: \*\*\* "(.*) was not found"\.  Stop\.',
         lambda m: MissingVagueDependency(m.group(1))
     ),
+    (
+        r'Makefile:[0-9]+: \*\*\* '
+        r'\"At least (.*) version (.*) is needed to build (.*)\.".  Stop\.',
+        lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
+    ),
     (r"([a-z0-9A-Z]+) not found", lambda m: MissingVagueDependency(m.group(1))),
     (r'ERROR:  Unable to locate (.*)\.', lambda m: MissingVagueDependency(m.group(1))),
     ('\x1b\\[1;31merror: (.*) not found\x1b\\[0;32m', lambda m: MissingVagueDependency(m.group(1))),
@@ -3671,6 +3680,9 @@ build_failure_regexps = [
 
     (r'We need the Python library (.+) to be installed\..*',
      lambda m: MissingPythonDistribution(m.group(1))),
+
+    (r'(.*) uses (.*) \(.*\) for installation but (.*) was not found',
+     lambda m: MissingVagueDependency(m.group(1))),
 ]
 
 
