@@ -64,6 +64,7 @@ from ..common import (
     MissingSprocketsFile,
     MissingAutomakeInput,
     MissingGoModFile,
+    MissingX11,
     NeedPgBuildExtUpdateControl,
     DhMissingUninstalled,
     DhUntilUnsupported,
@@ -331,6 +332,10 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
              "Makefile.in.in from gettext version 0.19 but the autoconf "
              "macros are from gettext version 0.20"],
             1, MismatchGettextVersions('0.19', '0.20'))
+        self.run_test(
+            ["configure: error: *** "
+             "No X11! Install X-Windows development headers/libraries! ***"],
+            1, MissingX11())
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
