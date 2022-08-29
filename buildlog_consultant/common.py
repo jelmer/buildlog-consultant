@@ -2036,6 +2036,10 @@ build_failure_regexps = [
         lambda m: MissingLibrary(m.group(1)),
     ),
     (
+        r"configure: error: (.*) library is not installed\.",
+        lambda m: MissingLibrary(m.group(1)),
+    ),
+    (
         r'configure: error: OpenSSL developer library \'libssl-dev\' or '
         r'\'openssl-devel\' not installed; cannot continue.',
         lambda m: MissingLibrary('ssl')
@@ -3418,7 +3422,14 @@ build_failure_regexps = [
      r'ERROR: Vala compiler \'.*\' can not compile programs',
      lambda m: ValaCompilerCannotCompile()),
 
+    (r'(.*):(\d+):(\d+): ERROR: Problem encountered: '
+     r'Cannot load ([^ ]+) library\. (.*)',
+     lambda m: MissingLibrary(m.group(4))),
+
     # ADD NEW REGEXES ABOVE THIS LINE
+
+    (r'configure: error: Can not find "(.*)" .* in your PATH',
+     lambda m: MissingCommand(m.group(1))),
 
     # Intentionally at the bottom of the list.
     (r'([^ ]+) package not found\. Please install from (https://[^ ]+)',
