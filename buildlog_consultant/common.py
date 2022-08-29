@@ -1284,6 +1284,8 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'([^ ]+) >= (.*) is required',
          lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
+        (r'\s*([^ ]+) is required',
+         lambda m: MissingVagueDependency(m.group(1))),
         (r'([^ ]+) binary not found\!',
          lambda m: MissingCommand(m.group(1))),
         (r'error: could not find git for clone of .*',
