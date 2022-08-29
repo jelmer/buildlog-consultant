@@ -633,6 +633,17 @@ class CcacheError:
         return "ccache error: %s" % self.error
 
 
+@problem("missing-go.sum-entry")
+class MissingGoSumEntry:
+
+    package: str
+    version: str
+
+    def __str__(self):
+        return "Missing go.sum entry: %s@%s" % (
+            self.package, self.version)
+
+
 @problem("missing-library")
 class MissingLibrary:
 
@@ -3432,6 +3443,9 @@ build_failure_regexps = [
     (r'(.*):(\d+):(\d+): ERROR: Problem encountered: '
      r'Cannot load ([^ ]+) library\. (.*)',
      lambda m: MissingLibrary(m.group(4))),
+
+    (r"go: (.*)@(.*): missing go.sum entry; to add it:",
+     lambda m: MissingGoSumEntry(m.group(1), m.group(2))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
