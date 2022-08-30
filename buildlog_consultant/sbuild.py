@@ -549,7 +549,7 @@ BRZ_ERRORS = [
     (
         r"Inconsistency between source format and version: "
         r"version (.*) is( not)? native, format '(.*)' is( not)? native\.",
-        lambda m, pl: InconsistentSourceFormat(m.group(1), m.group(2))),
+        lambda m, pl: InconsistentSourceFormat(m.group(1), m.group(2)),
     ),
     (
         r"UScan failed to run: In (.*) no matching hrefs "
