@@ -3628,9 +3628,9 @@ build_failure_regexps = [
      lambda m: MissingCommand(m.group(1))),
     (r'E ImportError: Unable to find ([^ ]+) shared library',
      lambda m: MissingLibrary(m.group(1))),
-    (r'([^ ]+) library not found on the system',
+    (r'\s*([^ ]+) library not found on the system',
      lambda m: MissingLibrary(m.group(1))),
-    (r'([^ ]+) library not found(\.?)',
+    (r'\s*([^ ]+) library not found(\.?)',
      lambda m: MissingLibrary(m.group(1))),
     (r'.*Please install ([^ ]+) libraries\.',
      lambda m: MissingVagueDependency(m.group(1))),
@@ -3667,7 +3667,7 @@ build_failure_regexps = [
     (r'No (.*) includes and libraries found',
      lambda m: MissingVagueDependency(m.group(1))),
 
-    (r'No (.*) version could be found in your system\.',
+    (r'\s*No (.*) version could be found in your system\.',
      lambda m: MissingVagueDependency(m.group(1))),
 
     (r'You need (.+)', lambda m: MissingVagueDependency(m.group(1))),
