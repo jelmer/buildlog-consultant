@@ -927,6 +927,10 @@ class Matcher(object):
         raise NotImplementedError(self.match)
 
 
+class MatcherError(Exception):
+    """Error during matching."""
+
+
 class SingleLineMatcher(Matcher):
     def __init__(self, regexp, cb=None):
         self.regexp = re.compile(regexp)
@@ -937,7 +941,12 @@ class SingleLineMatcher(Matcher):
         if not m:
             return [], None
         if self.cb:
-            err = self.cb(m)
+            try:
+                err = self.cb(m)
+            except (ValueError, IndexError) as e:
+                raise MatcherError(
+                    "Error while matching %r against %r (%r): %r" % (
+                        self.regexp, lines[i], m, e))
         else:
             err = None
         return [i], err
