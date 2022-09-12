@@ -20,7 +20,7 @@
 from dataclasses import dataclass
 from typing import List
 
-__version__ = (0, 0, 24)
+__version__ = (0, 0, 25)
 version_string = '.'.join(map(str, __version__))
 
 
