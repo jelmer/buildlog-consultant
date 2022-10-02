@@ -936,6 +936,9 @@ class SingleLineMatcher(Matcher):
         self.regexp = re.compile(regexp)
         self.cb = cb
 
+    def __repr__(self):
+        return "<%s(%r)>" % (type(self).__name__, self.regexp.pattern)
+
     def match(self, lines, i):
         m = self.regexp.match(lines[i].rstrip("\n"))
         if not m:
@@ -3474,6 +3477,13 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
     (r'([^ ]+) package not found\. Please use \'pip install .*\' first',
      lambda m: MissingPythonDistribution(m.group(1))),
+
+    (r".*: No space left on device", lambda m: NoSpaceOnDevice()),
+    (r".*(No space left on device).*", lambda m: NoSpaceOnDevice()),
+
+    # ADD NEW REGEXES ABOVE THIS LINE
+
+    # Intentionally at the bottom of the list, since they're quite broad.
     (r'configure: error: ([^ ]+) development files not found',
      lambda m: MissingVagueDependency(m.group(1))),
     (r'Exception: ([^ ]+) development files not found\..*',
@@ -3741,7 +3751,6 @@ secondary_build_failure_regexps = [
     # Java
     r'Exception in thread "(.*)" (.*): (.*);',
     r"error: Unrecognized option: \'.*\'",
-    r".*: No space left on device",
     r"Segmentation fault",
     r"\[ERROR\] (.*\.java):\[[0-9]+,[0-9]+\] (.*)",
     r"make: \*\*\* No targets specified and no makefile found\.  Stop\.",
@@ -3790,7 +3799,6 @@ secondary_build_failure_regexps = [
     r"dh_dwz: dwz -q -- .* returned exit code [0-9]+",
     r"help2man: can\'t get `-?-help\' info from .*",
     r"[^:]+: line [0-9]+:\s+[0-9]+ Segmentation fault.*",
-    r".*(No space left on device).*",
     r"dpkg-gencontrol: error: (.*)",
     r".*:[0-9]+:[0-9]+: (error|ERROR): (.*)",
     r".*[.]+FAILED .*",
@@ -3970,6 +3978,9 @@ def find_build_failure_description(  # noqa: C901
         for matcher in compiled_build_failure_regexps:
             linenos, err = matcher.match(lines, lineno)
             if linenos:
+                logger.debug('Found match against %r on %r (lines %r): %r',
+                             matcher, [lines[n] for n in linenos], linenos,
+                             err)
                 return MultiLineMatch.from_lines(lines, linenos), err
 
     # TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
@@ -4029,7 +4040,8 @@ def find_build_failure_description(  # noqa: C901
         for regexp in compiled_secondary_build_failure_regexps:
             m = regexp.fullmatch(line)
             if m:
-                logger.debug('regex %r matched line %r', regexp, line)
+                logger.debug('Found match against %r on %r (line %d)',
+                              regexp, line, lineno + 1)
                 return SingleLineMatch.from_lines(lines, lineno), None
     return None, None
 
@@ -4042,12 +4054,18 @@ def main(argv=None):
     parser.add_argument("path", type=str, default="-", nargs="?")
     parser.add_argument("--context", "-c", type=int, default=5)
     parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument("--debug", action="store_true")
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + version_string
     )
     args = parser.parse_args(argv)
 
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    if args.debug:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.INFO
+
+    logging.basicConfig(level=loglevel, format="%(message)s")
 
     if args.path == '-':
         args.path = '/dev/stdin'
