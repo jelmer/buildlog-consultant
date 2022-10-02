@@ -1,10 +1,16 @@
-all: check flake8 mypy
+all: check
 
-check:
-	python3 setup.py test
+check:: testsuite
 
-flake8:
+testsuite:
+	python3 -m unittest buildlog_consultant.tests.test_suite
+
+check:: style
+
+style:
 	flake8
 
-mypy:
+check:: typing
+
+typing:
 	python3 -m mypy buildlog_consultant

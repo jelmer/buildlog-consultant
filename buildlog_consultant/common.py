@@ -4041,7 +4041,7 @@ def find_build_failure_description(  # noqa: C901
             m = regexp.fullmatch(line)
             if m:
                 logger.debug('Found match against %r on %r (line %d)',
-                              regexp, line, lineno + 1)
+                             regexp, line, lineno + 1)
                 return SingleLineMatch.from_lines(lines, lineno), None
     return None, None
 
