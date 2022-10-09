@@ -19,6 +19,7 @@
 import logging
 import os
 import posixpath
+import shlex
 from typing import List, Optional, Tuple
 import re
 import textwrap
@@ -1374,6 +1375,15 @@ class MissingLibtool:
         return "Libtool is missing"
 
 
+@problem("unsupported-pytest-arguments")
+class UnsupportedPytestArguments:
+
+    args: List[str]
+
+    def __str__(self):
+        return "Unsuported pytest arguments: %r" % self.args
+
+
 @problem("missing-pytest-fixture")
 class MissingPytestFixture:
 
@@ -1634,6 +1644,10 @@ build_failure_regexps = [
         lambda m: MissingPythonModule(m.group(2) + "." + m.group(1), python_version=None)
     ),
     ("E       fixture '(.*)' not found", lambda m: MissingPytestFixture(m.group(1))),
+    (
+        r'pytest: error: unrecognized arguments: (.*)',
+        lambda m: UnsupportedPytestArguments(shlex.split(m.group(1)))
+    ),
     (
         "E   ImportError: cannot import name '(.*)' from '(.*)'",
         lambda m: MissingPythonModule(m.group(2) + "." + m.group(1), python_version=None)
