@@ -75,6 +75,7 @@ from ..common import (
     DirectoryNonExistant,
     UnknownCertificateAuthority,
     MissingGitIdentity,
+    UnsupportedPytestArguments,
     VcsControlDirectoryNeeded,
 )
 import unittest
@@ -583,6 +584,15 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             ],
             1,
         )
+
+    def test_pytest_args(self):
+        self.run_test(
+            ['pytest: error: unrecognized arguments: --cov=janitor '
+             '--cov-report=html --cov-report=term-missing:skip-covered'],
+            1,
+            UnsupportedPytestArguments([
+                '--cov=janitor', '--cov-report=html',
+                '--cov-report=term-missing:skip-covered']))
 
     def test_distutils_missing(self):
         self.run_test(
