@@ -3455,7 +3455,7 @@ build_failure_regexps = [
     (r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
      file_not_found),
 
-    (r"[^:]+: cannot stat \'.*\': No such file or directory", file_not_found),
+    (r"[^:]+: cannot stat \'(.*)\': No such file or directory", file_not_found),
     (r"cat: (.*): No such file or directory", file_not_found),
 
     (r"ls: cannot access \'(.*)\': No such file or directory", file_not_found),
