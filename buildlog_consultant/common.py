@@ -634,6 +634,15 @@ class CcacheError:
         return "ccache error: %s" % self.error
 
 
+@problem('missing-debian-build-dep')
+class MissingDebianBuildDep:
+
+    dep: str
+
+    def __str__(self):
+        return "Missing Debian Build-Depends: %s" % (self.dep, )
+
+
 @problem("missing-go.sum-entry")
 class MissingGoSumEntry:
 
@@ -2072,6 +2081,11 @@ build_failure_regexps = [
         r"configure: error: (.*) version (.*) or higher is required",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
+    (
+        r'configure.(ac|in):[0-9]+: error: '
+        r'libtool version (.*) or higher is required',
+        lambda m: MissingVagueDependency(m.group(2), minimum_version=m.group(3)),
+    ),
     (r'configure: error: ([^ ]+) ([^ ]+) or better is required.*',
      lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     (r'configure: error: ([^ ]+) ([^ ]+) or greater is required.*',
@@ -3480,6 +3494,11 @@ build_failure_regexps = [
 
     (r"go: (.*)@(.*): missing go.sum entry; to add it:",
      lambda m: MissingGoSumEntry(m.group(1), m.group(2))),
+
+    (r'E: pybuild pybuild:(.*): configure: plugin (.*) failed with: '
+     r'PEP517 plugin dependencies are not available\. '
+     r'Please Build-Depend on (.*)\.',
+     lambda m: MissingDebianBuildDep(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
