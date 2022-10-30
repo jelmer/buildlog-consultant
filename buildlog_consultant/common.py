@@ -71,6 +71,15 @@ class SetuptoolScmVersionIssue:
         return "setuptools-scm was unable to find version"
 
 
+@problem('missing-ocaml-package')
+class MissingOCamlPackage:
+
+    package: str
+
+    def __str__(self):
+        return "Missing OCaml package: %s" % self.package
+
+
 @problem("missing-python-distribution")
 class MissingPythonDistribution:
 
@@ -3517,6 +3526,9 @@ build_failure_regexps = [
 
     (r".*: No space left on device", lambda m: NoSpaceOnDevice()),
     (r".*(No space left on device).*", lambda m: NoSpaceOnDevice()),
+
+    (r'ocamlfind: Package `(.*)\' not found',
+     lambda m: MissingOCamlPackage(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
