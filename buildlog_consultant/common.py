@@ -2844,6 +2844,10 @@ build_failure_regexps = [
         None,
     ),
     (
+        r"<internal:.*>:[0-9]+:in `require': cannot load such file -- (.*) \(LoadError\)",
+        lambda m: MissingRubyFile(m.group(1)),
+    ),
+    (
         r".*.rb:[0-9]+:in `require\': cannot load such file " r"-- (.*) \(LoadError\)",
         lambda m: MissingRubyFile(m.group(1)),
     ),
