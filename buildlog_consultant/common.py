@@ -2858,6 +2858,10 @@ build_failure_regexps = [
         None,
     ),
     (
+        r"<internal:.*>:[0-9]+:in `require': cannot load such file -- (.*) \(LoadError\)",
+        lambda m: MissingRubyFile(m.group(1)),
+    ),
+    (
         r".*.rb:[0-9]+:in `require\': cannot load such file " r"-- (.*) \(LoadError\)",
         lambda m: MissingRubyFile(m.group(1)),
     ),
@@ -3864,13 +3868,14 @@ secondary_build_failure_regexps = [
     r"testtools.matchers._impl.MismatchError|"
     r"PermissionError|IndexError|TypeError|AssertionError|IOError|ImportError|"
     r"SerialException|OSError|qtawesome.iconic_font.FontError|"
-    "redis.exceptions.ConnectionError|builtins.OverflowError|ArgumentError|"
-    "httptools.parser.errors.HttpParserInvalidURLError|HypothesisException|"
-    "SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
-    "pkg_resources.UnknownExtra|tarfile.ReadError|"
-    "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
-    "datalad.support.exceptions.IncompleteResultsError|AssertionError|"
-    r"Cython.Compiler.Errors.CompileError|UnicodeDecodeError): .*",
+    r"redis.exceptions.ConnectionError|builtins.OverflowError|ArgumentError|"
+    r"httptools.parser.errors.HttpParserInvalidURLError|HypothesisException|"
+    r"SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
+    r"pkg_resources.UnknownExtra|tarfile.ReadError|"
+    r"numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
+    r"datalad.support.exceptions.IncompleteResultsError|AssertionError|"
+    r"Cython.Compiler.Errors.CompileError|UnicodeDecodeError|"
+    r"UnicodeEncodeError): .*",
     # Rust
     r"error\[E[0-9]+\]: .*",
     "^E   DeprecationWarning: .*",
@@ -3979,6 +3984,7 @@ secondary_build_failure_regexps = [
     r"ERROR: .*",
     r"> error: (.*)",
     r"(.*\.hs):[0-9]+:[0-9]+: error:",
+    r"go1: internal compiler error: .*",
 ]
 
 compiled_secondary_build_failure_regexps = []
