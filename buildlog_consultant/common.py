@@ -3960,6 +3960,7 @@ secondary_build_failure_regexps = [
     r"ERROR: .*",
     r"> error: (.*)",
     r"(.*\.hs):[0-9]+:[0-9]+: error:",
+    r"go1: internal compiler error: .*",
 ]
 
 compiled_secondary_build_failure_regexps = []
