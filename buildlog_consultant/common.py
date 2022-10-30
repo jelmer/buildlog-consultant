@@ -3849,13 +3849,14 @@ secondary_build_failure_regexps = [
     r"testtools.matchers._impl.MismatchError|"
     r"PermissionError|IndexError|TypeError|AssertionError|IOError|ImportError|"
     r"SerialException|OSError|qtawesome.iconic_font.FontError|"
-    "redis.exceptions.ConnectionError|builtins.OverflowError|ArgumentError|"
-    "httptools.parser.errors.HttpParserInvalidURLError|HypothesisException|"
-    "SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
-    "pkg_resources.UnknownExtra|tarfile.ReadError|"
-    "numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
-    "datalad.support.exceptions.IncompleteResultsError|AssertionError|"
-    r"Cython.Compiler.Errors.CompileError|UnicodeDecodeError): .*",
+    r"redis.exceptions.ConnectionError|builtins.OverflowError|ArgumentError|"
+    r"httptools.parser.errors.HttpParserInvalidURLError|HypothesisException|"
+    r"SSLError|KeyError|Exception|rnc2rng.parser.ParseError|"
+    r"pkg_resources.UnknownExtra|tarfile.ReadError|"
+    r"numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|"
+    r"datalad.support.exceptions.IncompleteResultsError|AssertionError|"
+    r"Cython.Compiler.Errors.CompileError|UnicodeDecodeError|"
+    r"UnicodeEncodeError): .*",
     # Rust
     r"error\[E[0-9]+\]: .*",
     "^E   DeprecationWarning: .*",
