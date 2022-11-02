@@ -1314,6 +1314,8 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(2), minimum_version=m.group(3), url=m.group(4))),
         (r'(.*) requires (.*) ([0-9].*) or newer.\s*',
          lambda m: MissingVagueDependency(m.group(2), minimum_version=m.group(3))),
+        (r'(.*) requires (.*) to build',
+         lambda m: MissingVagueDependency(m.group(2))),
         (r'(.*) library missing',
          lambda m: MissingVagueDependency(m.group(1))),
         (r'(.*) requires (.*)',
