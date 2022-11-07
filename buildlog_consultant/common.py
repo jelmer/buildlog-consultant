@@ -3945,6 +3945,7 @@ secondary_build_failure_regexps = [
     r"Cannot find the jar to install: (.*)",
     r"ERROR: .*",
     r"> error: (.*)",
+    r"error: (.*)",
     r"(.*\.hs):[0-9]+:[0-9]+: error:",
 ]
 
