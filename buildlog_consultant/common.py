@@ -4098,6 +4098,20 @@ def find_build_failure_description(  # noqa: C901
     return None, None
 
 
+def as_json(m, problem):
+    ret = {}
+    if m:
+        ret["lineno"] = m.lineno
+        ret["line"] = m.line
+    if problem:
+        ret["problem"] = problem.kind
+        try:
+            ret["details"] = problem.json()
+        except NotImplementedError:
+            ret["details"] = None
+    return ret
+
+
 def main(argv=None):
     import argparse
     import json
@@ -4128,16 +4142,7 @@ def main(argv=None):
     m, problem = find_build_failure_description(lines)
 
     if args.json:
-        ret = {}
-        if m:
-            ret["lineno"] = m.lineno
-            ret["line"] = m.line
-        if problem:
-            ret["problem"] = problem.kind
-            try:
-                ret["details"] = problem.json()
-            except NotImplementedError:
-                ret["details"] = None
+        ret = as_json(m, problem)
         json.dump(ret, sys.stdout, indent=4)
     else:
         if not m:
