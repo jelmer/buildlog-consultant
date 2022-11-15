@@ -366,6 +366,10 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         AutopkgtestErroneousPackage(m.group(1)),
                         None,
                     )
+                if msg == 'unexpected error:':
+                    (match, error) = find_build_failure_description(lines[i + 1:])
+                    if error and match:
+                        return (match, last_test, error, match.line)
                 if current_field is not None:
                     match, error = find_apt_get_failure(test_output[current_field])
                     if (
