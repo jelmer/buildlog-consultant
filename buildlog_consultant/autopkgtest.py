@@ -20,7 +20,7 @@ import logging
 import re
 from typing import Tuple, Optional, List, Dict, Union
 
-from . import Problem, SingleLineMatch, problem
+from . import Problem, SingleLineMatch, problem, version_string
 from .apt import find_apt_get_failure, AptFetchFailure
 from .common import find_build_failure_description, ChrootNotFound
 
@@ -366,6 +366,10 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         AutopkgtestErroneousPackage(m.group(1)),
                         None,
                     )
+                if msg == 'unexpected error:':
+                    (match, error) = find_build_failure_description(lines[i + 1:])
+                    if error and match:
+                        return (match, last_test, error, match.line)
                 if current_field is not None:
                     match, error = find_apt_get_failure(test_output[current_field])
                     if (
@@ -567,3 +571,58 @@ def find_testbed_setup_failure(lines):
                 AutopkgtestTestbedSetupFailure(command, 1, stderr_output),
             )
     return None, None
+
+
+def main(argv=None):
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser("analyse-autopkgtest-log")
+    parser.add_argument("--debug", action="store_true", help="Display debug output.")
+    parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument(
+        "--context", "-c", type=int, default=5, help="Number of context lines to print."
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version_string
+    )
+    parser.add_argument("path", type=str)
+    args = parser.parse_args()
+
+    if args.debug:
+        loglevel = logging.DEBUG
+    elif args.json:
+        loglevel = logging.WARNING
+    else:
+        loglevel = logging.INFO
+
+    logging.basicConfig(level=loglevel, format="%(message)s")
+
+    with open(args.path, "r") as f:
+        lines = list(f)
+        (match, testname, error, description) = find_autopkgtest_failure_description(lines)
+
+        if args.json:
+            json.dump({'offset': match.offset, 'testname': testname, 'error': error, 'description': description}, sys.stdout, indent=4)
+
+    if testname:
+        logging.info("Test name: %s", testname)
+    if error:
+        logging.info("Error: %s", error)
+    if match:
+        logging.info("Failed line: %d:", match.lineno)
+        for i in range(
+            max(0, match.offset - args.context),
+            min(len(lines), match.offset + args.context + 1),
+        ):
+            logging.info(
+                " %s  %s",
+                ">" if match.offset == i else " ",
+                lines[i].rstrip("\n"),
+            )
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main(sys.argv))
