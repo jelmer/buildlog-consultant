@@ -17,7 +17,7 @@
 
 import unittest
 
-from ..apt import (
+from buildlog_consultant.apt import (
     AptFetchFailure,
     AptMissingReleaseFile,
     find_apt_get_failure,

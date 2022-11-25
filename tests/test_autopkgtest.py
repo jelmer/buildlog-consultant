@@ -17,7 +17,8 @@
 
 import unittest
 
-from ..autopkgtest import (
+from buildlog_consultant import SingleLineMatch
+from buildlog_consultant.autopkgtest import (
     AutopkgtestTestbedFailure,
     AutopkgtestDepsUnsatisfiable,
     AutopkgtestDepChrootDisappeared,
@@ -25,8 +26,7 @@ from ..autopkgtest import (
     AutopkgtestStderrFailure,
     find_autopkgtest_failure_description,
 )
-from .. import SingleLineMatch
-from ..common import MissingCommand, MissingFile
+from buildlog_consultant.common import MissingCommand, MissingFile
 
 
 class FindAutopkgtestFailureDescriptionTests(unittest.TestCase):
