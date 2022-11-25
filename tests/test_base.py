@@ -17,8 +17,7 @@
 
 import unittest
 
-from dataclasses import dataclass
-from buildlog_consultant import problem, Problem, problem_clses
+from buildlog_consultant import problem, problem_clses
 
 
 @problem('dummy-problem')
