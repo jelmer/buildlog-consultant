@@ -17,7 +17,7 @@
 
 import unittest
 
-from ..sbuild import (
+from buildlog_consultant.sbuild import (
     find_brz_build_error,
     parse_brz_error,
     InconsistentSourceFormat,

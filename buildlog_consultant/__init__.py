@@ -35,6 +35,9 @@ class Problem(object):
     def json(self):
         raise NotImplementedError(self.json)
 
+    def from_json(self, data):
+        raise NotImplementedError(self.from_json)
+
 
 def problem(kind, is_global=False):
     def json(self):
