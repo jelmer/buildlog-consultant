@@ -541,6 +541,15 @@ class MissingPerlDistributionFile:
         return "Missing perl distribution file: %s" % self.filename
 
 
+@problem("invalid-current-user")
+class InvalidCurrentUser:
+
+    user: str
+
+    def __str__(self):
+        return "Can not run as %s" % self.user
+
+
 @problem("missing-perl-module")
 class MissingPerlModule:
 
@@ -3293,6 +3302,11 @@ build_failure_regexps = [
         r'open3: exec of cme (.*) failed: No such file or directory '
         r'at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.',
         lambda m: MissingPerlModule(None, 'App::Cme::Command::' + m.group(1))
+    ),
+
+    (
+        r'pg_ctl: cannot be run as (.*)',
+        lambda m: InvalidCurrentUser(m.group(1)),
     ),
 
     (
