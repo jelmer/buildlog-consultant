@@ -22,7 +22,7 @@ from typing import List, Tuple, Iterator, BinaryIO, Optional, Union
 from dataclasses import dataclass
 import logging
 
-from . import Problem, problem, SingleLineMatch, version_string
+from . import Problem, SingleLineMatch, version_string
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
@@ -86,8 +86,7 @@ class SbuildFailure(Exception):
         return ret
 
 
-@problem("unexpected-local-upstream-changes")
-class DpkgSourceLocalChanges:
+class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
 
     files: Optional[List[str]] = None
 
@@ -106,20 +105,17 @@ class DpkgSourceLocalChanges:
             return "Tree has local changes"
 
 
-@problem("unrepresentable-local-changes")
-class DpkgSourceUnrepresentableChanges:
+class DpkgSourceUnrepresentableChanges(Problem, kind="unrepresentable-local-changes"):
     def __str__(self):
         return "Tree has unrepresentable local changes."
 
 
-@problem("unwanted-binary-files")
-class DpkgUnwantedBinaryFiles:
+class DpkgUnwantedBinaryFiles(Problem, kind="unwanted-binary-files"):
     def __str__(self):
         return "Tree has unwanted binary files."
 
 
-@problem("changed-binary-files")
-class DpkgBinaryFileChanged:
+class DpkgBinaryFileChanged(Problem, kind="changed-binary-files"):
 
     paths: List[str]
 
@@ -127,8 +123,7 @@ class DpkgBinaryFileChanged:
         return "Tree has binary files with changes: %r" % self.paths
 
 
-@problem("missing-control-file")
-class MissingControlFile:
+class MissingControlFile(Problem, kind="missing-control-file"):
 
     path: str
 
@@ -136,8 +131,7 @@ class MissingControlFile:
         return "Tree is missing control file %s" % self.path
 
 
-@problem("unable-to-find-upstream-tarball")
-class UnableToFindUpstreamTarball:
+class UnableToFindUpstreamTarball(Problem, kind="unable-to-find-upstream-tarball"):
 
     package: str
     version: str
@@ -149,8 +143,7 @@ class UnableToFindUpstreamTarball:
         )
 
 
-@problem("source-format-unbuildable")
-class SourceFormatUnbuildable:
+class SourceFormatUnbuildable(Problem, kind="source-format-unbuildable"):
 
     source_format: str
     reason: str
@@ -160,8 +153,7 @@ class SourceFormatUnbuildable:
             self.source_format, self.reason)
 
 
-@problem("unsupported-source-format")
-class SourceFormatUnsupported:
+class SourceFormatUnsupported(Problem, kind="unsupported-source-format"):
 
     source_format: str
 
@@ -169,8 +161,7 @@ class SourceFormatUnsupported:
         return "Source format %r unsupported" % self.source_format
 
 
-@problem("patch-file-missing")
-class PatchFileMissing:
+class PatchFileMissing(Problem, kind="patch-file-missing"):
 
     path: str
 
@@ -178,8 +169,7 @@ class PatchFileMissing:
         return "Patch file %s missing" % self.path
 
 
-@problem("unknown-mercurial-extra-fields")
-class UnknownMercurialExtraFields:
+class UnknownMercurialExtraFields(Problem, kind="unknown-mercurial-extra-fields"):
 
     field: str
 
@@ -187,14 +177,13 @@ class UnknownMercurialExtraFields:
         return "Unknown Mercurial extra fields: %s" % self.field
 
 
-@problem("upstream-pgp-signature-verification-failed")
-class UpstreamPGPSignatureVerificationFailed:
+
+class UpstreamPGPSignatureVerificationFailed(Problem, kind="upstream-pgp-signature-verification-failed"):
     def __str__(self):
         return "Unable to verify the PGP signature on the upstream source"
 
 
-@problem("uscan-requested-version-missing")
-class UScanRequestVersionMissing:
+class UScanRequestVersionMissing(Problem, kind="uscan-requested-version-missing"):
 
     version: str
 
@@ -202,8 +191,7 @@ class UScanRequestVersionMissing:
         return "UScan can not find requested version %s." % self.version
 
 
-@problem("debcargo-failed")
-class DebcargoFailure:
+class DebcargoFailure(Problem, kind="debcargo-failed"):
 
     reason: str
 
@@ -214,8 +202,7 @@ class DebcargoFailure:
             return "Debcargo failed"
 
 
-@problem("changelog-parse-failed")
-class ChangelogParseError:
+class ChangelogParseError(Problem, kind="changelog-parse-failed"):
 
     reason: str
 
@@ -223,8 +210,7 @@ class ChangelogParseError:
         return "Changelog failed to parse: %s" % self.reason
 
 
-@problem("uscan-failed")
-class UScanFailed:
+class UScanFailed(Problem, kind="uscan-failed"):
 
     url: str
     reason: str
@@ -233,8 +219,7 @@ class UScanFailed:
         return "UScan failed to download %s: %s." % (self.url, self.reason)
 
 
-@problem("inconsistent-source-format")
-class InconsistentSourceFormat:
+class InconsistentSourceFormat(Problem, kind="inconsistent-source-format"):
 
     version: Optional[str] = None
     source_format: Optional[str] = None
@@ -243,8 +228,7 @@ class InconsistentSourceFormat:
         return "Inconsistent source format between version and source format"
 
 
-@problem("debian-upstream-metadata-invalid")
-class UpstreamMetadataFileParseError:
+class UpstreamMetadataFileParseError(Problem, kind="debian-upstream-metadata-invalid"):
 
     path: str
     reason: str
@@ -253,8 +237,7 @@ class UpstreamMetadataFileParseError:
         return "%s is invalid" % self.path
 
 
-@problem("dpkg-source-pack-failed")
-class DpkgSourcePackFailed:
+class DpkgSourcePackFailed(Problem, kind="dpkg-source-pack-failed"):
 
     reason: Optional[str] = None
 
@@ -265,8 +248,7 @@ class DpkgSourcePackFailed:
             return "Packing source directory failed."
 
 
-@problem("dpkg-bad-version")
-class DpkgBadVersion:
+class DpkgBadVersion(Problem, kind="dpkg-bad-version"):
 
     version: str
     reason: Optional[str] = None
@@ -278,8 +260,7 @@ class DpkgBadVersion:
             return "Version (%s) is invalid" % self.version
 
 
-@problem("debcargo-missing-crate")
-class MissingDebcargoCrate:
+class MissingDebcargoCrate(Problem, kind="debcargo-missing-crate"):
 
     crate: str
     version: Optional[str] = None
@@ -303,7 +284,7 @@ class MissingDebcargoCrate:
 def find_preamble_failure_description(  # noqa: C901
     lines: List[str],
 ) -> Tuple[Optional[SingleLineMatch], Optional[Problem]]:
-    ret: Tuple[Optional[int], Optional[str], Optional[Problem]] = (None, None)
+    ret: Tuple[Optional[SingleLineMatch], Optional[Problem]] = (None, None)
     OFFSET = 100
     err: Problem
     for i in range(1, OFFSET):
@@ -423,7 +404,7 @@ def find_preamble_failure_description(  # noqa: C901
             line,
         )
         if m:
-            (match, err) = find_build_failure_description([m.group(2)])
+            (unused_match, err) = find_build_failure_description([m.group(2)])
             if err is None:
                 err = SourceFormatUnsupported(m.group(1))
             return SingleLineMatch.from_lines(lines, lineno), err
@@ -450,8 +431,7 @@ def find_preamble_failure_description(  # noqa: C901
     return ret
 
 
-@problem("debcargo-unacceptable-predicate")
-class DebcargoUnacceptablePredicate:
+class DebcargoUnacceptablePredicate(Problem, kind="debcargo-unacceptable-predicate"):
 
     crate: str
     predicate: str
@@ -460,8 +440,7 @@ class DebcargoUnacceptablePredicate:
         return "Cannot represent prerelease part of dependency: %s" % (self.predicate)
 
 
-@problem("debcargo-unacceptable-comparator")
-class DebcargoUnacceptableComparator:
+class DebcargoUnacceptableComparator(Problem, kind="debcargo-unacceptable-comparator"):
 
     crate: str
     comparator: str
@@ -513,8 +492,7 @@ def _parse_debcargo_failure(m, pl):
     return DebcargoFailure("Debcargo failed to run")
 
 
-@problem("uscan-too-many-requests")
-class UScanTooManyRequests:
+class UScanTooManyRequests(Problem, kind="uscan-too-many-requests"):
 
     url: str
 
@@ -595,8 +573,7 @@ def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem
     return (None, line.split("\n")[0])
 
 
-@problem("missing-revision")
-class MissingRevision:
+class MissingRevision(Problem, kind="missing-revision"):
 
     revision: bytes
 
@@ -611,8 +588,7 @@ class MissingRevision:
         return "Missing revision: %r" % self.revision
 
 
-@problem("pristine-tar-missing-tree")
-class PristineTarTreeMissing:
+class PristineTarTreeMissing(Problem, kind="pristine-tar-missing-tree"):
 
     treeish: str
 
@@ -897,6 +873,8 @@ def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailu
 
     failed_stage = sbuildlog.get_failed_stage()
     try:
+        if failed_stage is None:
+            raise KeyError
         overall_failure = FAILED_STAGE_FAIL_FINDERS[failed_stage](
             sbuildlog, failed_stage
         )
@@ -1007,7 +985,7 @@ def strip_build_tail(lines, look_back=None):
             break
 
     files = {}
-    current_contents = []
+    current_contents: List[str] = []
 
     header_re = re.compile(r"==\> (.*) \<==\n")
     for i in range(len(lines) - 1, -1, -1):
@@ -1021,8 +999,7 @@ def strip_build_tail(lines, look_back=None):
     return lines, files
 
 
-@problem("arch-not-in-list")
-class ArchitectureNotInList:
+class ArchitectureNotInList(Problem, kind="arch-not-in-list"):
 
     arch: str
     arch_list: List[str]
@@ -1046,8 +1023,7 @@ def find_arch_check_failure_description(
     return SingleLineMatch.from_lines(lines, len(lines) - 1), None
 
 
-@problem("insufficient-disk-space")
-class InsufficientDiskSpace:
+class InsufficientDiskSpace(Problem, kind="insufficient-disk-space"):
 
     needed: int
     free: int
@@ -1061,7 +1037,7 @@ class InsufficientDiskSpace:
 
 def find_check_space_failure_description(
     lines,
-) -> Tuple[SingleLineMatch, Optional[Problem]]:
+) -> Tuple[Optional[SingleLineMatch], Optional[Problem]]:
     for offset, line in enumerate(lines):
         if line == "E: Disk space is probably not sufficient for building.\n":
             m = re.fullmatch(
@@ -1074,6 +1050,7 @@ def find_check_space_failure_description(
                     InsufficientDiskSpace(int(m.group(1)), int(m.group(2))),
                 )
             return SingleLineMatch.from_lines(lines, offset), None
+    return None, None
 
 
 def main(argv=None):
@@ -1114,7 +1091,7 @@ def main(argv=None):
 
     if failure.error:
         logging.info("Error: %s" % failure.error)
-    if failure.match:
+    if failure.match and failure.section:
         logging.info(
             "Failed line: %d:" % (failure.section.offsets[0] + failure.match.lineno)
         )

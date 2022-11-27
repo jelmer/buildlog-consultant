@@ -17,13 +17,11 @@
 
 import unittest
 
-from buildlog_consultant import problem, problem_clses
+from buildlog_consultant import Problem, problem_clses
 
 
-@problem('dummy-problem')
-class DummyProblem:
+class DummyProblem(Problem, kind='dummy-problem'):
 
-    kind = "dummy-problem"
     param: str
 
 

@@ -29,7 +29,6 @@ from . import (
     Match,
     MultiLineMatch,
     SingleLineMatch,
-    problem,
     version_string,
 )
 
@@ -37,8 +36,7 @@ from . import (
 logger = logging.getLogger(__name__)
 
 
-@problem("missing-python-module")
-class MissingPythonModule:
+class MissingPythonModule(Problem, kind="missing-python-module"):
 
     module: str
     python_version: Optional[str] = None
@@ -46,7 +44,7 @@ class MissingPythonModule:
 
     def __str__(self):
         if self.python_version:
-            ret = "Missing python %d module: " % self.python_version
+            ret = "Missing python %s module: " % self.python_version
         else:
             ret = "Missing python module: "
         ret += self.module
@@ -64,15 +62,13 @@ class MissingPythonModule:
         )
 
 
-@problem("setuptools-scm-version-issue")
-class SetuptoolScmVersionIssue:
+class SetuptoolScmVersionIssue(Problem, kind="setuptools-scm-version-issue"):
 
     def __str__(self):
         return "setuptools-scm was unable to find version"
 
 
-@problem('missing-ocaml-package')
-class MissingOCamlPackage:
+class MissingOCamlPackage(Problem, kind='missing-ocaml-package'):
 
     package: str
 
@@ -80,8 +76,7 @@ class MissingOCamlPackage:
         return "Missing OCaml package: %s" % self.package
 
 
-@problem("missing-python-distribution")
-class MissingPythonDistribution:
+class MissingPythonDistribution(Problem, kind="missing-python-distribution"):
 
     distribution: str
     python_version: Optional[int] = None
@@ -116,8 +111,7 @@ class MissingPythonDistribution:
         )
 
 
-@problem('vcs-control-directory-needed')
-class VcsControlDirectoryNeeded:
+class VcsControlDirectoryNeeded(Problem, kind='vcs-control-directory-needed'):
 
     vcs: List[str]
 
@@ -125,8 +119,7 @@ class VcsControlDirectoryNeeded:
         return "Version control directory needed"
 
 
-@problem("patch-application-failed")
-class PatchApplicationFailed:
+class PatchApplicationFailed(Problem, kind="patch-application-failed"):
 
     patchname: str
 
@@ -162,8 +155,7 @@ def python2_reqs_not_found(m):
     return None
 
 
-@problem("missing-vague-dependency")
-class MissingVagueDependency:
+class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
 
     name: str
     url: Optional[str] = None
@@ -173,8 +165,7 @@ class MissingVagueDependency:
         return "Missing dependency: %s" % self.name
 
 
-@problem("missing-qt")
-class MissingQt:
+class MissingQt(Problem, kind="missing-qt"):
 
     minimum_version: Optional[str] = None
 
@@ -185,8 +176,7 @@ class MissingQt:
         return "Missing QT installation"
 
 
-@problem("missing-qt-modules")
-class MissingQtModules:
+class MissingQtModules(Problem, kind="missing-qt-modules"):
 
     modules: List[str]
 
@@ -194,20 +184,17 @@ class MissingQtModules:
         return "Missing QT modules: %r" % self.modules
 
 
-@problem("missing-x11")
-class MissingX11:
+class MissingX11(Problem, kind="missing-x11"):
     def __str__(self):
         return "Missing X11 headers"
 
 
-@problem("missing-git-identity")
-class MissingGitIdentity:
+class MissingGitIdentity(Problem, kind="missing-git-identity"):
     def __str__(self):
         return "Missing Git Identity"
 
 
-@problem("missing-file")
-class MissingFile:
+class MissingFile(Problem, kind="missing-file"):
 
     path: str
 
@@ -215,8 +202,7 @@ class MissingFile:
         return "Missing file: %s" % self.path
 
 
-@problem("missing-command-or-build-file")
-class MissingCommandOrBuildFile:
+class MissingCommandOrBuildFile(Problem, kind="missing-command-or-build-file"):
 
     filename: str
 
@@ -228,8 +214,7 @@ class MissingCommandOrBuildFile:
         return "Missing command or build file: %s" % self.filename
 
 
-@problem("missing-build-file")
-class MissingBuildFile:
+class MissingBuildFile(Problem, kind="missing-build-file"):
 
     filename: str
 
@@ -264,8 +249,7 @@ def webpack_file_missing(m):
     return None
 
 
-@problem("missing-jdk-file")
-class MissingJDKFile:
+class MissingJDKFile(Problem, kind="missing-jdk-file"):
 
     jdk_path: str
     filename: str
@@ -274,8 +258,7 @@ class MissingJDKFile:
         return "Missing JDK file %s (JDK Path: %s)" % (self.filename, self.jdk_path)
 
 
-@problem("missing-jdk")
-class MissingJDK:
+class MissingJDK(Problem, kind="missing-jdk"):
 
     jdk_path: str
 
@@ -283,8 +266,7 @@ class MissingJDK:
         return "Missing JDK (JDK Path: %s)" % (self.jdk_path)
 
 
-@problem("missing-jre")
-class MissingJRE:
+class MissingJRE(Problem, kind="missing-jre"):
     def __str__(self):
         return "Missing JRE"
 
@@ -299,8 +281,7 @@ def interpreter_missing(m):
     return MissingCommand(m.group(1))
 
 
-@problem("chroot-not-found")
-class ChrootNotFound:
+class ChrootNotFound(Problem, kind="chroot-not-found"):
 
     chroot: str
 
@@ -308,8 +289,7 @@ class ChrootNotFound:
         return "Chroot not found: %s" % self.chroot
 
 
-@problem("missing-sprockets-file")
-class MissingSprocketsFile:
+class MissingSprocketsFile(Problem, kind="missing-sprockets-file"):
 
     name: str
     content_type: str
@@ -318,8 +298,7 @@ class MissingSprocketsFile:
         return "Missing sprockets file: %s (type: %s)" % (self.name, self.content_type)
 
 
-@problem("missing-go-package")
-class MissingGoPackage:
+class MissingGoPackage(Problem, kind="missing-go-package"):
 
     package: str
 
@@ -327,8 +306,7 @@ class MissingGoPackage:
         return "Missing Go package: %s" % self.package
 
 
-@problem("missing-c-header")
-class MissingCHeader:
+class MissingCHeader(Problem, kind="missing-c-header"):
 
     header: str
 
@@ -336,8 +314,7 @@ class MissingCHeader:
         return "Missing C Header: %s" % self.header
 
 
-@problem("missing-node-module")
-class MissingNodeModule:
+class MissingNodeModule(Problem, kind="missing-node-module"):
 
     module: str
 
@@ -345,8 +322,7 @@ class MissingNodeModule:
         return "Missing Node Module: %s" % self.module
 
 
-@problem("missing-node-package")
-class MissingNodePackage:
+class MissingNodePackage(Problem, kind="missing-node-package"):
 
     package: str
 
@@ -362,8 +338,7 @@ def node_module_missing(m):
     return MissingNodeModule(m.group(1))
 
 
-@problem("command-missing")
-class MissingCommand:
+class MissingCommand(Problem, kind="command-missing"):
 
     command: str
 
@@ -371,20 +346,17 @@ class MissingCommand:
         return "Missing command: %s" % self.command
 
 
-@problem("no-secret-gpg-key")
-class MissingSecretGpgKey:
+class MissingSecretGpgKey(Problem, kind="no-secret-gpg-key"):
     def __str__(self):
         return "No secret GPG key is present"
 
 
-@problem("no-vcversioner-version")
-class MissingVcVersionerVersion:
+class MissingVcVersionerVersion(Problem, kind="no-vcversioner-version"):
     def __str__(self):
         return "vcversion could not find a git directory or version.txt file"
 
 
-@problem("missing-configure")
-class MissingConfigure:
+class MissingConfigure(Problem, kind="missing-configure"):
     def __str__(self):
         return "Missing configure script"
 
@@ -402,14 +374,12 @@ def command_missing(m):
     return MissingCommand(command)
 
 
-@problem("javascript-runtime-missing")
-class MissingJavaScriptRuntime:
+class MissingJavaScriptRuntime(Problem, kind="javascript-runtime-missing"):
     def __str__(self):
         return "Missing JavaScript Runtime"
 
 
-@problem("missing-php-extension")
-class MissingPHPExtension:
+class MissingPHPExtension(Problem, kind="missing-php-extension"):
 
     extension: str
 
@@ -417,8 +387,7 @@ class MissingPHPExtension:
         return "Missing PHP Extension: %s" % self.extension
 
 
-@problem("minimum-autoconf-too-old")
-class MinimumAutoconfTooOld:
+class MinimumAutoconfTooOld(Problem, kind="minimum-autoconf-too-old"):
 
     minimum_version: str
 
@@ -426,8 +395,7 @@ class MinimumAutoconfTooOld:
         return "configure.{ac,in} should require newer autoconf %s" % self.minimum_version
 
 
-@problem("missing-pkg-config-package")
-class MissingPkgConfig:
+class MissingPkgConfig(Problem, kind="missing-pkg-config-package"):
 
     module: str
     minimum_version: Optional[str] = None
@@ -449,8 +417,7 @@ class MissingPkgConfig:
         )
 
 
-@problem("missing-go-runtime")
-class MissingGoRuntime:
+class MissingGoRuntime(Problem, kind="missing-go-runtime"):
     def __str__(self):
         return "go runtime is missing"
 
@@ -466,8 +433,7 @@ def pkg_config_missing(m):
     return None
 
 
-@problem("missing-cmake-components")
-class MissingCMakeComponents:
+class MissingCMakeComponents(Problem, kind="missing-cmake-components"):
 
     name: str
     components: List[str]
@@ -476,8 +442,7 @@ class MissingCMakeComponents:
         return "Missing %s components: %r" % (self.name, self.components)
 
 
-@problem("missing-cmake-files")
-class CMakeFilesMissing:
+class CMakeFilesMissing(Problem, kind="missing-cmake-files"):
 
     filenames: List[str]
     version: Optional[str] = None
@@ -488,8 +453,7 @@ class CMakeFilesMissing:
         return "Missing CMake package configuration files: %r" % (self.filenames,)
 
 
-@problem("missing-cmake-config")
-class MissingCMakeConfig:
+class MissingCMakeConfig(Problem, kind="missing-cmake-config"):
 
     name: str
     version: str
@@ -500,14 +464,12 @@ class MissingCMakeConfig:
         return "Missing CMake package configuration for %s" % (self.name, )
 
 
-@problem("debhelper-argument-order")
-class DhWithOrderIncorrect:
+class DhWithOrderIncorrect(Problem, kind="debhelper-argument-order"):
     def __str__(self):
         return "dh argument order is incorrect"
 
 
-@problem("unsupported-debhelper-compat-level")
-class UnsupportedDebhelperCompatLevel:
+class UnsupportedDebhelperCompatLevel(Problem, kind="unsupported-debhelper-compat-level"):
 
     oldest_supported: int
     requested: int
@@ -517,14 +479,12 @@ class UnsupportedDebhelperCompatLevel:
             self.requested, self.oldest_supported)
 
 
-@problem("no-space-on-device", is_global=True)
-class NoSpaceOnDevice:
+class NoSpaceOnDevice(Problem, kind="no-space-on-device", is_global=True):
     def __str__(self):
         return "No space on device"
 
 
-@problem("missing-perl-predeclared")
-class MissingPerlPredeclared:
+class MissingPerlPredeclared(Problem, kind="missing-perl-predeclared"):
 
     name: str
 
@@ -532,8 +492,7 @@ class MissingPerlPredeclared:
         return "missing predeclared function: %s" % self.name
 
 
-@problem("missing-perl-distribution-file")
-class MissingPerlDistributionFile:
+class MissingPerlDistributionFile(Problem, kind="missing-perl-distribution-file"):
 
     filename: str
 
@@ -541,8 +500,7 @@ class MissingPerlDistributionFile:
         return "Missing perl distribution file: %s" % self.filename
 
 
-@problem("invalid-current-user")
-class InvalidCurrentUser:
+class InvalidCurrentUser(Problem, kind="invalid-current-user"):
 
     user: str
 
@@ -550,8 +508,7 @@ class InvalidCurrentUser:
         return "Can not run as %s" % self.user
 
 
-@problem("missing-perl-module")
-class MissingPerlModule:
+class MissingPerlModule(Problem, kind="missing-perl-module"):
 
     filename: Optional[str]
     module: str
@@ -568,8 +525,7 @@ class MissingPerlModule:
             return "Missing Perl Module: %s" % self.module
 
 
-@problem("missing-perl-file")
-class MissingPerlFile:
+class MissingPerlFile(Problem, kind="missing-perl-file"):
 
     filename: str
     inc: Optional[List[str]] = None
@@ -578,12 +534,9 @@ class MissingPerlFile:
         return "Missing Perl file: %s (inc: %r)" % (self.filename, self.inc)
 
 
-class MissingMavenArtifacts(Problem):
+class MissingMavenArtifacts(Problem, kind="missing-maven-artifacts"):
 
-    kind = "missing-maven-artifacts"
-
-    def __init__(self, artifacts):
-        self.artifacts = artifacts
+    artifacts: List[Tuple[str, str, str, str]]
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.artifacts == other.artifacts
@@ -595,14 +548,12 @@ class MissingMavenArtifacts(Problem):
         return "%s(%r)" % (type(self).__name__, self.artifacts)
 
 
-@problem("dh-until-unsupported")
-class DhUntilUnsupported:
+class DhUntilUnsupported(Problem, kind="dh-until-unsupported"):
     def __str__(self):
         return "dh --until is no longer supported"
 
 
-@problem("dh-addon-load-failure")
-class DhAddonLoadFailure:
+class DhAddonLoadFailure(Problem, kind="dh-addon-load-failure"):
 
     name: str
     path: str
@@ -611,8 +562,7 @@ class DhAddonLoadFailure:
         return "dh addon loading failed: %s" % self.name
 
 
-@problem("dh-missing-uninstalled")
-class DhMissingUninstalled:
+class DhMissingUninstalled(Problem, kind="dh-missing-uninstalled"):
 
     missing_file: str
 
@@ -620,8 +570,7 @@ class DhMissingUninstalled:
         return "File built by Debian not installed: %r" % self.missing_file
 
 
-@problem("dh-link-destination-is-directory")
-class DhLinkDestinationIsDirectory:
+class DhLinkDestinationIsDirectory(Problem, kind="dh-link-destination-is-directory"):
 
     path: str
 
@@ -634,8 +583,7 @@ def maven_missing_artifact(m):
     return MissingMavenArtifacts([a.strip() for a in artifacts])
 
 
-@problem("missing-xml-entity")
-class MissingXmlEntity:
+class MissingXmlEntity(Problem, kind="missing-xml-entity"):
 
     url: str
 
@@ -643,8 +591,7 @@ class MissingXmlEntity:
         return "Missing XML entity: %s" % self.url
 
 
-@problem("ccache-error")
-class CcacheError:
+class CcacheError(Problem, kind="ccache-error"):
 
     error: str
 
@@ -652,8 +599,7 @@ class CcacheError:
         return "ccache error: %s" % self.error
 
 
-@problem('missing-debian-build-dep')
-class MissingDebianBuildDep:
+class MissingDebianBuildDep(Problem, kind='missing-debian-build-dep'):
 
     dep: str
 
@@ -661,8 +607,7 @@ class MissingDebianBuildDep:
         return "Missing Debian Build-Depends: %s" % (self.dep, )
 
 
-@problem("missing-go.sum-entry")
-class MissingGoSumEntry:
+class MissingGoSumEntry(Problem, kind="missing-go.sum-entry"):
 
     package: str
     version: str
@@ -672,8 +617,7 @@ class MissingGoSumEntry:
             self.package, self.version)
 
 
-@problem("missing-library")
-class MissingLibrary:
+class MissingLibrary(Problem, kind="missing-library"):
 
     library: str
 
@@ -681,8 +625,7 @@ class MissingLibrary:
         return "missing library: %s" % self.library
 
 
-@problem("missing-static-library")
-class MissingStaticLibrary:
+class MissingStaticLibrary(Problem, kind="missing-static-library"):
 
     library: str
     filename: str
@@ -691,8 +634,7 @@ class MissingStaticLibrary:
         return "missing static library: %s" % self.library
 
 
-@problem("missing-ruby-gem")
-class MissingRubyGem:
+class MissingRubyGem(Problem, kind="missing-ruby-gem"):
 
     gem: str
     version: Optional[str] = None
@@ -716,8 +658,7 @@ def ruby_missing_gem(m):
     return MissingRubyGem(m.group(1), minimum_version)
 
 
-@problem("missing-ruby-file")
-class MissingRubyFile:
+class MissingRubyFile(Problem, kind="missing-ruby-file"):
 
     filename: str
 
@@ -725,8 +666,7 @@ class MissingRubyFile:
         return "Missing ruby file: %s" % (self.filename,)
 
 
-@problem("missing-php-class")
-class MissingPhpClass:
+class MissingPhpClass(Problem, kind="missing-php-class"):
 
     php_class: str
 
@@ -734,8 +674,7 @@ class MissingPhpClass:
         return "missing PHP class: %s" % self.php_class
 
 
-@problem("missing-java-class")
-class MissingJavaClass:
+class MissingJavaClass(Problem, kind="missing-java-class"):
 
     classname: str
 
@@ -743,8 +682,7 @@ class MissingJavaClass:
         return "missing java class: %s" % self.classname
 
 
-@problem("missing-r-package")
-class MissingRPackage:
+class MissingRPackage(Problem, kind="missing-r-package"):
 
     package: str
     minimum_version: Optional[str] = None
@@ -765,8 +703,7 @@ def r_missing_package(m):
     return MissingRPackage(deps[0])
 
 
-@problem("debhelper-pattern-not-found")
-class DebhelperPatternNotFound:
+class DebhelperPatternNotFound(Problem, kind="debhelper-pattern-not-found"):
 
     pattern: str
     tool: str
@@ -780,14 +717,12 @@ class DebhelperPatternNotFound:
         )
 
 
-@problem("missing-gnome-common")
-class GnomeCommonMissing:
+class GnomeCommonMissing(Problem, kind="missing-gnome-common"):
     def __str__(self):
         return "gnome-common is not installed"
 
 
-@problem("missing-xfce-dependency")
-class MissingXfceDependency:
+class MissingXfceDependency(Problem, kind="missing-xfce-dependency"):
 
     package: str
 
@@ -795,8 +730,7 @@ class MissingXfceDependency:
         return "Missing XFCE build dependency: %s" % (self.package)
 
 
-@problem("missing-automake-input")
-class MissingAutomakeInput:
+class MissingAutomakeInput(Problem, kind="missing-automake-input"):
 
     path: str
 
@@ -804,8 +738,7 @@ class MissingAutomakeInput:
         return "automake input file %s missing" % self.path
 
 
-@problem("missing-autoconf-macro")
-class MissingAutoconfMacro:
+class MissingAutoconfMacro(Problem, kind="missing-autoconf-macro"):
 
     macro: str
     need_rebuild: bool = False
@@ -814,8 +747,7 @@ class MissingAutoconfMacro:
         return "autoconf macro %s missing" % self.macro
 
 
-@problem("missing-gnome-common-dependency")
-class MissingGnomeCommonDependency:
+class MissingGnomeCommonDependency(Problem, kind="missing-gnome-common-dependency"):
 
     package: str
     minimum_version: Optional[str] = None
@@ -827,8 +759,7 @@ class MissingGnomeCommonDependency:
         )
 
 
-@problem("missing-config.status-input")
-class MissingConfigStatusInput:
+class MissingConfigStatusInput(Problem, kind="missing-config.status-input"):
 
     path: str
 
@@ -836,21 +767,18 @@ class MissingConfigStatusInput:
         return "missing config.status input %s" % self.path
 
 
-@problem("missing-jvm")
-class MissingJVM:
+class MissingJVM(Problem, kind="missing-jvm"):
     def __str__(self):
         return "Missing JVM"
 
 
-@problem("missing-perl-manifest")
-class MissingPerlManifest:
+class MissingPerlManifest(Problem, kind="missing-perl-manifest"):
 
     def __str__(self):
         return "missing Perl MANIFEST"
 
 
-@problem("upstart-file-present")
-class UpstartFilePresent:
+class UpstartFilePresent(Problem, kind="upstart-file-present"):
 
     filename: str
 
@@ -858,8 +786,7 @@ class UpstartFilePresent:
         return "Upstart file present: %s" % self.filename
 
 
-@problem("need-pg-buildext-updatecontrol")
-class NeedPgBuildExtUpdateControl:
+class NeedPgBuildExtUpdateControl(Problem, kind="need-pg-buildext-updatecontrol"):
 
     generated_path: str
     template_path: str
@@ -870,8 +797,7 @@ class NeedPgBuildExtUpdateControl:
         )
 
 
-@problem("missing-vala-package")
-class MissingValaPackage:
+class MissingValaPackage(Problem, kind="missing-vala-package"):
 
     package: str
 
@@ -882,8 +808,7 @@ class MissingValaPackage:
 MAVEN_ERROR_PREFIX = "(?:\\[ERROR\\]|\\[\x1b\\[1;31mERROR\x1b\\[m\\]) "
 
 
-@problem("local-directory-not-existing")
-class DirectoryNonExistant:
+class DirectoryNonExistant(Problem, kind="local-directory-not-existing"):
 
     path: str
 
@@ -891,8 +816,7 @@ class DirectoryNonExistant:
         return "Directory does not exist: %s" % self.path
 
 
-@problem("imagemagick-delegate-missing")
-class ImageMagickDelegateMissing:
+class ImageMagickDelegateMissing(Problem, kind="imagemagick-delegate-missing"):
 
     delegate: str
 
@@ -900,8 +824,7 @@ class ImageMagickDelegateMissing:
         return "Imagemagick missing delegate: %s" % self.delegate
 
 
-@problem("debian-version-rejected")
-class DebianVersionRejected:
+class DebianVersionRejected(Problem, kind="debian-version-rejected"):
 
     version: str
 
@@ -909,19 +832,15 @@ class DebianVersionRejected:
         return "Debian Version Rejected; %s" % self.version
 
 
-@problem("valac-cannot-compile")
-class ValaCompilerCannotCompile:
+class ValaCompilerCannotCompile(Problem, kind="valac-cannot-compile"):
 
     def __str__(self):
         return "valac can not compile"
 
 
-class MissingHaskellDependencies(Problem):
+class MissingHaskellDependencies(Problem, kind="missing-haskell-dependencies"):
 
-    kind = "missing-haskell-dependencies"
-
-    def __init__(self, deps):
-        self.deps = deps
+    deps: List[str]
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.deps == other.deps
@@ -933,15 +852,12 @@ class MissingHaskellDependencies(Problem):
         return "Missing Haskell dependencies: %r" % self.deps
 
 
-class MissingHaskellModule(Problem):
+class MissingHaskellModule(Problem, kind="missing-haskell-module"):
 
-    kind = "missing-haskell-module"
-
-    def __init__(self, module):
-        self.module = module
+    module: str
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and self.mdule == other.module
+        return isinstance(other, type(self)) and self.module == other.module
 
     def __repr__(self):
         return "%s(%r)" % (type(self).__name__, self.module)
@@ -983,8 +899,7 @@ class SingleLineMatcher(Matcher):
         return [i], err
 
 
-@problem("missing-setup.py-command")
-class MissingSetupPyCommand:
+class MissingSetupPyCommand(Problem, kind="missing-setup.py-command"):
 
     command: str
 
@@ -1122,15 +1037,12 @@ def cmake_compiler_missing(m):
     return None
 
 
-class CMakeNeedExactVersion(Problem):
+class CMakeNeedExactVersion(Problem, kind="cmake-exact-version-missing"):
 
-    kind = "cmake-exact-version-missing"
-
-    def __init__(self, package, version_found, exact_version_needed, path):
-        self.package = package
-        self.version_found = version_found
-        self.exact_version_needed = exact_version_needed
-        self.path = path
+    package: str
+    version_found: str
+    exact_version_needed: str
+    path: str
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and (
@@ -1380,32 +1292,27 @@ class CMakeErrorMatcher(Matcher):
         return linenos, None
 
 
-@problem("missing-fortran-compiler")
-class MissingFortranCompiler:
+class MissingFortranCompiler(Problem, kind="missing-fortran-compiler"):
     def __str__(self):
         return "No Fortran compiler found"
 
 
-@problem("missing-c#-compiler")
-class MissingCSharpCompiler:
+class MissingCSharpCompiler(Problem, kind="missing-c#-compiler"):
     def __str__(self):
         return "No C# compiler found"
 
 
-@problem("missing-rust-compiler")
-class MissingRustCompiler:
+class MissingRustCompiler(Problem, kind="missing-rust-compiler"):
     def __str__(self):
         return "No Rust compiler found"
 
 
-@problem("missing-libtool")
-class MissingLibtool:
+class MissingLibtool(Problem, kind="missing-libtool"):
     def __str__(self):
         return "Libtool is missing"
 
 
-@problem("unsupported-pytest-arguments")
-class UnsupportedPytestArguments:
+class UnsupportedPytestArguments(Problem, kind="unsupported-pytest-arguments"):
 
     args: List[str]
 
@@ -1413,8 +1320,7 @@ class UnsupportedPytestArguments:
         return "Unsuported pytest arguments: %r" % self.args
 
 
-@problem("missing-pytest-fixture")
-class MissingPytestFixture:
+class MissingPytestFixture(Problem, kind="missing-pytest-fixture"):
 
     fixture: str
 
@@ -1422,8 +1328,7 @@ class MissingPytestFixture:
         return "Missing pytest fixture: %s" % self.fixture
 
 
-@problem("missing-cargo-crate")
-class MissingCargoCrate:
+class MissingCargoCrate(Problem, kind="missing-cargo-crate"):
 
     crate: str
     requirement: Optional[str] = None
@@ -1444,8 +1349,7 @@ def cargo_missing_requirement(m):
     return MissingCargoCrate(crate, requirement)
 
 
-@problem("missing-latex-file")
-class MissingLatexFile:
+class MissingLatexFile(Problem, kind="missing-latex-file"):
 
     filename: str
 
@@ -1453,8 +1357,7 @@ class MissingLatexFile:
         return "Missing LaTeX file: %s" % self.filename
 
 
-@problem("missing-fontspec")
-class MissingFontspec:
+class MissingFontspec(Problem, kind="missing-fontspec"):
 
     fontspec: str
 
@@ -1462,8 +1365,7 @@ class MissingFontspec:
         return "Missing font spec: %s" % self.fontspec
 
 
-@problem("missing-dh-compat-level")
-class MissingDHCompatLevel:
+class MissingDHCompatLevel(Problem, kind="missing-dh-compat-level"):
 
     command: str
 
@@ -1471,8 +1373,7 @@ class MissingDHCompatLevel:
         return "Missing DH Compat Level (command: %s)" % self.command
 
 
-@problem("duplicate-dh-compat-level")
-class DuplicateDHCompatLevel:
+class DuplicateDHCompatLevel(Problem, kind="duplicate-dh-compat-level"):
 
     command: str
 
@@ -1480,8 +1381,7 @@ class DuplicateDHCompatLevel:
         return "DH Compat Level specified twice (command: %s)" % self.command
 
 
-@problem("missing-introspection-typelib")
-class MissingIntrospectionTypelib:
+class MissingIntrospectionTypelib(Problem, kind="missing-introspection-typelib"):
 
     library: str
 
@@ -1489,8 +1389,7 @@ class MissingIntrospectionTypelib:
         return "Missing introspection typelib: %s" % self.library
 
 
-@problem("unknown-certificate-authority")
-class UnknownCertificateAuthority:
+class UnknownCertificateAuthority(Problem, kind="unknown-certificate-authority"):
 
     url: str
 
@@ -1498,14 +1397,12 @@ class UnknownCertificateAuthority:
         return "Unknown Certificate Authority for %s" % self.url
 
 
-@problem("missing-x-display")
-class MissingXDisplay:
+class MissingXDisplay(Problem, kind="missing-x-display"):
     def __str__(self):
         return "No X Display"
 
 
-@problem("missing-postgresql-extension")
-class MissingPostgresExtension:
+class MissingPostgresExtension(Problem, kind="missing-postgresql-extension"):
 
     extension: str
 
@@ -1513,8 +1410,7 @@ class MissingPostgresExtension:
         return "Missing postgres extension: %s" % self.extension
 
 
-@problem("missing-lua-module")
-class MissingLuaModule:
+class MissingLuaModule(Problem, kind="missing-lua-module"):
 
     module: str
 
@@ -1522,15 +1418,13 @@ class MissingLuaModule:
         return "Missing Lua Module: %s" % self.module
 
 
-@problem("cancelled")
-class Cancelled:
+class Cancelled(Problem, kind="cancelled"):
 
     def __str__(self):
         return "Cancelled by runner or job manager"
 
 
-@problem("inactive-killed")
-class InactiveKilled:
+class InactiveKilled(Problem, kind="inactive-killed"):
 
     minutes: int
 
@@ -1538,15 +1432,13 @@ class InactiveKilled:
         return "Killed due to inactivity"
 
 
-@problem("missing-pause-credentials")
-class MissingPauseCredentials:
+class MissingPauseCredentials(Problem, kind="missing-pause-credentials"):
 
     def __str__(self):
         return "Missing credentials for PAUSE"
 
 
-@problem("mismatch-gettext-versions")
-class MismatchGettextVersions:
+class MismatchGettextVersions(Problem, kind="mismatch-gettext-versions"):
 
     makefile_version: str
     autoconf_version: str
@@ -1556,15 +1448,13 @@ class MismatchGettextVersions:
             self.makefile_version, self.autoconf_version)
 
 
-@problem("disappeared-symbols")
-class DisappearedSymbols:
+class DisappearedSymbols(Problem, kind="disappeared-symbols"):
 
     def __str__(self):
         return "Disappeared symbols"
 
 
-@problem("missing-gnulib-directory")
-class MissingGnulibDirectory:
+class MissingGnulibDirectory(Problem, kind="missing-gnulib-directory"):
 
     directory: str
 
@@ -1572,22 +1462,19 @@ class MissingGnulibDirectory:
         return "Missing gnulib directory %s" % self.directory
 
 
-@problem("missing-go.mod-file")
-class MissingGoModFile:
+class MissingGoModFile(Problem, kind="missing-go.mod-file"):
 
     def __str__(self):
         return "go.mod file is missing"
 
 
-@problem("outdated-go.mod-file")
-class OutdatedGoModFile:
+class OutdatedGoModFile(Problem, kind="outdated-go.mod-file"):
 
     def __str__(self):
         return "go.mod file is outdated"
 
 
-@problem("code-coverage-too-low")
-class CodeCoverageTooLow:
+class CodeCoverageTooLow(Problem, kind="code-coverage-too-low"):
 
     actual: float
     required: float
@@ -1596,8 +1483,7 @@ class CodeCoverageTooLow:
         return "Code coverage too low: %f < %f" % (self.actual, self.required)
 
 
-@problem("esmodule-must-use-import")
-class ESModuleMustUseImport:
+class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
     path: str
 

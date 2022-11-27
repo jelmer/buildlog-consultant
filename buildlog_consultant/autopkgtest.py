@@ -20,7 +20,7 @@ import logging
 import re
 from typing import Tuple, Optional, List, Dict, Union
 
-from . import Problem, SingleLineMatch, problem, version_string
+from . import Problem, SingleLineMatch, version_string
 from .apt import find_apt_get_failure, AptFetchFailure
 from .common import find_build_failure_description, ChrootNotFound
 
@@ -28,8 +28,7 @@ from .common import find_build_failure_description, ChrootNotFound
 logger = logging.getLogger(__name__)
 
 
-@problem("badpkg")
-class AutopkgtestDepsUnsatisfiable:
+class AutopkgtestDepsUnsatisfiable(Problem, kind="badpkg"):
 
     args: List[str]
 
@@ -49,24 +48,19 @@ class AutopkgtestDepsUnsatisfiable:
         return cls(args)
 
 
-@problem("timed-out")
-class AutopkgtestTimedOut:
+class AutopkgtestTimedOut(Problem, kind="timed-out"):
     def __str__(self):
         return "Timed out"
 
 
-@problem("xdg-runtime-dir-not-set")
-class XDGRunTimeNotSet:
+class XDGRunTimeNotSet(Problem, kind="xdg-runtime-dir-not-set"):
     def __str__(self):
         return "XDG_RUNTIME_DIR is not set"
 
 
-class AutopkgtestTestbedFailure(Problem):
+class AutopkgtestTestbedFailure(Problem, kind="testbed-failure"):
 
-    kind = "testbed-failure"
-
-    def __init__(self, reason):
-        self.reason = reason
+    reason: str
 
     def __eq__(self, other):
         return type(self) == type(other) and self.reason == other.reason
@@ -78,12 +72,7 @@ class AutopkgtestTestbedFailure(Problem):
         return self.reason
 
 
-class AutopkgtestDepChrootDisappeared(Problem):
-
-    kind = "testbed-chroot-disappeared"
-
-    def __init__(self):
-        pass
+class AutopkgtestDepChrootDisappeared(Problem, kind="testbed-chroot-disappeared"):
 
     def __str__(self):
         return "chroot disappeared"
@@ -95,12 +84,9 @@ class AutopkgtestDepChrootDisappeared(Problem):
         return isinstance(self, type(other))
 
 
-class AutopkgtestErroneousPackage(Problem):
+class AutopkgtestErroneousPackage(Problem, kind="erroneous-package"):
 
-    kind = "erroneous-package"
-
-    def __init__(self, reason):
-        self.reason = reason
+    reason: str
 
     def __eq__(self, other):
         return type(self) == type(other) and self.reason == other.reason
@@ -112,12 +98,9 @@ class AutopkgtestErroneousPackage(Problem):
         return self.reason
 
 
-class AutopkgtestStderrFailure(Problem):
+class AutopkgtestStderrFailure(Problem, kind="stderr-output"):
 
-    kind = "stderr-output"
-
-    def __init__(self, stderr_line):
-        self.stderr_line = stderr_line
+    stderr_line: str
 
     def __eq__(self, other):
         return isinstance(self, type(other)) and self.stderr_line == other.stderr_line
@@ -215,8 +198,7 @@ def parse_autopkgtest_summary(lines):
         i += 1
 
 
-@problem("testbed-setup-failure")
-class AutopkgtestTestbedSetupFailure:
+class AutopkgtestTestbedSetupFailure(Problem, kind="testbed-setup-failure"):
 
     command: str
     exit_status: int
@@ -327,7 +309,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     ):
                         (match, error) = find_build_failure_description(lines)
                         if error is not None:
-                            return (match, last_test, error, match.line)
+                            return (match, last_test, error, match.line if match else None)
 
                     if (
                         testbed_failure_reason

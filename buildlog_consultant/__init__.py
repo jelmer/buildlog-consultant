@@ -16,15 +16,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
+import abc
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict, Type
 
 __version__ = (0, 0, 28)
 version_string = '.'.join(map(str, __version__))
 
 
-problem_clses = {}
+problem_clses: Dict[str, Type["Problem"]] = {}
 
 
 class Problem(object):
@@ -32,36 +32,38 @@ class Problem(object):
     kind: str
     is_global: bool = False
 
-    def json(self):
-        raise NotImplementedError(self.json)
+    def __init_subclass__(cls, kind: str, is_global: bool = False, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.kind = kind
+        cls.is_global = is_global
+        if kind in problem_clses:
+            raise AssertionError('class %r already registered for kind %s (not %r)' % (
+                problem_clses[kind], kind, cls))
+        problem_clses[kind] = cls
 
-    def from_json(self, data):
-        raise NotImplementedError(self.from_json)
+    def __init__(self, *args, **kwargs):
+        for name, arg in list(zip(list(type(self).__annotations__.keys()), args)) + list(kwargs.items()):
+            setattr(self, name, arg)
 
-
-def problem(kind, is_global=False):
     def json(self):
         ret = {}
-        for name in self.__dataclass_fields__:
-            ret[name] = getattr(self, name)
+        for key in type(self).__annotations__.keys():
+            ret[key] = getattr(self, key)
         return ret
 
     @classmethod
     def from_json(cls, data):
         return cls(**data)
 
-    def _wrap(cls):
-        ret = dataclass(cls)
-        ret.kind = kind
-        ret.is_global = is_global
-        if not hasattr(ret, 'json'):
-            ret.json = json
-        if not hasattr(ret, 'from_json'):
-            ret.from_json = from_json
-        problem_clses[ret.kind] = ret
-        return ret
-
-    return _wrap
+    def __eq__(self, other):
+        if not isinstance(self, type(other)):
+            return False
+        if self.kind != other.kind:
+            return False
+        for name in type(self).__annotations__.keys():
+            if getattr(self, name) != getattr(other, name):
+                return False
+        return True
 
 
 class Match:
@@ -90,7 +92,7 @@ class SingleLineMatch(Match):
         )
 
     @property
-    def lines(self) -> List[str]:
+    def lines(self) -> List[str]:  # type: ignore
         return [self.line]
 
     @property

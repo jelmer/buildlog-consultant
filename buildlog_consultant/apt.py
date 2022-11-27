@@ -20,19 +20,16 @@ import re
 
 from debian.changelog import Version
 from debian.deb822 import PkgRelation
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TypedDict
 import yaml
 
-from . import Problem, SingleLineMatch, problem, Match, MultiLineMatch
+from . import Problem, SingleLineMatch, Match, MultiLineMatch
 from .common import NoSpaceOnDevice
 
 
-class DpkgError(Problem):
+class DpkgError(Problem, kind="dpkg-error"):
 
-    kind = "dpkg-error"
-
-    def __init__(self, error):
-        self.error = error
+    error: str
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.error == other.error
@@ -44,20 +41,15 @@ class DpkgError(Problem):
         return "%s(%r)" % (type(self).__name__, self.error)
 
 
-class AptUpdateError(Problem):
+class AptUpdateError(Problem, kind="apt-update-error"):
     """Apt update error."""
 
-    kind = "apt-update-error"
 
-
-class AptFetchFailure(AptUpdateError):
+class AptFetchFailure(AptUpdateError, kind="apt-file-fetch-failure"):
     """Apt file fetch failed."""
 
-    kind = "apt-file-fetch-failure"
-
-    def __init__(self, url, error):
-        self.url = url
-        self.error = error
+    url: str
+    error: str
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -72,12 +64,9 @@ class AptFetchFailure(AptUpdateError):
         return "Apt file fetch error: %s" % self.error
 
 
-class AptMissingReleaseFile(AptUpdateError):
+class AptMissingReleaseFile(AptUpdateError, kind="missing-release-file"):
 
-    kind = "missing-release-file"
-
-    def __init__(self, url):
-        self.url = url
+    url: str
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -90,12 +79,9 @@ class AptMissingReleaseFile(AptUpdateError):
         return "Missing release file: %s" % self.url
 
 
-class AptPackageUnknown(Problem):
+class AptPackageUnknown(Problem, kind="apt-package-unknown"):
 
-    kind = "apt-package-unknown"
-
-    def __init__(self, package):
-        self.package = package
+    package: str
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.package == other.package
@@ -107,13 +93,10 @@ class AptPackageUnknown(Problem):
         return "%s(%r)" % (type(self).__name__, self.package)
 
 
-class AptBrokenPackages(Problem):
+class AptBrokenPackages(Problem, kind="apt-broken-packages"):
 
-    kind = "apt-broken-packages"
-
-    def __init__(self, description, broken=None):
-        self.description = description
-        self.broken = broken
+    description: str
+    broken: Optional[str] = None
 
     def __str__(self):
         if self.broken:
@@ -135,6 +118,7 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
     Returns:
       tuple with (match, error object)
     """
+    problem: Problem
     ret = (None, None)
     OFFSET = 50
     for i in range(1, OFFSET):
@@ -242,32 +226,25 @@ def find_cudf_output(lines):
     return yaml.safe_load("\n".join(output))
 
 
-try:
-    from typing import TypedDict
-except ImportError:  # python < 3.9
-    from typing import Dict, Any
-
-    ParsedRelation = Dict[str, Dict[str, Any]]
-else:
-    ParsedRelation = TypedDict(
-        "ParsedRelation",
-        {
-            "name": str,
-            "archqual": Optional[str],
-            "version": Optional[Tuple[str, str]],
-            "arch": Optional[List["PkgRelation.ArchRestriction"]],
-            "restrictions": Optional[List[List["PkgRelation.BuildRestriction"]]],
-        },
-    )
+ParsedRelation = TypedDict(
+    "ParsedRelation",
+    {
+        "name": str,
+        "archqual": Optional[str],
+        "version": Optional[Tuple[str, str]],
+        "arch": Optional[List["PkgRelation.ArchRestriction"]],
+        "restrictions": Optional[List[List["PkgRelation.BuildRestriction"]]],
+    },
+)
 
 
-@problem("unsatisfied-apt-dependencies")
-class UnsatisfiedAptDependencies:
+class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
 
     relations: List[List[List[ParsedRelation]]]
 
     def __str__(self):
-        return "Unsatisfied APT dependencies: %s" % PkgRelation.str(self.relations)
+        return "Unsatisfied APT dependencies: %s" % (
+            PkgRelation.str(self.relations))  # type: ignore
 
     @classmethod
     def from_str(cls, text):
@@ -295,12 +272,11 @@ class UnsatisfiedAptDependencies:
     def __repr__(self):
         return "%s.from_str(%r)" % (
             type(self).__name__,
-            PkgRelation.str(self.relations),
+            PkgRelation.str(self.relations),  # type: ignore
         )
 
 
-@problem("unsatisfied-apt-conflicts")
-class UnsatisfiedAptConflicts:
+class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):
 
     relations: List[List[List[ParsedRelation]]]
 
