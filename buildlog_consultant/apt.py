@@ -281,7 +281,8 @@ class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):
     relations: List[List[List[ParsedRelation]]]
 
     def __str__(self):
-        return "Unsatisfied APT conflicts: %s" % PkgRelation.str(self.relations)
+        return "Unsatisfied APT conflicts: %s" % PkgRelation.str(
+            self.relations)  # type: ignore
 
 
 def error_from_dose3_report(report):
@@ -320,7 +321,7 @@ def error_from_dose3_report(report):
         return UnsatisfiedAptConflicts(conflict)
 
 
-def find_install_deps_failure_description(sbuildlog) -> Tuple[Optional[str], Optional[SingleLineMatch], Optional[Problem]]:
+def find_install_deps_failure_description(sbuildlog) -> Tuple[Optional[str], Optional[Match], Optional[Problem]]:
     error = None
 
     DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
