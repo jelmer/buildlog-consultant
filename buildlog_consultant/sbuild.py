@@ -22,7 +22,7 @@ from typing import List, Tuple, Iterator, BinaryIO, Optional, Union
 from dataclasses import dataclass
 import logging
 
-from . import Problem, SingleLineMatch, version_string
+from . import Problem, SingleLineMatch, version_string, Match
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
@@ -50,7 +50,7 @@ class SbuildFailure(Exception):
         error: Optional["Problem"] = None,
         phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
         section: Optional["SbuildLogSection"] = None,
-        match: Optional[SingleLineMatch] = None,
+        match: Optional[Match] = None,
     ):
         self.stage = stage
         self.description = description
@@ -73,7 +73,8 @@ class SbuildFailure(Exception):
             "stage": self.stage,
             "phase": self.phase,
             "section": self.section.title if self.section else None,
-            "lineno": (self.section.offsets[0] + self.match.lineno)
+            "lineno": (
+                (self.section.offsets[0] if self.section else 0) + self.match.lineno)
             if self.match
             else None,
         }
@@ -91,10 +92,11 @@ class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
     files: Optional[List[str]] = None
 
     def __repr__(self):
+        if self.files is None:
+            return "<%s()>" % (type(self).__name__, )
         if len(self.files) < 5:
             return "%s(%r)" % (type(self).__name__, self.files)
-        else:
-            return "<%s(%d files)>" % (type(self).__name__, len(self.files))
+        return "<%s(%d files)>" % (type(self).__name__, len(self.files))
 
     def __str__(self):
         if self.files and len(self.files) < 5:
@@ -131,16 +133,16 @@ class MissingControlFile(Problem, kind="missing-control-file"):
         return "Tree is missing control file %s" % self.path
 
 
-class UnableToFindUpstreamTarball(Problem, kind="unable-to-find-upstream-tarball"):
+class UnableToFindUpstreamTarball(
+        Problem, kind="unable-to-find-upstream-tarball"):
 
     package: str
     version: str
 
     def __str__(self):
-        return "Unable to find the needed upstream tarball for " "%s, version %s." % (
-            self.package,
-            self.version,
-        )
+        return (
+            "Unable to find the needed upstream tarball for "
+            f"{self.package}, version {self.version}.")
 
 
 class SourceFormatUnbuildable(Problem, kind="source-format-unbuildable"):
@@ -169,7 +171,8 @@ class PatchFileMissing(Problem, kind="patch-file-missing"):
         return "Patch file %s missing" % self.path
 
 
-class UnknownMercurialExtraFields(Problem, kind="unknown-mercurial-extra-fields"):
+class UnknownMercurialExtraFields(
+        Problem, kind="unknown-mercurial-extra-fields"):
 
     field: str
 
@@ -177,13 +180,14 @@ class UnknownMercurialExtraFields(Problem, kind="unknown-mercurial-extra-fields"
         return "Unknown Mercurial extra fields: %s" % self.field
 
 
-
-class UpstreamPGPSignatureVerificationFailed(Problem, kind="upstream-pgp-signature-verification-failed"):
+class UpstreamPGPSignatureVerificationFailed(
+        Problem, kind="upstream-pgp-signature-verification-failed"):
     def __str__(self):
         return "Unable to verify the PGP signature on the upstream source"
 
 
-class UScanRequestVersionMissing(Problem, kind="uscan-requested-version-missing"):
+class UScanRequestVersionMissing(
+        Problem, kind="uscan-requested-version-missing"):
 
     version: str
 
@@ -228,7 +232,8 @@ class InconsistentSourceFormat(Problem, kind="inconsistent-source-format"):
         return "Inconsistent source format between version and source format"
 
 
-class UpstreamMetadataFileParseError(Problem, kind="debian-upstream-metadata-invalid"):
+class UpstreamMetadataFileParseError(
+        Problem, kind="debian-upstream-metadata-invalid"):
 
     path: str
     reason: str
@@ -293,7 +298,8 @@ def find_preamble_failure_description(  # noqa: C901
             break
         line = lines[lineno].strip("\n")
         if line.startswith(
-            "dpkg-source: error: aborting due to unexpected upstream " "changes, see "
+            "dpkg-source: error: aborting due to unexpected upstream "
+            "changes, see "
         ):
             j = lineno - 1
             files: List[str] = []
@@ -404,10 +410,10 @@ def find_preamble_failure_description(  # noqa: C901
             line,
         )
         if m:
-            (unused_match, err) = find_build_failure_description([m.group(2)])
-            if err is None:
-                err = SourceFormatUnsupported(m.group(1))
-            return SingleLineMatch.from_lines(lines, lineno), err
+            (unused_match, p) = find_build_failure_description([m.group(2)])
+            if p is None:
+                p = SourceFormatUnsupported(m.group(1))
+            return SingleLineMatch.from_lines(lines, lineno), p
         m = re.match(
             "breezy.errors.NoSuchRevision: " "(.*) has no revision b'(.*)'",
             line,
@@ -679,6 +685,7 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
     section_lines = section.lines
     if not section_lines[0].strip():
         section_lines = section_lines[1:]
+    match: Optional[Match]
     if len(section_lines) == 1 and section_lines[0].startswith("E: Could not find "):
         match, error = find_preamble_failure_description(
             sbuildlog.get_section_lines(None)
@@ -687,7 +694,8 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
     (match, error) = find_apt_get_failure(section.lines)
     description = "build failed stage %s" % failed_stage
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None, section=section, match=match
+        failed_stage, description, error=error, phase=None, section=section,
+        match=match
     )
 
 
@@ -858,6 +866,8 @@ FAILED_STAGE_FAIL_FINDERS = {
 
 
 def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailure:
+    match: Optional[Match]
+
     if isinstance(f, SbuildLog):
         sbuildlog = f
     else:

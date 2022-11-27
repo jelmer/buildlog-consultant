@@ -18,9 +18,9 @@
 
 import logging
 import re
-from typing import Tuple, Optional, List, Dict, Union
+from typing import Tuple, Optional, List, Dict, Union, Any
 
-from . import Problem, SingleLineMatch, version_string
+from . import Problem, SingleLineMatch, version_string, Match
 from .apt import find_apt_get_failure, AptFetchFailure
 from .common import find_build_failure_description, ChrootNotFound
 
@@ -215,7 +215,7 @@ class AutopkgtestTestbedSetupFailure(Problem, kind="testbed-setup-failure"):
 def find_autopkgtest_failure_description(  # noqa: C901
     lines: List[str],
 ) -> Tuple[
-    Optional[SingleLineMatch], Optional[str], Optional["Problem"], Optional[str]
+    Optional[Match], Optional[str], Optional["Problem"], Optional[str]
 ]:
     """Find the autopkgtest failure in output.
 
@@ -371,7 +371,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     if lines[i + 1].rstrip() == ": error cleaning up:":
                         return (
                             SingleLineMatch.from_lines(
-                                lines, test_output_offset[current_field]
+                                lines, test_output_offset[current_field]  # type: ignore
                             ),
                             last_test,
                             AutopkgtestTimedOut(),
@@ -428,7 +428,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     ):
                         error = XDGRunTimeNotSet()
                         description = stderr_lines[0]
-                        offset = stderr_offset
+                        offset = stderr_offset  # type: ignore
                     else:
                         if stderr_offset is not None:
                             offset = stderr_offset
@@ -585,7 +585,11 @@ def main(argv=None):
         (match, testname, error, description) = find_autopkgtest_failure_description(lines)
 
         if args.json:
-            json.dump({'offset': match.offset, 'testname': testname, 'error': error, 'description': description}, sys.stdout, indent=4)
+            ret: Dict[str, Any]
+            ret = {'testname': testname, 'error': error, 'description': description}
+            if match:
+                ret['offset'] = match.offset
+            json.dump(ret, sys.stdout, indent=4)
 
     if testname:
         logging.info("Test name: %s", testname)

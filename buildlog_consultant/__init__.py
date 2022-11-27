@@ -16,8 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import abc
-from dataclasses import dataclass
 from typing import List, Dict, Type
 
 __version__ = (0, 0, 28)
@@ -70,6 +68,10 @@ class Match:
 
     line: str
     lines: List[str]
+    lineno: int
+    linenos: List[int]
+    offset: int
+    offsets: List[int]
 
 
 class SingleLineMatch(Match):
@@ -96,15 +98,15 @@ class SingleLineMatch(Match):
         return [self.line]
 
     @property
-    def linenos(self) -> List[int]:
+    def linenos(self) -> List[int]:  # type: ignore
         return [self.lineno]
 
     @property
-    def offsets(self) -> List[int]:
+    def offsets(self) -> List[int]:  # type: ignore
         return [self.offset]
 
     @property
-    def lineno(self) -> int:
+    def lineno(self) -> int:  # type: ignore
         return self.offset + 1
 
     @classmethod
