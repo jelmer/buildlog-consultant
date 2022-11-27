@@ -685,7 +685,7 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
     section_lines = section.lines
     if not section_lines[0].strip():
         section_lines = section_lines[1:]
-    match: Match | None
+    match: Optional[Match]
     if len(section_lines) == 1 and section_lines[0].startswith("E: Could not find "):
         match, error = find_preamble_failure_description(
             sbuildlog.get_section_lines(None)
