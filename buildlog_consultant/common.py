@@ -2069,6 +2069,11 @@ build_failure_regexps = [
     ),
 
     (
+        r'configure: error: (.*) required, please in(s?)tall it',
+        lambda m: MissingVagueDependency(m.group(1))
+    ),
+
+    (
         r'\*\* ERROR \*\* : You must have `(.*)\' installed on your system\.',
         lambda m: MissingVagueDependency(m.group(1))
     ),
@@ -3485,15 +3490,15 @@ build_failure_regexps = [
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))
     ),
     (
-        r"configure: error: (.*) headers not found",
+        r"configure: error: (.*) headers (could )?not (be )?found",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
-        r"configure: error: (.*) ([0-9].*) not found",
+        r"configure: error: (.*) ([0-9].*) (could )?not (be )?found",
         lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2)),
     ),
     (
-        r"configure: error: (.*) not found",
+        r"configure: error: (.*) (could )?not (be )?found",
         lambda m: MissingVagueDependency(m.group(1)),
     ),
     (
@@ -3640,6 +3645,8 @@ build_failure_regexps = [
     (r'Please get ([^ ]+) from (www\..*)\.',
      lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
     (r'Please install ([^ ]+) so that it is on the PATH and try again\.',
+     lambda m: MissingCommand(m.group(1))),
+    (r'configure: error: No (.*) binary found in (.*)',
      lambda m: MissingCommand(m.group(1))),
     (r'Could not find ([A-Za-z-]+)',
      lambda m: MissingVagueDependency(m.group(1))),
