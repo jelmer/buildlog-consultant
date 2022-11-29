@@ -140,6 +140,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             MissingFile("/usr/lib/python2.7/poly1305/rfc7539.txt"),
         )
 
+    def test_vignette(self):
+        self.run_test(
+            [
+                "Error: processing vignette 'uroot-intro.Rnw' failed with diagnostics:",
+                "pdflatex is not available",
+            ], 2, MissingVagueDependency("pdflatex"))
+
     def test_upstart_file_present(self):
         self.run_test(
             [

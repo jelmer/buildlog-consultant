@@ -940,6 +940,36 @@ class MultiLinePerlMissingModulesError(Matcher):
         return relevant_linenos, MissingPerlModule(lines[i + 2].strip())
 
 
+class MultiLineVignetteError(Matcher):
+
+    header_match = re.compile(
+        r'Error: processing vignette \'(.*)\' failed with diagnostics:')
+
+    submatchers = [
+        (re.compile(r'([^ ]+) is not available'),
+         lambda m: MissingVagueDependency(m.group(1))),
+        (re.compile(r'The package `(.*)` is required\.'),
+         lambda m: MissingRPackage(m.group(1))),
+        (re.compile(r'Package \'(.*)\' required.*'),
+         lambda m: MissingRPackage(m.group(1))),
+        (re.compile(r'The \'(.*)\' package must be installed.*'),
+         lambda m: MissingRPackage(m.group(1))),
+    ]
+
+    def match(self, lines, i):
+        m = self.header_match.fullmatch(lines[i].rstrip('\n'))
+        if not m:
+            return [], None
+
+        line = lines[i + 1]
+        for submatcher, fn in self.submatchers:
+            m = submatcher.match(line.rstrip("\n"))
+            if m:
+                return [i + 1], fn(m)
+
+        return [i + 1], None
+
+
 class MultiLineConfigureError(Matcher):
 
     submatchers = [
@@ -1788,6 +1818,7 @@ build_failure_regexps = [
     ),
     MultiLineConfigureError(),
     MultiLinePerlMissingModulesError(),
+    MultiLineVignetteError(),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"configure: error: (doxygen|asciidoc) is not available "
