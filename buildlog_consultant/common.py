@@ -1716,6 +1716,8 @@ build_failure_regexps = [
     (r'npm ERR\! (.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: Cannot find module \'(.*)\' or its corresponding type declarations.',
      lambda m: MissingNodeModule(m.group(2))),
 
+    (r'npm ERR\! Error: spawn (.*) ENOENT', command_missing),
+
     (
         r"(\.\/configure): line \d+: ([A-Z0-9_]+): command not found",
         lambda m: MissingAutoconfMacro(m.group(2)),
