@@ -250,8 +250,16 @@ class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
     def from_str(cls, text):
         return cls(PkgRelation.parse_relations(text))
 
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and other.relations == self.relations
+
+    def json(self):
+        return PkgRelation.str(self.relations)  # type: ignore
+
     @classmethod
     def from_json(cls, data):
+        if isinstance(data, str):
+            return cls.from_str(data)
         relations = []
         for relation in data['relations']:
             sub = []
