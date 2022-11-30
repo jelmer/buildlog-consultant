@@ -20,6 +20,7 @@ import unittest
 from buildlog_consultant.apt import (
     AptFetchFailure,
     AptMissingReleaseFile,
+    UnsatisfiedAptDependencies,
     find_apt_get_failure,
 )
 
@@ -67,3 +68,19 @@ does not have a Release file.\
 
     def test_vague(self):
         self.run_test(["E: Stuff is broken"], 1, None)
+
+
+class UnsatisfiedAptDependenciesTests(unittest.TestCase):
+
+    def test_old_deserialise(self):
+        unsat = UnsatisfiedAptDependencies.from_json(
+            {'relations': [[{"name": "libclang-14-dev", "archqual": "amd64", "restrictions": None, "version": None, "arch": None}]]})
+        self.assertEqual(unsat, UnsatisfiedAptDependencies([[{"name": "libclang-14-dev", "archqual": "amd64", "version": None, "arch": None, "restrictions": None}]]))
+
+    def test_new_deserialise(self):
+        unsat = UnsatisfiedAptDependencies.from_json("libclang-14-dev:amd64")
+        self.assertEqual(unsat, UnsatisfiedAptDependencies([[{"name": "libclang-14-dev", "archqual": "amd64", "version": None, "restrictions": None, "arch": None}]]))
+
+    def test_serialise(self):
+        unsat = UnsatisfiedAptDependencies([[{"name": "libclang-14-dev", "archqual": "amd64", "version": None, "arch": None, "restrictions": None}]])
+        self.assertEqual(unsat.json(), 'libclang-14-dev:amd64')
