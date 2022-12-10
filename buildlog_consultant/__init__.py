@@ -25,7 +25,7 @@ version_string = '.'.join(map(str, __version__))
 problem_clses: Dict[str, Type["Problem"]] = {}
 
 
-class Problem(object):
+class Problem:
 
     kind: str
     is_global: bool = False
