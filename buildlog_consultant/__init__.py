@@ -40,7 +40,9 @@ class Problem(object):
         problem_clses[kind] = cls
 
     def __init__(self, *args, **kwargs):
-        for name, arg in list(zip(list(type(self).__annotations__.keys()), args, strict=True)) + list(kwargs.items()):
+        for name, arg in list(zip(
+                list(type(self).__annotations__.keys()),
+                list(args))) + list(kwargs.items()):
             setattr(self, name, arg)
 
     def json(self):
