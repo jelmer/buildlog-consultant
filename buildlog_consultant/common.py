@@ -160,6 +160,12 @@ class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
     name: str
     url: Optional[str] = None
     minimum_version: Optional[str] = None
+    current_version: Optional[str] = None
+
+    def __repr__(self):
+        return "%s(%r, url=%r, minimum_version=%r, current_version=%r)" % (
+            type(self).__name__, self.name,
+            self.url, self.minimum_version, self.current_version)
 
     def __str__(self):
         return "Missing dependency: %s" % self.name
@@ -2922,9 +2928,11 @@ build_failure_regexps = [
     ),
 
     (
-        r"meson.build:[0-9]+:[0-9]+: ERROR: "
-        r"Meson version is (.*) but project requires >=\s*(.*)\.",
-        lambda m: MissingVagueDependency("meson", minimum_version=m.group(2))
+        r"(.*)meson.build:[0-9]+:[0-9]+: ERROR: "
+        r"Meson version is (.+) but project requires >=\s*(.+)",
+        lambda m: MissingVagueDependency(
+            "meson", minimum_version=m.group(3).rstrip('.'),
+            current_version=m.group(2))
     ),
 
     # Seen in cpl-plugin-giraf

@@ -443,8 +443,14 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
     def test_meson_version(self):
         self.run_test(
             ["meson.build:1:0: ERROR: Meson version is 0.49.2 but "
-             "project requires >=0.50."], 1,
-            MissingVagueDependency("meson", minimum_version="0.50"))
+             "project requires >=0.50"], 1,
+            MissingVagueDependency(
+                "meson", minimum_version="0.50", current_version="0.49.2"))
+        self.run_test(
+            ["../meson.build:1:0: ERROR: Meson version is 0.49.2 but "
+             "project requires >=0.50"], 1,
+            MissingVagueDependency(
+                "meson", minimum_version="0.50", current_version="0.49.2"))
 
     def test_need_pgbuildext(self):
         self.run_test(
