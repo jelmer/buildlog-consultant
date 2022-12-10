@@ -893,7 +893,7 @@ class SingleLineMatcher(Matcher):
             except (ValueError, IndexError) as e:
                 raise MatcherError(
                     "Error while matching %r against %r (%r): %r" % (
-                        self.regexp, lines[i], m, e))
+                        self.regexp, lines[i], m, e)) from e
         else:
             err = None
         return [i], err
@@ -3707,7 +3707,7 @@ for entry in build_failure_regexps:
             matcher = entry  # type: ignore
         compiled_build_failure_regexps.append(matcher)
     except re.error as e:
-        raise Exception("Error in %s: %s" % (regexp, e))
+        raise Exception("Error in %s: %s" % (regexp, e)) from e
 
 
 # Regexps that hint at an error of some sort, but not the error itself.
@@ -3948,7 +3948,7 @@ for regexp in secondary_build_failure_regexps:
     try:
         compiled_secondary_build_failure_regexps.append(re.compile(regexp))
     except re.error as e:
-        raise Exception("Error compiling %r: %s" % (regexp, e))
+        raise Exception("Error compiling %r: %s" % (regexp, e)) from e
 
 
 def find_build_failure_description(  # noqa: C901
