@@ -18,7 +18,7 @@
 
 from typing import List, Dict, Type
 
-__version__ = (0, 0, 29)
+__version__ = (0, 0, 30)
 version_string = '.'.join(map(str, __version__))
 
 
