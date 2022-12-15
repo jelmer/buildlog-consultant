@@ -545,6 +545,16 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
         self.run_test(
             ["CMake Error at CMakeLists.txt:213 (message):",
              "  could not find zlib"], 2, MissingVagueDependency("zlib"))
+        self.run_test(
+            """\
+-- Found LibSolv_ext: /usr/lib/x86_64-linux-gnu/libsolvext.so  
+-- Found LibSolv: /usr/include /usr/lib/x86_64-linux-gnu/libsolv.so;/usr/lib/x86_64-linux-gnu/libsolvext.so
+-- No usable gpgme flavours found.
+CMake Error at cmake/modules/FindGpgme.cmake:398 (message):
+  Did not find GPGME
+Call Stack (most recent call first):
+  CMakeLists.txt:223 (FIND_PACKAGE)
+  """.splitlines(True), 5, MissingVagueDependency('GPGME'))
 
     def test_dh_compat_dupe(self):
         self.run_test(
