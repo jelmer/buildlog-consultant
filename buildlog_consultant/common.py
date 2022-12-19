@@ -1239,8 +1239,6 @@ class CMakeErrorMatcher(Matcher):
          r'this code requires Qt 4.x', lambda m: MissingQt('4')),
         (r'(.*) executable not found\! Please install (.*)\.',
          lambda m: MissingCommand(m.group(2))),
-        (r'Could not find the OpenGL external dependency\.',
-         lambda m: MissingLibrary('GL')),
         (r'(.*) tool not found', lambda m: MissingCommand(m.group(1))),
         (r'--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)',
          lambda m: MissingPkgConfig(m.group(1), m.group(2))),
@@ -1300,6 +1298,8 @@ class CMakeErrorMatcher(Matcher):
         (r'error: could not find git for clone of .*',
          lambda m: MissingCommand('git')),
         (r'Did not find ([^\s]+)',
+         lambda m: MissingVagueDependency(m.group(1))),
+        (r'Could not find the ([^ ]+) external dependency\.',
          lambda m: MissingVagueDependency(m.group(1))),
     ]
 
@@ -3307,6 +3307,9 @@ build_failure_regexps = [
 
     (r'configure: error: no suitable Python interpreter found',
      lambda m: MissingCommand('python')),
+
+    (r'Could not find external command "(.*)"',
+     lambda m: MissingCommand(m.group(1))),
 
     (r'  Failed to find (.*) development headers\.',
      lambda m: MissingVagueDependency(m.group(1))),
