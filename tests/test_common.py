@@ -1039,6 +1039,9 @@ error: invalid command 'test'
         self.run_test(
             ["E ImportError: Bad git executable."], 1,
             MissingCommand("git"))
+        self.run_test(
+            ["Could not find external command \"java\""], 1,
+            MissingCommand("java"))
 
     def test_ts_error(self):
         self.run_test(
