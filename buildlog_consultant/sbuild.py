@@ -89,6 +89,7 @@ class SbuildFailure(Exception):
 
 class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
 
+    diff_file: Optional[str] = None
     files: Optional[List[str]] = None
 
     def __repr__(self):
@@ -297,10 +298,11 @@ def find_preamble_failure_description(  # noqa: C901
         if lineno < 0:
             break
         line = lines[lineno].strip("\n")
-        if line.startswith(
+        m = re.fullmatch(
             "dpkg-source: error: aborting due to unexpected upstream "
-            "changes, see "
-        ):
+            "changes, see (.*)", line)
+        if m:
+            diff_file = m.group(1)
             j = lineno - 1
             files: List[str] = []
             while j > 0:
@@ -308,11 +310,11 @@ def find_preamble_failure_description(  # noqa: C901
                     "dpkg-source: info: local changes detected, "
                     "the modified files are:\n"
                 ):
-                    err = DpkgSourceLocalChanges(files)
+                    err = DpkgSourceLocalChanges(diff_file, files)
                     return SingleLineMatch.from_lines(lines, lineno), err
                 files.append(lines[j].strip())
                 j -= 1
-            err = DpkgSourceLocalChanges()
+            err = DpkgSourceLocalChanges(diff_file)
             return SingleLineMatch.from_lines(lines, lineno), err
         if line == "dpkg-source: error: unrepresentable changes to source":
             err = DpkgSourceUnrepresentableChanges()

@@ -1290,7 +1290,9 @@ class CMakeErrorMatcher(Matcher):
         (r'([^ ]+) binary not found\!',
          lambda m: MissingCommand(m.group(1))),
         (r'error: could not find git for clone of .*',
-         lambda m: MissingCommand('git'))
+         lambda m: MissingCommand('git')),
+        (r'Did not find ([^\s]+)',
+         lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
