@@ -352,6 +352,14 @@ class MissingCommand(Problem, kind="command-missing"):
         return "Missing command: %s" % self.command
 
 
+class NotExecutableFile(Problem, kind="command-not-executable"):
+
+    path: str
+
+    def __str__(self):
+        return "Command not executable: %s" % self.path
+
+
 class MissingSecretGpgKey(Problem, kind="no-secret-gpg-key"):
     def __str__(self):
         return "No secret GPG key is present"
@@ -2370,6 +2378,10 @@ build_failure_regexps = [
         command_missing
     ),
     (
+        r'/usr/bin/eatmydata: [0-9]+: exec: (.*): Permission denied',
+        lambda m: NotExecutableFile(m.group(1)),
+    ),
+    (
         r"(.*): exec: \"(.*)\": executable file not found in \$PATH",
         lambda m: MissingCommand(m.group(2)),
     ),
@@ -2441,6 +2453,14 @@ build_failure_regexps = [
         r'Can\'t exec "(.*)": No such file or directory at '
         r"/usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line [0-9]+.",
         command_missing,
+    ),
+    (
+        r'Can\'t exec "(.*)": Permission denied at (.*) line [0-9]+\.',
+        lambda m: NotExecutableFile(m.group(1)),
+    ),
+    (
+        r'/usr/bin/fakeroot: [0-9]+: (.*): Permission denied',
+        lambda m: NotExecutableFile(m.group(1)),
     ),
     (r".*: error: (.*) command not found", command_missing),
     (r'error: command \'(.*)\' failed: No such file or directory',
