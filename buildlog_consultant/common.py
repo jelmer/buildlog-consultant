@@ -2378,6 +2378,10 @@ build_failure_regexps = [
         command_missing
     ),
     (
+        r'/usr/bin/eatmydata: [0-9]+: exec: (.*): Permission denied',
+        lambda m: NotExecutableFile(m.group(1)),
+    ),
+    (
         r"(.*): exec: \"(.*)\": executable file not found in \$PATH",
         lambda m: MissingCommand(m.group(2)),
     ),
