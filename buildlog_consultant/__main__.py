@@ -22,6 +22,7 @@ The buildlog_consultant module itself is not executable.
 However, depending on the type of file you are trying to analyse,
 you may want to execute one of:
 
+  * buildlog_consultant.autopkgtest (for Debian autopkgtest logs)
   * buildlog_consultant.common (for regular build logs)
   * buildlog_consultant.sbuild (for sbuild logs)
 """)
