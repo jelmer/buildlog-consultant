@@ -233,6 +233,8 @@ def file_not_found(m):
         return MissingFile(m.group(1))
     elif m.group(1).startswith("/<<PKGBUILDDIR>>/"):
         return MissingBuildFile(m.group(1)[len("/<<PKGBUILDDIR>>/"):])
+    if m.group(1) == '.git/HEAD':
+        return VcsControlDirectoryNeeded(['git'])
     if '/' not in m.group(1):
         # Maybe a missing command?
         return MissingBuildFile(m.group(1))
