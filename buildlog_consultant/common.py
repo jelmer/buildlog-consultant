@@ -235,6 +235,8 @@ def file_not_found(m):
         return MissingBuildFile(m.group(1)[len("/<<PKGBUILDDIR>>/"):])
     if m.group(1) == '.git/HEAD':
         return VcsControlDirectoryNeeded(['git'])
+    if m.group(1) == 'CVS/Root':
+        return VcsControlDirectoryNeeded(['cvs'])
     if '/' not in m.group(1):
         # Maybe a missing command?
         return MissingBuildFile(m.group(1))
