@@ -2524,7 +2524,7 @@ build_failure_regexps = [
         ruby_missing_gem,
     ),
     (
-        r"PHP Fatal error:  Uncaught Error: Class \'(.*)\' not found in "
+        r".?PHP Fatal error:  Uncaught Error: Class \'(.*)\' not found in "
         r"(.*):([0-9]+)",
         lambda m: MissingPhpClass(m.group(1))
     ),
@@ -2709,7 +2709,7 @@ build_failure_regexps = [
     ),
     (r"cp: cannot stat \'(.*)\': No such file or directory", file_not_found),
     (r"cp: \'(.*)\' and \'(.*)\' are the same file", None),
-    (r"PHP Fatal error: (.*)", None),
+    (r".?PHP Fatal error: (.*)", None),
     (r"sed: no input files", None),
     (r"sed: can\'t read (.*): No such file or directory", file_not_found),
     (
