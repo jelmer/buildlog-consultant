@@ -36,6 +36,8 @@ def chatgpt_analyze(lines):
 
     response = openai.Completion.create(
         model="text-davinci-003",
+        temperature=0,
+        max_tokens=256,
         prompt=prompt)
 
     text = response["choices"][0]["text"].lstrip('\n')
