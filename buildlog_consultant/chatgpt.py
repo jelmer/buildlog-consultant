@@ -43,7 +43,7 @@ def chatgpt_analyze(lines):
     text = response["choices"][0]["text"].lstrip('\n')
     for i, line in enumerate(lines):
         if line.startswith(text):
-            return SingleLineMatch.from_lines(lines, i)
+            return SingleLineMatch.from_lines(lines, i, origin="chatgpt")
     logging.debug('Unable to find chatgpt answer in lines: %r', text)
     return None
 
