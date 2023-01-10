@@ -40,7 +40,7 @@ def chatgpt_analyze(lines):
         max_tokens=256,
         prompt=prompt)
 
-    text = response["choices"][0]["text"].lstrip('\n')
+    text = response["choices"][0]["text"].lstrip('\n').split('\n')[0]
     for i, line in enumerate(lines):
         if line.startswith(text):
             return SingleLineMatch.from_lines(lines, i, origin="chatgpt")
@@ -51,10 +51,13 @@ def chatgpt_analyze(lines):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true')
     parser.add_argument('path', type=str)
     args = parser.parse_args()
 
-    logging.basicConfig(format='%(message)s', level=logging.INFO)
+    logging.basicConfig(
+        format='%(message)s',
+        level=(logging.INFO if not args.debug else logging.DEBUG))
 
     with open(args.path, 'r', encoding='utf-8') as f:
         match = chatgpt_analyze(f.readlines())
