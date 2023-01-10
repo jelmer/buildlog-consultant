@@ -133,11 +133,11 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
                     problem = NoSpaceOnDevice()
                 else:
                     problem = AptFetchFailure(m.group(1), m.group(2))
-                return SingleLineMatch.from_lines(lines, lineno), problem
-            return SingleLineMatch.from_lines(lines, lineno), None
+                return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), problem
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), None
         if line == "E: Broken packages":
             error = AptBrokenPackages(lines[lineno - 1].strip())
-            return SingleLineMatch.from_lines(lines, lineno - 1), error
+            return SingleLineMatch.from_lines(lines, lineno - 1, origin="direct match"), error
         if line == "E: Unable to correct problems, you have held broken packages.":
             offsets = []
             broken = []
@@ -154,10 +154,10 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
                     continue
                 break
             error = AptBrokenPackages(lines[lineno].strip(), broken)
-            return MultiLineMatch.from_lines(lines, offsets + [lineno]), error
+            return MultiLineMatch.from_lines(lines, offsets + [lineno], origin="direct match"), error
         m = re.match("E: The repository '([^']+)' does not have a Release file.", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), AptMissingReleaseFile(
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), AptMissingReleaseFile(
                 m.group(1)
             )
         m = re.match(
@@ -165,28 +165,28 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
             line,
         )
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         m = re.match(r"E: You don't have enough free space in (.*)\.", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         if line.startswith("E: ") and ret[0] is None:
-            ret = SingleLineMatch.from_lines(lines, lineno), None
+            ret = SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), None
         m = re.match(r"E: Unable to locate package (.*)", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), AptPackageUnknown(
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), AptPackageUnknown(
                 m.group(1)
             )
         if line == "E: Write error - write (28: No space left on device)":
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         m = re.match(r"dpkg: error: (.*)", line)
         if m:
             if m.group(1).endswith(": No space left on device"):
-                return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
-            return SingleLineMatch.from_lines(lines, lineno), DpkgError(m.group(1))
+                return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), DpkgError(m.group(1))
         m = re.match(r"dpkg: error processing package (.*) \((.*)\):", line)
         if m:
             return (
-                SingleLineMatch.from_lines(lines, lineno + 1),
+                SingleLineMatch.from_lines(lines, lineno + 1, origin="direct regex"),
                 DpkgError("processing package %s (%s)" % (m.group(1), m.group(2))),
             )
 
@@ -197,10 +197,10 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
             line,
         )
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         m = re.match(r" .*: No space left on device", line)
         if m:
-            return SingleLineMatch.from_lines(lines, i), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, i, origin="direct regex"), NoSpaceOnDevice()
 
     return ret
 

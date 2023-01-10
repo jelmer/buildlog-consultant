@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List, Dict, Type
+from typing import List, Dict, Type, Optional
 
 __version__ = (0, 0, 31)
 version_string = '.'.join(map(str, __version__))
@@ -68,6 +68,7 @@ class Problem:
 
 class Match:
 
+    origin: Optional[str]
     line: str
     lines: List[str]
     lineno: int
@@ -81,9 +82,10 @@ class SingleLineMatch(Match):
     offset: int
     line: str
 
-    def __init__(self, offset: int, line: str):
+    def __init__(self, offset: int, line: str, *, origin: Optional[str] = None):
         self.offset = offset
         self.line = line
+        self.origin = origin
 
     def __repr__(self):
         return "%s(%r, %r)" % (type(self).__name__, self.offset, self.line)
@@ -112,8 +114,8 @@ class SingleLineMatch(Match):
         return self.offset + 1
 
     @classmethod
-    def from_lines(cls, lines, offset):
-        return cls(offset, lines[offset])
+    def from_lines(cls, lines, offset, *, origin: Optional[str] = None):
+        return cls(offset, lines[offset], origin=origin)
 
 
 class MultiLineMatch(Match):
@@ -121,9 +123,10 @@ class MultiLineMatch(Match):
     offsets: List[int]
     lines: List[str]
 
-    def __init__(self, offsets: List[int], lines: List[str]):
+    def __init__(self, offsets: List[int], lines: List[str], *, origin: Optional[str] = None):
         self.offsets = offsets
         self.lines = lines
+        self.origin = origin
 
     def __repr__(self):
         return "%s(%r, %r)" % (type(self).__name__, self.offsets, self.lines)
@@ -152,5 +155,5 @@ class MultiLineMatch(Match):
         return [o + 1 for o in self.offsets]
 
     @classmethod
-    def from_lines(cls, lines, offsets):
-        return cls(offsets, [lines[o] for o in offsets])
+    def from_lines(cls, lines, offsets, *, origin: Optional[str] = None):
+        return cls(offsets, [lines[o] for o in offsets], origin=origin)
