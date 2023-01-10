@@ -73,6 +73,7 @@ class SbuildFailure(Exception):
             "stage": self.stage,
             "phase": self.phase,
             "section": self.section.title if self.section else None,
+            "origin": self.match.origin if self.match else None,
             "lineno": (
                 (self.section.offsets[0] if self.section else 0) + self.match.lineno)
             if self.match
@@ -311,19 +312,19 @@ def find_preamble_failure_description(  # noqa: C901
                     "the modified files are:\n"
                 ):
                     err = DpkgSourceLocalChanges(diff_file, files)
-                    return SingleLineMatch.from_lines(lines, lineno), err
+                    return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
                 files.append(lines[j].strip())
                 j -= 1
             err = DpkgSourceLocalChanges(diff_file)
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         if line == "dpkg-source: error: unrepresentable changes to source":
             err = DpkgSourceUnrepresentableChanges()
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct match"), err
         if re.match(
             "dpkg-source: error: detected ([0-9]+) unwanted binary " "file.*", line
         ):
             err = DpkgUnwantedBinaryFiles()
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match(
             "dpkg-source: error: cannot read (.*/debian/control): "
             "No such file or directory",
@@ -331,15 +332,15 @@ def find_preamble_failure_description(  # noqa: C901
         )
         if m:
             err = MissingControlFile(m.group(1))
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match("dpkg-source: error: .*: No space left on device", line)
         if m:
             err = NoSpaceOnDevice()
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match("tar: .*: Cannot write: No space left on device", line)
         if m:
             err = NoSpaceOnDevice()
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match(
             "dpkg-source: error: cannot represent change to (.*): "
             "binary file contents changed",
@@ -347,7 +348,7 @@ def find_preamble_failure_description(  # noqa: C901
         )
         if m:
             err = DpkgBinaryFileChanged([m.group(1)])
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
         m = re.match(
             r"dpkg-source: error: source package format \'(.*)\' is not "
@@ -358,12 +359,12 @@ def find_preamble_failure_description(  # noqa: C901
         )
         if m:
             err = SourceFormatUnsupported(m.group(1))
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
         m = re.match("E: Failed to package source directory (.*)", line)
         if m:
             err = DpkgSourcePackFailed()
-            ret = SingleLineMatch.from_lines(lines, lineno), err
+            ret = SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
         m = re.match("E: Bad version unknown in (.*)", line)
         if m and lines[lineno - 1].startswith("LINE: "):
@@ -374,13 +375,13 @@ def find_preamble_failure_description(  # noqa: C901
             )
             if m:
                 err = DpkgBadVersion(m.group(1), m.group(2))
-                return SingleLineMatch.from_lines(lines, lineno), err
+                return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
         m = re.match("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
         if m:
             patchname = m.group(1).split("/")[-1]
             err = PatchApplicationFailed(patchname)
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match(
             r"dpkg-source: error: LC_ALL=C patch .* "
             r"--reject-file=- < .*\/debian\/patches\/([^ ]+) "
@@ -390,21 +391,21 @@ def find_preamble_failure_description(  # noqa: C901
         if m:
             patchname = m.group(1)
             err = PatchApplicationFailed(patchname)
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match(
             "dpkg-source: error: " "can't build with source format '(.*)': " "(.*)",
             line,
         )
         if m:
             err = SourceFormatUnbuildable(m.group(1), m.group(2))
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match(
             "dpkg-source: error: cannot read (.*): " "No such file or directory",
             line,
         )
         if m:
             err = PatchFileMissing(m.group(1).split("/", 1)[1])
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
         m = re.match(
             "dpkg-source: error: "
             "source package format '(.*)' is not supported: "
@@ -415,26 +416,26 @@ def find_preamble_failure_description(  # noqa: C901
             (unused_match, p) = find_build_failure_description([m.group(2)])
             if p is None:
                 p = SourceFormatUnsupported(m.group(1))
-            return SingleLineMatch.from_lines(lines, lineno), p
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), p
         m = re.match(
             "breezy.errors.NoSuchRevision: " "(.*) has no revision b'(.*)'",
             line,
         )
         if m:
             err = MissingRevision(m.group(2).encode())
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
         m = re.match(
             r'fatal: ambiguous argument \'(.*)\': '
             r'unknown revision or path not in the working tree.', line)
         if m:
             err = PristineTarTreeMissing(m.group(1))
-            return SingleLineMatch.from_lines(lines, lineno), err
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
         m = re.match("dpkg-source: error: (.*)", line)
         if m:
             err = DpkgSourcePackFailed(m.group(1))
-            ret = SingleLineMatch.from_lines(lines, lineno), err
+            ret = SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
     return ret
 
@@ -609,16 +610,16 @@ def find_creation_session_error(lines):
     for i in range(len(lines) - 1, 0, -1):
         line = lines[i]
         if line.startswith("E: "):
-            ret = SingleLineMatch.from_lines(lines, i), None
+            ret = SingleLineMatch.from_lines(lines, i, origin="direct regex"), None
         m = re.fullmatch(
             "E: Chroot for distribution (.*), architecture (.*) not found\n", line
         )
         if m:
-            return SingleLineMatch.from_lines(lines, i), ChrootNotFound(
+            return SingleLineMatch.from_lines(lines, i, origin="direct regex"), ChrootNotFound(
                 "%s-%s-sbuild" % (m.group(1), m.group(2))
             )
         if line.endswith(": No space left on device\n"):
-            return SingleLineMatch.from_lines(lines, i), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, i, origin="direct regex"), NoSpaceOnDevice()
 
     return ret
 
@@ -1031,8 +1032,8 @@ def find_arch_check_failure_description(
         )
         if m:
             error = ArchitectureNotInList(m.group(1), m.group(2))
-            return SingleLineMatch.from_lines(lines, offset), error
-    return SingleLineMatch.from_lines(lines, len(lines) - 1), None
+            return SingleLineMatch.from_lines(lines, offset, origin="direct regex"), error
+    return SingleLineMatch.from_lines(lines, len(lines) - 1, origin="direct regex"), None
 
 
 class InsufficientDiskSpace(Problem, kind="insufficient-disk-space"):
@@ -1058,10 +1059,10 @@ def find_check_space_failure_description(
             )
             if m:
                 return (
-                    SingleLineMatch.from_lines(lines, offset),
+                    SingleLineMatch.from_lines(lines, offset, origin="direct regex"),
                     InsufficientDiskSpace(int(m.group(1)), int(m.group(2))),
                 )
-            return SingleLineMatch.from_lines(lines, offset), None
+            return SingleLineMatch.from_lines(lines, offset, origin="direct"), None
     return None, None
 
 

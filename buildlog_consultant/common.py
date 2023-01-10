@@ -885,7 +885,7 @@ class MissingHaskellModule(Problem, kind="missing-haskell-module"):
 
 
 class Matcher(object):
-    def match(self, line: List[str], i: int) -> Tuple[List[int], Optional[Problem]]:
+    def match(self, line: List[str], i: int) -> Tuple[List[int], Optional[Problem], str]:
         raise NotImplementedError(self.match)
 
 
@@ -904,7 +904,7 @@ class SingleLineMatcher(Matcher):
     def match(self, lines, i):
         m = self.regexp.match(lines[i].rstrip("\n"))
         if not m:
-            return [], None
+            return [], None, None
         if self.cb:
             try:
                 err = self.cb(m)
@@ -914,7 +914,7 @@ class SingleLineMatcher(Matcher):
                         self.regexp, lines[i], m, e)) from e
         else:
             err = None
-        return [i], err
+        return [i], err, f"direct regex ({self.regexp.pattern}"
 
 
 class MissingSetupPyCommand(Problem, kind="missing-setup.py-command"):
@@ -936,11 +936,11 @@ class SetupPyCommandMissingMatcher(Matcher):
     def match(self, lines, i):
         m = self.final_line_re.fullmatch(lines[i].rstrip("\n"))
         if not m:
-            return [], None
+            return [], None, None
         for j in range(i, max(0, i - 20), -1):
             if self.warning_match.fullmatch(lines[j].rstrip("\n")):
-                return [i], MissingSetupPyCommand(m.group(1))
-        return [], None
+                return [i], MissingSetupPyCommand(m.group(1)), f"direct regex ({self.final_line_re.pattern})"
+        return [], None, None
 
 
 class MultiLinePerlMissingModulesError(Matcher):
@@ -948,14 +948,14 @@ class MultiLinePerlMissingModulesError(Matcher):
     def match(self, lines, i):
         if lines[i].rstrip("\n") != (
                 "# The following modules are not available."):
-            return [], None
+            return [], None, None
         if lines[i + 1].rstrip("\n") != (
                 "# `perl Makefile.PL | cpanm` will install them:"):
-            return [], None
+            return [], None, None
 
         relevant_linenos = [i, i + 1, i + 2]
 
-        return relevant_linenos, MissingPerlModule(lines[i + 2].strip())
+        return relevant_linenos, MissingPerlModule(lines[i + 2].strip()), "perl line match"
 
 
 class MultiLineVignetteError(Matcher):
@@ -977,15 +977,15 @@ class MultiLineVignetteError(Matcher):
     def match(self, lines, i):
         m = self.header_match.fullmatch(lines[i].rstrip('\n'))
         if not m:
-            return [], None
+            return [], None, None
 
         line = lines[i + 1]
         for submatcher, fn in self.submatchers:
             m = submatcher.match(line.rstrip("\n"))
             if m:
-                return [i + 1], fn(m)
+                return [i + 1], fn(m), f"direct regex {submatcher.pattern}"
 
-        return [i + 1], None
+        return [i + 1], None, None
 
 
 class MultiLineConfigureError(Matcher):
@@ -1003,7 +1003,7 @@ class MultiLineConfigureError(Matcher):
 
     def match(self, lines, i):
         if lines[i].rstrip("\n") != "configure: error:":
-            return [], None
+            return [], None, None
 
         relevant_linenos = []
 
@@ -1014,9 +1014,9 @@ class MultiLineConfigureError(Matcher):
             for submatcher, fn in self.submatchers:
                 m = submatcher.match(line.rstrip("\n"))
                 if m:
-                    return [j], fn(m)
+                    return [j], fn(m), f"direct regex ({submatcher.pattern})"
 
-        return relevant_linenos, None
+        return relevant_linenos, None, "direct match"
 
 
 class AutoconfUnexpectedMacroMatcher(Matcher):
@@ -1029,14 +1029,14 @@ class AutoconfUnexpectedMacroMatcher(Matcher):
     def match(self, lines, i):
         m = self.regexp1.fullmatch(lines[i].rstrip("\n"))
         if not m:
-            return [], None
+            return [], None, None
         try:
             m = self.regexp2.fullmatch(lines[i + 1].rstrip("\n"))
         except IndexError:
-            return [], None
+            return [], None, None
         if m:
-            return [i, i + 1], MissingAutoconfMacro(m.group(1), need_rebuild=True)
-        return [], None
+            return [i, i + 1], MissingAutoconfMacro(m.group(1), need_rebuild=True), f"direct regex {self.regexp1.pattern}"
+        return [], None, None
 
 
 class PythonFileNotFoundErrorMatcher(Matcher):
@@ -1049,10 +1049,10 @@ class PythonFileNotFoundErrorMatcher(Matcher):
     def match(self, lines, i):
         m = self.final_line_re.fullmatch(lines[i].rstrip("\n"))
         if not m:
-            return [], None
+            return [], None, None
         if i - 2 >= 0 and "subprocess" in lines[i - 2]:
-            return [i], MissingCommand(m.group(1))
-        return [i], file_not_found_maybe_executable(m)
+            return [i], MissingCommand(m.group(1)), f"direct regex ({self.final_line_re.pattern})"
+        return [i], file_not_found_maybe_executable(m), None
 
 
 class HaskellMissingDependencyMatcher(Matcher):
@@ -1062,7 +1062,7 @@ class HaskellMissingDependencyMatcher(Matcher):
     def match(self, lines, i):
         m = self.regexp.fullmatch(lines[i].rstrip("\n"))
         if not m:
-            return [], None
+            return [], None, None
         deps = []
         linenos = [i]
         for line in lines[i + 1 :]:
@@ -1070,7 +1070,7 @@ class HaskellMissingDependencyMatcher(Matcher):
                 break
             deps.extend([x.strip() for x in line.split(",", 1)])
             linenos.append(linenos[-1] + 1)
-        return linenos, MissingHaskellDependencies([dep for dep in deps if dep])
+        return linenos, MissingHaskellDependencies([dep for dep in deps if dep]), f"direct regex ({self.regexp.pattern})"
 
 
 def cmake_compiler_failure(m):
@@ -1324,7 +1324,7 @@ class CMakeErrorMatcher(Matcher):
     def match(self, lines, i):
         m = self.regexp.fullmatch(lines[i].rstrip("\n"))
         if not m:
-            return [], None
+            return [], None, None
 
         path = m.group(2)  # noqa: F841
         start_lineno = int(m.group(3))  # noqa: F841
@@ -1337,9 +1337,9 @@ class CMakeErrorMatcher(Matcher):
                     error = None
                 else:
                     error = fn(m)
-                return linenos, error
+                return linenos, error, f"direct regex ({self.regexp.pattern})"
 
-        return linenos, None
+        return linenos, None, f"direct regex ({self.regexp.pattern})"
 
 
 class MissingFortranCompiler(Problem, kind="missing-fortran-compiler"):
@@ -4007,12 +4007,12 @@ def find_build_failure_description(  # noqa: C901
         if "cmake" in lines[lineno]:
             cmake = True
         for matcher in compiled_build_failure_regexps:
-            linenos, err = matcher.match(lines, lineno)
+            linenos, err, origin = matcher.match(lines, lineno)
             if linenos:
                 logger.debug('Found match against %r on %r (lines %r): %r',
                              matcher, [lines[n] for n in linenos], linenos,
                              err)
-                return MultiLineMatch.from_lines(lines, linenos), err
+                return MultiLineMatch.from_lines(lines, linenos, origin=origin), err
 
     # TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
     if cmake:
@@ -4030,7 +4030,8 @@ def find_build_failure_description(  # noqa: C901
             m = re.fullmatch(binary_pat, line)
             if m:
                 return (
-                    SingleLineMatch.from_lines(lines, lineno),
+                    SingleLineMatch.from_lines(
+                        lines, lineno, origin=f"direct regex ({binary_pat}"),
                     MissingCommand(m.group(1).lower()),
                 )
             m = re.fullmatch(missing_file_pat, line)
@@ -4045,7 +4046,8 @@ def find_build_failure_description(  # noqa: C901
                     else:
                         filename = line
                     return (
-                        SingleLineMatch.from_lines(lines, lineno),
+                        SingleLineMatch.from_lines(
+                            lines, lineno, origin=f"direct regex {missing_file_pat}"),
                         MissingFile(filename),
                     )
                 continue
@@ -4061,7 +4063,8 @@ def find_build_failure_description(  # noqa: C901
                         filenames.append(lines[lineno + i].strip())
                         i += 1
                     return (
-                        SingleLineMatch.from_lines(lines, lineno),
+                        SingleLineMatch.from_lines(
+                            lines, lineno, origin="direct regex (cmake)"),
                         CMakeFilesMissing(filenames),
                     )
 
@@ -4073,7 +4076,10 @@ def find_build_failure_description(  # noqa: C901
             if m:
                 logger.debug('Found match against %r on %r (line %d)',
                              regexp, line, lineno + 1)
-                return SingleLineMatch.from_lines(lines, lineno), None
+                return (
+                    SingleLineMatch.from_lines(
+                        lines, lineno,
+                        origin=f"secondary regex {regexp.pattern}"), None)
     return None, None
 
 
@@ -4082,6 +4088,7 @@ def as_json(m, problem):
     if m:
         ret["lineno"] = m.lineno
         ret["line"] = m.line
+        ret["origin"] = m.origin
     if problem:
         ret["problem"] = problem.kind
         try:
