@@ -25,6 +25,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip git+https://salsa.debian.org/python-debian-team/python-debian PyYAML
+        python -m pip install ".[chatgpt]"
         python setup.py develop
     - name: Style checks
       run: |
