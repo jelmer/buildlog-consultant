@@ -20,7 +20,7 @@ import logging
 import os
 import posixpath
 import shlex
-from typing import List, Optional, Tuple
+from typing import Optional
 import re
 import textwrap
 
@@ -54,7 +54,7 @@ class MissingPythonModule(Problem, kind="missing-python-module"):
             return ret
 
     def __repr__(self):
-        return "%s(%r, python_version=%r, minimum_version=%r)" % (
+        return "{}({!r}, python_version={!r}, minimum_version={!r})".format(
             type(self).__name__,
             self.module,
             self.python_version,
@@ -103,7 +103,7 @@ class MissingPythonDistribution(Problem, kind="missing-python-distribution"):
         return cls(req.name, python_version)
 
     def __repr__(self):
-        return "%s(%r, python_version=%r, minimum_version=%r)" % (
+        return "{}({!r}, python_version={!r}, minimum_version={!r})".format(
             type(self).__name__,
             self.distribution,
             self.python_version,
@@ -113,7 +113,7 @@ class MissingPythonDistribution(Problem, kind="missing-python-distribution"):
 
 class VcsControlDirectoryNeeded(Problem, kind='vcs-control-directory-needed'):
 
-    vcs: List[str]
+    vcs: list[str]
 
     def __str__(self):
         return "Version control directory needed"
@@ -163,7 +163,7 @@ class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
     current_version: Optional[str] = None
 
     def __repr__(self):
-        return "%s(%r, url=%r, minimum_version=%r, current_version=%r)" % (
+        return "{}({!r}, url={!r}, minimum_version={!r}, current_version={!r})".format(
             type(self).__name__, self.name,
             self.url, self.minimum_version, self.current_version)
 
@@ -184,7 +184,7 @@ class MissingQt(Problem, kind="missing-qt"):
 
 class MissingQtModules(Problem, kind="missing-qt-modules"):
 
-    modules: List[str]
+    modules: list[str]
 
     def __str__(self):
         return "Missing QT modules: %r" % self.modules
@@ -265,7 +265,7 @@ class MissingJDKFile(Problem, kind="missing-jdk-file"):
     filename: str
 
     def __str__(self):
-        return "Missing JDK file %s (JDK Path: %s)" % (self.filename, self.jdk_path)
+        return f"Missing JDK file {self.filename} (JDK Path: {self.jdk_path})"
 
 
 class MissingJDK(Problem, kind="missing-jdk"):
@@ -305,7 +305,7 @@ class MissingSprocketsFile(Problem, kind="missing-sprockets-file"):
     content_type: str
 
     def __str__(self):
-        return "Missing sprockets file: %s (type: %s)" % (self.name, self.content_type)
+        return f"Missing sprockets file: {self.name} (type: {self.content_type})"
 
 
 class MissingGoPackage(Problem, kind="missing-go-package"):
@@ -420,7 +420,7 @@ class MissingPkgConfig(Problem, kind="missing-pkg-config-package"):
 
     def __str__(self):
         if self.minimum_version:
-            return "Missing pkg-config file: %s (>= %s)" % (
+            return "Missing pkg-config file: {} (>= {})".format(
                 self.module,
                 self.minimum_version,
             )
@@ -428,7 +428,7 @@ class MissingPkgConfig(Problem, kind="missing-pkg-config-package"):
             return "Missing pkg-config file: %s" % self.module
 
     def __repr__(self):
-        return "%s(%r, minimum_version=%r)" % (
+        return "{}({!r}, minimum_version={!r})".format(
             type(self).__name__,
             self.module,
             self.minimum_version,
@@ -454,21 +454,21 @@ def pkg_config_missing(m):
 class MissingCMakeComponents(Problem, kind="missing-cmake-components"):
 
     name: str
-    components: List[str]
+    components: list[str]
 
     def __str__(self):
-        return "Missing %s components: %r" % (self.name, self.components)
+        return f"Missing {self.name} components: {self.components!r}"
 
 
 class CMakeFilesMissing(Problem, kind="missing-cmake-files"):
 
-    filenames: List[str]
+    filenames: list[str]
     version: Optional[str] = None
 
     def __str__(self):
         if self.version:
-            return "Missing CMake package configuration files (version %s): %r" % (self.version, self.filenames,)
-        return "Missing CMake package configuration files: %r" % (self.filenames,)
+            return f"Missing CMake package configuration files (version {self.version}): {self.filenames!r}"
+        return f"Missing CMake package configuration files: {self.filenames!r}"
 
 
 class MissingCMakeConfig(Problem, kind="missing-cmake-config"):
@@ -478,8 +478,8 @@ class MissingCMakeConfig(Problem, kind="missing-cmake-config"):
 
     def __str__(self):
         if self.version:
-            return "Missing CMake package configuration for %s (version %s)" % (self.name, self.version)
-        return "Missing CMake package configuration for %s" % (self.name, )
+            return f"Missing CMake package configuration for {self.name} (version {self.version})"
+        return f"Missing CMake package configuration for {self.name}"
 
 
 class DhWithOrderIncorrect(Problem, kind="debhelper-argument-order"):
@@ -530,12 +530,12 @@ class MissingPerlModule(Problem, kind="missing-perl-module"):
 
     filename: Optional[str]
     module: str
-    inc: Optional[List[str]] = None
+    inc: Optional[list[str]] = None
     minimum_version: Optional[str] = None
 
     def __str__(self):
         if self.filename:
-            return "Missing Perl module: %s (filename: %r)" % (
+            return "Missing Perl module: {} (filename: {!r})".format(
                 self.module,
                 self.filename,
             )
@@ -546,15 +546,15 @@ class MissingPerlModule(Problem, kind="missing-perl-module"):
 class MissingPerlFile(Problem, kind="missing-perl-file"):
 
     filename: str
-    inc: Optional[List[str]] = None
+    inc: Optional[list[str]] = None
 
     def __str__(self):
-        return "Missing Perl file: %s (inc: %r)" % (self.filename, self.inc)
+        return f"Missing Perl file: {self.filename} (inc: {self.inc!r})"
 
 
 class MissingMavenArtifacts(Problem, kind="missing-maven-artifacts"):
 
-    artifacts: List[Tuple[str, str, str, str]]
+    artifacts: list[tuple[str, str, str, str]]
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.artifacts == other.artifacts
@@ -563,7 +563,7 @@ class MissingMavenArtifacts(Problem, kind="missing-maven-artifacts"):
         return "Missing maven artifacts: %r" % self.artifacts
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.artifacts)
+        return f"{type(self).__name__}({self.artifacts!r})"
 
 
 class DhUntilUnsupported(Problem, kind="dh-until-unsupported"):
@@ -622,7 +622,7 @@ class MissingDebianBuildDep(Problem, kind='missing-debian-build-dep'):
     dep: str
 
     def __str__(self):
-        return "Missing Debian Build-Depends: %s" % (self.dep, )
+        return f"Missing Debian Build-Depends: {self.dep}"
 
 
 class MissingGoSumEntry(Problem, kind="missing-go.sum-entry"):
@@ -631,7 +631,7 @@ class MissingGoSumEntry(Problem, kind="missing-go.sum-entry"):
     version: str
 
     def __str__(self):
-        return "Missing go.sum entry: %s@%s" % (
+        return "Missing go.sum entry: {}@{}".format(
             self.package, self.version)
 
 
@@ -659,7 +659,7 @@ class MissingRubyGem(Problem, kind="missing-ruby-gem"):
 
     def __str__(self):
         if self.version:
-            return "missing ruby gem: %s (>= %s)" % (self.gem, self.version)
+            return f"missing ruby gem: {self.gem} (>= {self.version})"
         else:
             return "missing ruby gem: %s" % self.gem
 
@@ -681,7 +681,7 @@ class MissingRubyFile(Problem, kind="missing-ruby-file"):
     filename: str
 
     def __str__(self):
-        return "Missing ruby file: %s" % (self.filename,)
+        return f"Missing ruby file: {self.filename}"
 
 
 class MissingPhpClass(Problem, kind="missing-php-class"):
@@ -707,7 +707,7 @@ class MissingRPackage(Problem, kind="missing-r-package"):
 
     def __str__(self):
         if self.minimum_version:
-            return "missing R package: %s (>= %s)" % (
+            return "missing R package: {} (>= {})".format(
                 self.package,
                 self.minimum_version,
             )
@@ -725,10 +725,10 @@ class DebhelperPatternNotFound(Problem, kind="debhelper-pattern-not-found"):
 
     pattern: str
     tool: str
-    directories: List[str]
+    directories: list[str]
 
     def __str__(self):
-        return "debhelper (%s) expansion failed for %r (directories: %r)" % (
+        return "debhelper ({}) expansion failed for {!r} (directories: {!r})".format(
             self.tool,
             self.pattern,
             self.directories,
@@ -771,7 +771,7 @@ class MissingGnomeCommonDependency(Problem, kind="missing-gnome-common-dependenc
     minimum_version: Optional[str] = None
 
     def __str__(self):
-        return "Missing gnome-common dependency: %s: (>= %s)" % (
+        return "Missing gnome-common dependency: {}: (>= {})".format(
             self.package,
             self.minimum_version,
         )
@@ -858,13 +858,13 @@ class ValaCompilerCannotCompile(Problem, kind="valac-cannot-compile"):
 
 class MissingHaskellDependencies(Problem, kind="missing-haskell-dependencies"):
 
-    deps: List[str]
+    deps: list[str]
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.deps == other.deps
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.deps)
+        return f"{type(self).__name__}({self.deps!r})"
 
     def __str__(self):
         return "Missing Haskell dependencies: %r" % self.deps
@@ -878,14 +878,14 @@ class MissingHaskellModule(Problem, kind="missing-haskell-module"):
         return isinstance(other, type(self)) and self.module == other.module
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.module)
+        return f"{type(self).__name__}({self.module!r})"
 
     def __str__(self):
         return "Missing Haskell module: %r" % self.module
 
 
-class Matcher(object):
-    def match(self, line: List[str], i: int) -> Tuple[List[int], Optional[Problem], str]:
+class Matcher:
+    def match(self, line: list[str], i: int) -> tuple[list[int], Optional[Problem], str]:
         raise NotImplementedError(self.match)
 
 
@@ -899,7 +899,7 @@ class SingleLineMatcher(Matcher):
         self.cb = cb
 
     def __repr__(self):
-        return "<%s(%r)>" % (type(self).__name__, self.regexp.pattern)
+        return f"<{type(self).__name__}({self.regexp.pattern!r})>"
 
     def match(self, lines, i):
         m = self.regexp.match(lines[i].rstrip("\n"))
@@ -910,7 +910,7 @@ class SingleLineMatcher(Matcher):
                 err = self.cb(m)
             except (ValueError, IndexError) as e:
                 raise MatcherError(
-                    "Error while matching %r against %r (%r): %r" % (
+                    "Error while matching {!r} against {!r} ({!r}): {!r}".format(
                         self.regexp, lines[i], m, e)) from e
         else:
             err = None
@@ -1101,7 +1101,7 @@ class CMakeNeedExactVersion(Problem, kind="cmake-exact-version-missing"):
         )
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %r)" % (
+        return "{}({!r}, {!r}, {!r}, {!r})".format(
             type(self).__name__,
             self.package,
             self.version_found,
@@ -1110,7 +1110,7 @@ class CMakeNeedExactVersion(Problem, kind="cmake-exact-version-missing"):
         )
 
     def __str__(self):
-        return "CMake needs exact package %s, version %s" % (
+        return "CMake needs exact package {}, version {}".format(
             self.package,
             self.exact_version_needed,
         )
@@ -1364,7 +1364,7 @@ class MissingLibtool(Problem, kind="missing-libtool"):
 
 class UnsupportedPytestArguments(Problem, kind="unsupported-pytest-arguments"):
 
-    args: List[str]
+    args: list[str]
 
     def __str__(self):
         return "Unsuported pytest arguments: %r" % self.args
@@ -1385,7 +1385,7 @@ class MissingCargoCrate(Problem, kind="missing-cargo-crate"):
 
     def __str__(self):
         if self.requirement:
-            return "Missing crate: %s (%s)" % (self.crate, self.requirement)
+            return f"Missing crate: {self.crate} ({self.requirement})"
         else:
             return "Missing crate: %s" % self.crate
 
@@ -1494,7 +1494,7 @@ class MismatchGettextVersions(Problem, kind="mismatch-gettext-versions"):
     autoconf_version: str
 
     def __str__(self):
-        return "Mismatch versions (%s, %s)" % (
+        return "Mismatch versions ({}, {})".format(
             self.makefile_version, self.autoconf_version)
 
 
@@ -1530,7 +1530,7 @@ class CodeCoverageTooLow(Problem, kind="code-coverage-too-low"):
     required: float
 
     def __str__(self):
-        return "Code coverage too low: %f < %f" % (self.actual, self.required)
+        return f"Code coverage too low: {self.actual:f} < {self.required:f}"
 
 
 class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
@@ -2532,7 +2532,7 @@ build_failure_regexps = [
     (
         r"\[(.*)\] \t\t:: (.*)\#(.*);\$\{(.*)\}: not found",
         lambda m: MissingMavenArtifacts(
-            ["%s:%s:jar:debian" % (m.group(2), m.group(3))]
+            [f"{m.group(2)}:{m.group(3)}:jar:debian"]
         ),
     ),
     (
@@ -3744,7 +3744,7 @@ for entry in build_failure_regexps:
             matcher = entry  # type: ignore
         compiled_build_failure_regexps.append(matcher)
     except re.error as e:
-        raise Exception("Error in %s: %s" % (regexp, e)) from e
+        raise Exception(f"Error in {regexp}: {e}") from e
 
 
 # Regexps that hint at an error of some sort, but not the error itself.
@@ -3985,12 +3985,12 @@ for regexp in secondary_build_failure_regexps:
     try:
         compiled_secondary_build_failure_regexps.append(re.compile(regexp))
     except re.error as e:
-        raise Exception("Error compiling %r: %s" % (regexp, e)) from e
+        raise Exception(f"Error compiling {regexp!r}: {e}") from e
 
 
 def find_build_failure_description(  # noqa: C901
-    lines: List[str],
-) -> Tuple[Optional[Match], Optional["Problem"]]:
+    lines: list[str],
+) -> tuple[Optional[Match], Optional["Problem"]]:
     """Find the key failure line in build output.
 
     Returns:
@@ -4122,7 +4122,7 @@ def main(argv=None):
     if args.path == '-':
         args.path = '/dev/stdin'
 
-    with open(args.path, "r") as f:
+    with open(args.path) as f:
         lines = list(f.readlines())
 
     m, problem = find_build_failure_description(lines)
