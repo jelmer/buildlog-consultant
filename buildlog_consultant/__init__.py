@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List, Dict, Type, Optional
+from typing import Optional
 
 __version__ = (0, 0, 31)
 version_string = '.'.join(map(str, __version__))
 
 
-problem_clses: Dict[str, Type["Problem"]] = {}
+problem_clses: dict[str, type["Problem"]] = {}
 
 
 class Problem:
@@ -35,7 +35,7 @@ class Problem:
         cls.kind = kind
         cls.is_global = is_global
         if kind in problem_clses:
-            raise AssertionError('class %r already registered for kind %s (not %r)' % (
+            raise AssertionError('class {!r} already registered for kind {} (not {!r})'.format(
                 problem_clses[kind], kind, cls))
         problem_clses[kind] = cls
 
@@ -70,11 +70,11 @@ class Match:
 
     origin: Optional[str]
     line: str
-    lines: List[str]
+    lines: list[str]
     lineno: int
-    linenos: List[int]
+    linenos: list[int]
     offset: int
-    offsets: List[int]
+    offsets: list[int]
 
 
 class SingleLineMatch(Match):
@@ -88,7 +88,7 @@ class SingleLineMatch(Match):
         self.origin = origin
 
     def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.offset, self.line)
+        return f"{type(self).__name__}({self.offset!r}, {self.line!r})"
 
     def __eq__(self, other):
         return (
@@ -98,15 +98,15 @@ class SingleLineMatch(Match):
         )
 
     @property
-    def lines(self) -> List[str]:  # type: ignore
+    def lines(self) -> list[str]:  # type: ignore
         return [self.line]
 
     @property
-    def linenos(self) -> List[int]:  # type: ignore
+    def linenos(self) -> list[int]:  # type: ignore
         return [self.lineno]
 
     @property
-    def offsets(self) -> List[int]:  # type: ignore
+    def offsets(self) -> list[int]:  # type: ignore
         return [self.offset]
 
     @property
@@ -120,16 +120,16 @@ class SingleLineMatch(Match):
 
 class MultiLineMatch(Match):
 
-    offsets: List[int]
-    lines: List[str]
+    offsets: list[int]
+    lines: list[str]
 
-    def __init__(self, offsets: List[int], lines: List[str], *, origin: Optional[str] = None):
+    def __init__(self, offsets: list[int], lines: list[str], *, origin: Optional[str] = None):
         self.offsets = offsets
         self.lines = lines
         self.origin = origin
 
     def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.offsets, self.lines)
+        return f"{type(self).__name__}({self.offsets!r}, {self.lines!r})"
 
     def __eq__(self, other):
         return (

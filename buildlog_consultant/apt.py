@@ -20,7 +20,7 @@ import re
 
 from debian.changelog import Version
 from debian.deb822 import PkgRelation
-from typing import List, Optional, Tuple, TypedDict
+from typing import Optional, TypedDict
 import yaml
 
 from . import Problem, SingleLineMatch, Match, MultiLineMatch
@@ -38,7 +38,7 @@ class DpkgError(Problem, kind="dpkg-error"):
         return "Dpkg Error: %s" % self.error
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.error)
+        return f"{type(self).__name__}({self.error!r})"
 
 
 class AptUpdateError(Problem, kind="apt-update-error"):
@@ -90,7 +90,7 @@ class AptPackageUnknown(Problem, kind="apt-package-unknown"):
         return "Unknown package: %s" % self.package
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.package)
+        return f"{type(self).__name__}({self.package!r})"
 
 
 class AptBrokenPackages(Problem, kind="apt-broken-packages"):
@@ -101,10 +101,10 @@ class AptBrokenPackages(Problem, kind="apt-broken-packages"):
     def __str__(self):
         if self.broken:
             return "Broken apt packages: %r" % self.broken
-        return "Broken apt packages: %s" % (self.description,)
+        return f"Broken apt packages: {self.description}"
 
     def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.description, self.broken)
+        return f"{type(self).__name__}({self.description!r}, {self.broken!r})"
 
     def __eq__(self, other):
         return (isinstance(other, type(self))
@@ -112,7 +112,7 @@ class AptBrokenPackages(Problem, kind="apt-broken-packages"):
                 and self.broken == other.broken)
 
 
-def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Problem]]:  # noqa: C901
+def find_apt_get_failure(lines: list[str]) -> tuple[Optional[Match], Optional[Problem]]:  # noqa: C901
     """Find the key failure line in apt-get-output.
 
     Returns:
@@ -187,7 +187,7 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
         if m:
             return (
                 SingleLineMatch.from_lines(lines, lineno + 1, origin="direct regex"),
-                DpkgError("processing package %s (%s)" % (m.group(1), m.group(2))),
+                DpkgError(f"processing package {m.group(1)} ({m.group(2)})"),
             )
 
     for i, line in enumerate(lines):
@@ -226,21 +226,17 @@ def find_cudf_output(lines):
     return yaml.safe_load("\n".join(output))
 
 
-ParsedRelation = TypedDict(
-    "ParsedRelation",
-    {
-        "name": str,
-        "archqual": Optional[str],
-        "version": Optional[Tuple[str, str]],
-        "arch": Optional[List["PkgRelation.ArchRestriction"]],
-        "restrictions": Optional[List[List["PkgRelation.BuildRestriction"]]],
-    },
-)
+class ParsedRelation(TypedDict):
+    name: str
+    archqual: Optional[str]
+    version: Optional[tuple[str, str]]
+    arch: Optional[list['PkgRelation.ArchRestriction']]
+    restrictions: Optional[list[list['PkgRelation.BuildRestriction']]]
 
 
 class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
 
-    relations: List[List[List[ParsedRelation]]]
+    relations: list[list[list[ParsedRelation]]]
 
     def __str__(self):
         return "Unsatisfied APT dependencies: %s" % (
@@ -278,7 +274,7 @@ class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
         return cls(relations=relations)
 
     def __repr__(self):
-        return "%s.from_str(%r)" % (
+        return "{}.from_str({!r})".format(
             type(self).__name__,
             PkgRelation.str(self.relations),  # type: ignore
         )
@@ -286,7 +282,7 @@ class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
 
 class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):
 
-    relations: List[List[List[ParsedRelation]]]
+    relations: list[list[list[ParsedRelation]]]
 
     def __str__(self):
         return "Unsatisfied APT conflicts: %s" % PkgRelation.str(
@@ -329,7 +325,7 @@ def error_from_dose3_report(report):
         return UnsatisfiedAptConflicts(conflict)
 
 
-def find_install_deps_failure_description(sbuildlog) -> Tuple[Optional[str], Optional[Match], Optional[Problem]]:
+def find_install_deps_failure_description(sbuildlog) -> tuple[Optional[str], Optional[Match], Optional[Problem]]:
     error = None
 
     DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
@@ -379,7 +375,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=loglevel, format="%(message)s")
 
-    with open(args.path, "r") as f:
+    with open(args.path) as f:
         lines = list(f.readlines())
     match, error = find_apt_get_failure(lines)
 

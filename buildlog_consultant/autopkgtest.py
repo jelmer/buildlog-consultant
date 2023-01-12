@@ -18,7 +18,7 @@
 
 import logging
 import re
-from typing import Tuple, Optional, List, Dict, Union, Any
+from typing import Optional, Union, Any
 
 from . import Problem, SingleLineMatch, version_string, Match
 from .apt import find_apt_get_failure, AptFetchFailure
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class AutopkgtestDepsUnsatisfiable(Problem, kind="badpkg"):
 
-    args: List[str]
+    args: list[str]
 
     @classmethod
     def from_blame_line(cls, line):
@@ -66,7 +66,7 @@ class AutopkgtestTestbedFailure(Problem, kind="testbed-failure"):
         return type(self) == type(other) and self.reason == other.reason
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.reason)
+        return f"{type(self).__name__}({self.reason!r})"
 
     def __str__(self):
         return self.reason
@@ -92,7 +92,7 @@ class AutopkgtestErroneousPackage(Problem, kind="erroneous-package"):
         return type(self) == type(other) and self.reason == other.reason
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.reason)
+        return f"{type(self).__name__}({self.reason!r})"
 
     def __str__(self):
         return self.reason
@@ -106,13 +106,13 @@ class AutopkgtestStderrFailure(Problem, kind="stderr-output"):
         return isinstance(self, type(other)) and self.stderr_line == other.stderr_line
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.stderr_line)
+        return f"{type(self).__name__}({self.stderr_line!r})"
 
     def __str__(self):
         return "output on stderr: %s" % self.stderr_line
 
 
-def parse_autopgktest_line(line: str) -> Union[str, Tuple[str, Union[Tuple[str, ...]]]]:
+def parse_autopgktest_line(line: str) -> Union[str, tuple[str, Union[tuple[str, ...]]]]:
     m = re.match(r"autopkgtest \[([0-9:]+)\]: (.*)", line)
     if not m:
         return line
@@ -213,8 +213,8 @@ class AutopkgtestTestbedSetupFailure(Problem, kind="testbed-setup-failure"):
 
 
 def find_autopkgtest_failure_description(  # noqa: C901
-    lines: List[str],
-) -> Tuple[
+    lines: list[str],
+) -> tuple[
     Optional[Match], Optional[str], Optional["Problem"], Optional[str]
 ]:
     """Find the autopkgtest failure in output.
@@ -223,9 +223,9 @@ def find_autopkgtest_failure_description(  # noqa: C901
       tuple with (line offset, testname, error, description)
     """
     error: Optional["Problem"]
-    test_output: Dict[Tuple[str, ...], List[str]] = {}
-    test_output_offset: Dict[Tuple[str, ...], int] = {}
-    current_field: Optional[Tuple[str, ...]] = None
+    test_output: dict[tuple[str, ...], list[str]] = {}
+    test_output_offset: dict[tuple[str, ...], int] = {}
+    current_field: Optional[tuple[str, ...]] = None
     i = -1
     while i < len(lines) - 1:
         i += 1
@@ -480,7 +480,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         blame = line
                         blame_offset = extra_offset
                 if badpkg is not None:
-                    description = "Test %s failed: %s" % (testname, badpkg.rstrip("\n"))
+                    description = "Test {} failed: {}".format(testname, badpkg.rstrip("\n"))
                 else:
                     description = "Test %s failed" % testname
 
@@ -502,7 +502,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                 else:
                     offset = match.offset + output_offset
                 if match is None:
-                    description = "Test %s failed: %s" % (testname, reason)
+                    description = f"Test {testname} failed: {reason}"
                 else:
                     description = match.line
                 return SingleLineMatch.from_lines(lines, offset, origin="direct regex"), testname, error, description  # type: ignore
@@ -580,12 +580,12 @@ def main(argv=None):
 
     logging.basicConfig(level=loglevel, format="%(message)s")
 
-    with open(args.path, "r") as f:
+    with open(args.path) as f:
         lines = list(f)
         (match, testname, error, description) = find_autopkgtest_failure_description(lines)
 
         if args.json:
-            ret: Dict[str, Any]
+            ret: dict[str, Any]
             ret = {'testname': testname, 'error': error, 'description': description}
             if match:
                 ret['offset'] = match.offset

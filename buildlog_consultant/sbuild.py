@@ -17,7 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-from typing import List, Tuple, Iterator, BinaryIO, Optional, Union
+from typing import BinaryIO, Optional, Union
+from collections.abc import Iterator
 
 from dataclasses import dataclass
 import logging
@@ -48,7 +49,7 @@ class SbuildFailure(Exception):
         stage: Optional[str],
         description: Optional[str],
         error: Optional["Problem"] = None,
-        phase: Optional[Union[Tuple[str], Tuple[str, Optional[str]]]] = None,
+        phase: Optional[Union[tuple[str], tuple[str, Optional[str]]]] = None,
         section: Optional["SbuildLogSection"] = None,
         match: Optional[Match] = None,
     ):
@@ -60,7 +61,7 @@ class SbuildFailure(Exception):
         self.match = match
 
     def __repr__(self):
-        return "%s(%r, %r, error=%r, phase=%r)" % (
+        return "{}({!r}, {!r}, error={!r}, phase={!r})".format(
             type(self).__name__,
             self.stage,
             self.description,
@@ -91,13 +92,13 @@ class SbuildFailure(Exception):
 class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
 
     diff_file: Optional[str] = None
-    files: Optional[List[str]] = None
+    files: Optional[list[str]] = None
 
     def __repr__(self):
         if self.files is None:
-            return "<%s()>" % (type(self).__name__, )
+            return f"<{type(self).__name__}()>"
         if len(self.files) < 5:
-            return "%s(%r)" % (type(self).__name__, self.files)
+            return f"{type(self).__name__}({self.files!r})"
         return "<%s(%d files)>" % (type(self).__name__, len(self.files))
 
     def __str__(self):
@@ -121,7 +122,7 @@ class DpkgUnwantedBinaryFiles(Problem, kind="unwanted-binary-files"):
 
 class DpkgBinaryFileChanged(Problem, kind="changed-binary-files"):
 
-    paths: List[str]
+    paths: list[str]
 
     def __str__(self):
         return "Tree has binary files with changes: %r" % self.paths
@@ -153,7 +154,7 @@ class SourceFormatUnbuildable(Problem, kind="source-format-unbuildable"):
     reason: str
 
     def __str__(self):
-        return "Source format %s unusable: %s" % (
+        return "Source format {} unusable: {}".format(
             self.source_format, self.reason)
 
 
@@ -222,7 +223,7 @@ class UScanFailed(Problem, kind="uscan-failed"):
     reason: str
 
     def __str__(self):
-        return "UScan failed to download %s: %s." % (self.url, self.reason)
+        return f"UScan failed to download {self.url}: {self.reason}."
 
 
 class InconsistentSourceFormat(Problem, kind="inconsistent-source-format"):
@@ -262,7 +263,7 @@ class DpkgBadVersion(Problem, kind="dpkg-bad-version"):
 
     def __str__(self):
         if self.reason:
-            return "Version (%s) is invalid: %s" % (self.version, self.reason)
+            return f"Version ({self.version}) is invalid: {self.reason}"
         else:
             return "Version (%s) is invalid" % self.version
 
@@ -289,9 +290,9 @@ class MissingDebcargoCrate(Problem, kind="debcargo-missing-crate"):
 
 
 def find_preamble_failure_description(  # noqa: C901
-    lines: List[str],
-) -> Tuple[Optional[SingleLineMatch], Optional[Problem]]:
-    ret: Tuple[Optional[SingleLineMatch], Optional[Problem]] = (None, None)
+    lines: list[str],
+) -> tuple[Optional[SingleLineMatch], Optional[Problem]]:
+    ret: tuple[Optional[SingleLineMatch], Optional[Problem]] = (None, None)
     OFFSET = 100
     err: Problem
     for i in range(1, OFFSET):
@@ -305,7 +306,7 @@ def find_preamble_failure_description(  # noqa: C901
         if m:
             diff_file = m.group(1)
             j = lineno - 1
-            files: List[str] = []
+            files: list[str] = []
             while j > 0:
                 if lines[j] == (
                     "dpkg-source: info: local changes detected, "
@@ -567,7 +568,7 @@ BRZ_ERRORS = [
 _BRZ_ERRORS = [(re.compile(r), fn) for (r, fn) in BRZ_ERRORS]
 
 
-def parse_brz_error(line: str, prior_lines: List[str]) -> Tuple[Optional[Problem], str]:
+def parse_brz_error(line: str, prior_lines: list[str]) -> tuple[Optional[Problem], str]:
     error: Problem
     line = line.strip()
     for search_re, fn in _BRZ_ERRORS:
@@ -616,7 +617,7 @@ def find_creation_session_error(lines):
         )
         if m:
             return SingleLineMatch.from_lines(lines, i, origin="direct regex"), ChrootNotFound(
-                "%s-%s-sbuild" % (m.group(1), m.group(2))
+                f"{m.group(1)}-{m.group(2)}-sbuild"
             )
         if line.endswith(": No space left on device\n"):
             return SingleLineMatch.from_lines(lines, i, origin="direct regex"), NoSpaceOnDevice()
@@ -640,14 +641,14 @@ def find_brz_build_error(lines):
 class SbuildLogSection:
 
     title: Optional[str]
-    offsets: Tuple[int, int]
-    lines: List[str]
+    offsets: tuple[int, int]
+    lines: list[str]
 
 
 @dataclass
-class SbuildLog(object):
+class SbuildLog:
 
-    sections: List[SbuildLogSection]
+    sections: list[SbuildLogSection]
 
     def get_section(self, title):
         for section in self.sections:
@@ -936,7 +937,7 @@ def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailu
 
 def parse_sbuild_log(f: BinaryIO) -> Iterator[SbuildLogSection]:
     begin_offset = 1
-    lines: List[str] = []
+    lines: list[str] = []
     title = None
     sep = b"+" + (b"-" * 78) + b"+"
     lineno = 0
@@ -973,7 +974,7 @@ def parse_sbuild_log(f: BinaryIO) -> Iterator[SbuildLogSection]:
     yield SbuildLogSection(title, (begin_offset, lineno), lines)
 
 
-def find_failed_stage(lines: List[str]) -> Optional[str]:
+def find_failed_stage(lines: list[str]) -> Optional[str]:
     for line in lines:
         if not line.startswith("Fail-Stage: "):
             continue
@@ -998,7 +999,7 @@ def strip_build_tail(lines, look_back=None):
             break
 
     files = {}
-    current_contents: List[str] = []
+    current_contents: list[str] = []
 
     header_re = re.compile(r"==\> (.*) \<==\n")
     for i in range(len(lines) - 1, -1, -1):
@@ -1015,15 +1016,15 @@ def strip_build_tail(lines, look_back=None):
 class ArchitectureNotInList(Problem, kind="arch-not-in-list"):
 
     arch: str
-    arch_list: List[str]
+    arch_list: list[str]
 
     def __str__(self):
-        return "Architecture %s not a build arch" % (self.arch,)
+        return f"Architecture {self.arch} not a build arch"
 
 
 def find_arch_check_failure_description(
-    lines: List[str],
-) -> Tuple[SingleLineMatch, Optional[Problem]]:
+    lines: list[str],
+) -> tuple[SingleLineMatch, Optional[Problem]]:
     for offset, line in enumerate(lines):
         m = re.match(
             r"E: dsc: (.*) not in arch list or does not match any arch "
@@ -1050,7 +1051,7 @@ class InsufficientDiskSpace(Problem, kind="insufficient-disk-space"):
 
 def find_check_space_failure_description(
     lines,
-) -> Tuple[Optional[SingleLineMatch], Optional[Problem]]:
+) -> tuple[Optional[SingleLineMatch], Optional[Problem]]:
     for offset, line in enumerate(lines):
         if line == "E: Disk space is probably not sufficient for building.\n":
             m = re.fullmatch(
