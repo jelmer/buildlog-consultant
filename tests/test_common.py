@@ -1547,6 +1547,16 @@ Call Stack (most recent call first):
                 ["com.carrotsearch.randomizedtesting:junit4-ant:jar:debian"]
             ),
         )
+        self.run_test(
+            ["[ERROR] Plugin org.apache.maven.plugins:maven-compiler-plugin:3.10.1 "
+             "or one of its dependencies could not be resolved: Failed to "
+             "read artifact descriptor for "
+             "org.apache.maven.plugins:maven-compiler-plugin:jar:3.10.1: "
+             "1 problem was encountered while building the effective "
+             "model for "
+             "org.apache.maven.plugins:maven-compiler-plugin:3.10.1"],
+            1, MissingMavenArtifacts(
+                ["org.apache.maven.plugins:maven-compiler-plugin:3.10.1"]))
 
     def test_maven_errors(self):
         self.run_test(

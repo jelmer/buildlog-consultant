@@ -2349,6 +2349,12 @@ build_failure_regexps = [
         lambda m: MissingMavenArtifacts([m.group(1)])
     ),
     (
+        MAVEN_ERROR_PREFIX + r"Plugin (.+) or one of its dependencies could "
+        r"not be resolved: Failed to read artifact descriptor for "
+        r"(.*): (.*)",
+        lambda m: MissingMavenArtifacts([m.group(1)]),
+    ),
+    (
         MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
         r"Could not resolve dependencies for project .*: Cannot access "
         r".* \([^\)]+\) in offline mode and the artifact "
