@@ -3512,6 +3512,9 @@ build_failure_regexps = [
 
     (r'ocamlfind: Package `(.*)\' not found',
      lambda m: MissingOCamlPackage(m.group(1))),
+    # Not a very unique ocaml-specific pattern :(
+    (r'Error: Library "(.*)" not found.',
+     lambda m: MissingOCamlPackage(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 

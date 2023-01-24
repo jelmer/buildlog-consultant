@@ -33,6 +33,7 @@ from buildlog_consultant.common import (
     MissingCHeader,
     MissingDHCompatLevel,
     UnsupportedDebhelperCompatLevel,
+    MissingOCamlPackage,
     MissingJDKFile,
     MissingJDK,
     MissingJRE,
@@ -439,6 +440,11 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
         self.run_test(
             ["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
             1, MissingLibrary("vulkan-1"))
+
+    def test_ocaml_library_missing(self):
+        self.run_test(
+            ['Error: Library "camlp-streams" not found.'],
+            1, MissingOCamlPackage('camlp-streams'))
 
     def test_meson_version(self):
         self.run_test(
