@@ -3649,6 +3649,8 @@ build_failure_regexps = [
      lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     (r'configure: error: .*Please install the \'(.*)\' package\.',
      lambda m: MissingVagueDependency(m.group(1))),
+    (r'Error: Please install ([^ ]+) package',
+     lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: <(.*\.h)> is required',
      lambda m: MissingCHeader(m.group(1))),
     (r'configure: error: ([^ ]+) is required',
