@@ -3070,6 +3070,10 @@ build_failure_regexps = [
         lambda m: MissingXDisplay(),
     ),
     (
+        r"Can't open (.+): No such file or directory.*",
+        file_not_found,
+    ),
+    (
         r'pkg-config does not know (.*) at .*\.',
         lambda m: MissingPkgConfig(m.group(1)),
     ),
@@ -3736,6 +3740,9 @@ build_failure_regexps = [
 
     (r'(.*) uses (.*) \(.*\) for installation but (.*) was not found',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'Can\'t find (.*) libs. Exiting',
+     lambda m: MissingLibrary(m.group(1))),
 ]
 
 
