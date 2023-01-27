@@ -1865,7 +1865,7 @@ build_failure_regexps = [
     (r"\./configure: [0-9]+: \.: Illegal option .*", None),
     (r"Requested \'(.*)\' but version of ([^ ]+) is ([^ ]+)", pkg_config_missing),
     (
-        r"configure: error: Package requirements \((.*)\) were not met:",
+        r".*configure: error: Package requirements \((.*)\) were not met:",
         pkg_config_missing,
     ),
     (
@@ -3516,6 +3516,9 @@ build_failure_regexps = [
 
     (r'ocamlfind: Package `(.*)\' not found',
      lambda m: MissingOCamlPackage(m.group(1))),
+    # Not a very unique ocaml-specific pattern :(
+    (r'Error: Library "(.*)" not found.',
+     lambda m: MissingOCamlPackage(m.group(1))),
 
     # ADD NEW REGEXES ABOVE THIS LINE
 
@@ -3649,6 +3652,8 @@ build_failure_regexps = [
     (r'ERROR: (.*) (.*) or later is required',
      lambda m: MissingVagueDependency(m.group(1), minimum_version=m.group(2))),
     (r'configure: error: .*Please install the \'(.*)\' package\.',
+     lambda m: MissingVagueDependency(m.group(1))),
+    (r'Error: Please install ([^ ]+) package',
      lambda m: MissingVagueDependency(m.group(1))),
     (r'configure: error: <(.*\.h)> is required',
      lambda m: MissingCHeader(m.group(1))),

@@ -33,6 +33,7 @@ from buildlog_consultant.common import (
     MissingCHeader,
     MissingDHCompatLevel,
     UnsupportedDebhelperCompatLevel,
+    MissingOCamlPackage,
     MissingJDKFile,
     MissingJDK,
     MissingJRE,
@@ -439,6 +440,11 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
         self.run_test(
             ["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
             1, MissingLibrary("vulkan-1"))
+
+    def test_ocaml_library_missing(self):
+        self.run_test(
+            ['Error: Library "camlp-streams" not found.'],
+            1, MissingOCamlPackage('camlp-streams'))
 
     def test_meson_version(self):
         self.run_test(
@@ -1144,6 +1150,9 @@ Call Stack (most recent call first):
             1,
             MissingPkgConfig("apertium-3.2", "3.2.0"),
         )
+        self.run_test(
+            ["checking for GLEW... configure: error: Package requirements (glew) were not met:"],
+            1, MissingPkgConfig("glew"))
         self.run_test(
             [
                 'meson.build:10:0: ERROR: Dependency "gssdp-1.2" not '
