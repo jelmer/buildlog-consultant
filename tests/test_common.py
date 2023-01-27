@@ -1151,6 +1151,9 @@ Call Stack (most recent call first):
             MissingPkgConfig("apertium-3.2", "3.2.0"),
         )
         self.run_test(
+            ["checking for GLEW... configure: error: Package requirements (glew) were not met:"],
+            1, MissingPkgConfig("glew"))
+        self.run_test(
             [
                 'meson.build:10:0: ERROR: Dependency "gssdp-1.2" not '
                 "found, tried pkgconfig"

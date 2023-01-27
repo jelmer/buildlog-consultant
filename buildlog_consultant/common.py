@@ -1865,7 +1865,7 @@ build_failure_regexps = [
     (r"\./configure: [0-9]+: \.: Illegal option .*", None),
     (r"Requested \'(.*)\' but version of ([^ ]+) is ([^ ]+)", pkg_config_missing),
     (
-        r"configure: error: Package requirements \((.*)\) were not met:",
+        r".*configure: error: Package requirements \((.*)\) were not met:",
         pkg_config_missing,
     ),
     (
