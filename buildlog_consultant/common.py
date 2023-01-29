@@ -355,6 +355,9 @@ class MissingCommand(Problem, kind="command-missing"):
     def __str__(self):
         return "Missing command: %s" % self.command
 
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.command)
+
 
 class NotExecutableFile(Problem, kind="command-not-executable"):
 
@@ -1367,7 +1370,10 @@ class UnsupportedPytestArguments(Problem, kind="unsupported-pytest-arguments"):
     args: list[str]
 
     def __str__(self):
-        return "Unsuported pytest arguments: %r" % self.args
+        return "Unsupported pytest arguments: %r" % self.args
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.args)
 
 
 class MissingPytestFixture(Problem, kind="missing-pytest-fixture"):
@@ -1376,6 +1382,9 @@ class MissingPytestFixture(Problem, kind="missing-pytest-fixture"):
 
     def __str__(self):
         return "Missing pytest fixture: %s" % self.fixture
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.fixture)
 
 
 class MissingCargoCrate(Problem, kind="missing-cargo-crate"):
