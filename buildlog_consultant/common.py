@@ -1376,6 +1376,14 @@ class UnsupportedPytestArguments(Problem, kind="unsupported-pytest-arguments"):
         return "%s(%r)" % (type(self).__name__, self.args)
 
 
+class UnsupportedPytestConfigOption(Problem, kind="unsupported-pytest-config-option"):
+
+    name: str
+
+    def __str__(self):
+        return f"Unsupported pytest configuration option: {self.name}"
+
+
 class MissingPytestFixture(Problem, kind="missing-pytest-fixture"):
 
     fixture: str
@@ -1621,6 +1629,10 @@ build_failure_regexps = [
     (
         r'pytest: error: unrecognized arguments: (.*)',
         lambda m: UnsupportedPytestArguments(shlex.split(m.group(1)))
+    ),
+    (
+        r"INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: (.*)",
+        lambda m: UnsupportedPytestConfigOption(m.group(1))
     ),
     (
         "E   ImportError: cannot import name '(.*)' from '(.*)'",
