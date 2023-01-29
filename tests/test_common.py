@@ -77,6 +77,7 @@ from buildlog_consultant.common import (
     UnknownCertificateAuthority,
     MissingGitIdentity,
     UnsupportedPytestArguments,
+    UnsupportedPytestConfigOption,
     VcsControlDirectoryNeeded,
 )
 import unittest
@@ -622,6 +623,12 @@ Call Stack (most recent call first):
             UnsupportedPytestArguments([
                 '--cov=janitor', '--cov-report=html',
                 '--cov-report=term-missing:skip-covered']))
+
+    def test_pytest_config(self):
+        self.run_test(
+            ['INTERNALERROR> pytest.PytestConfigWarning: '
+             'Unknown config option: asyncio_mode'], 1,
+            UnsupportedPytestConfigOption('asyncio_mode'))
 
     def test_distutils_missing(self):
         self.run_test(
