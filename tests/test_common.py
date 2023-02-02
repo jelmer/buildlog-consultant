@@ -65,6 +65,7 @@ from buildlog_consultant.common import (
     MissingAutomakeInput,
     MissingGoModFile,
     MissingX11,
+    MissingAssembler,
     NeedPgBuildExtUpdateControl,
     DhMissingUninstalled,
     DhUntilUnsupported,
@@ -77,6 +78,7 @@ from buildlog_consultant.common import (
     MissingGitIdentity,
     UnsupportedPytestArguments,
     VcsControlDirectoryNeeded,
+    find_secondary_build_failure,
 )
 import unittest
 
@@ -1650,6 +1652,9 @@ Call Stack (most recent call first):
             1,
         )
 
+    def test_assembler(self):
+        self.run_test(['Found no assembler'], 1, MissingAssembler())
+
     def test_fpic(self):
         self.run_test(
             [
@@ -2002,3 +2007,18 @@ arch:all and the other not)""".splitlines(),
             1,
             None,
         )
+
+
+class SecondaryErrorFinder(unittest.TestCase):
+
+    def assertMatches(self, line):
+        m = find_secondary_build_failure([line], 100)
+        self.assertIsNot(m, None)
+
+    def assertNotMatches(self, line):
+        m = find_secondary_build_failure([line], 100)
+        self.assertIs(m, None)
+
+    def test_unknown_option(self):
+        self.assertMatches('Unknown option --foo')
+        self.assertNotMatches('Unknown option --foo, ignoring.')
