@@ -1360,6 +1360,11 @@ class MissingRustCompiler(Problem, kind="missing-rust-compiler"):
         return "No Rust compiler found"
 
 
+class MissingAssembler(Problem, kind="missing-assembler"):
+    def __str__(self):
+        return "No assembler found"
+
+
 class MissingLibtool(Problem, kind="missing-libtool"):
     def __str__(self):
         return "Libtool is missing"
@@ -1910,6 +1915,10 @@ build_failure_regexps = [
     (
         r'error: can\'t find Rust compiler',
         lambda m: MissingRustCompiler(),
+    ),
+    (
+        r'Found no assembler',
+        lambda m: MissingAssembler(),
     ),
     (
         r'error: failed to get `(.*)` as a dependency of package `(.*)`',
@@ -3850,7 +3859,7 @@ secondary_build_failure_regexps = [
     r"\! Emergency stop\.",
     r"\!pdfTeX error: pdflatex: fwrite\(\) failed",
     # inkscape
-    r"Unknown option .*",
+    r"Unknown option ((?!ignoring).)*",
     # CTest
     r'not ok [0-9]+ .*',
     r"Errors while running CTest",
@@ -4027,6 +4036,20 @@ for regexp in secondary_build_failure_regexps:
         raise Exception(f"Error compiling {regexp!r}: {e}") from e
 
 
+def find_secondary_build_failure(lines, offset):
+    for lineno in range(max(0, len(lines) - offset), len(lines)):
+        line = lines[lineno].strip("\n")
+        for regexp in compiled_secondary_build_failure_regexps:
+            m = regexp.fullmatch(line)
+            if m:
+                logger.debug('Found match against %r on %r (line %d)',
+                             regexp, line, lineno + 1)
+                return SingleLineMatch.from_lines(
+                    lines, lineno,
+                    origin=f"secondary regex {regexp.pattern}")
+    return None
+
+
 def find_build_failure_description(  # noqa: C901
     lines: list[str],
 ) -> tuple[Optional[Match], Optional["Problem"]]:
@@ -4108,17 +4131,10 @@ def find_build_failure_description(  # noqa: C901
                     )
 
     # And forwards for vague ("secondary") errors.
-    for lineno in range(max(0, len(lines) - OFFSET), len(lines)):
-        line = lines[lineno].strip("\n")
-        for regexp in compiled_secondary_build_failure_regexps:
-            m = regexp.fullmatch(line)
-            if m:
-                logger.debug('Found match against %r on %r (line %d)',
-                             regexp, line, lineno + 1)
-                return (
-                    SingleLineMatch.from_lines(
-                        lines, lineno,
-                        origin=f"secondary regex {regexp.pattern}"), None)
+    match = find_secondary_build_failure(lines, OFFSET)
+    if match:
+        return match, None
+
     return None, None
 
 
