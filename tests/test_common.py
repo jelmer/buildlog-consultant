@@ -2029,11 +2029,11 @@ class SecondaryErrorFinder(unittest.TestCase):
 
     def assertMatches(self, line):
         m = find_secondary_build_failure([line], 100)
-        self.assertIsNot(m, None)
+        self.assertIsNotNone(m)
 
     def assertNotMatches(self, line):
         m = find_secondary_build_failure([line], 100)
-        self.assertIs(m, None)
+        self.assertIsNone(m)
 
     def test_unknown_option(self):
         self.assertMatches('Unknown option --foo')
