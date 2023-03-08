@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.mypy]
@@ -12,3 +12,38 @@ module = [
     "requirements.*",
 ]
 ignore_missing_imports = true
+
+[project]
+name = "buildlog-consultant"
+authors = [{name = "Jelmer Vernooĳ", email = "jelmer@jelmer.uk"}]
+description = "buildlog parser and analyser"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "python_debian",
+    "PyYAML",
+    "requirements-parser",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/jelmer/buildlog-consultant"
+Repository = "https://github.com/jelmer/buildlog-consultant.git"
+
+[project.optional-dependencies]
+chatgpt = ["openai"]
+
+[project.scripts]
+analyse-sbuild-log = "buildlog_consultant.sbuild:main"
+analyse-build-log = "buildlog_consultant.common:main"
+analyse-autopkgtest-log = "buildlog_consultant.autopkgtest:main"
+
+[tool.setuptools]
+packages = ["buildlog_consultant"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+buildlog_consultant = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "buildlog_consultant.__version__"}
