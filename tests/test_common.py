@@ -337,6 +337,8 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
              "libtrace. If you have installed it in a non-standard location please "
              "use LDFLAGS to specify the location of the library"],
             1, MissingVagueDependency("libpcap0.8"))
+        self.run_test(
+            ["Error: Please install xml2 package"], 1, MissingVagueDependency("xml2"))
 
     def test_gettext_mismatch(self):
         self.run_test(
