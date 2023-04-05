@@ -1308,6 +1308,7 @@ class CMakeErrorMatcher(Matcher):
          lambda m: MissingVagueDependency(m.group(1))),
         (r'Could not find the ([^ ]+) external dependency\.',
          lambda m: MissingVagueDependency(m.group(1))),
+        (r'Couldn\'t find (.*)', lambda m: MissingVagueDependency(m.group(1))),
     ]
 
     @classmethod
@@ -3724,6 +3725,8 @@ build_failure_regexps = [
      lambda m: MissingLibrary(m.group(1))),
     (r'.*Please install ([^ ]+) libraries\.',
      lambda m: MissingVagueDependency(m.group(1))),
+    (r'Error: Please install (.*) package',
+     lambda m: MissingVagueDependency(m.group(1))),
     (r'Please get ([^ ]+) from (www\..*)\.',
      lambda m: MissingVagueDependency(m.group(1), url=m.group(2))),
     (r'Please install ([^ ]+) so that it is on the PATH and try again\.',
@@ -3770,11 +3773,17 @@ build_failure_regexps = [
     (r'configure: error: Cannot find ([^ ]+)\.',
      lambda m: MissingVagueDependency(m.group(1))),
 
+    (r'configure: error: ([^ ]+) requested but not installed\.',
+     lambda m: MissingVagueDependency(m.group(1))),
+
     (r'We need the Python library (.+) to be installed\..*',
      lambda m: MissingPythonDistribution(m.group(1))),
 
     (r'(.*) uses (.*) \(.*\) for installation but (.*) was not found',
      lambda m: MissingVagueDependency(m.group(1))),
+
+    (r'ERROR: could not locate the \'([^ ]+)\' utility',
+     lambda m: MissingCommand(m.group(1))),
 
     (r'Can\'t find (.*) libs. Exiting',
      lambda m: MissingLibrary(m.group(1))),
