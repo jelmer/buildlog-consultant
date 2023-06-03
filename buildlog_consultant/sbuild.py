@@ -16,21 +16,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import re
-from typing import BinaryIO, Optional, Union
-from collections.abc import Iterator
-
-from dataclasses import dataclass
 import logging
+import re
+from collections.abc import Iterator
+from dataclasses import dataclass
+from typing import BinaryIO, Optional, Union
 
-from . import Problem, SingleLineMatch, version_string, Match
+from . import Match, Problem, SingleLineMatch, version_string
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
     find_install_deps_failure_description,
 )
 from .autopkgtest import find_autopkgtest_failure_description
-from .common import find_build_failure_description, NoSpaceOnDevice, ChrootNotFound, PatchApplicationFailed
+from .common import (
+    ChrootNotFound,
+    NoSpaceOnDevice,
+    PatchApplicationFailed,
+    find_build_failure_description,
+)
 
 __all__ = [
     "SbuildFailure",
@@ -52,7 +56,7 @@ class SbuildFailure(Exception):
         phase: Optional[Union[tuple[str], tuple[str, Optional[str]]]] = None,
         section: Optional["SbuildLogSection"] = None,
         match: Optional[Match] = None,
-    ):
+    ) -> None:
         self.stage = stage
         self.description = description
         self.error = error
@@ -60,7 +64,7 @@ class SbuildFailure(Exception):
         self.section = section
         self.match = match
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}({!r}, {!r}, error={!r}, phase={!r})".format(
             type(self).__name__,
             self.stage,
@@ -94,14 +98,14 @@ class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
     diff_file: Optional[str] = None
     files: Optional[list[str]] = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.files is None:
             return f"<{type(self).__name__}()>"
         if len(self.files) < 5:
             return f"{type(self).__name__}({self.files!r})"
         return "<%s(%d files)>" % (type(self).__name__, len(self.files))
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.files and len(self.files) < 5:
             return "Tree has local changes: %r" % self.files
         elif self.files:
@@ -111,12 +115,12 @@ class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
 
 
 class DpkgSourceUnrepresentableChanges(Problem, kind="unrepresentable-local-changes"):
-    def __str__(self):
+    def __str__(self) -> str:
         return "Tree has unrepresentable local changes."
 
 
 class DpkgUnwantedBinaryFiles(Problem, kind="unwanted-binary-files"):
-    def __str__(self):
+    def __str__(self) -> str:
         return "Tree has unwanted binary files."
 
 
@@ -124,7 +128,7 @@ class DpkgBinaryFileChanged(Problem, kind="changed-binary-files"):
 
     paths: list[str]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Tree has binary files with changes: %r" % self.paths
 
 
@@ -132,7 +136,7 @@ class MissingControlFile(Problem, kind="missing-control-file"):
 
     path: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Tree is missing control file %s" % self.path
 
 
@@ -142,7 +146,7 @@ class UnableToFindUpstreamTarball(
     package: str
     version: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             "Unable to find the needed upstream tarball for "
             f"{self.package}, version {self.version}.")
@@ -153,7 +157,7 @@ class SourceFormatUnbuildable(Problem, kind="source-format-unbuildable"):
     source_format: str
     reason: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Source format {} unusable: {}".format(
             self.source_format, self.reason)
 
@@ -162,7 +166,7 @@ class SourceFormatUnsupported(Problem, kind="unsupported-source-format"):
 
     source_format: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Source format %r unsupported" % self.source_format
 
 
@@ -170,7 +174,7 @@ class PatchFileMissing(Problem, kind="patch-file-missing"):
 
     path: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Patch file %s missing" % self.path
 
 
@@ -179,13 +183,13 @@ class UnknownMercurialExtraFields(
 
     field: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Unknown Mercurial extra fields: %s" % self.field
 
 
 class UpstreamPGPSignatureVerificationFailed(
         Problem, kind="upstream-pgp-signature-verification-failed"):
-    def __str__(self):
+    def __str__(self) -> str:
         return "Unable to verify the PGP signature on the upstream source"
 
 
@@ -194,7 +198,7 @@ class UScanRequestVersionMissing(
 
     version: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "UScan can not find requested version %s." % self.version
 
 
@@ -202,7 +206,7 @@ class DebcargoFailure(Problem, kind="debcargo-failed"):
 
     reason: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.reason:
             return "Debcargo failed: %s" % self.reason
         else:
@@ -213,7 +217,7 @@ class ChangelogParseError(Problem, kind="changelog-parse-failed"):
 
     reason: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Changelog failed to parse: %s" % self.reason
 
 
@@ -222,7 +226,7 @@ class UScanFailed(Problem, kind="uscan-failed"):
     url: str
     reason: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"UScan failed to download {self.url}: {self.reason}."
 
 
@@ -231,7 +235,7 @@ class InconsistentSourceFormat(Problem, kind="inconsistent-source-format"):
     version: Optional[str] = None
     source_format: Optional[str] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Inconsistent source format between version and source format"
 
 
@@ -241,7 +245,7 @@ class UpstreamMetadataFileParseError(
     path: str
     reason: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s is invalid" % self.path
 
 
@@ -249,7 +253,7 @@ class DpkgSourcePackFailed(Problem, kind="dpkg-source-pack-failed"):
 
     reason: Optional[str] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.reason:
             return "Packing source directory failed: %s" % self.reason
         else:
@@ -261,7 +265,7 @@ class DpkgBadVersion(Problem, kind="dpkg-bad-version"):
     version: str
     reason: Optional[str] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.reason:
             return f"Version ({self.version}) is invalid: {self.reason}"
         else:
@@ -282,7 +286,7 @@ class MissingDebcargoCrate(Problem, kind="debcargo-missing-crate"):
         else:
             return cls(text)
 
-    def __str__(self):
+    def __str__(self) -> str:
         ret = "debcargo can't find crate %s" % self.crate
         if self.version:
             ret += " (version: %s)" % self.version
@@ -446,7 +450,7 @@ class DebcargoUnacceptablePredicate(Problem, kind="debcargo-unacceptable-predica
     crate: str
     predicate: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Cannot represent prerelease part of dependency: %s" % (self.predicate)
 
 
@@ -455,7 +459,7 @@ class DebcargoUnacceptableComparator(Problem, kind="debcargo-unacceptable-compar
     crate: str
     comparator: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Cannot represent prerelease part of dependency: %s" % (self.comparator)
 
 
@@ -506,7 +510,7 @@ class UScanTooManyRequests(Problem, kind="uscan-too-many-requests"):
 
     url: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "UScan: %s: too many requests" % self.url
 
 
@@ -594,7 +598,7 @@ class MissingRevision(Problem, kind="missing-revision"):
     def from_json(cls, json):
         return cls(revision=json['revision'].encode('utf-8'))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Missing revision: %r" % self.revision
 
 
@@ -602,7 +606,7 @@ class PristineTarTreeMissing(Problem, kind="pristine-tar-missing-tree"):
 
     treeish: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "pristine-tar can not find tree %r" % self.treeish
 
 
@@ -1018,7 +1022,7 @@ class ArchitectureNotInList(Problem, kind="arch-not-in-list"):
     arch: str
     arch_list: list[str]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Architecture {self.arch} not a build arch"
 
 
@@ -1042,7 +1046,7 @@ class InsufficientDiskSpace(Problem, kind="insufficient-disk-space"):
     needed: int
     free: int
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Insufficient disk space for build. " "Need: %d KiB, free: %s KiB" % (
             self.needed,
             self.free,

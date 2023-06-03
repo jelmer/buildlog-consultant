@@ -20,7 +20,6 @@ import logging
 
 import openai
 
-
 from . import SingleLineMatch
 
 
@@ -59,7 +58,7 @@ if __name__ == '__main__':
         format='%(message)s',
         level=(logging.INFO if not args.debug else logging.DEBUG))
 
-    with open(args.path, 'r', encoding='utf-8') as f:
+    with open(args.path, encoding='utf-8') as f:
         match = chatgpt_analyze(f.readlines())
         if match:
             logging.info('match: %s', match)

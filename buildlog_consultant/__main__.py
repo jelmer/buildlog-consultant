@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import sys
+
 print("""\
 The buildlog_consultant module itself is not executable.
 However, depending on the type of file you are trying to analyse,

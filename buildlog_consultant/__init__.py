@@ -39,7 +39,7 @@ class Problem:
                 problem_clses[kind], kind, cls))
         problem_clses[kind] = cls
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         for name, arg in list(zip(
                 list(type(self).__annotations__.keys()),
                 list(args))) + list(kwargs.items()):
@@ -82,12 +82,12 @@ class SingleLineMatch(Match):
     offset: int
     line: str
 
-    def __init__(self, offset: int, line: str, *, origin: Optional[str] = None):
+    def __init__(self, offset: int, line: str, *, origin: Optional[str] = None) -> None:
         self.offset = offset
         self.line = line
         self.origin = origin
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.offset!r}, {self.line!r})"
 
     def __eq__(self, other):
@@ -123,12 +123,12 @@ class MultiLineMatch(Match):
     offsets: list[int]
     lines: list[str]
 
-    def __init__(self, offsets: list[int], lines: list[str], *, origin: Optional[str] = None):
+    def __init__(self, offsets: list[int], lines: list[str], *, origin: Optional[str] = None) -> None:
         self.offsets = offsets
         self.lines = lines
         self.origin = origin
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.offsets!r}, {self.lines!r})"
 
     def __eq__(self, other):
