@@ -17,13 +17,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
+from typing import Optional, TypedDict
 
+import yaml
 from debian.changelog import Version
 from debian.deb822 import PkgRelation
-from typing import Optional, TypedDict
-import yaml
 
-from . import Problem, SingleLineMatch, Match, MultiLineMatch
+from . import Match, MultiLineMatch, Problem, SingleLineMatch
 from .common import NoSpaceOnDevice
 
 
@@ -34,10 +34,10 @@ class DpkgError(Problem, kind="dpkg-error"):
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.error == other.error
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Dpkg Error: %s" % self.error
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.error!r})"
 
 
@@ -60,7 +60,7 @@ class AptFetchFailure(AptUpdateError, kind="apt-file-fetch-failure"):
             return False
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Apt file fetch error: %s" % self.error
 
 
@@ -75,7 +75,7 @@ class AptMissingReleaseFile(AptUpdateError, kind="missing-release-file"):
             return False
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Missing release file: %s" % self.url
 
 
@@ -86,10 +86,10 @@ class AptPackageUnknown(Problem, kind="apt-package-unknown"):
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.package == other.package
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Unknown package: %s" % self.package
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.package!r})"
 
 
@@ -98,12 +98,12 @@ class AptBrokenPackages(Problem, kind="apt-broken-packages"):
     description: str
     broken: Optional[str] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.broken:
             return "Broken apt packages: %r" % self.broken
         return f"Broken apt packages: {self.description}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.description!r}, {self.broken!r})"
 
     def __eq__(self, other):
@@ -238,7 +238,7 @@ class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
 
     relations: list[list[list[ParsedRelation]]]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Unsatisfied APT dependencies: %s" % (
             PkgRelation.str(self.relations))  # type: ignore
 
@@ -273,7 +273,7 @@ class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
             relations.append(sub)
         return cls(relations=relations)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}.from_str({!r})".format(
             type(self).__name__,
             PkgRelation.str(self.relations),  # type: ignore
@@ -284,7 +284,7 @@ class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):
 
     relations: list[list[list[ParsedRelation]]]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Unsatisfied APT conflicts: %s" % PkgRelation.str(
             self.relations)  # type: ignore
 

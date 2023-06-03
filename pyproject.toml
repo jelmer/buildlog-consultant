@@ -47,3 +47,36 @@ buildlog_consultant = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = {attr = "buildlog_consultant.__version__"}
+
+[tool.ruff]
+select = [
+    "ANN",
+    "D",
+    "E",
+    "F",
+    "I",
+    "UP",
+]
+target-version = "py37"
+ignore = [
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "ANN101",
+    "ANN102",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN206",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "E501",
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"

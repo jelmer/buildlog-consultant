@@ -18,12 +18,11 @@
 
 import logging
 import re
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
 
-from . import Problem, SingleLineMatch, version_string, Match
-from .apt import find_apt_get_failure, AptFetchFailure
-from .common import find_build_failure_description, ChrootNotFound
-
+from . import Match, Problem, SingleLineMatch, version_string
+from .apt import AptFetchFailure, find_apt_get_failure
+from .common import ChrootNotFound, find_build_failure_description
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +48,12 @@ class AutopkgtestDepsUnsatisfiable(Problem, kind="badpkg"):
 
 
 class AutopkgtestTimedOut(Problem, kind="timed-out"):
-    def __str__(self):
+    def __str__(self) -> str:
         return "Timed out"
 
 
 class XDGRunTimeNotSet(Problem, kind="xdg-runtime-dir-not-set"):
-    def __str__(self):
+    def __str__(self) -> str:
         return "XDG_RUNTIME_DIR is not set"
 
 
@@ -65,19 +64,19 @@ class AutopkgtestTestbedFailure(Problem, kind="testbed-failure"):
     def __eq__(self, other):
         return type(self) == type(other) and self.reason == other.reason
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.reason!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.reason
 
 
 class AutopkgtestDepChrootDisappeared(Problem, kind="testbed-chroot-disappeared"):
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "chroot disappeared"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s()" % (type(self).__name__)
 
     def __eq__(self, other):
@@ -91,10 +90,10 @@ class AutopkgtestErroneousPackage(Problem, kind="erroneous-package"):
     def __eq__(self, other):
         return type(self) == type(other) and self.reason == other.reason
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.reason!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.reason
 
 
@@ -105,10 +104,10 @@ class AutopkgtestStderrFailure(Problem, kind="stderr-output"):
     def __eq__(self, other):
         return isinstance(self, type(other)) and self.stderr_line == other.stderr_line
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.stderr_line!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "output on stderr: %s" % self.stderr_line
 
 
@@ -204,7 +203,7 @@ class AutopkgtestTestbedSetupFailure(Problem, kind="testbed-setup-failure"):
     exit_status: int
     error: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Error setting up testbed %r failed (%d): %s" % (
             self.command,
             self.exit_status,
@@ -447,9 +446,8 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     error = AutopkgtestStderrFailure(output)
                     if description is None:
                         description = (
-                            "Test %s failed due to "
-                            "unauthorized stderr output: %s"
-                            % (testname, error.stderr_line)
+                            "Test {} failed due to "
+                            "unauthorized stderr output: {}".format(testname, error.stderr_line)
                         )
                 return (
                     SingleLineMatch.from_lines(lines, offset, origin="direct regex"),

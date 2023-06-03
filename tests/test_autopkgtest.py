@@ -19,11 +19,11 @@ import unittest
 
 from buildlog_consultant import SingleLineMatch
 from buildlog_consultant.autopkgtest import (
-    AutopkgtestTestbedFailure,
-    AutopkgtestDepsUnsatisfiable,
     AutopkgtestDepChrootDisappeared,
-    AutopkgtestTimedOut,
+    AutopkgtestDepsUnsatisfiable,
     AutopkgtestStderrFailure,
+    AutopkgtestTestbedFailure,
+    AutopkgtestTimedOut,
     find_autopkgtest_failure_description,
 )
 from buildlog_consultant.common import MissingCommand, MissingFile
