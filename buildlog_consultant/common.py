@@ -1549,12 +1549,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 build_failure_regexps = [
     (
-        r"(distutils.errors.DistutilsError|error): "
-        r"Could not find suitable distribution "
-        r"for Requirement.parse\(\'([^\']+)\'\)",
-        lambda m: MissingPythonDistribution.from_requirement_str(m.group(2).split(";")[0]),
-    ),
-    (
         r"We need the Python library (.*) to be installed. "
         r"Try runnning: python -m ensurepip",
         lambda m: MissingPythonDistribution(m.group(1)),

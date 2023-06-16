@@ -1,5 +1,6 @@
 use crate::{Match, Problem};
 use crate::{Origin, SingleLineMatch};
+use pyo3::prelude::*;
 use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -106,6 +107,76 @@ impl Problem for VcsControlDirectoryNeeded {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({
             "vcs": self.vcs,
+        })
+    }
+}
+
+struct MissingPythonDistribution {
+    distribution: String,
+    python_version: Option<i32>,
+    minimum_version: Option<String>,
+}
+
+impl Display for MissingPythonDistribution {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(python_version) = self.python_version {
+            write!(
+                f,
+                "Missing {} Python distribution: {}",
+                python_version, self.distribution
+            )?;
+        } else {
+            write!(f, "Missing Python distribution: {}", self.distribution)?;
+        }
+        if let Some(minimum_version) = &self.minimum_version {
+            write!(f, " (>= {})", minimum_version)?;
+        }
+        Ok(())
+    }
+}
+
+impl Problem for MissingPythonDistribution {
+    fn kind(&self) -> Cow<str> {
+        "missing-python-distribution".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "distribution": self.distribution,
+            "python_version": self.python_version,
+            "minimum_version": self.minimum_version,
+        })
+    }
+}
+
+impl MissingPythonDistribution {
+    pub fn from_requirement_str(
+        text: &str,
+        python_version: Option<i32>,
+    ) -> PyResult<MissingPythonDistribution> {
+        Python::with_gil(|py| {
+            let requirement = py
+                .import("requirements.requirement")?
+                .getattr("Requirement")?
+                .call_method1("parse", (text,))?;
+            let distribution = requirement.getattr("name")?.extract::<String>()?;
+            let specs = requirement
+                .getattr("specs")?
+                .extract::<Vec<(String, String)>>()?;
+
+            Ok(if specs.len() == 1 && specs[0].0 == ">=" {
+                MissingPythonDistribution {
+                    distribution,
+                    python_version,
+                    minimum_version: Some(specs[0].1.clone()),
+                }
+            } else {
+                MissingPythonDistribution {
+                    distribution,
+                    python_version,
+                    minimum_version: None,
+                }
+            })
         })
     }
 }
@@ -226,7 +297,13 @@ lazy_static::lazy_static! {
             file_not_found
         ),
         regex_line_matcher!(r"^[^:]+:\d+: (.*): No such file or directory$", file_not_found_maybe_executable),
-        ];
+        regex_line_matcher!(
+        r"^(distutils.errors.DistutilsError|error): Could not find suitable distribution for Requirement.parse\('([^']+)'\)$",
+        |c| {
+            let req = c.get(2).unwrap().as_str().split(';').next().unwrap();
+            Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(req, None).unwrap())))
+        }),
+    ];
 }
 
 pub fn match_line(line: &str) -> Result<Option<(Option<Box<dyn Problem>>, Origin)>, Error> {
