@@ -322,6 +322,66 @@ impl Problem for MissingIntrospectionTypelib {
     }
 }
 
+struct MissingPytestFixture(String);
+
+impl Display for MissingPytestFixture {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing pytest fixture: {}", self.0)
+    }
+}
+
+impl Problem for MissingPytestFixture {
+    fn kind(&self) -> Cow<str> {
+        "missing-pytest-fixture".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "fixture": self.0,
+        })
+    }
+}
+
+struct UnsupportedPytestConfigOption(String);
+
+impl Display for UnsupportedPytestConfigOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Unsupported pytest config option: {}", self.0)
+    }
+}
+
+impl Problem for UnsupportedPytestConfigOption {
+    fn kind(&self) -> Cow<str> {
+        "unsupported-pytest-config-option".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.0,
+        })
+    }
+}
+
+struct UnsupportedPytestArguments(Vec<String>);
+
+impl Display for UnsupportedPytestArguments {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Unsupported pytest arguments: {:?}", self.0)
+    }
+}
+
+impl Problem for UnsupportedPytestArguments {
+    fn kind(&self) -> Cow<str> {
+        "unsupported-pytest-arguments".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "args": self.0,
+        })
+    }
+}
+
 struct MissingRPackage {
     package: String,
     minimum_version: Option<String>,
@@ -413,6 +473,91 @@ lazy_static::lazy_static! {
                 minimum_version: Some(min_version.to_string()),
             })))
         }),
+        regex_line_matcher!("^ImportError: cannot import name '(.*)' from '(.*)'$", |m| {
+            let module = m.get(2).unwrap().as_str();
+            let name = m.get(1).unwrap().as_str();
+            // TODO(jelmer): This name won't always refer to a module
+            let name = format!("{}.{}", module, name);
+            Ok(Some(Box::new(MissingPythonModule {
+                module: name,
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!("^E       fixture '(.*)' not found$", |m| Ok(Some(Box::new(MissingPytestFixture(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!("^pytest: error: unrecognized arguments: (.*)$", |m| {
+            let args = shlex::split(m.get(1).unwrap().as_str()).unwrap();
+            Ok(Some(Box::new(UnsupportedPytestArguments(args))))
+        }),
+        regex_line_matcher!(
+            "^INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: (.*)$",
+            |m| Ok(Some(Box::new(UnsupportedPytestConfigOption(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!("^E   ImportError: cannot import name '(.*)' from '(.*)'", |m| {
+            let name = m.get(1).unwrap().as_str();
+            let module = m.get(2).unwrap().as_str();
+            Ok(Some(Box::new(MissingPythonModule {
+                module: format!("{}.{}", module, name),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!("^E   ImportError: cannot import name ([^']+)", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r"^django.core.exceptions.ImproperlyConfigured: Error loading .* module: No module named '(.*)'", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!("^E   ImportError: No module named (.*)", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r"^\s*ModuleNotFoundError: No module named '(.*)'",|m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: Some(3),
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r"^Could not import extension .* \(exception: No module named (.*)\)", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().trim().to_string(),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r"^Could not import (.*)\.", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().trim().to_string(),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r"^(.*): Error while finding module specification for '(.*)' \(ModuleNotFoundError: No module named '(.*)'\)", |m| {
+            let exec = m.get(1).unwrap().as_str();
+            let python_version = if exec.ends_with("python3") {
+                Some(3)
+            } else if exec.ends_with("python2") {
+                Some(2)
+            } else {
+                None
+            };
+
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(3).unwrap().as_str().trim().to_string(),
+                python_version,
+                minimum_version: None,
+            })))}),
     ];
 }
 

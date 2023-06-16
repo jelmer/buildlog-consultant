@@ -56,7 +56,7 @@ class Problem:
         return cls(**data)
 
     def __eq__(self, other):
-        if self.kind != other.kind:
+        if self.kind != getattr(other, "kind", None):
             return False
         return self.json() == other.json()
 

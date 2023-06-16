@@ -20,7 +20,6 @@ import logging
 import os
 import posixpath
 import re
-import shlex
 import textwrap
 from typing import Optional
 
@@ -132,16 +131,6 @@ def python_module_not_found(m):
         return MissingPythonModule(m.group(2), python_version=None)
     except IndexError:
         return MissingPythonModule(m.group(1), python_version=None)
-
-
-def python_cmd_module_not_found(m):
-    if m.group(1).endswith("python3"):
-        python_version = 3
-    elif m.group(1).endswith("python2"):
-        python_version = 2
-    else:
-        python_version = None
-    return MissingPythonModule(m.group(3), python_version=python_version)
 
 
 class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
@@ -1537,46 +1526,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    (
-        "ImportError: cannot import name '(.*)' from '(.*)'",
-        lambda m: MissingPythonModule(m.group(2) + "." + m.group(1), python_version=None)
-    ),
-    ("E       fixture '(.*)' not found", lambda m: MissingPytestFixture(m.group(1))),
-    (
-        r'pytest: error: unrecognized arguments: (.*)',
-        lambda m: UnsupportedPytestArguments(shlex.split(m.group(1)))
-    ),
-    (
-        r"INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: (.*)",
-        lambda m: UnsupportedPytestConfigOption(m.group(1))
-    ),
-    (
-        "E   ImportError: cannot import name '(.*)' from '(.*)'",
-        lambda m: MissingPythonModule(m.group(2) + "." + m.group(1), python_version=None)
-    ),
-    ("E   ImportError: cannot import name ([^']+)", python_module_not_found),
-    (
-        r"django.core.exceptions.ImproperlyConfigured: Error loading .* module: "
-        r"No module named \'(.*)\'",
-        python_module_not_found,
-    ),
-    ("E   ImportError: No module named (.*)", python_module_not_found),
-    (
-        r"\s*ModuleNotFoundError: No module named '(.*)'",
-        lambda m: MissingPythonModule(m.group(1), python_version=3)),
-    (
-        r"Could not import extension .* \(exception: No module named (.*)\)",
-        lambda m: MissingPythonModule(m.group(1).strip("'")),
-    ),
-    (
-        r"Could not import (.*)\.",
-        lambda m: MissingPythonModule(m.group(1))
-    ),
-    (
-        r"^(.*): Error while finding module specification for "
-        r"'(.*)' \(ModuleNotFoundError: No module named '(.*)'\)",
-        python_cmd_module_not_found,
-    ),
     (
         "E   ModuleNotFoundError: No module named '(.*)'",
         lambda m: MissingPythonModule(m.group(1), python_version=3)
