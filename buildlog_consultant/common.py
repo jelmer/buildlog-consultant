@@ -1538,22 +1538,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 build_failure_regexps = [
     (
-        r"ImportError: could not find any library for ([^ ]+) .*",
-        lambda m: MissingLibrary(m.group(1)),
-    ),
-    (
-        r"ImportError: cannot import name (.*), introspection typelib not found",
-        lambda m: MissingIntrospectionTypelib(m.group(1)),
-    ),
-    (
-        r"ValueError: Namespace (.*) not available",
-        lambda m: MissingIntrospectionTypelib(m.group(1)),
-    ),
-    (
-        r'  namespace \'(.*)\' ([^ ]+) is being loaded, but \>= ([^ ]+) is required',
-        lambda m: MissingRPackage(m.group(1), minimum_version=m.group(3))
-    ),
-    (
         "ImportError: cannot import name '(.*)' from '(.*)'",
         lambda m: MissingPythonModule(m.group(2) + "." + m.group(1), python_version=None)
     ),

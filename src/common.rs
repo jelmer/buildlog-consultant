@@ -1,23 +1,12 @@
+use crate::r#match::{Error, RegexLineMatcher};
+use crate::regex_line_matcher;
 use crate::{Match, Problem};
 use crate::{Origin, SingleLineMatch};
 use pyo3::prelude::*;
-use regex::{Captures, Regex};
+use regex::Captures;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::Display;
-
-#[derive(Debug)]
-pub struct Error {
-    pub message: String,
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.message.fmt(f)
-    }
-}
-
-impl std::error::Error for Error {}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct MissingFile {
@@ -245,61 +234,6 @@ impl Display for VcsControlDirectoryNeeded {
     }
 }
 
-pub struct RegexLineMatcher {
-    regex: Regex,
-    callback: Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>,
-}
-
-impl RegexLineMatcher {
-    pub fn origin(&self) -> Origin {
-        Origin(format!("direct regex ({})", self.regex.as_str()))
-    }
-
-    pub fn matches_line(&self, line: &str) -> bool {
-        self.regex.is_match(line)
-    }
-
-    pub fn extract_from_line(&self, line: &str) -> Result<Option<Option<Box<dyn Problem>>>, Error> {
-        let c = self.regex.captures(line);
-        if let Some(c) = c {
-            return Ok(Some((self.callback)(&c)?));
-        }
-        Ok(None)
-    }
-
-    pub fn extract_from_lines(
-        &self,
-        lines: &[&str],
-        offset: usize,
-    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
-        let line = lines[offset];
-        if let Some(problem) = self.extract_from_line(line)? {
-            let m = SingleLineMatch {
-                offset,
-                line: line.to_string(),
-                origin: self.origin(),
-            };
-            return Ok(Some((Box::new(m), problem)));
-        }
-        Ok(None)
-    }
-}
-
-macro_rules! regex_line_matcher {
-    ($regex:expr, $callback:expr) => {
-        RegexLineMatcher {
-            regex: Regex::new($regex).unwrap(),
-            callback: Box::new($callback),
-        }
-    };
-    ($regex: expr) => {
-        RegexLineMatcher {
-            regex: Regex::new($regex).unwrap(),
-            callback: Box::new(|_| Ok(None)),
-        }
-    };
-}
-
 fn file_not_found(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     let path = c.get(1).unwrap().as_str();
     if path.starts_with('/') && !path.starts_with("/<<PKGBUILDDIR>>") {
@@ -346,6 +280,74 @@ fn file_not_found_maybe_executable(c: &Captures) -> Result<Option<Box<dyn Proble
         })));
     }
     Ok(None)
+}
+
+struct MissingLibrary(String);
+
+impl Display for MissingLibrary {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing library: {}", self.0)
+    }
+}
+
+impl Problem for MissingLibrary {
+    fn kind(&self) -> Cow<str> {
+        "missing-library".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "library": self.0,
+        })
+    }
+}
+
+struct MissingIntrospectionTypelib(String);
+
+impl Display for MissingIntrospectionTypelib {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing introspection typelib: {}", self.0)
+    }
+}
+
+impl Problem for MissingIntrospectionTypelib {
+    fn kind(&self) -> Cow<str> {
+        "missing-introspection-typelib".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "library": self.0,
+        })
+    }
+}
+
+struct MissingRPackage {
+    package: String,
+    minimum_version: Option<String>,
+}
+
+impl Display for MissingRPackage {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing R package: {}", self.package)?;
+        if let Some(minimum_version) = &self.minimum_version {
+            write!(f, " (>= {})", minimum_version)?;
+        }
+        Ok(())
+    }
+}
+
+impl Problem for MissingRPackage {
+    fn kind(&self) -> Cow<str> {
+        "missing-r-package".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "minimum_version": self.minimum_version,
+        })
+    }
 }
 
 lazy_static::lazy_static! {
@@ -399,6 +401,18 @@ lazy_static::lazy_static! {
             python_version: None,
             minimum_version: None
         })))),
+        regex_line_matcher!(r"^ImportError: could not find any library for ([^ ]+) .*$", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(r"^ImportError: cannot import name (.*), introspection typelib not found$", |m| Ok(Some(Box::new(MissingIntrospectionTypelib(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(r"^ValueError: Namespace (.*) not available$", |m| Ok(Some(Box::new(MissingIntrospectionTypelib(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(r"^  namespace '(.*)' ([^ ]+) is being loaded, but >= ([^ ]+) is required$", |m| {
+            let package = m.get(1).unwrap().as_str();
+            let min_version = m.get(3).unwrap().as_str();
+
+            Ok(Some(Box::new(MissingRPackage {
+                package: package.to_string(),
+                minimum_version: Some(min_version.to_string()),
+            })))
+        }),
     ];
 }
 
