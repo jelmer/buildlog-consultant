@@ -1,8 +1,11 @@
 all: check
 
+build-inplace:
+	python3 setup.py build_ext --inplace
+
 check:: testsuite
 
-testsuite:
+testsuite: build-inplace
 	python3 -m unittest tests.test_suite
 
 check:: style

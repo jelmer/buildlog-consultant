@@ -31,6 +31,7 @@ from . import (
     SingleLineMatch,
     version_string,
 )
+from . import _buildlog_consultant_rs  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -558,9 +559,6 @@ class MissingMavenArtifacts(Problem, kind="missing-maven-artifacts"):
 
     artifacts: list[tuple[str, str, str, str]]
 
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.artifacts == other.artifacts
-
     def __str__(self) -> str:
         return "Missing maven artifacts: %r" % self.artifacts
 
@@ -862,9 +860,6 @@ class MissingHaskellDependencies(Problem, kind="missing-haskell-dependencies"):
 
     deps: list[str]
 
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.deps == other.deps
-
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.deps!r})"
 
@@ -875,9 +870,6 @@ class MissingHaskellDependencies(Problem, kind="missing-haskell-dependencies"):
 class MissingHaskellModule(Problem, kind="missing-haskell-module"):
 
     module: str
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and self.module == other.module
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.module!r})"
@@ -1093,14 +1085,6 @@ class CMakeNeedExactVersion(Problem, kind="cmake-exact-version-missing"):
     version_found: str
     exact_version_needed: str
     path: str
-
-    def __eq__(self, other):
-        return isinstance(other, type(self)) and (
-            self.package == other.package
-            and self.version_found == other.version_found
-            and self.exact_version_needed == other.exact_version_needed
-            and self.path == other.path
-        )
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r})".format(
@@ -1564,16 +1548,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    (
-        r"make\[[0-9]+\]: \*\*\* No rule to make target "
-        r"\'(.*)\', needed by \'.*\'\.  Stop\.",
-        file_not_found,
-    ),
-    (
-        r"make: \*\*\* No rule to make target " r"\'(\/.*)\'\.  Stop\.",
-        file_not_found,
-    ),
-    (r"[^:]+:\d+: (.*): No such file or directory", file_not_found_maybe_executable),
     (
         r"(distutils.errors.DistutilsError|error): "
         r"Could not find suitable distribution "
@@ -4076,6 +4050,9 @@ def find_build_failure_description(  # noqa: C901
             break
         if "cmake" in lines[lineno]:
             cmake = True
+        m, err = _buildlog_consultant_rs.match_lines(lines, lineno)
+        if m:
+            return m, err
         for matcher in compiled_build_failure_regexps:
             linenos, err, origin = matcher.match(lines, lineno)
             if linenos:

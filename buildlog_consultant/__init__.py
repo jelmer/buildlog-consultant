@@ -56,14 +56,12 @@ class Problem:
         return cls(**data)
 
     def __eq__(self, other):
-        if not isinstance(self, type(other)):
-            return False
         if self.kind != other.kind:
             return False
-        for name in type(self).__annotations__.keys():
-            if getattr(self, name) != getattr(other, name):
-                return False
-        return True
+        return self.json() == other.json()
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.kind}, {self.json()})"
 
 
 class Match:
