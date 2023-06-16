@@ -111,6 +111,64 @@ impl Problem for VcsControlDirectoryNeeded {
     }
 }
 
+struct MissingPythonModule {
+    module: String,
+    python_version: Option<i32>,
+    minimum_version: Option<String>,
+}
+
+impl Display for MissingPythonModule {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(python_version) = self.python_version {
+            write!(
+                f,
+                "Missing {} Python module: {}",
+                python_version, self.module
+            )?;
+        } else {
+            write!(f, "Missing Python module: {}", self.module)?;
+        }
+        if let Some(minimum_version) = &self.minimum_version {
+            write!(f, " (>= {})", minimum_version)?;
+        }
+        Ok(())
+    }
+}
+
+impl Problem for MissingPythonModule {
+    fn kind(&self) -> Cow<str> {
+        "missing-python-module".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "module": self.module,
+            "python_version": self.python_version,
+            "minimum_version": self.minimum_version,
+        })
+    }
+}
+
+struct MissingCommand(String);
+
+impl Display for MissingCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing command: {}", self.0)
+    }
+}
+
+impl Problem for MissingCommand {
+    fn kind(&self) -> Cow<str> {
+        "missing-command".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.0,
+        })
+    }
+}
+
 struct MissingPythonDistribution {
     distribution: String,
     python_version: Option<i32>,
@@ -303,6 +361,44 @@ lazy_static::lazy_static! {
             let req = c.get(2).unwrap().as_str().split(';').next().unwrap();
             Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(req, None).unwrap())))
         }),
+        regex_line_matcher!(
+            r"^We need the Python library (.*) to be installed. Try runnning: python -m ensurepip$",
+            |c| Ok(Some(Box::new(MissingPythonDistribution { distribution: c.get(1).unwrap().as_str().to_string(), python_version: None, minimum_version: None })))),
+        regex_line_matcher!(
+            r"^pkg_resources.DistributionNotFound: The '([^']+)' distribution was not found and is required by the application$",
+            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None).unwrap())))),
+        regex_line_matcher!(
+            r"^pkg_resources.DistributionNotFound: The '([^']+)' distribution was not found and is required by (.*)$",
+            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None).unwrap())))),
+        regex_line_matcher!(
+            r"^Please install cmake version >= (.*) and re-run setup$",
+            |_| Ok(Some(Box::new(MissingCommand("cmake".to_string()))))),
+        regex_line_matcher!(
+            r"^pluggy.manager.PluginValidationError: Plugin '.*' could not be loaded: \(.* \(/usr/lib/python2.[0-9]/dist-packages\), Requirement.parse\('(.*)'\)\)!$",
+            |c| {
+                let expr = c.get(1).unwrap().as_str();
+                if let Some((pkg, minimum)) = expr.split_once(">=") {
+                    Ok(Some(Box::new(MissingPythonModule {
+                        module: pkg.trim().to_string(),
+                        python_version: Some(2),
+                        minimum_version: Some(minimum.trim().to_string()),
+                    })))
+                } else if !expr.contains(' ') {
+                    Ok(Some(Box::new(MissingPythonModule {
+                        module: expr.trim().to_string(),
+                        python_version: Some(2),
+                        minimum_version: None,
+                    })))
+                }
+                else {
+                    Ok(None)
+                }
+            }),
+        regex_line_matcher!(r"^E ImportError: (.*) could not be imported\.$", |m| Ok(Some(Box::new(MissingPythonModule {
+            module: m.get(1).unwrap().as_str().to_string(),
+            python_version: None,
+            minimum_version: None
+        })))),
     ];
 }
 

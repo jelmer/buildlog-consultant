@@ -144,17 +144,6 @@ def python_cmd_module_not_found(m):
     return MissingPythonModule(m.group(3), python_version=python_version)
 
 
-def python2_reqs_not_found(m):
-    expr = m.group(1)
-    if ">=" in expr:
-        pkg, minimum = expr.split(">=")
-        return MissingPythonModule(pkg.strip(), 2, minimum.strip())
-    if " " not in expr:
-        return MissingPythonModule(expr, 2)
-    # Hmm
-    return None
-
-
 class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
 
     name: str
@@ -1548,36 +1537,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    (
-        r"We need the Python library (.*) to be installed. "
-        r"Try runnning: python -m ensurepip",
-        lambda m: MissingPythonDistribution(m.group(1)),
-    ),
-    (
-        r"pkg_resources.DistributionNotFound: The \'([^\']+)\' "
-        r"distribution was not found and is required by the application",
-        lambda m: MissingPythonDistribution.from_requirement_str(m.group(1)),
-    ),
-    (
-        r"pkg_resources.DistributionNotFound: The \'([^\']+)\' "
-        r"distribution was not found and is required by (.*)",
-        lambda m: MissingPythonDistribution.from_requirement_str(m.group(1)),
-    ),
-    (
-        r"Please install cmake version \>= (.*) and re-run setup",
-        lambda m: MissingCommand("cmake"),
-    ),
-    (
-        r"pluggy.manager.PluginValidationError: "
-        r"Plugin \'.*\' could not be loaded: "
-        r"\(.* \(/usr/lib/python2.[0-9]/dist-packages\), "
-        r"Requirement.parse\(\'(.*)\'\)\)\!",
-        python2_reqs_not_found,
-    ),
-    (
-        r"E ImportError: (.*) could not be imported\.",
-        lambda m: MissingPythonModule(m.group(1))
-    ),
     (
         r"ImportError: could not find any library for ([^ ]+) .*",
         lambda m: MissingLibrary(m.group(1)),
