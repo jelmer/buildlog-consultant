@@ -148,7 +148,7 @@ impl Display for MissingCommand {
 
 impl Problem for MissingCommand {
     fn kind(&self) -> Cow<str> {
-        "missing-command".into()
+        "command-missing".into()
     }
 
     fn json(&self) -> serde_json::Value {
@@ -506,6 +506,186 @@ fn node_module_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     ))))
 }
 
+struct MissingConfigure;
+
+impl Problem for MissingConfigure {
+    fn kind(&self) -> Cow<str> {
+        "missing-configure".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingConfigure {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing ./configure")
+    }
+}
+
+fn command_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let command = c.get(1).unwrap().as_str();
+    if command.contains("PKGBUILDDIR") {
+        return Ok(None);
+    }
+    if command == "./configure" {
+        return Ok(Some(Box::new(MissingConfigure)));
+    }
+    if command.starts_with("./") || command.starts_with("../") {
+        return Ok(None);
+    }
+    if command == "debian/rules" {
+        return Ok(None);
+    }
+    Ok(Some(Box::new(MissingCommand(command.to_string()))))
+}
+
+struct MissingVagueDependency {
+    name: String,
+    url: Option<String>,
+    minimum_version: Option<String>,
+    current_version: Option<String>,
+}
+
+impl MissingVagueDependency {
+    fn simple(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            url: None,
+            minimum_version: None,
+            current_version: None,
+        }
+    }
+}
+
+impl Problem for MissingVagueDependency {
+    fn kind(&self) -> Cow<str> {
+        "missing-vague-dependency".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "url": self.url,
+            "minimum_version": self.minimum_version,
+            "current_version": self.current_version,
+        })
+    }
+}
+
+impl Display for MissingVagueDependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing dependency: {}", self.name)
+    }
+}
+
+struct MissingQt;
+
+impl Problem for MissingQt {
+    fn kind(&self) -> Cow<str> {
+        "missing-qt".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingQt {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Qt")
+    }
+}
+
+struct MissingX11;
+
+impl Problem for MissingX11 {
+    fn kind(&self) -> Cow<str> {
+        "missing-x11".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingX11 {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing X11")
+    }
+}
+
+struct MissingAutoconfMacro {
+    r#macro: String,
+    need_rebuild: bool,
+}
+
+impl MissingAutoconfMacro {
+    fn new(r#macro: String) -> Self {
+        Self {
+            r#macro,
+            need_rebuild: false,
+        }
+    }
+}
+
+impl Problem for MissingAutoconfMacro {
+    fn kind(&self) -> Cow<str> {
+        "missing-autoconf-macro".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "macro": self.r#macro,
+            "need_rebuild": self.need_rebuild,
+        })
+    }
+}
+
+impl Display for MissingAutoconfMacro {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing autoconf macro: {}", self.r#macro)
+    }
+}
+
+struct DirectoryNonExistant(String);
+
+impl Problem for DirectoryNonExistant {
+    fn kind(&self) -> Cow<str> {
+        "local-directory-not-existing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0,
+        })
+    }
+}
+
+impl Display for DirectoryNonExistant {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Directory does not exist: {}", self.0)
+    }
+}
+
+fn interpreter_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    if c.get(1).unwrap().as_str().starts_with('/') {
+        if c.get(1).unwrap().as_str().contains("PKGBUILDDIR") {
+            return Ok(None);
+        }
+        return Ok(Some(Box::new(MissingFile {
+            path: std::path::PathBuf::from(c.get(1).unwrap().as_str().to_string()),
+        })));
+    }
+    if c.get(1).unwrap().as_str().contains('/') {
+        return Ok(None);
+    }
+    return Ok(Some(Box::new(MissingCommand(
+        c.get(1).unwrap().as_str().to_string(),
+    ))));
+}
+
 lazy_static::lazy_static! {
     static ref LINE_MATCHERS: Vec<RegexLineMatcher> = vec![
         regex_line_matcher!(
@@ -689,23 +869,94 @@ lazy_static::lazy_static! {
         regex_line_matcher!(r".*fatal: not a git repository \(or any parent up to mount point /\)", |_| Ok(Some(Box::new(VcsControlDirectoryNeeded { vcs: vec!["git".to_string()] })))),
         regex_line_matcher!(r".*fatal: not a git repository \(or any of the parent directories\): \.git", |_| Ok(Some(Box::new(VcsControlDirectoryNeeded { vcs: vec!["git".to_string()] })))),
         regex_line_matcher!(r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory", |m| Ok(Some(Box::new(MissingCHeader { header: m.get(1).unwrap().as_str().to_string() })))),
-        regex_line_matcher!(".*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!("\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!("\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!("✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!("\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
+        regex_line_matcher!("^.*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("^\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("^\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("^✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("^\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
      node_module_missing),
-    regex_line_matcher!(r#"\[31mError: No test files found: "(.*)"\[39m"#),
-    regex_line_matcher!(r#"\x1b\[31mError: No test files found: "(.*)"\x1b\[39m"#),
-    regex_line_matcher!(r"\s*Error: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!(r">> Error: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!(r">> Error: Cannot find module '(.*)' from '.*'", node_module_missing),
-    regex_line_matcher!(r"Error: Failed to load parser '.*' declared in '.*': Cannot find module '(.*)'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"    Cannot find module '(.*)' from '.*'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r">> Error: Grunt attempted to load a \.coffee file but CoffeeScript was not installed\.", |_| Ok(Some(Box::new(MissingNodePackage("coffeescript".to_string()))))),
-    regex_line_matcher!(r">> Got an unexpected exception from the coffee-script compiler. The original exception was: Error: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!(r"\s*Module not found: Error: Can't resolve '(.*)' in '(.*)'", node_module_missing),
-    regex_line_matcher!(r"  Module (.*) in the transform option was not found\.", node_module_missing),
+    regex_line_matcher!(r#"^\[31mError: No test files found: "(.*)"\[39m"#),
+    regex_line_matcher!(r#"^\x1b\[31mError: No test files found: "(.*)"\x1b\[39m"#),
+    regex_line_matcher!(r"^\s*Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(r"^>> Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(r"^>> Error: Cannot find module '(.*)' from '.*'", node_module_missing),
+    regex_line_matcher!(r"^Error: Failed to load parser '.*' declared in '.*': Cannot find module '(.*)'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^    Cannot find module '(.*)' from '.*'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^>> Error: Grunt attempted to load a \.coffee file but CoffeeScript was not installed\.", |_| Ok(Some(Box::new(MissingNodePackage("coffeescript".to_string()))))),
+    regex_line_matcher!(r"^>> Got an unexpected exception from the coffee-script compiler. The original exception was: Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(r"^\s*Module not found: Error: Can't resolve '(.*)' in '(.*)'", node_module_missing),
+    regex_line_matcher!(r"^  Module (.*) in the transform option was not found\.", node_module_missing),
+    regex_line_matcher!(
+        r"^libtool/glibtool not found!",
+        |_| Ok(Some(Box::new(MissingVagueDependency::simple("libtool"))))),
+    regex_line_matcher!(r"^qmake: could not find a Qt installation of ''", |_| Ok(Some(Box::new(MissingQt)))),
+    regex_line_matcher!(r"^Cannot find X include files via .*", |_| Ok(Some(Box::new(MissingX11)))),
+    regex_line_matcher!(
+        r"^\*\*\* No X11! Install X-Windows development headers/libraries! \*\*\*",
+        |_| Ok(Some(Box::new(MissingX11)))
+    ),
+    regex_line_matcher!(
+        r"^configure: error: \*\*\* No X11! Install X-Windows development headers/libraries! \*\*\*",
+        |_| Ok(Some(Box::new(MissingX11)))
+    ),
+    regex_line_matcher!(
+        r"^configure: error: The Java compiler javac failed.*",
+        |_| Ok(Some(Box::new(MissingCommand("javac".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"^configure: error: No ([^ ]+) command found",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"^ERROR: InvocationError for command could not find executable (.*)",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"^  \*\*\* The (.*) script could not be found\. .*",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"^(.*)" command could not be found. (.*)"#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"^configure: error: cannot find lib ([^ ]+)",
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r#"^>> Local Npm module "(.*)" not found. Is it installed?"#, node_module_missing),
+    regex_line_matcher!(
+        r"^npm ERR! CLI for webpack must be installed.",
+        |_| Ok(Some(Box::new(MissingNodePackage("webpack-cli".to_string()))))
+    ),
+    regex_line_matcher!(r"^npm ERR! \[!\] Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(
+        r#"^npm ERR! >> Local Npm module "(.*)" not found. Is it installed\?"#,
+        node_module_missing
+    ),
+    regex_line_matcher!(r"^npm ERR! Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(
+        r"^npm ERR! ERROR in Entry module not found: Error: Can't resolve '(.*)' in '.*'",
+        node_module_missing
+    ),
+    regex_line_matcher!(r"npm ERR! sh: [0-9]+: (.*): not found", command_missing),
+    regex_line_matcher!(r"npm ERR! (.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: Cannot find module '(.*)' or its corresponding type declarations.", |m| Ok(Some(Box::new(MissingNodeModule(m.get(2).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"npm ERR! Error: spawn (.*) ENOENT", command_missing),
+
+    regex_line_matcher!(
+        r"(\./configure): line \d+: ([A-Z0-9_]+): command not found",
+        |m| Ok(Some(Box::new(MissingAutoconfMacro::new(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"^.*: line \d+: ([^ ]+): command not found", command_missing),
+    regex_line_matcher!(r"^.*: line \d+: ([^ ]+): Permission denied"),
+    regex_line_matcher!(r"^make\[[0-9]+\]: .*: Permission denied"),
+    regex_line_matcher!(r"^/usr/bin/texi2dvi: TeX neither supports -recorder nor outputs \\openout lines in its log file"),
+    regex_line_matcher!(r"^/bin/sh: \d+: ([^ ]+): not found", command_missing),
+    regex_line_matcher!(r"^sh: \d+: ([^ ]+): not found", command_missing),
+    regex_line_matcher!(r"^.*\.sh: \d+: ([^ ]+): not found", command_missing),
+    regex_line_matcher!(r"^.*: 1: cd: can't cd to (.*)", |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^/bin/bash: (.*): command not found", command_missing),
+    regex_line_matcher!(r"^bash: ([^ ]+): command not found", command_missing),
+    regex_line_matcher!(r"^env: ‘(.*)’: No such file or directory", interpreter_missing),
     ];
 }
 
