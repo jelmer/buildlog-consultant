@@ -410,6 +410,50 @@ impl Problem for MissingRPackage {
     }
 }
 
+struct MissingGoPackage {
+    package: String,
+}
+
+impl Problem for MissingGoPackage {
+    fn kind(&self) -> Cow<str> {
+        "missing-go-package".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+        })
+    }
+}
+
+impl Display for MissingGoPackage {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Go package: {}", self.package)
+    }
+}
+
+struct MissingCHeader {
+    header: String,
+}
+
+impl Problem for MissingCHeader {
+    fn kind(&self) -> Cow<str> {
+        "missing-c-header".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "header": self.header,
+        })
+    }
+}
+
+impl Display for MissingCHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing C header: {}", self.header)
+    }
+}
+
 lazy_static::lazy_static! {
     static ref LINE_MATCHERS: Vec<RegexLineMatcher> = vec![
         regex_line_matcher!(
@@ -439,16 +483,17 @@ lazy_static::lazy_static! {
             r"^pluggy.manager.PluginValidationError: Plugin '.*' could not be loaded: \(.* \(/usr/lib/python2.[0-9]/dist-packages\), Requirement.parse\('(.*)'\)\)!$",
             |c| {
                 let expr = c.get(1).unwrap().as_str();
+                let python_version = Some(2);
                 if let Some((pkg, minimum)) = expr.split_once(">=") {
                     Ok(Some(Box::new(MissingPythonModule {
                         module: pkg.trim().to_string(),
-                        python_version: Some(2),
+                        python_version,
                         minimum_version: Some(minimum.trim().to_string()),
                     })))
                 } else if !expr.contains(' ') {
                     Ok(Some(Box::new(MissingPythonModule {
                         module: expr.trim().to_string(),
-                        python_version: Some(2),
+                        python_version,
                         minimum_version: None,
                     })))
                 }
@@ -558,6 +603,40 @@ lazy_static::lazy_static! {
                 python_version,
                 minimum_version: None,
             })))}),
+        regex_line_matcher!("^E   ModuleNotFoundError: No module named '(.*)'", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: Some(3),
+                minimum_version: None
+            })))
+        }),
+        regex_line_matcher!(r"^/usr/bin/python3: No module named ([^ ]+).*", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: Some(3),
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r#"^(.*:[0-9]+|package .*): cannot find package "(.*)" in any of:"#, |m| Ok(Some(Box::new(MissingGoPackage { package: m.get(2).unwrap().as_str().to_string() })))),
+        regex_line_matcher!(r#"^ImportError: Error importing plugin ".*": No module named (.*)"#, |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r"^ImportError: No module named (.*)", |m| {
+            Ok(Some(Box::new(MissingPythonModule {
+                module: m.get(1).unwrap().as_str().to_string(),
+                python_version: None,
+                minimum_version: None,
+            })))
+        }),
+        regex_line_matcher!(r"^[^:]+:\d+:\d+: fatal error: (.+\.h|.+\.hh|.+\.hpp): No such file or directory", |m| Ok(Some(Box::new(MissingCHeader { header: m.get(1).unwrap().as_str().to_string() })))),
+        regex_line_matcher!(r"^[^:]+:\d+:\d+: fatal error: (.+\.xpm): No such file or directory", file_not_found),
+        regex_line_matcher!(r".*fatal: not a git repository \(or any parent up to mount point /\)", |_| Ok(Some(Box::new(VcsControlDirectoryNeeded { vcs: vec!["git".to_string()] })))),
+        regex_line_matcher!(r".*fatal: not a git repository \(or any of the parent directories\): \.git", |_| Ok(Some(Box::new(VcsControlDirectoryNeeded { vcs: vec!["git".to_string()] })))),
+        regex_line_matcher!(r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory", |m| Ok(Some(Box::new(MissingCHeader { header: m.get(1).unwrap().as_str().to_string() })))),
     ];
 }
 

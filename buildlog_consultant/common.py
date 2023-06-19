@@ -126,13 +126,6 @@ class PatchApplicationFailed(Problem, kind="patch-application-failed"):
         return "Patch application failed: %s" % self.patchname
 
 
-def python_module_not_found(m):
-    try:
-        return MissingPythonModule(m.group(2), python_version=None)
-    except IndexError:
-        return MissingPythonModule(m.group(1), python_version=None)
-
-
 class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
 
     name: str
@@ -1526,42 +1519,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    (
-        "E   ModuleNotFoundError: No module named '(.*)'",
-        lambda m: MissingPythonModule(m.group(1), python_version=3)
-    ),
-    (
-        r"/usr/bin/python3: No module named ([^ ]+).*",
-        lambda m: MissingPythonModule(m.group(1), python_version=3)
-    ),
-    ('(.*:[0-9]+|package .*): cannot find package "(.*)" in any of:',
-     lambda m: MissingGoPackage(m.group(2))),
-
-    (
-        r'ImportError: Error importing plugin ".*": No module named (.*)',
-        python_module_not_found,
-    ),
-    ("ImportError: No module named (.*)", python_module_not_found),
-    (
-        r"[^:]+:\d+:\d+: fatal error: (.+\.h|.+\.hh|.+\.hpp): No such file or directory",
-        lambda m: MissingCHeader(m.group(1)),
-    ),
-    (
-        r"[^:]+:\d+:\d+: fatal error: (.+\.xpm): No such file or directory",
-        file_not_found,
-    ),
-    (
-        r'.*fatal: not a git repository \(or any parent up to mount point \/\)',
-        lambda m: VcsControlDirectoryNeeded(['git']),
-    ),
-    (
-        r'.*fatal: not a git repository \(or any of the parent directories\): \.git',
-        lambda m: VcsControlDirectoryNeeded(['git']),
-    ),
-    (
-        r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory",
-        lambda m: MissingCHeader(m.group(1)),
-    ),
     (".*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
     ("\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
