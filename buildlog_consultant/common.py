@@ -1519,38 +1519,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    (".*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
-    ("\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
-    ("\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
-    ('\x1b\\[1m\x1b\\[31m\\[\\!\\] \x1b\\[1mError: Cannot find module \'(.*)\'', node_module_missing),
-    ("✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
-    ("\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
-     node_module_missing),
-    ('\\[31mError: No test files found: "(.*)"\\[39m', None),
-    (r'\x1b\[31mError: No test files found: "(.*)"\x1b\[39m', None),
-    (r"\s*Error: Cannot find module \'(.*)\'", node_module_missing),
-    (r">> Error: Cannot find module \'(.*)\'", node_module_missing),
-    (r">> Error: Cannot find module \'(.*)\' from '.*'", node_module_missing),
-    (r'Error: Failed to load parser \'.*\' declared in \'.*\': '
-     r'Cannot find module \'(.*)\'', lambda m: MissingNodeModule(m.group(1))),
-    (r'    Cannot find module \'(.*)\' from \'.*\'',
-     lambda m: MissingNodeModule(m.group(1))),
-    (r'>> Error: Grunt attempted to load a \.coffee file '
-     r'but CoffeeScript was not installed\.',
-     lambda m: MissingNodePackage('coffeescript')),
-    (
-        r">> Got an unexpected exception from the coffee-script compiler. "
-        r"The original exception was: Error: Cannot find module \'(.*)\'",
-        node_module_missing,
-    ),
-    (
-        r"\s*Module not found: Error: Can\'t resolve \'(.*)\' in \'(.*)\'",
-        node_module_missing,
-    ),
-    (
-        r"  Module (.*) in the transform option was not found\.",
-        node_module_missing,
-    ),
     (
         r"libtool/glibtool not found\!",
         lambda m: MissingVagueDependency("libtool"),

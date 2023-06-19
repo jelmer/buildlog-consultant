@@ -454,6 +454,58 @@ impl Display for MissingCHeader {
     }
 }
 
+struct MissingNodeModule(String);
+
+impl Problem for MissingNodeModule {
+    fn kind(&self) -> Cow<str> {
+        "missing-node-module".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "module": self.0,
+        })
+    }
+}
+
+impl Display for MissingNodeModule {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Node module: {}", self.0)
+    }
+}
+
+struct MissingNodePackage(String);
+
+impl Problem for MissingNodePackage {
+    fn kind(&self) -> Cow<str> {
+        "missing-node-package".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.0,
+        })
+    }
+}
+
+impl Display for MissingNodePackage {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Node package: {}", self.0)
+    }
+}
+
+fn node_module_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    if c.get(1).unwrap().as_str().starts_with("/<<PKGBUILDDIR>>/") {
+        return Ok(None);
+    }
+    if c.get(1).unwrap().as_str().starts_with("./") {
+        return Ok(None);
+    }
+    Ok(Some(Box::new(MissingNodeModule(
+        c.get(1).unwrap().as_str().to_string(),
+    ))))
+}
+
 lazy_static::lazy_static! {
     static ref LINE_MATCHERS: Vec<RegexLineMatcher> = vec![
         regex_line_matcher!(
@@ -637,6 +689,23 @@ lazy_static::lazy_static! {
         regex_line_matcher!(r".*fatal: not a git repository \(or any parent up to mount point /\)", |_| Ok(Some(Box::new(VcsControlDirectoryNeeded { vcs: vec!["git".to_string()] })))),
         regex_line_matcher!(r".*fatal: not a git repository \(or any of the parent directories\): \.git", |_| Ok(Some(Box::new(VcsControlDirectoryNeeded { vcs: vec!["git".to_string()] })))),
         regex_line_matcher!(r"[^:]+\.[ch]:\d+:\d+: fatal error: (.+): No such file or directory", |m| Ok(Some(Box::new(MissingCHeader { header: m.get(1).unwrap().as_str().to_string() })))),
+        regex_line_matcher!(".*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
+     node_module_missing),
+    regex_line_matcher!(r#"\[31mError: No test files found: "(.*)"\[39m"#),
+    regex_line_matcher!(r#"\x1b\[31mError: No test files found: "(.*)"\x1b\[39m"#),
+    regex_line_matcher!(r"\s*Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(r">> Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(r">> Error: Cannot find module '(.*)' from '.*'", node_module_missing),
+    regex_line_matcher!(r"Error: Failed to load parser '.*' declared in '.*': Cannot find module '(.*)'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"    Cannot find module '(.*)' from '.*'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r">> Error: Grunt attempted to load a \.coffee file but CoffeeScript was not installed\.", |_| Ok(Some(Box::new(MissingNodePackage("coffeescript".to_string()))))),
+    regex_line_matcher!(r">> Got an unexpected exception from the coffee-script compiler. The original exception was: Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!(r"\s*Module not found: Error: Can't resolve '(.*)' in '(.*)'", node_module_missing),
+    regex_line_matcher!(r"  Module (.*) in the transform option was not found\.", node_module_missing),
     ];
 }
 
