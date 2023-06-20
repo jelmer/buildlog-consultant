@@ -686,6 +686,76 @@ fn interpreter_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     ))));
 }
 
+struct MissingPostgresExtension(String);
+
+impl Problem for MissingPostgresExtension {
+    fn kind(&self) -> Cow<str> {
+        "missing-postgresql-extension".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "extension": self.0,
+        })
+    }
+}
+
+impl Display for MissingPostgresExtension {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing PostgreSQL extension: {}", self.0)
+    }
+}
+
+struct MissingPkgConfig {
+    module: String,
+    minimum_version: Option<String>,
+}
+
+impl Problem for MissingPkgConfig {
+    fn kind(&self) -> Cow<str> {
+        "missing-pkg-config-package".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "module": self.module,
+            "minimum_version": self.minimum_version,
+        })
+    }
+}
+
+impl Display for MissingPkgConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(minimum_version) = &self.minimum_version {
+            write!(
+                f,
+                "Missing pkg-config module: {} >= {}",
+                self.module, minimum_version
+            )
+        } else {
+            write!(f, "Missing pkg-config module: {}", self.module)
+        }
+    }
+}
+
+fn pkg_config_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let expr = c.get(1).unwrap().as_str().split('\t').next().unwrap();
+    if let Some((pkg, minimum)) = expr.split_once(">=") {
+        return Ok(Some(Box::new(MissingPkgConfig {
+            module: pkg.trim().to_string(),
+            minimum_version: Some(minimum.trim().to_string()),
+        })));
+    }
+    if !expr.contains(' ') {
+        return Ok(Some(Box::new(MissingPkgConfig {
+            module: expr.to_string(),
+            minimum_version: None,
+        })));
+    }
+    // Hmmm
+    Ok(None)
+}
+
 lazy_static::lazy_static! {
     static ref LINE_MATCHERS: Vec<RegexLineMatcher> = vec![
         regex_line_matcher!(
@@ -938,12 +1008,12 @@ lazy_static::lazy_static! {
         r"^npm ERR! ERROR in Entry module not found: Error: Can't resolve '(.*)' in '.*'",
         node_module_missing
     ),
-    regex_line_matcher!(r"npm ERR! sh: [0-9]+: (.*): not found", command_missing),
-    regex_line_matcher!(r"npm ERR! (.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: Cannot find module '(.*)' or its corresponding type declarations.", |m| Ok(Some(Box::new(MissingNodeModule(m.get(2).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"npm ERR! Error: spawn (.*) ENOENT", command_missing),
+    regex_line_matcher!(r"^npm ERR! sh: [0-9]+: (.*): not found", command_missing),
+    regex_line_matcher!(r"^npm ERR! (.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: Cannot find module '(.*)' or its corresponding type declarations.", |m| Ok(Some(Box::new(MissingNodeModule(m.get(2).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^npm ERR! Error: spawn (.*) ENOENT", command_missing),
 
     regex_line_matcher!(
-        r"(\./configure): line \d+: ([A-Z0-9_]+): command not found",
+        r"^(\./configure): line \d+: ([A-Z0-9_]+): command not found",
         |m| Ok(Some(Box::new(MissingAutoconfMacro::new(m.get(2).unwrap().as_str().to_string()))))
     ),
     regex_line_matcher!(r"^.*: line \d+: ([^ ]+): command not found", command_missing),
@@ -957,6 +1027,50 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^/bin/bash: (.*): command not found", command_missing),
     regex_line_matcher!(r"^bash: ([^ ]+): command not found", command_missing),
     regex_line_matcher!(r"^env: ‘(.*)’: No such file or directory", interpreter_missing),
+    regex_line_matcher!(r"^/bin/bash: .*: (.*): bad interpreter: No such file or directory", interpreter_missing),
+    // SH Errors
+    regex_line_matcher!(r"^.*: [0-9]+: exec: (.*): not found", command_missing),
+    regex_line_matcher!(r"^.*: [0-9]+: (.*): not found", command_missing),
+    regex_line_matcher!(r"^/usr/bin/env: [‘'](.*)['’]: No such file or directory", command_missing),
+    regex_line_matcher!(r"^make\[[0-9]+\]: (.*): Command not found", command_missing),
+    regex_line_matcher!(r"^make: (.*): Command not found", command_missing),
+    regex_line_matcher!(r"^make: (.*): No such file or directory", command_missing),
+    regex_line_matcher!(r"^xargs: (.*): No such file or directory", command_missing),
+    regex_line_matcher!(r"^make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
+    regex_line_matcher!(r"^.*: failed to exec '(.*)': No such file or directory", command_missing),
+    regex_line_matcher!(r"^No package '([^']+)' found", pkg_config_missing),
+    regex_line_matcher!(r"^--\s* No package '([^']+)' found", pkg_config_missing),
+    regex_line_matcher!(
+        r"^\-\- Please install Git, make sure it is in your path, and then try again.",
+        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"^\+ERROR:  could not access file "(.*)": No such file or directory"#,
+        |m| Ok(Some(Box::new(MissingPostgresExtension(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"^configure: error: (Can't|Cannot) find "(.*)" in your PATH.*"#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"^configure: error: Cannot find (.*) in your system path",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"^> Cannot run program "(.*)": error=2, No such file or directory"#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"^(.*) binary '(.*)' not available .*", |m| Ok(Some(Box::new(MissingCommand(m.get(2).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^An error has occurred: FatalError: git failed\. Is it installed, and are you in a Git repository directory\?",
+     |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+    regex_line_matcher!("^Please install '(.*)' seperately and try again.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(
+        r"^> A problem occurred starting process 'command '(.*)''", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"^vcver.scm.git.GitCommandError: 'git .*' returned an error code 127",
+        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+    ),
     ];
 }
 

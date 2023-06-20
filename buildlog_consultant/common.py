@@ -1519,58 +1519,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    (
-        r"\/bin\/bash: .*: (.*): bad interpreter: No such file or directory",
-        interpreter_missing,
-    ),
-    # SH error
-    (r".*: [0-9]+: exec: (.*): not found", command_missing),
-    (r".*: [0-9]+: (.*): not found", command_missing),
-    (r"/usr/bin/env: ‘(.*)’: No such file or directory", command_missing),
-    (r"/usr/bin/env: \'(.*)\': No such file or directory", command_missing),
-    (r"make\[[0-9]+\]: (.*): Command not found", command_missing),
-    (r"make: (.*): Command not found", command_missing),
-    (r"make: (.*): No such file or directory", command_missing),
-    (r"xargs: (.*): No such file or directory", command_missing),
-    (r"make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
-    (r".*: failed to exec \'(.*)\': No such file or directory", command_missing),
-    (r"No package \'([^\']+)\' found", pkg_config_missing),
-    (r"--\s* No package \'([^\']+)\' found", pkg_config_missing),
-    (
-        r"\-\- Please install Git, make sure it is in your path, and then try again.",
-        lambda m: MissingCommand("git"),
-    ),
-    (
-        r'\+ERROR:  could not access file "(.*)": No such file or directory',
-        lambda m: MissingPostgresExtension(m.group(1)),
-    ),
-    (
-        r"configure: error: (Can't|Cannot) find \"(.*)\" in your PATH.*",
-        lambda m: MissingCommand(m.group(2)),
-    ),
-    (
-        r"configure: error: Cannot find (.*) in your system path",
-        lambda m: MissingCommand(m.group(1)),
-    ),
-    (
-        r'\> Cannot run program "(.*)": error=2, No such file or directory',
-        lambda m: MissingCommand(m.group(1)),
-    ),
-    (r'(.*) binary \'(.*)\' not available .*',
-     lambda m: MissingCommand(m.group(2))),
-    (r'An error has occurred: FatalError: git failed\. '
-     r'Is it installed, and are you in a Git repository directory\?',
-     lambda m: MissingCommand("git")),
-    ("Please install '(.*)' seperately and try again.",
-     lambda m: MissingCommand(m.group(1))),
-    (
-        r"\> A problem occurred starting process \'command \'(.*)\'\'",
-        lambda m: MissingCommand(m.group(1)),
-    ),
-    (
-        r"vcver.scm.git.GitCommandError: \'git .*\' returned an error code 127",
-        lambda m: MissingCommand("git"),
-    ),
     MultiLineConfigureError(),
     MultiLinePerlMissingModulesError(),
     MultiLineVignetteError(),
