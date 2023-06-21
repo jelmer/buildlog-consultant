@@ -21,16 +21,20 @@ pub struct RegexLineMatcher {
     callback: Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>,
 }
 
+pub trait Matcher: Sync {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error>;
+}
+
 impl RegexLineMatcher {
     pub fn new(
         regex: Regex,
         callback: Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>,
     ) -> Self {
         Self { regex, callback }
-    }
-
-    pub fn origin(&self) -> Origin {
-        Origin(format!("direct regex ({})", self.regex.as_str()))
     }
 
     pub fn matches_line(&self, line: &str) -> bool {
@@ -45,7 +49,13 @@ impl RegexLineMatcher {
         Ok(None)
     }
 
-    pub fn extract_from_lines(
+    fn origin(&self) -> Origin {
+        Origin(format!("direct regex ({})", self.regex.as_str()))
+    }
+}
+
+impl Matcher for RegexLineMatcher {
+    fn extract_from_lines(
         &self,
         lines: &[&str],
         offset: usize,
@@ -66,9 +76,50 @@ impl RegexLineMatcher {
 #[macro_export]
 macro_rules! regex_line_matcher {
     ($regex:expr, $callback:expr) => {
-        RegexLineMatcher::new(regex::Regex::new($regex).unwrap(), Box::new($callback))
+        Box::new(RegexLineMatcher::new(
+            regex::Regex::new($regex).unwrap(),
+            Box::new($callback),
+        ))
     };
     ($regex: expr) => {
-        RegexLineMatcher::new(regex::Regex::new($regex).unwrap(), Box::new(|_| Ok(None)))
+        Box::new(RegexLineMatcher::new(
+            regex::Regex::new($regex).unwrap(),
+            Box::new(|_| Ok(None)),
+        ))
     };
+}
+
+pub struct MatcherGroup(Vec<Box<dyn Matcher>>);
+
+impl MatcherGroup {
+    pub fn new(matchers: Vec<Box<dyn Matcher>>) -> Self {
+        Self(matchers)
+    }
+}
+
+impl Default for MatcherGroup {
+    fn default() -> Self {
+        Self::new(vec![])
+    }
+}
+
+impl From<Vec<Box<dyn Matcher>>> for MatcherGroup {
+    fn from(matchers: Vec<Box<dyn Matcher>>) -> Self {
+        Self::new(matchers)
+    }
+}
+
+impl MatcherGroup {
+    pub fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        for matcher in self.0.iter() {
+            if let Some(p) = matcher.extract_from_lines(lines, offset)? {
+                return Ok(Some(p));
+            }
+        }
+        Ok(None)
+    }
 }

@@ -953,37 +953,6 @@ class MultiLineVignetteError(Matcher):
         return [i + 1], None, None
 
 
-class MultiLineConfigureError(Matcher):
-
-    submatchers = [
-        (
-            re.compile(r"\s*Unable to find (.*) \(http(.*)\)"),
-            lambda m: MissingVagueDependency(m.group(1), url=m.group(2)),
-        ),
-        (
-            re.compile(r"\s*Unable to find (.*)\."),
-            lambda m: MissingVagueDependency(m.group(1)),
-        ),
-    ]
-
-    def match(self, lines, i):
-        if lines[i].rstrip("\n") != "configure: error:":
-            return [], None, None
-
-        relevant_linenos = []
-
-        for j, line in enumerate(lines[i + 1 :], i + 1):
-            if not line.strip():
-                continue
-            relevant_linenos.append(j)
-            for submatcher, fn in self.submatchers:
-                m = submatcher.match(line.rstrip("\n"))
-                if m:
-                    return [j], fn(m), f"direct regex ({submatcher.pattern})"
-
-        return relevant_linenos, None, "direct match"
-
-
 class AutoconfUnexpectedMacroMatcher(Matcher):
 
     regexp1 = re.compile(
@@ -1519,7 +1488,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    MultiLineConfigureError(),
     MultiLinePerlMissingModulesError(),
     MultiLineVignetteError(),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),

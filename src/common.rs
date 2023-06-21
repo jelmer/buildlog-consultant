@@ -1,7 +1,7 @@
-use crate::r#match::{Error, RegexLineMatcher};
+use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
 use crate::{Match, Problem};
-use crate::{Origin, SingleLineMatch};
+use crate::{MultiLineMatch, Origin, SingleLineMatch};
 use pyo3::prelude::*;
 use regex::Captures;
 use serde::{Deserialize, Serialize};
@@ -757,7 +757,69 @@ fn pkg_config_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
 }
 
 lazy_static::lazy_static! {
-    static ref LINE_MATCHERS: Vec<RegexLineMatcher> = vec![
+    static ref CONFIGURE_LINE_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
+        regex_line_matcher!(
+            r"^\s*Unable to find (.*) \(http(.*)\)",
+            |m| Ok(Some(Box::new(MissingVagueDependency{
+                name: m.get(1).unwrap().as_str().to_string(),
+                url: Some(m.get(2).unwrap().as_str().to_string()),
+                minimum_version: None,
+                current_version: None,
+            })))
+        ),
+        regex_line_matcher!(
+            r"^\s*Unable to find (.*)\.",
+            |m| Ok(Some(Box::new(MissingVagueDependency{
+                name: m.get(1).unwrap().as_str().to_string(),
+                url: None,
+                minimum_version: None,
+                current_version: None,
+            })))
+        ),
+    ]);
+}
+
+struct MultiLineConfigureErrorMatcher;
+
+impl Matcher for MultiLineConfigureErrorMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        if lines[offset].trim_end_matches(|c| c == '\r' || c == '\n') != "configure: error:" {
+            return Ok(None);
+        }
+
+        let mut relevant_linenos = vec![];
+        for (j, line) in lines.iter().enumerate().skip(offset + 1) {
+            if line.trim().is_empty() {
+                continue;
+            }
+            relevant_linenos.push(j);
+            let m = CONFIGURE_LINE_MATCHERS.extract_from_lines(lines, j)?;
+            if let Some(m) = m {
+                return Ok(Some(m));
+            }
+        }
+
+        let m = MultiLineMatch::new(
+            Origin("configure".into()),
+            relevant_linenos.clone(),
+            lines
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| relevant_linenos.contains(i))
+                .map(|(_, l)| l.to_string())
+                .collect(),
+        );
+
+        Ok(Some((Box::new(m), None)))
+    }
+}
+
+lazy_static::lazy_static! {
+    static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(
             r"^make\[[0-9]+\]: \*\*\* No rule to make target '(.*)', needed by '.*'\.  Stop\.$",
             file_not_found
@@ -1071,26 +1133,13 @@ lazy_static::lazy_static! {
         r"^vcver.scm.git.GitCommandError: 'git .*' returned an error code 127",
         |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
     ),
-    ];
-}
-
-pub fn match_line(line: &str) -> Result<Option<(Option<Box<dyn Problem>>, Origin)>, Error> {
-    for matcher in LINE_MATCHERS.iter() {
-        if let Some(p) = matcher.extract_from_line(line)? {
-            return Ok(Some((p, matcher.origin())));
-        }
-    }
-    Ok(None)
+    Box::new(MultiLineConfigureErrorMatcher),
+    ]);
 }
 
 pub fn match_lines(
     lines: &[&str],
     offset: usize,
 ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
-    for matcher in LINE_MATCHERS.iter() {
-        if let Some(p) = matcher.extract_from_lines(lines, offset)? {
-            return Ok(Some(p));
-        }
-    }
-    Ok(None)
+    COMMON_MATCHERS.extract_from_lines(lines, offset)
 }

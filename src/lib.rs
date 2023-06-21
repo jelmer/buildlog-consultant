@@ -49,6 +49,48 @@ impl std::fmt::Debug for SingleLineMatch {
     }
 }
 
+pub struct MultiLineMatch {
+    pub origin: Origin,
+    pub offsets: Vec<usize>,
+    pub lines: Vec<String>,
+}
+
+impl MultiLineMatch {
+    pub fn new(origin: Origin, offsets: Vec<usize>, lines: Vec<String>) -> Self {
+        assert!(!offsets.is_empty());
+        assert!(offsets.len() == lines.len());
+        Self {
+            origin,
+            offsets,
+            lines,
+        }
+    }
+}
+
+impl Match for MultiLineMatch {
+    fn line(&self) -> String {
+        self.lines[0].clone()
+    }
+
+    fn origin(&self) -> Origin {
+        self.origin.clone()
+    }
+
+    fn offset(&self) -> usize {
+        self.offsets[0]
+    }
+
+    fn lineno(&self) -> usize {
+        self.offset() + 1
+    }
+}
+
+impl std::fmt::Debug for MultiLineMatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}: {}", self.origin.0, self.lineno(), self.line())
+    }
+}
+
 pub trait Problem: std::fmt::Display + Send + Sync {
     fn kind(&self) -> Cow<str>;
 
