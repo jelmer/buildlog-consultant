@@ -908,21 +908,6 @@ class SetupPyCommandMissingMatcher(Matcher):
         return [], None, None
 
 
-class MultiLinePerlMissingModulesError(Matcher):
-
-    def match(self, lines, i):
-        if lines[i].rstrip("\n") != (
-                "# The following modules are not available."):
-            return [], None, None
-        if lines[i + 1].rstrip("\n") != (
-                "# `perl Makefile.PL | cpanm` will install them:"):
-            return [], None, None
-
-        relevant_linenos = [i, i + 1, i + 2]
-
-        return relevant_linenos, MissingPerlModule(lines[i + 2].strip()), "perl line match"
-
-
 class MultiLineVignetteError(Matcher):
 
     header_match = re.compile(
@@ -1488,7 +1473,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    MultiLinePerlMissingModulesError(),
     MultiLineVignetteError(),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (

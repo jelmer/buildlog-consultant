@@ -818,6 +818,99 @@ impl Matcher for MultiLineConfigureErrorMatcher {
     }
 }
 
+struct MissingPerlModule {
+    filename: Option<String>,
+    module: String,
+    inc: Option<Vec<String>>,
+    minimum_version: Option<String>,
+}
+
+impl Problem for MissingPerlModule {
+    fn kind(&self) -> Cow<str> {
+        "missing-perl-module".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.filename,
+            "module": self.module,
+            "inc": self.inc,
+            "minimum_version": self.minimum_version,
+        })
+    }
+}
+
+impl Display for MissingPerlModule {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(filename) = &self.filename {
+            write!(
+                f,
+                "Missing Perl module: {} (from {})",
+                self.module, filename
+            )?;
+        } else {
+            write!(f, "Missing Perl module: {}", self.module)?;
+        }
+        if let Some(minimum_version) = &self.minimum_version {
+            write!(f, " >= {}", minimum_version)?;
+        }
+        if let Some(inc) = &self.inc {
+            write!(f, " (INC: {})", inc.join(", "))?;
+        }
+        Ok(())
+    }
+}
+
+impl MissingPerlModule {
+    fn simple(module: &str) -> Self {
+        Self {
+            filename: None,
+            module: module.to_string(),
+            inc: None,
+            minimum_version: None,
+        }
+    }
+}
+
+struct MultiLinePerlMissingModulesErrorMatcher;
+
+impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        let line = lines[offset].trim_end_matches(|c| c == '\r' || c == '\n');
+        if line != "# The following modules are not available." {
+            return Ok(None);
+        }
+        if lines[offset + 1].trim_end_matches(|c| c == '\r' || c == '\n')
+            != "# `perl Makefile.PL | cpanm` will install them:"
+        {
+            return Ok(None);
+        }
+
+        let relevant_linenos = vec![offset, offset + 1, offset + 2];
+
+        let m = MultiLineMatch::new(
+            Origin("perl line match".into()),
+            relevant_linenos.clone(),
+            lines
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| relevant_linenos.contains(i))
+                .map(|(_, l)| l.to_string())
+                .collect(),
+        );
+
+        let problem: Option<Box<dyn Problem>> = Some(Box::new(MissingPerlModule::simple(
+            lines[offset + 2].trim(),
+        )));
+
+        Ok(Some((Box::new(m), problem)))
+    }
+}
+
 lazy_static::lazy_static! {
     static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(
