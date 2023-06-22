@@ -908,26 +908,6 @@ class SetupPyCommandMissingMatcher(Matcher):
         return [], None, None
 
 
-class AutoconfUnexpectedMacroMatcher(Matcher):
-
-    regexp1 = re.compile(
-        r".*\.\/configure: line [0-9]+: syntax error near unexpected token `.+\'"
-    )
-    regexp2 = re.compile(r".*\.\/configure: line [0-9]+: `\s*([A-Z0-9_]+)\(.*")
-
-    def match(self, lines, i):
-        m = self.regexp1.fullmatch(lines[i].rstrip("\n"))
-        if not m:
-            return [], None, None
-        try:
-            m = self.regexp2.fullmatch(lines[i + 1].rstrip("\n"))
-        except IndexError:
-            return [], None, None
-        if m:
-            return [i, i + 1], MissingAutoconfMacro(m.group(1), need_rebuild=True), f"direct regex {self.regexp1.pattern}"
-        return [], None, None
-
-
 class PythonFileNotFoundErrorMatcher(Matcher):
 
     final_line_re = re.compile(
@@ -1443,61 +1423,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
-    (
-        r"configure: error: (doxygen|asciidoc) is not available "
-        r"and maintainer mode is enabled",
-        lambda m: MissingCommand(m.group(1)),
-    ),
-    (
-        r"configure: error: Documentation enabled but rst2html not found.",
-        lambda m: MissingCommand("rst2html"),
-    ),
-    (
-        r"cannot run pkg-config to check .* version at (.*) line [0-9]+\.",
-        lambda m: MissingCommand("pkg-config"),
-    ),
-    (r"Error: pkg-config not found\!", lambda m: MissingCommand("pkg-config")),
-    (r"\*\*\* pkg-config (.*) or newer\. You can download pkg-config",
-     lambda m: MissingVagueDependency('pkg-config', minimum_version=m.group(1))),
-    # Tox
-    (r"ERROR: InterpreterNotFound: (.*)",
-     lambda m: MissingCommand(m.group(1))),
-    (r"ERROR: unable to find python", lambda m: MissingCommand("python")),
-    (r" ERROR: BLAS not found\!", lambda m: MissingLibrary("blas")),
-    AutoconfUnexpectedMacroMatcher(),
-    (r"\./configure: [0-9]+: \.: Illegal option .*", None),
-    (r"Requested \'(.*)\' but version of ([^ ]+) is ([^ ]+)", pkg_config_missing),
-    (
-        r".*configure: error: Package requirements \((.*)\) were not met:",
-        pkg_config_missing,
-    ),
-    (
-        r"configure: error: [a-z0-9_-]+-pkg-config (.*) couldn\'t be found",
-        pkg_config_missing,
-    ),
-    (r'configure: error: C preprocessor "/lib/cpp" fails sanity check', None),
-    (
-        r"configure: error: .*\. Please install (bison|flex)",
-        lambda m: MissingCommand(m.group(1)),
-    ),
-    (
-        r"configure: error: No C\# compiler found. You need to install either "
-        r"mono \(>=(.*)\) or \.Net",
-        lambda m: MissingCSharpCompiler(),
-    ),
-    (
-        r'configure: error: No C\# compiler found',
-        lambda m: MissingCSharpCompiler(),
-    ),
-    (
-        r'error: can\'t find Rust compiler',
-        lambda m: MissingRustCompiler(),
-    ),
-    (
-        r'Found no assembler',
-        lambda m: MissingAssembler(),
-    ),
     (
         r'error: failed to get `(.*)` as a dependency of package `(.*)`',
         lambda m: MissingCargoCrate(m.group(1))

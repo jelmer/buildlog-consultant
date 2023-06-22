@@ -960,6 +960,100 @@ impl Matcher for MultiLineVignetteErrorMatcher {
     }
 }
 
+struct MissingCSharpCompiler;
+
+impl Problem for MissingCSharpCompiler {
+    fn kind(&self) -> Cow<str> {
+        "missing-c#-compiler".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingCSharpCompiler {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing C# compiler")
+    }
+}
+
+struct MissingRustCompiler;
+
+impl Problem for MissingRustCompiler {
+    fn kind(&self) -> Cow<str> {
+        "missing-rust-compiler".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingRustCompiler {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Rust compiler")
+    }
+}
+
+struct MissingAssembler;
+
+impl Problem for MissingAssembler {
+    fn kind(&self) -> Cow<str> {
+        "missing-assembler".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingAssembler {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing assembler")
+    }
+}
+
+struct AutoconfUnexpectedMacroMatcher;
+
+impl Matcher for AutoconfUnexpectedMacroMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        let regexp1 = regex::Regex::new(
+            r"\./configure: line [0-9]+: syntax error near unexpected token `.+'",
+        )
+        .unwrap();
+        if !regexp1.is_match(lines[offset]) {
+            return Ok(None);
+        }
+
+        let regexp2 =
+            regex::Regex::new(r"^\./configure: line [0-9]+: `[\s\t]*([A-Z0-9_]+)\(.*").unwrap();
+
+        let c = regexp2.captures(lines[offset + 1]).unwrap();
+        if c.len() != 2 {
+            return Ok(None);
+        }
+
+        let m = MultiLineMatch::new(
+            Origin("autoconf unexpected macro".into()),
+            vec![offset + 1, offset],
+            vec![lines[offset + 1].to_string(), lines[offset].to_string()],
+        );
+
+        Ok(Some((
+            Box::new(m),
+            Some(Box::new(MissingAutoconfMacro {
+                r#macro: c.get(1).unwrap().as_str().to_string(),
+                need_rebuild: true,
+            })),
+        )))
+    }
+}
+
 lazy_static::lazy_static! {
     static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(
@@ -1278,6 +1372,32 @@ lazy_static::lazy_static! {
     Box::new(MultiLineConfigureErrorMatcher),
     Box::new(MultiLinePerlMissingModulesErrorMatcher),
     Box::new(MultiLineVignetteErrorMatcher),
+    regex_line_matcher!(r"^configure: error: No package \'([^\']+)\' found", pkg_config_missing),
+    regex_line_matcher!(r"^configure: error: (doxygen|asciidoc) is not available and maintainer mode is enabled", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^configure: error: Documentation enabled but rst2html not found.", |m| Ok(Some(Box::new(MissingCommand("rst2html".to_string()))))),
+    regex_line_matcher!(r"^cannot run pkg-config to check .* version at (.*) line [0-9]+\.", |m| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^Error: pkg-config not found\!", |m| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^\*\*\* pkg-config (.*) or newer\. You can download pkg-config", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: "pkg-config".to_string(),
+        minimum_version: Some(m.get(1).unwrap().as_str().to_string()),
+        url: None,
+        current_version: None
+    })))),
+    // Tox
+    regex_line_matcher!(r"^ERROR: InterpreterNotFound: (.*)", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^ERROR: unable to find python", |_| Ok(Some(Box::new(MissingCommand("python".to_string()))))),
+    regex_line_matcher!(r"^ ERROR: BLAS not found!", |_| Ok(Some(Box::new(MissingLibrary("blas".to_string()))))),
+    Box::new(AutoconfUnexpectedMacroMatcher),
+    regex_line_matcher!(r"^\./configure: [0-9]+: \.: Illegal option .*"),
+    regex_line_matcher!(r"^Requested '(.*)' but version of ([^ ]+) is ([^ ]+)", pkg_config_missing),
+    regex_line_matcher!(r"^.*configure: error: Package requirements \((.*)\) were not met:", pkg_config_missing),
+    regex_line_matcher!(r"^configure: error: [a-z0-9_-]+-pkg-config (.*) couldn't be found", pkg_config_missing),
+    regex_line_matcher!(r#"^configure: error: C preprocessor "/lib/cpp" fails sanity check"#),
+    regex_line_matcher!(r"^configure: error: .*\. Please install (bison|flex)", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^configure: error: No C\# compiler found. You need to install either mono \(>=(.*)\) or \.Net", |m| Ok(Some(Box::new(MissingCSharpCompiler)))),
+    regex_line_matcher!(r"^configure: error: No C\# compiler found", |_| Ok(Some(Box::new(MissingCSharpCompiler)))),
+    regex_line_matcher!(r"^error: can't find Rust compiler", |_| Ok(Some(Box::new(MissingRustCompiler)))),
+    regex_line_matcher!(r"^Found no assembler", |_| Ok(Some(Box::new(MissingAssembler)))),
     ]);
 }
 
