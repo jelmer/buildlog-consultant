@@ -908,36 +908,6 @@ class SetupPyCommandMissingMatcher(Matcher):
         return [], None, None
 
 
-class MultiLineVignetteError(Matcher):
-
-    header_match = re.compile(
-        r'Error: processing vignette \'(.*)\' failed with diagnostics:')
-
-    submatchers = [
-        (re.compile(r'([^ ]+) is not available'),
-         lambda m: MissingVagueDependency(m.group(1))),
-        (re.compile(r'The package `(.*)` is required\.'),
-         lambda m: MissingRPackage(m.group(1))),
-        (re.compile(r'Package \'(.*)\' required.*'),
-         lambda m: MissingRPackage(m.group(1))),
-        (re.compile(r'The \'(.*)\' package must be installed.*'),
-         lambda m: MissingRPackage(m.group(1))),
-    ]
-
-    def match(self, lines, i):
-        m = self.header_match.fullmatch(lines[i].rstrip('\n'))
-        if not m:
-            return [], None, None
-
-        line = lines[i + 1]
-        for submatcher, fn in self.submatchers:
-            m = submatcher.match(line.rstrip("\n"))
-            if m:
-                return [i + 1], fn(m), f"direct regex {submatcher.pattern}"
-
-        return [i + 1], None, None
-
-
 class AutoconfUnexpectedMacroMatcher(Matcher):
 
     regexp1 = re.compile(
@@ -1473,7 +1443,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    MultiLineVignetteError(),
     (r"configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     (
         r"configure: error: (doxygen|asciidoc) is not available "

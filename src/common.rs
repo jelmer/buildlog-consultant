@@ -387,6 +387,15 @@ struct MissingRPackage {
     minimum_version: Option<String>,
 }
 
+impl MissingRPackage {
+    pub fn simple(package: String) -> Self {
+        Self {
+            package,
+            minimum_version: None,
+        }
+    }
+}
+
 impl Display for MissingRPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing R package: {}", self.package)?;
@@ -912,6 +921,46 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
 }
 
 lazy_static::lazy_static! {
+    static ref VIGNETTE_LINE_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
+        regex_line_matcher!(r"^([^ ]+) is not available", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_line_matcher!(r"^The package `(.*)` is required\.", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(r"^Package '(.*)' required.*", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(r"^The '(.*)' package must be installed.*", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str().to_string()))))),
+    ]);
+}
+
+struct MultiLineVignetteErrorMatcher;
+
+impl Matcher for MultiLineVignetteErrorMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        let header_m =
+            regex::Regex::new(r"^Error: processing vignette '(.*)' failed with diagnostics:")
+                .unwrap();
+
+        if !header_m.is_match(lines[offset]) {
+            return Ok(None);
+        }
+
+        if let Some((m, p)) = VIGNETTE_LINE_MATCHERS.extract_from_lines(lines, offset + 1)? {
+            return Ok(Some((m, p)));
+        }
+
+        Ok(Some((
+            Box::new(SingleLineMatch {
+                origin: Origin("vignette line match".into()),
+                offset: offset + 1,
+                line: lines[offset + 1].to_string(),
+            }),
+            None,
+        )))
+    }
+}
+
+lazy_static::lazy_static! {
     static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(
             r"^make\[[0-9]+\]: \*\*\* No rule to make target '(.*)', needed by '.*'\.  Stop\.$",
@@ -1227,6 +1276,8 @@ lazy_static::lazy_static! {
         |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
     ),
     Box::new(MultiLineConfigureErrorMatcher),
+    Box::new(MultiLinePerlMissingModulesErrorMatcher),
+    Box::new(MultiLineVignetteErrorMatcher),
     ]);
 }
 
