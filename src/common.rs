@@ -1145,6 +1145,194 @@ impl Display for DhWithOrderIncorrect {
     }
 }
 
+struct NoSpaceOnDevice;
+
+impl Problem for NoSpaceOnDevice {
+    fn kind(&self) -> Cow<str> {
+        "no-space-on-device".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for NoSpaceOnDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "No space left on device")
+    }
+}
+
+struct MissingJRE;
+
+impl Problem for MissingJRE {
+    fn kind(&self) -> Cow<str> {
+        "missing-jre".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingJRE {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JRE")
+    }
+}
+
+struct MissingJDK {
+    jdk_path: String,
+}
+
+impl MissingJDK {
+    pub fn new(jdk_path: String) -> Self {
+        Self { jdk_path }
+    }
+}
+
+impl Problem for MissingJDK {
+    fn kind(&self) -> Cow<str> {
+        "missing-jdk".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "jdk_path": self.jdk_path
+        })
+    }
+}
+
+impl Display for MissingJDK {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JDK at {}", self.jdk_path)
+    }
+}
+
+struct MissingJDKFile {
+    jdk_path: String,
+    filename: String,
+}
+
+impl MissingJDKFile {
+    pub fn new(jdk_path: String, filename: String) -> Self {
+        Self { jdk_path, filename }
+    }
+}
+
+impl Problem for MissingJDKFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-jdk-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "jdk_path": self.jdk_path,
+            "filename": self.filename
+        })
+    }
+}
+
+impl Display for MissingJDKFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JDK file {} at {}", self.filename, self.jdk_path)
+    }
+}
+
+struct MissingPerlFile {
+    filename: String,
+    inc: Option<Vec<String>>,
+}
+
+impl MissingPerlFile {
+    pub fn new(filename: String, inc: Option<Vec<String>>) -> Self {
+        Self { filename, inc }
+    }
+}
+
+impl Problem for MissingPerlFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-perl-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.filename,
+            "inc": self.inc
+        })
+    }
+}
+
+impl Display for MissingPerlFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(inc) = self.inc.as_ref() {
+            write!(
+                f,
+                "Missing Perl file {} (INC: {})",
+                self.filename,
+                inc.join(":")
+            )
+        } else {
+            write!(f, "Missing Perl file {}", self.filename)
+        }
+    }
+}
+
+struct UnsupportedDebhelperCompatLevel {
+    oldest_supported: u32,
+    requested: u32,
+}
+
+impl UnsupportedDebhelperCompatLevel {
+    pub fn new(oldest_supported: u32, requested: u32) -> Self {
+        Self {
+            oldest_supported,
+            requested,
+        }
+    }
+}
+
+impl Problem for UnsupportedDebhelperCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "unsupported-debhelper-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "oldest_supported": self.oldest_supported,
+            "requested": self.requested
+        })
+    }
+}
+
+impl Display for UnsupportedDebhelperCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Request debhlper compat level {} lower than supported {}",
+            self.requested, self.oldest_supported
+        )
+    }
+}
+
+struct SetuptoolScmVersionIssue;
+
+impl Problem for SetuptoolScmVersionIssue {
+    fn kind(&self) -> Cow<str> {
+        "setuptools-scm-version-issue".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for SetuptoolScmVersionIssue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "setuptools_scm was unable to find version")
+    }
+}
+
 lazy_static::lazy_static! {
     static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(
@@ -1463,11 +1651,11 @@ lazy_static::lazy_static! {
     Box::new(MultiLineConfigureErrorMatcher),
     Box::new(MultiLinePerlMissingModulesErrorMatcher),
     Box::new(MultiLineVignetteErrorMatcher),
-    regex_line_matcher!(r"^configure: error: No package \'([^\']+)\' found", pkg_config_missing),
+    regex_line_matcher!(r"^configure: error: No package '([^']+)' found", pkg_config_missing),
     regex_line_matcher!(r"^configure: error: (doxygen|asciidoc) is not available and maintainer mode is enabled", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r"^configure: error: Documentation enabled but rst2html not found.", |_| Ok(Some(Box::new(MissingCommand("rst2html".to_string()))))),
     regex_line_matcher!(r"^cannot run pkg-config to check .* version at (.*) line [0-9]+\.", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
-    regex_line_matcher!(r"^Error: pkg-config not found\!", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^Error: pkg-config not found!", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
     regex_line_matcher!(r"^\*\*\* pkg-config (.*) or newer\. You can download pkg-config", |m| Ok(Some(Box::new(MissingVagueDependency {
         name: "pkg-config".to_string(),
         minimum_version: Some(m.get(1).unwrap().as_str().to_string()),
@@ -1491,7 +1679,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^Found no assembler", |_| Ok(Some(Box::new(MissingAssembler)))),
     regex_line_matcher!(r"^error: failed to get `(.*)` as a dependency of package `(.*)`", |m| Ok(Some(Box::new(MissingCargoCrate::simple(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r"^configure: error: (.*) requires libkqueue \(or system kqueue\). .*", |_| Ok(Some(Box::new(MissingPkgConfig::simple("libkqueue".to_string()))))),
-    regex_line_matcher!(r"^Did not find pkg-config by name \'pkg-config\'", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^Did not find pkg-config by name 'pkg-config'", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
     regex_line_matcher!(r"^configure: error: Required (.*) binary is missing. Please install (.*).", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r#".*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found"#, |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: No XSLT processor found, .*", |_| Ok(Some(Box::new(MissingVagueDependency::simple("xsltproc"))))),
@@ -1505,7 +1693,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Git program not found, .*", |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C header \'(.*)\' not found", |m| Ok(Some(Box::new(MissingCHeader::new(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r"^configure: error: (.+\.h) could not be found\. Please set CPPFLAGS\.", |m| Ok(Some(Box::new(MissingCHeader::new(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \['(.*)'\]", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Dependency \"(.*)\" not found, tried pkgconfig", |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r#".*meson.build:([0-9]+):([0-9]+): ERROR: Could not execute Vala compiler "(.*)""#, |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: python3 is missing modules: (.*)", |m| Ok(Some(Box::new(MissingPythonModule::simple(m.get(1).unwrap().as_str().to_string()))))),
@@ -1554,7 +1742,7 @@ lazy_static::lazy_static! {
         current_version: None,
         url: None
     })))),
-    regex_line_matcher!(r"^configure: error: \!\!\! Please install (.*) \!\!\!", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: !!! Please install (.*) !!!", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
     regex_line_matcher!(r"^configure: error: (.*) version (.*) or higher is required", |m| Ok(Some(Box::new(MissingVagueDependency {
         name: m.get(1).unwrap().as_str().to_string(),
         minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
@@ -1613,18 +1801,18 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
 
     regex_line_matcher!(
-        r"\*\* ERROR \*\* : You must have `(.*)\' installed on your system\.",
+        r"\*\* ERROR \*\* : You must have `(.*)' installed on your system\.",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
 
     regex_line_matcher!(
-        r"autogen\.sh: ERROR: You must have `(.*)\' installed to compile this package\.",
+        r"autogen\.sh: ERROR: You must have `(.*)' installed to compile this package\.",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
 
     regex_line_matcher!(
         r"autogen\.sh: You must have (.*) installed\.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
 
     regex_line_matcher!(
-        r"\s*Error\! You need to have (.*) installed\.",
+        r"\s*Error! You need to have (.*) installed\.",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
 
     regex_line_matcher!(
@@ -1668,6 +1856,155 @@ lazy_static::lazy_static! {
     regex_line_matcher!(
         r"dh: Unknown sequence --(.*) \(options should not come before the sequence\)",
         |_| Ok(Some(Box::new(DhWithOrderIncorrect)))),
+    regex_line_matcher!(
+        r"(dh: |dh_.*: error: )Compatibility levels before ([0-9]+) are no longer supported \(level ([0-9]+) requested\)",
+        |m| {
+            let l1 = m.get(2).unwrap().as_str().parse().unwrap();
+            let l2 = m.get(3).unwrap().as_str().parse().unwrap();
+            Ok(Some(Box::new(UnsupportedDebhelperCompatLevel::new(l1, l2))))
+        }
+    ),
+    regex_line_matcher!(r"\{standard input\}: Error: (.*)"),
+    regex_line_matcher!(r"dh: Unknown sequence (.*) \(choose from: .*\)"),
+    regex_line_matcher!(r".*: .*: No space left on device", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(r"^No space left on device.", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(
+        r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC contains: (.*)\) at .* line [0-9]+\.",
+        |m| {
+            let path = format!("{}.pm", m.get(1).unwrap().as_str());
+            let inc = m.get(3).unwrap().as_str().split(' ').map(|s| s.to_string()).collect::<Vec<_>>();
+
+            Ok(Some(Box::new(MissingPerlModule{ filename: Some(path), module: m.get(2).unwrap().as_str().to_string(), minimum_version: None, inc: Some(inc)})))
+        }
+    ),
+    regex_line_matcher!(
+        r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC contains: (.*)\)\.",
+        |m| {
+            let path = format!("{}.pm", m.get(1).unwrap().as_str());
+            let inc = m.get(3).unwrap().as_str().split(' ').map(|s| s.to_string()).collect::<Vec<_>>();
+
+            Ok(Some(Box::new(MissingPerlModule{ filename: Some(path), module: m.get(2).unwrap().as_str().to_string(), inc: Some(inc), minimum_version: None })))
+        }
+    ),
+    regex_line_matcher!(
+        r"\[DynamicPrereqs\] Can't locate (.*) at inline delegation in .*",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r#"Can't locate object method "(.*)" via package "(.*)" \(perhaps you forgot to load "(.*)"\?\) at .*.pm line [0-9]+\."#,
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(2).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r">\(error\): Could not expand \[(.*)'",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str().trim().trim_matches('\'')))))),
+
+    regex_line_matcher!(
+        r"\[DZ\] could not load class (.*) for license (.*)",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"\- ([^\s]+)\s+\.\.\.missing. \(would need (.*)\)",
+        |m| Ok(Some(Box::new(MissingPerlModule {
+            filename: None,
+            module: m.get(1).unwrap().as_str().to_string(),
+            inc: None,
+            minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        })))),
+
+    regex_line_matcher!(
+        r"Required plugin bundle ([^ ]+) isn't installed.",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"Required plugin ([^ ]+) isn't installed.",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r".*Can't locate (.*) in @INC \(@INC contains: (.*)\) at .* line .*.",
+        |m| {
+            let inc = m.get(2).unwrap().as_str().split(' ').map(|s| s.to_string()).collect::<Vec<_>>();
+            Ok(Some(Box::new(MissingPerlFile::new(m.get(1).unwrap().as_str().to_string(), Some(inc)))))
+        }),
+
+    regex_line_matcher!(
+        r"Can't find author dependency ([^ ]+) at (.*) line ([0-9]+).",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"Can't find author dependency ([^ ]+) version (.*) at (.*) line ([0-9]+).",
+        |m| Ok(Some(Box::new(MissingPerlModule {
+            filename: None,
+            module: m.get(1).unwrap().as_str().to_string(),
+            inc: None,
+            minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        })))),
+    regex_line_matcher!(
+        r"> Could not find (.*)\. Please check that (.*) contains a valid JDK installation.",
+        |m| Ok(Some(Box::new(MissingJDKFile::new(m.get(2).unwrap().as_str().to_string(), m.get(1).unwrap().as_str().to_string()))))),
+
+    regex_line_matcher!(
+        r"> Could not find (.*)\. Please check that (.*) contains a valid \(and compatible\) JDK installation.",
+        |m| Ok(Some(Box::new(MissingJDKFile::new(m.get(2).unwrap().as_str().to_string(), m.get(1).unwrap().as_str().to_string()))))),
+
+    regex_line_matcher!(
+        r"> Kotlin could not find the required JDK tools in the Java installation '(.*)' used by Gradle. Make sure Gradle is running on a JDK, not JRE.",
+        |m| Ok(Some(Box::new(MissingJDK::new(m.get(1).unwrap().as_str().to_string()))))),
+
+    regex_line_matcher!(
+        r"> JDK_5 environment variable is not defined. It must point to any JDK that is capable to compile with Java 5 target \((.*)\)",
+        |m| Ok(Some(Box::new(MissingJDK::new(m.get(1).unwrap().as_str().to_string()))))),
+
+    regex_line_matcher!(
+        r"ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.",
+        |_| Ok(Some(Box::new(MissingJRE)))),
+
+    regex_line_matcher!(
+        r#"Error: environment variable "JAVA_HOME" must be set to a JDK \(>= v(.*)\) installation directory"#,
+        |m| Ok(Some(Box::new(MissingJDK::new(m.get(1).unwrap().as_str().to_string()))))),
+
+    regex_line_matcher!(
+        r"(?:/usr/bin/)?install: cannot create regular file '(.*)': No such file or directory",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"Cannot find source directory \((.*)\)",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"python[0-9.]*: can't open file '(.*)': \[Errno 2\] No such file or directory",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"error: \[Errno 2\] No such file or directory: '(.*)'",
+        file_not_found_maybe_executable
+    ),
+    regex_line_matcher!(
+        r".*:[0-9]+:[0-9]+: ERROR: <ExternalProgram 'python3' -> \['/usr/bin/python3'\]> is not a valid python or it is missing setuptools",
+        |_| Ok(Some(Box::new(MissingPythonDistribution {
+            distribution: "setuptools".to_string(),
+            python_version: Some(3),
+            minimum_version: None,
+        })))
+    ),
+    regex_line_matcher!(r"OSError: \[Errno 28\] No space left on device", |_| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    // python:setuptools_scm
+    regex_line_matcher!(
+        r"^LookupError: setuptools-scm was unable to detect version for '.*'\.",
+        |_| Ok(Some(Box::new(SetuptoolScmVersionIssue)))
+    ),
+    regex_line_matcher!(
+        r"^LookupError: setuptools-scm was unable to detect version for .*\.",
+        |_| Ok(Some(Box::new(SetuptoolScmVersionIssue)))
+    ),
+    regex_line_matcher!(r"^OSError: 'git' was not found", |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+    regex_line_matcher!(r"^OSError: No such file (.*)", file_not_found_maybe_executable),
+    regex_line_matcher!(
+        r"^Could not open '(.*)': No such file or directory at /usr/share/perl/[0-9.]+/ExtUtils/MM_Unix.pm line [0-9]+.",
+        |m| Ok(Some(Box::new(MissingPerlFile::new(m.get(1).unwrap().as_str().to_string(), None))))
+    ),
+    regex_line_matcher!(
+        r#"^Can't open perl script "(.*)": No such file or directory"#,
+        |m| Ok(Some(Box::new(MissingPerlFile::new(m.get(1).unwrap().as_str().to_string(), None))))),
     ]);
 }
 
