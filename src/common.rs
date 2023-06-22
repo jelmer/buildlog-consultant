@@ -124,6 +124,16 @@ impl Display for MissingPythonModule {
     }
 }
 
+impl MissingPythonModule {
+    fn simple(module: String) -> MissingPythonModule {
+        MissingPythonModule {
+            module,
+            python_version: None,
+            minimum_version: None,
+        }
+    }
+}
+
 impl Problem for MissingPythonModule {
     fn kind(&self) -> Cow<str> {
         "missing-python-module".into()
@@ -463,6 +473,12 @@ impl Display for MissingCHeader {
     }
 }
 
+impl MissingCHeader {
+    fn new(header: String) -> Self {
+        Self { header }
+    }
+}
+
 struct MissingNodeModule(String);
 
 impl Problem for MissingNodeModule {
@@ -743,6 +759,22 @@ impl Display for MissingPkgConfig {
             )
         } else {
             write!(f, "Missing pkg-config module: {}", self.module)
+        }
+    }
+}
+
+impl MissingPkgConfig {
+    fn new(module: String, minimum_version: Option<String>) -> Self {
+        Self {
+            module,
+            minimum_version,
+        }
+    }
+
+    fn simple(module: String) -> Self {
+        Self {
+            module,
+            minimum_version: None,
         }
     }
 }
@@ -1051,6 +1083,47 @@ impl Matcher for AutoconfUnexpectedMacroMatcher {
                 need_rebuild: true,
             })),
         )))
+    }
+}
+
+struct MissingCargoCrate {
+    crate_name: String,
+    requirement: Option<String>,
+}
+
+impl Problem for MissingCargoCrate {
+    fn kind(&self) -> Cow<str> {
+        "missing-cargo-crate".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "crate": self.crate_name,
+            "requirement": self.requirement
+        })
+    }
+}
+
+impl MissingCargoCrate {
+    fn simple(crate_name: String) -> Self {
+        Self {
+            crate_name,
+            requirement: None,
+        }
+    }
+}
+
+impl Display for MissingCargoCrate {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(requirement) = self.requirement.as_ref() {
+            write!(
+                f,
+                "Missing Cargo crate {} (required by {})",
+                self.crate_name, requirement
+            )
+        } else {
+            write!(f, "Missing Cargo crate {}", self.crate_name)
+        }
     }
 }
 
@@ -1374,9 +1447,9 @@ lazy_static::lazy_static! {
     Box::new(MultiLineVignetteErrorMatcher),
     regex_line_matcher!(r"^configure: error: No package \'([^\']+)\' found", pkg_config_missing),
     regex_line_matcher!(r"^configure: error: (doxygen|asciidoc) is not available and maintainer mode is enabled", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"^configure: error: Documentation enabled but rst2html not found.", |m| Ok(Some(Box::new(MissingCommand("rst2html".to_string()))))),
-    regex_line_matcher!(r"^cannot run pkg-config to check .* version at (.*) line [0-9]+\.", |m| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
-    regex_line_matcher!(r"^Error: pkg-config not found\!", |m| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^configure: error: Documentation enabled but rst2html not found.", |_| Ok(Some(Box::new(MissingCommand("rst2html".to_string()))))),
+    regex_line_matcher!(r"^cannot run pkg-config to check .* version at (.*) line [0-9]+\.", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^Error: pkg-config not found\!", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
     regex_line_matcher!(r"^\*\*\* pkg-config (.*) or newer\. You can download pkg-config", |m| Ok(Some(Box::new(MissingVagueDependency {
         name: "pkg-config".to_string(),
         minimum_version: Some(m.get(1).unwrap().as_str().to_string()),
@@ -1394,10 +1467,35 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^configure: error: [a-z0-9_-]+-pkg-config (.*) couldn't be found", pkg_config_missing),
     regex_line_matcher!(r#"^configure: error: C preprocessor "/lib/cpp" fails sanity check"#),
     regex_line_matcher!(r"^configure: error: .*\. Please install (bison|flex)", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"^configure: error: No C\# compiler found. You need to install either mono \(>=(.*)\) or \.Net", |m| Ok(Some(Box::new(MissingCSharpCompiler)))),
+    regex_line_matcher!(r"^configure: error: No C\# compiler found. You need to install either mono \(>=(.*)\) or \.Net", |_| Ok(Some(Box::new(MissingCSharpCompiler)))),
     regex_line_matcher!(r"^configure: error: No C\# compiler found", |_| Ok(Some(Box::new(MissingCSharpCompiler)))),
     regex_line_matcher!(r"^error: can't find Rust compiler", |_| Ok(Some(Box::new(MissingRustCompiler)))),
     regex_line_matcher!(r"^Found no assembler", |_| Ok(Some(Box::new(MissingAssembler)))),
+    regex_line_matcher!(r"^error: failed to get `(.*)` as a dependency of package `(.*)`", |m| Ok(Some(Box::new(MissingCargoCrate::simple(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^configure: error: (.*) requires libkqueue \(or system kqueue\). .*", |_| Ok(Some(Box::new(MissingPkgConfig::simple("libkqueue".to_string()))))),
+    regex_line_matcher!(r"^Did not find pkg-config by name \'pkg-config\'", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^configure: error: Required (.*) binary is missing. Please install (.*).", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r#".*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found"#, |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: No XSLT processor found, .*", |_| Ok(Some(Box::new(MissingVagueDependency::simple("xsltproc"))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): Unknown compiler\(s\): \[\['(.*)'.*\]", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: python3 \"(.*)\" missing", |m| Ok(Some(Box::new(MissingPythonModule {
+        module: m.get(3).unwrap().as_str().to_string(),
+        python_version: Some(3),
+        minimum_version: None,
+    })))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Program \'(.*)\' not found", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Git program not found, .*", |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C header \'(.*)\' not found", |m| Ok(Some(Box::new(MissingCHeader::new(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^configure: error: (.+\.h) could not be found\. Please set CPPFLAGS\.", |m| Ok(Some(Box::new(MissingCHeader::new(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \[\'(.*)\'\]", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Dependency \"(.*)\" not found, tried pkgconfig", |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r#".*meson.build:([0-9]+):([0-9]+): ERROR: Could not execute Vala compiler "(.*)""#, |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: python3 is missing modules: (.*)", |m| Ok(Some(Box::new(MissingPythonModule::simple(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, need '([^']+)' \['>=\s*([^']+)'\] found '([^']+)'\.", |m| Ok(Some(Box::new(MissingPkgConfig::new(m.get(3).unwrap().as_str().to_string(), Some(m.get(4).unwrap().as_str().to_string())))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C shared or static library '(.*)' not found", |m| Ok(Some(Box::new(MissingLibrary(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C\\+\\++ shared or static library '(.*)' not found", |m| Ok(Some(Box::new(MissingLibrary(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Pkg-config binary for machine .* not found. Giving up.", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) require (.*) >= (.*), (.*) which were not found.", |m| Ok(Some(Box::new(MissingVagueDependency{name: m.get(4).unwrap().as_str().to_string(), current_version: None, url: None, minimum_version: Some(m.get(5).unwrap().as_str().to_string())})))),
     ]);
 }
 
