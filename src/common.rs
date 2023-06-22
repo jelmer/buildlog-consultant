@@ -1127,6 +1127,24 @@ impl Display for MissingCargoCrate {
     }
 }
 
+struct DhWithOrderIncorrect;
+
+impl Problem for DhWithOrderIncorrect {
+    fn kind(&self) -> Cow<str> {
+        "debhelper-argument-order".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DhWithOrderIncorrect {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh argument order is incorrect")
+    }
+}
+
 lazy_static::lazy_static! {
     static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(
@@ -1496,6 +1514,160 @@ lazy_static::lazy_static! {
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C\\+\\++ shared or static library '(.*)' not found", |m| Ok(Some(Box::new(MissingLibrary(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Pkg-config binary for machine .* not found. Giving up.", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
     regex_line_matcher!(".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) require (.*) >= (.*), (.*) which were not found.", |m| Ok(Some(Box::new(MissingVagueDependency{name: m.get(4).unwrap().as_str().to_string(), current_version: None, url: None, minimum_version: Some(m.get(5).unwrap().as_str().to_string())})))),
+    regex_line_matcher!(".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) is required to .*", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(4).unwrap().as_str()))))),
+    regex_line_matcher!(r"^ERROR: (.*) is not installed\. Install at least (.*) version (.+) to continue\.", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(3).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None,
+    })))),
+    regex_line_matcher!(r"^configure: error: Library requirements \((.*)\) not met\.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: (.*) is missing -- (.*)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: Cannot find (.*), check (.*)", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        url: Some(m.get(2).unwrap().as_str().to_string()),
+        minimum_version: None,
+        current_version: None
+    })))),
+    regex_line_matcher!(r"^configure: error: \*\*\* Unable to find (.* library)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: unable to find (.*)\.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: Perl Module (.*) not available", |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"(.*) was not found in your path\. Please install (.*)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: Please install (.*) >= (.*)", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None
+    })))),
+    regex_line_matcher!(
+        r"^configure: error: the required package (.*) is not installed", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: \*\*\* (.*) >= (.*) not installed.*", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None
+    })))),
+    regex_line_matcher!(r"^configure: error: you should install (.*) first", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: cannot locate (.*) >= (.*)", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None
+    })))),
+    regex_line_matcher!(r"^configure: error: \!\!\! Please install (.*) \!\!\!", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(r"^configure: error: (.*) version (.*) or higher is required", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None
+    })))),
+    regex_line_matcher!(r"^configure.(ac|in):[0-9]+: error: libtool version (.*) or higher is required", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(2).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(3).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None
+    })))),
+    regex_line_matcher!(r"configure: error: ([^ ]+) ([^ ]+) or better is required.*", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None
+    })))),
+    regex_line_matcher!(r"configure: error: ([^ ]+) ([^ ]+) or greater is required.*", |m| Ok(Some(Box::new(MissingVagueDependency {
+        name: m.get(1).unwrap().as_str().to_string(),
+        minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        current_version: None,
+        url: None
+    })))),
+    regex_line_matcher!(r"configure: error: ([^ ]+) or greater is required.*", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(
+        r"configure: error: (.*) library is required",
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"configure: error: (.*) library is not installed\.",
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"configure: error: OpenSSL developer library 'libssl-dev' or 'openssl-devel' not installed; cannot continue.",
+        |m| Ok(Some(Box::new(MissingLibrary("ssl".to_string()))))),
+    regex_line_matcher!(
+        r"configure: error: \*\*\* Cannot find (.*)",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(
+        r"configure: error: (.*) is required to compile .*",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"\s*You must have (.*) installed to compile .*\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"You must install (.*) to compile (.*)",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"\*\*\* No (.*) found, please in(s?)tall it \*\*\*",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: (.*) required, please in(s?)tall it",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"\*\* ERROR \*\* : You must have `(.*)\' installed on your system\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"autogen\.sh: ERROR: You must have `(.*)\' installed to compile this package\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"autogen\.sh: You must have (.*) installed\.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"\s*Error\! You need to have (.*) installed\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"(configure: error|\*\*Error\*\*): You must have (.*) installed.*",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(2).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: (.*) is required for building this package.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: (.*) is required to build (.*)",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: (.*) is required",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: (.*) is required for (.*)",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: \*\*\* (.*) is required\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: (.*) is required, please get it from (.*)",
+        |m| Ok(Some(Box::new(MissingVagueDependency{
+            name: m.get(1).unwrap().as_str().to_string(),
+            url: Some(m.get(2).unwrap().as_str().to_string()),
+            minimum_version: None, current_version: None})))),
+    regex_line_matcher!(
+        r".*meson.build:\d+:\d+: ERROR: Assert failed: (.*) support explicitly required, but (.*) not found",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"configure: error: .*, (lib[^ ]+) is required",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+
+    regex_line_matcher!(
+        r"dh: Unknown sequence --(.*) \(options should not come before the sequence\)",
+        |_| Ok(Some(Box::new(DhWithOrderIncorrect)))),
     ]);
 }
 
