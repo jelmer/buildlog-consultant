@@ -62,7 +62,7 @@ class AutopkgtestTestbedFailure(Problem, kind="testbed-failure"):
     reason: str
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.reason == other.reason
+        return type(self) is type(other) and self.reason == other.reason
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.reason!r})"
@@ -88,7 +88,7 @@ class AutopkgtestErroneousPackage(Problem, kind="erroneous-package"):
     reason: str
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.reason == other.reason
+        return type(self) is type(other) and self.reason == other.reason
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.reason!r})"
