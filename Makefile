@@ -1,12 +1,14 @@
+export PYTHON=python3
+
 all: check
 
 build-inplace:
-	python3 setup.py build_ext --inplace
+	$(PYTHON) setup.py build_ext --inplace
 
 check:: testsuite
 
 testsuite: build-inplace
-	python3 -m unittest tests.test_suite
+	$(PYTHON) -m unittest tests.test_suite
 
 check:: style
 
@@ -16,4 +18,4 @@ style:
 check:: typing
 
 typing:
-	python3 -m mypy buildlog_consultant
+	$(PYTHON) -m mypy buildlog_consultant

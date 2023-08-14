@@ -48,7 +48,8 @@ class Problem:
     def json(self):
         ret = {}
         for key in type(self).__annotations__.keys():
-            ret[key] = getattr(self, key)
+            if key not in ('kind', 'is_global'):
+                ret[key] = getattr(self, key)
         return ret
 
     @classmethod
