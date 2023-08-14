@@ -88,6 +88,7 @@ from buildlog_consultant.common import (
 
 class FindBuildFailureDescriptionTests(unittest.TestCase):
     def run_test(self, lines, lineno, err=None):
+        self.maxDiff = None
         (match, actual_err) = find_build_failure_description(lines)
         if match is not None:
             self.assertEqual(match.line, lines[lineno - 1])

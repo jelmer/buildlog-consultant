@@ -48,7 +48,8 @@ class Problem:
     def json(self):
         ret = {}
         for key in type(self).__annotations__.keys():
-            ret[key] = getattr(self, key)
+            if key not in ('kind', 'is_global'):
+                ret[key] = getattr(self, key)
         return ret
 
     @classmethod
@@ -56,14 +57,12 @@ class Problem:
         return cls(**data)
 
     def __eq__(self, other):
-        if not isinstance(self, type(other)):
+        if self.kind != getattr(other, "kind", None):
             return False
-        if self.kind != other.kind:
-            return False
-        for name in type(self).__annotations__.keys():
-            if getattr(self, name) != getattr(other, name):
-                return False
-        return True
+        return self.json() == other.json()
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.kind}, {self.json()})"
 
 
 class Match:
