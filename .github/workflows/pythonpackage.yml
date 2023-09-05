@@ -26,6 +26,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip git+https://salsa.debian.org/python-debian-team/python-debian@c51c41dc2e32a8e9c255c0fdae6602011c414018 PyYAML setuptools-rust
         python -m pip install ".[chatgpt]"
+    - name: Build
+      run: |
+        python3 setup.py build_ext -i
     - name: Style checks
       run: |
         python -m pip install --upgrade flake8

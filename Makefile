@@ -17,5 +17,5 @@ style:
 
 check:: typing
 
-typing:
+typing: build-inplace
 	$(PYTHON) -m mypy buildlog_consultant
