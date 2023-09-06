@@ -8,11 +8,18 @@ description = "buildlog parser and analyser"
 repository = "https://github.com/jelmer/buildlog-consultant.git"
 homepage = "https://github.com/jelmer/buildlog-consultant"
 
+[workspace]
+members = ["buildlog-consultant-py"]
+
+[workspace.dependencies]
+pyo3 = "0.19"
+serde_json = "1"
+
 [dependencies]
-pyo3 = { version = "0.18", features=["auto-initialize"]}
+pyo3 = { workspace = true }
 inventory = "0.3"
 regex = "1"
 lazy_static = "1"
-serde_json = "1"
+serde_json = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 shlex = "1"
