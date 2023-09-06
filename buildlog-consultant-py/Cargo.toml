@@ -12,5 +12,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 buildlog-consultant = { path = ".." }
-pyo3 = { version = ">=0.14", features = ["extension-module"] }
-serde_json = "1"
+pyo3 = { workspace = true, features = ["extension-module"] }
+serde_json = { workspace = true }
