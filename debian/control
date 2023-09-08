@@ -1,6 +1,6 @@
 Rules-Requires-Root: no
 Standards-Version: 4.6.2
-Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools, python3-debian, python3-yaml, python3-requirement-parser
+Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools, python3-debian, python3-yaml, python3-requirement-parser, python3-setuptools-rust, librust-pyo3-dev, librust-pyo3-file-dev, librust-pyo3-log-dev, librust-shlex-dev
 Source: buildlog-consultant
 Priority: optional
 Section: python

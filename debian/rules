@@ -1,4 +1,18 @@
 #!/usr/bin/make -f
 
+export CARGO_HOME=$(shell pwd)/debian/cargo_home
+export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+include /usr/share/dpkg/pkg-info.mk
+
 %:
 	dh $@ --buildsystem=pybuild
+
+override_dh_auto_clean:
+	for I in . buildlog-consultant-py; do test -f Cargo.lock.orig && mv $$I/Cargo.lock.orig $$I/Cargo.lock; done; true
+	dh_auto_clean
+
+override_dh_auto_build:
+	for I in . buildlog-consultant-py; do test -f Cargo.lock && mv $$I/Cargo.lock $$I/Cargo.lock.orig; done; true
+	dh_auto_build
