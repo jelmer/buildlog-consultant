@@ -1,6 +1,7 @@
 buildlog-consultant (0.0.34-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+  * Update standards version to 4.6.2, no changes needed.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Sep 2023 18:23:59 +0100
 
