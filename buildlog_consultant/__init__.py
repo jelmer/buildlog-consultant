@@ -16,55 +16,64 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import Optional
 
-from dataclasses import dataclass
-from typing import List
-
-__version__ = (0, 0, 21)
+__version__ = (0, 0, 34)
 version_string = '.'.join(map(str, __version__))
 
 
-problem_clses = {}
+problem_clses: dict[str, type["Problem"]] = {}
 
 
-class Problem(object):
+class Problem:
 
     kind: str
     is_global: bool = False
 
-    def json(self):
-        raise NotImplementedError(self.json)
+    def __init_subclass__(cls, kind: str, is_global: bool = False, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.kind = kind
+        cls.is_global = is_global
+        if kind in problem_clses:
+            raise AssertionError('class {!r} already registered for kind {} (not {!r})'.format(
+                problem_clses[kind], kind, cls))
+        problem_clses[kind] = cls
 
+    def __init__(self, *args, **kwargs) -> None:
+        for name, arg in list(zip(
+                list(type(self).__annotations__.keys()),
+                list(args))) + list(kwargs.items()):
+            setattr(self, name, arg)
 
-def problem(kind, is_global=False):
     def json(self):
         ret = {}
-        for name in self.__dataclass_fields__:
-            ret[name] = getattr(self, name)
+        for key in type(self).__annotations__.keys():
+            if key not in ('kind', 'is_global'):
+                ret[key] = getattr(self, key)
         return ret
 
     @classmethod
     def from_json(cls, data):
         return cls(**data)
 
-    def _wrap(cls):
-        ret = dataclass(cls)
-        ret.kind = kind
-        ret.is_global = is_global
-        if not hasattr(ret, 'json'):
-            ret.json = json
-        if not hasattr(ret, 'from_json'):
-            ret.from_json = from_json
-        problem_clses[ret.kind] = ret
-        return ret
+    def __eq__(self, other):
+        if self.kind != getattr(other, "kind", None):
+            return False
+        return self.json() == other.json()
 
-    return _wrap
+    def __repr__(self):
+        return f"{type(self).__name__}({self.kind}, {self.json()})"
 
 
 class Match:
 
+    origin: Optional[str]
     line: str
-    lines: List[str]
+    lines: list[str]
+    lineno: int
+    linenos: list[int]
+    offset: int
+    offsets: list[int]
 
 
 class SingleLineMatch(Match):
@@ -72,12 +81,13 @@ class SingleLineMatch(Match):
     offset: int
     line: str
 
-    def __init__(self, offset: int, line: str):
+    def __init__(self, offset: int, line: str, *, origin: Optional[str] = None) -> None:
         self.offset = offset
         self.line = line
+        self.origin = origin
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.offset, self.line)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.offset!r}, {self.line!r})"
 
     def __eq__(self, other):
         return (
@@ -87,37 +97,38 @@ class SingleLineMatch(Match):
         )
 
     @property
-    def lines(self) -> List[str]:
+    def lines(self) -> list[str]:  # type: ignore
         return [self.line]
 
     @property
-    def linenos(self) -> List[int]:
+    def linenos(self) -> list[int]:  # type: ignore
         return [self.lineno]
 
     @property
-    def offsets(self) -> List[int]:
+    def offsets(self) -> list[int]:  # type: ignore
         return [self.offset]
 
     @property
-    def lineno(self) -> int:
+    def lineno(self) -> int:  # type: ignore
         return self.offset + 1
 
     @classmethod
-    def from_lines(cls, lines, offset):
-        return cls(offset, lines[offset])
+    def from_lines(cls, lines, offset, *, origin: Optional[str] = None):
+        return cls(offset, lines[offset], origin=origin)
 
 
 class MultiLineMatch(Match):
 
-    offsets: List[int]
-    lines: List[str]
+    offsets: list[int]
+    lines: list[str]
 
-    def __init__(self, offsets: List[int], lines: List[str]):
+    def __init__(self, offsets: list[int], lines: list[str], *, origin: Optional[str] = None) -> None:
         self.offsets = offsets
         self.lines = lines
+        self.origin = origin
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.offsets, self.lines)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.offsets!r}, {self.lines!r})"
 
     def __eq__(self, other):
         return (
@@ -143,5 +154,5 @@ class MultiLineMatch(Match):
         return [o + 1 for o in self.offsets]
 
     @classmethod
-    def from_lines(cls, lines, offsets):
-        return cls(offsets, [lines[o] for o in offsets])
+    def from_lines(cls, lines, offsets, *, origin: Optional[str] = None):
+        return cls(offsets, [lines[o] for o in offsets], origin=origin)

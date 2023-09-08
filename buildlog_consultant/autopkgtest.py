@@ -18,20 +18,18 @@
 
 import logging
 import re
-from typing import Tuple, Optional, List, Dict, Union
+from typing import Any, Optional, Union
 
-from . import Problem, SingleLineMatch, problem
-from .apt import find_apt_get_failure, AptFetchFailure
-from .common import find_build_failure_description, ChrootNotFound
-
+from . import Match, Problem, SingleLineMatch, version_string
+from .apt import AptFetchFailure, find_apt_get_failure
+from .common import ChrootNotFound, find_build_failure_description
 
 logger = logging.getLogger(__name__)
 
 
-@problem("badpkg")
-class AutopkgtestDepsUnsatisfiable:
+class AutopkgtestDepsUnsatisfiable(Problem, kind="badpkg"):
 
-    args: List[str]
+    args: list[str]
 
     @classmethod
     def from_blame_line(cls, line):
@@ -49,87 +47,71 @@ class AutopkgtestDepsUnsatisfiable:
         return cls(args)
 
 
-@problem("timed-out")
-class AutopkgtestTimedOut:
-    def __str__(self):
+class AutopkgtestTimedOut(Problem, kind="timed-out"):
+    def __str__(self) -> str:
         return "Timed out"
 
 
-@problem("xdg-runtime-dir-not-set")
-class XDGRunTimeNotSet:
-    def __str__(self):
+class XDGRunTimeNotSet(Problem, kind="xdg-runtime-dir-not-set"):
+    def __str__(self) -> str:
         return "XDG_RUNTIME_DIR is not set"
 
 
-class AutopkgtestTestbedFailure(Problem):
+class AutopkgtestTestbedFailure(Problem, kind="testbed-failure"):
 
-    kind = "testbed-failure"
-
-    def __init__(self, reason):
-        self.reason = reason
+    reason: str
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.reason == other.reason
+        return type(self) is type(other) and self.reason == other.reason
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.reason)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.reason!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.reason
 
 
-class AutopkgtestDepChrootDisappeared(Problem):
+class AutopkgtestDepChrootDisappeared(Problem, kind="testbed-chroot-disappeared"):
 
-    kind = "testbed-chroot-disappeared"
-
-    def __init__(self):
-        pass
-
-    def __str__(self):
+    def __str__(self) -> str:
         return "chroot disappeared"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s()" % (type(self).__name__)
 
     def __eq__(self, other):
         return isinstance(self, type(other))
 
 
-class AutopkgtestErroneousPackage(Problem):
+class AutopkgtestErroneousPackage(Problem, kind="erroneous-package"):
 
-    kind = "erroneous-package"
-
-    def __init__(self, reason):
-        self.reason = reason
+    reason: str
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.reason == other.reason
+        return type(self) is type(other) and self.reason == other.reason
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.reason)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.reason!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.reason
 
 
-class AutopkgtestStderrFailure(Problem):
+class AutopkgtestStderrFailure(Problem, kind="stderr-output"):
 
-    kind = "stderr-output"
-
-    def __init__(self, stderr_line):
-        self.stderr_line = stderr_line
+    stderr_line: str
 
     def __eq__(self, other):
         return isinstance(self, type(other)) and self.stderr_line == other.stderr_line
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.stderr_line)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.stderr_line!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "output on stderr: %s" % self.stderr_line
 
 
-def parse_autopgktest_line(line: str) -> Union[str, Tuple[str, Union[Tuple[str, ...]]]]:
+def parse_autopgktest_line(line: str) -> Union[str, tuple[str, Union[tuple[str, ...]]]]:
     m = re.match(r"autopkgtest \[([0-9:]+)\]: (.*)", line)
     if not m:
         return line
@@ -215,14 +197,13 @@ def parse_autopkgtest_summary(lines):
         i += 1
 
 
-@problem("testbed-setup-failure")
-class AutopkgtestTestbedSetupFailure:
+class AutopkgtestTestbedSetupFailure(Problem, kind="testbed-setup-failure"):
 
     command: str
     exit_status: int
     error: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Error setting up testbed %r failed (%d): %s" % (
             self.command,
             self.exit_status,
@@ -231,9 +212,9 @@ class AutopkgtestTestbedSetupFailure:
 
 
 def find_autopkgtest_failure_description(  # noqa: C901
-    lines: List[str],
-) -> Tuple[
-    Optional[SingleLineMatch], Optional[str], Optional["Problem"], Optional[str]
+    lines: list[str],
+) -> tuple[
+    Optional[Match], Optional[str], Optional["Problem"], Optional[str]
 ]:
     """Find the autopkgtest failure in output.
 
@@ -241,9 +222,9 @@ def find_autopkgtest_failure_description(  # noqa: C901
       tuple with (line offset, testname, error, description)
     """
     error: Optional["Problem"]
-    test_output: Dict[Tuple[str, ...], List[str]] = {}
-    test_output_offset: Dict[Tuple[str, ...], int] = {}
-    current_field: Optional[Tuple[str, ...]] = None
+    test_output: dict[tuple[str, ...], list[str]] = {}
+    test_output_offset: dict[tuple[str, ...], int] = {}
+    current_field: Optional[tuple[str, ...]] = None
     i = -1
     while i < len(lines) - 1:
         i += 1
@@ -292,7 +273,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     if m:
                         error = AutopkgtestDepChrootDisappeared()
                         return (
-                            SingleLineMatch.from_lines(lines, i),
+                            SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                             last_test,
                             error,
                             stderr,
@@ -313,7 +294,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                             assert match is not None
                             return (
                                 SingleLineMatch.from_lines(
-                                    lines, test_output_offset[field] + match.offset
+                                    lines, test_output_offset[field] + match.offset, origin="direct regex"
                                 ),
                                 last_test,
                                 error,
@@ -327,7 +308,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     ):
                         (match, error) = find_build_failure_description(lines)
                         if error is not None:
-                            return (match, last_test, error, match.line)
+                            return (match, last_test, error, match.line if match else None)
 
                     if (
                         testbed_failure_reason
@@ -344,13 +325,13 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         if error and match:
                             return (match, last_test, error, match.line)
                         return (
-                            SingleLineMatch.from_lines(lines, i),
+                            SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                             last_test,
                             AptFetchFailure(None, testbed_failure_reason),
                             None,
                         )
                     return (
-                        SingleLineMatch.from_lines(lines, i),
+                        SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                         last_test,
                         AutopkgtestTestbedFailure(testbed_failure_reason),
                         None,
@@ -361,11 +342,15 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     if error and match:
                         return (match, last_test, error, match.line)
                     return (
-                        SingleLineMatch.from_lines(lines, i),
+                        SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                         last_test,
                         AutopkgtestErroneousPackage(m.group(1)),
                         None,
                     )
+                if msg == 'unexpected error:':
+                    (match, error) = find_build_failure_description(lines[i + 1:])
+                    if error and match:
+                        return (match, last_test, error, match.line)
                 if current_field is not None:
                     match, error = find_apt_get_failure(test_output[current_field])
                     if (
@@ -375,7 +360,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     ):
                         return (
                             SingleLineMatch.from_lines(
-                                lines, test_output_offset[current_field] + match.offset
+                                lines, test_output_offset[current_field] + match.offset, origin="direct regex"
                             ),
                             last_test,
                             error,
@@ -385,13 +370,13 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     if lines[i + 1].rstrip() == ": error cleaning up:":
                         return (
                             SingleLineMatch.from_lines(
-                                lines, test_output_offset[current_field]
+                                lines, test_output_offset[current_field], origin="direct regex"  # type: ignore
                             ),
                             last_test,
                             AutopkgtestTimedOut(),
                             lines[i - 1].rstrip(),
                         )
-                return (SingleLineMatch.from_lines(lines, i), last_test, None, msg)
+                return (SingleLineMatch.from_lines(lines, i, origin="direct regex"), last_test, None, msg)
         else:
             if current_field:
                 test_output[current_field].append(line)
@@ -406,7 +391,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
             return (None, None, None, None)
         else:
             return (
-                SingleLineMatch.from_lines(lines, len(lines) - 1),
+                SingleLineMatch.from_lines(lines, len(lines) - 1, origin="direct regex"),
                 lines[-1],
                 None,
                 None,
@@ -421,7 +406,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
             if reason == "timed out":
                 error = AutopkgtestTimedOut()
                 return (
-                    SingleLineMatch.from_lines(lines, summary_offset + lineno),
+                    SingleLineMatch.from_lines(lines, summary_offset + lineno, origin="direct regex"),
                     testname,
                     error,
                     reason,
@@ -442,7 +427,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     ):
                         error = XDGRunTimeNotSet()
                         description = stderr_lines[0]
-                        offset = stderr_offset
+                        offset = stderr_offset  # type: ignore
                     else:
                         if stderr_offset is not None:
                             offset = stderr_offset
@@ -461,12 +446,11 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     error = AutopkgtestStderrFailure(output)
                     if description is None:
                         description = (
-                            "Test %s failed due to "
-                            "unauthorized stderr output: %s"
-                            % (testname, error.stderr_line)
+                            "Test {} failed due to "
+                            "unauthorized stderr output: {}".format(testname, error.stderr_line)
                         )
                 return (
-                    SingleLineMatch.from_lines(lines, offset),
+                    SingleLineMatch.from_lines(lines, offset, origin="direct regex"),
                     testname,
                     error,
                     description,
@@ -479,7 +463,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     if error and match:
                         return (
                             SingleLineMatch.from_lines(
-                                lines, match.offset + output_offset
+                                lines, match.offset + output_offset, origin="direct regex"
                             ),
                             testname,
                             error,
@@ -494,14 +478,14 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         blame = line
                         blame_offset = extra_offset
                 if badpkg is not None:
-                    description = "Test %s failed: %s" % (testname, badpkg.rstrip("\n"))
+                    description = "Test {} failed: {}".format(testname, badpkg.rstrip("\n"))
                 else:
                     description = "Test %s failed" % testname
 
                 error = AutopkgtestDepsUnsatisfiable.from_blame_line(blame)
                 return (
                     SingleLineMatch.from_lines(
-                        lines, summary_offset + lineno + blame_offset
+                        lines, summary_offset + lineno + blame_offset, origin="direct regex"
                     ),
                     testname,
                     error,
@@ -516,10 +500,10 @@ def find_autopkgtest_failure_description(  # noqa: C901
                 else:
                     offset = match.offset + output_offset
                 if match is None:
-                    description = "Test %s failed: %s" % (testname, reason)
+                    description = f"Test {testname} failed: {reason}"
                 else:
                     description = match.line
-                return SingleLineMatch.from_lines(lines, offset), testname, error, description  # type: ignore
+                return SingleLineMatch.from_lines(lines, offset, origin="direct regex"), testname, error, description  # type: ignore
 
     return None, None, None, None
 
@@ -537,11 +521,11 @@ def find_testbed_setup_failure(lines):
             m = re.fullmatch(r"E: (.*): Chroot not found\\n", stderr)
             if m:
                 return (
-                    SingleLineMatch.from_lines(lines, i),
+                    SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                     ChrootNotFound(m.group(1)),
                 )
             return (
-                SingleLineMatch.from_lines(lines, i),
+                SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                 AutopkgtestTestbedSetupFailure(command, status_code, stderr),
             )
         m = re.fullmatch(
@@ -559,11 +543,70 @@ def find_testbed_setup_failure(lines):
             )
             if n:
                 return (
-                    SingleLineMatch.from_lines(lines, i),
+                    SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                     AutopkgtestDepChrootDisappeared(),
                 )
             return (
-                SingleLineMatch.from_lines(lines, i),
+                SingleLineMatch.from_lines(lines, i, origin="direct regex"),
                 AutopkgtestTestbedSetupFailure(command, 1, stderr_output),
             )
     return None, None
+
+
+def main(argv=None):
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser("analyse-autopkgtest-log")
+    parser.add_argument("--debug", action="store_true", help="Display debug output.")
+    parser.add_argument("--json", action="store_true", help="Output JSON.")
+    parser.add_argument(
+        "--context", "-c", type=int, default=5, help="Number of context lines to print."
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version_string
+    )
+    parser.add_argument("path", type=str)
+    args = parser.parse_args()
+
+    if args.debug:
+        loglevel = logging.DEBUG
+    elif args.json:
+        loglevel = logging.WARNING
+    else:
+        loglevel = logging.INFO
+
+    logging.basicConfig(level=loglevel, format="%(message)s")
+
+    with open(args.path) as f:
+        lines = list(f)
+        (match, testname, error, description) = find_autopkgtest_failure_description(lines)
+
+        if args.json:
+            ret: dict[str, Any]
+            ret = {'testname': testname, 'error': error, 'description': description}
+            if match:
+                ret['offset'] = match.offset
+            json.dump(ret, sys.stdout, indent=4)
+
+    if testname:
+        logging.info("Test name: %s", testname)
+    if error:
+        logging.info("Error: %s", error)
+    if match:
+        logging.info("Failed line: %d:", match.lineno)
+        for i in range(
+            max(0, match.offset - args.context),
+            min(len(lines), match.offset + args.context + 1),
+        ):
+            logging.info(
+                " %s  %s",
+                ">" if match.offset == i else " ",
+                lines[i].rstrip("\n"),
+            )
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main(sys.argv))

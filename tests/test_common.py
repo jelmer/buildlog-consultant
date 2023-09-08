@@ -15,72 +15,80 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ..common import (
+import unittest
+
+from buildlog_consultant.common import (
+    CcacheError,
     CMakeFilesMissing,
     CMakeNeedExactVersion,
-    find_build_failure_description,
-    CcacheError,
     DebhelperPatternNotFound,
+    DhAddonLoadFailure,
+    DhLinkDestinationIsDirectory,
+    DhMissingUninstalled,
+    DhUntilUnsupported,
+    DhWithOrderIncorrect,
+    DirectoryNonExistant,
     DisappearedSymbols,
     DuplicateDHCompatLevel,
-    DhLinkDestinationIsDirectory,
     MismatchGettextVersions,
+    MissingAssembler,
+    MissingAutoconfMacro,
+    MissingAutomakeInput,
     MissingBuildFile,
-    MissingConfigure,
-    MissingJavaScriptRuntime,
-    MissingJVM,
-    MissingConfigStatusInput,
     MissingCHeader,
+    MissingCMakeComponents,
+    MissingCommand,
+    MissingConfigStatusInput,
+    MissingConfigure,
     MissingDHCompatLevel,
-    UnsupportedDebhelperCompatLevel,
-    MissingJDKFile,
-    MissingJDK,
-    MissingJRE,
-    MissingIntrospectionTypelib,
-    MissingPythonModule,
-    MissingPythonDistribution,
-    MissingGoPackage,
     MissingFile,
+    MissingGitIdentity,
+    MissingGoModFile,
+    MissingGoPackage,
+    MissingIntrospectionTypelib,
+    MissingJavaClass,
+    MissingJavaScriptRuntime,
+    MissingJDK,
+    MissingJDKFile,
+    MissingJRE,
+    MissingJVM,
+    MissingLatexFile,
+    MissingLibrary,
     MissingMavenArtifacts,
     MissingNodeModule,
-    MissingCommand,
-    MissingPkgConfig,
-    MissingCMakeComponents,
-    MissingVcVersionerVersion,
+    MissingOCamlPackage,
     MissingPerlFile,
     MissingPerlModule,
     MissingPerlPredeclared,
-    MissingLatexFile,
     MissingPhpClass,
+    MissingPkgConfig,
+    MissingPythonDistribution,
+    MissingPythonModule,
+    MissingRPackage,
     MissingRubyGem,
     MissingSetupPyCommand,
-    MissingValaPackage,
-    MissingXmlEntity,
-    MissingVagueDependency,
-    MissingLibrary,
-    MissingJavaClass,
-    MissingRPackage,
-    MissingAutoconfMacro,
     MissingSprocketsFile,
-    MissingAutomakeInput,
-    MissingGoModFile,
+    MissingVagueDependency,
+    MissingValaPackage,
+    MissingVcVersionerVersion,
+    MissingX11,
+    MissingXmlEntity,
     NeedPgBuildExtUpdateControl,
-    DhMissingUninstalled,
-    DhUntilUnsupported,
-    DhAddonLoadFailure,
     NoSpaceOnDevice,
-    DhWithOrderIncorrect,
-    UpstartFilePresent,
-    DirectoryNonExistant,
     UnknownCertificateAuthority,
-    MissingGitIdentity,
+    UnsupportedDebhelperCompatLevel,
+    UnsupportedPytestArguments,
+    UnsupportedPytestConfigOption,
+    UpstartFilePresent,
     VcsControlDirectoryNeeded,
+    find_build_failure_description,
+    find_secondary_build_failure,
 )
-import unittest
 
 
 class FindBuildFailureDescriptionTests(unittest.TestCase):
     def run_test(self, lines, lineno, err=None):
+        self.maxDiff = None
         (match, actual_err) = find_build_failure_description(lines)
         if match is not None:
             self.assertEqual(match.line, lines[lineno - 1])
@@ -137,6 +145,13 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             1,
             MissingFile("/usr/lib/python2.7/poly1305/rfc7539.txt"),
         )
+
+    def test_vignette(self):
+        self.run_test(
+            [
+                "Error: processing vignette 'uroot-intro.Rnw' failed with diagnostics:",
+                "pdflatex is not available",
+            ], 2, MissingVagueDependency("pdflatex"))
 
     def test_upstart_file_present(self):
         self.run_test(
@@ -324,6 +339,8 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
              "libtrace. If you have installed it in a non-standard location please "
              "use LDFLAGS to specify the location of the library"],
             1, MissingVagueDependency("libpcap0.8"))
+        self.run_test(
+            ["Error: Please install xml2 package"], 1, MissingVagueDependency("xml2"))
 
     def test_gettext_mismatch(self):
         self.run_test(
@@ -331,6 +348,10 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
              "Makefile.in.in from gettext version 0.19 but the autoconf "
              "macros are from gettext version 0.20"],
             1, MismatchGettextVersions('0.19', '0.20'))
+        self.run_test(
+            ["configure: error: *** "
+             "No X11! Install X-Windows development headers/libraries! ***"],
+            1, MissingX11())
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
@@ -343,7 +364,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             "   a MESS environment variable.",
             "",
             "e.g. MESS=/path/to/program/mess ./configure"
-            ], 3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
+        ], 3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
 
     def test_interpreter_missing(self):
         self.run_test(
@@ -427,11 +448,22 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             ["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
             1, MissingLibrary("vulkan-1"))
 
+    def test_ocaml_library_missing(self):
+        self.run_test(
+            ['Error: Library "camlp-streams" not found.'],
+            1, MissingOCamlPackage('camlp-streams'))
+
     def test_meson_version(self):
         self.run_test(
             ["meson.build:1:0: ERROR: Meson version is 0.49.2 but "
-             "project requires >=0.50."], 1,
-            MissingVagueDependency("meson", minimum_version="0.50"))
+             "project requires >=0.50"], 1,
+            MissingVagueDependency(
+                "meson", minimum_version="0.50", current_version="0.49.2"))
+        self.run_test(
+            ["../meson.build:1:0: ERROR: Meson version is 0.49.2 but "
+             "project requires >=0.50"], 1,
+            MissingVagueDependency(
+                "meson", minimum_version="0.50", current_version="0.49.2"))
 
     def test_need_pgbuildext(self):
         self.run_test(
@@ -526,6 +558,16 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
         self.run_test(
             ["CMake Error at CMakeLists.txt:213 (message):",
              "  could not find zlib"], 2, MissingVagueDependency("zlib"))
+        self.run_test(
+            """\
+-- Found LibSolv_ext: /usr/lib/x86_64-linux-gnu/libsolvext.so  
+-- Found LibSolv: /usr/include /usr/lib/x86_64-linux-gnu/libsolv.so;/usr/lib/x86_64-linux-gnu/libsolvext.so
+-- No usable gpgme flavours found.
+CMake Error at cmake/modules/FindGpgme.cmake:398 (message):
+  Did not find GPGME
+Call Stack (most recent call first):
+  CMakeLists.txt:223 (FIND_PACKAGE)
+  """.splitlines(True), 5, MissingVagueDependency('GPGME'))
 
     def test_dh_compat_dupe(self):
         self.run_test(
@@ -578,6 +620,21 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             ],
             1,
         )
+
+    def test_pytest_args(self):
+        self.run_test(
+            ['pytest: error: unrecognized arguments: --cov=janitor '
+             '--cov-report=html --cov-report=term-missing:skip-covered'],
+            1,
+            UnsupportedPytestArguments([
+                '--cov=janitor', '--cov-report=html',
+                '--cov-report=term-missing:skip-covered']))
+
+    def test_pytest_config(self):
+        self.run_test(
+            ['INTERNALERROR> pytest.PytestConfigWarning: '
+             'Unknown config option: asyncio_mode'], 1,
+            UnsupportedPytestConfigOption('asyncio_mode'))
 
     def test_distutils_missing(self):
         self.run_test(
@@ -1006,7 +1063,14 @@ error: invalid command 'test'
             MissingCommand("git"),
         )
         self.run_test(
-            ["ERROR:   flake8: commands failed"], 1, MissingCommand("flake8"))
+            ["E ImportError: Bad git executable"], 1,
+            MissingCommand("git"))
+        self.run_test(
+            ["E ImportError: Bad git executable."], 1,
+            MissingCommand("git"))
+        self.run_test(
+            ["Could not find external command \"java\""], 1,
+            MissingCommand("java"))
 
     def test_ts_error(self):
         self.run_test(
@@ -1099,6 +1163,9 @@ Call Stack (most recent call first):
             1,
             MissingPkgConfig("apertium-3.2", "3.2.0"),
         )
+        self.run_test(
+            ["checking for GLEW... configure: error: Package requirements (glew) were not met:"],
+            1, MissingPkgConfig("glew"))
         self.run_test(
             [
                 'meson.build:10:0: ERROR: Dependency "gssdp-1.2" not '
@@ -1502,6 +1569,16 @@ Call Stack (most recent call first):
                 ["com.carrotsearch.randomizedtesting:junit4-ant:jar:debian"]
             ),
         )
+        self.run_test(
+            ["[ERROR] Plugin org.apache.maven.plugins:maven-compiler-plugin:3.10.1 "
+             "or one of its dependencies could not be resolved: Failed to "
+             "read artifact descriptor for "
+             "org.apache.maven.plugins:maven-compiler-plugin:jar:3.10.1: "
+             "1 problem was encountered while building the effective "
+             "model for "
+             "org.apache.maven.plugins:maven-compiler-plugin:3.10.1"],
+            1, MissingMavenArtifacts(
+                ["org.apache.maven.plugins:maven-compiler-plugin:3.10.1"]))
 
     def test_maven_errors(self):
         self.run_test(
@@ -1594,6 +1671,9 @@ Call Stack (most recent call first):
             ],
             1,
         )
+
+    def test_assembler(self):
+        self.run_test(['Found no assembler'], 1, MissingAssembler())
 
     def test_fpic(self):
         self.run_test(
@@ -1947,3 +2027,18 @@ arch:all and the other not)""".splitlines(),
             1,
             None,
         )
+
+
+class SecondaryErrorFinder(unittest.TestCase):
+
+    def assertMatches(self, line):
+        m = find_secondary_build_failure([line], 100)
+        self.assertIsNotNone(m)
+
+    def assertNotMatches(self, line):
+        m = find_secondary_build_failure([line], 100)
+        self.assertIsNone(m)
+
+    def test_unknown_option(self):
+        self.assertMatches('Unknown option --foo')
+        self.assertNotMatches('Unknown option --foo, ignoring.')

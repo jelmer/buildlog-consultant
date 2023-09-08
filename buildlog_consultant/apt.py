@@ -17,47 +17,39 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
+from typing import Optional, TypedDict
 
+import yaml
 from debian.changelog import Version
 from debian.deb822 import PkgRelation
-from typing import List, Optional, Tuple
-import yaml
 
-from . import Problem, SingleLineMatch, problem, Match, MultiLineMatch
+from . import Match, MultiLineMatch, Problem, SingleLineMatch
 from .common import NoSpaceOnDevice
 
 
-class DpkgError(Problem):
+class DpkgError(Problem, kind="dpkg-error"):
 
-    kind = "dpkg-error"
-
-    def __init__(self, error):
-        self.error = error
+    error: str
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.error == other.error
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Dpkg Error: %s" % self.error
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.error)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.error!r})"
 
 
-class AptUpdateError(Problem):
+class AptUpdateError(Problem, kind="apt-update-error"):
     """Apt update error."""
 
-    kind = "apt-update-error"
 
-
-class AptFetchFailure(AptUpdateError):
+class AptFetchFailure(AptUpdateError, kind="apt-file-fetch-failure"):
     """Apt file fetch failed."""
 
-    kind = "apt-file-fetch-failure"
-
-    def __init__(self, url, error):
-        self.url = url
-        self.error = error
+    url: str
+    error: str
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -68,16 +60,13 @@ class AptFetchFailure(AptUpdateError):
             return False
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Apt file fetch error: %s" % self.error
 
 
-class AptMissingReleaseFile(AptUpdateError):
+class AptMissingReleaseFile(AptUpdateError, kind="missing-release-file"):
 
-    kind = "missing-release-file"
-
-    def __init__(self, url):
-        self.url = url
+    url: str
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -86,54 +75,50 @@ class AptMissingReleaseFile(AptUpdateError):
             return False
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Missing release file: %s" % self.url
 
 
-class AptPackageUnknown(Problem):
+class AptPackageUnknown(Problem, kind="apt-package-unknown"):
 
-    kind = "apt-package-unknown"
-
-    def __init__(self, package):
-        self.package = package
+    package: str
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.package == other.package
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Unknown package: %s" % self.package
 
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.package)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.package!r})"
 
 
-class AptBrokenPackages(Problem):
+class AptBrokenPackages(Problem, kind="apt-broken-packages"):
 
-    kind = "apt-broken-packages"
+    description: str
+    broken: Optional[str] = None
 
-    def __init__(self, description, broken=None):
-        self.description = description
-        self.broken = broken
-
-    def __str__(self):
+    def __str__(self) -> str:
         if self.broken:
             return "Broken apt packages: %r" % self.broken
-        return "Broken apt packages: %s" % (self.description,)
+        return f"Broken apt packages: {self.description}"
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.description, self.broken)
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.description!r}, {self.broken!r})"
 
     def __eq__(self, other):
-        return (isinstance(other, type(self)) and
-                self.description == other.description and self.broken == other.broken)
+        return (isinstance(other, type(self))
+                and self.description == other.description
+                and self.broken == other.broken)
 
 
-def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Problem]]:  # noqa: C901
+def find_apt_get_failure(lines: list[str]) -> tuple[Optional[Match], Optional[Problem]]:  # noqa: C901
     """Find the key failure line in apt-get-output.
 
     Returns:
       tuple with (match, error object)
     """
+    problem: Problem
     ret = (None, None)
     OFFSET = 50
     for i in range(1, OFFSET):
@@ -148,11 +133,11 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
                     problem = NoSpaceOnDevice()
                 else:
                     problem = AptFetchFailure(m.group(1), m.group(2))
-                return SingleLineMatch.from_lines(lines, lineno), problem
-            return SingleLineMatch.from_lines(lines, lineno), None
+                return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), problem
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), None
         if line == "E: Broken packages":
             error = AptBrokenPackages(lines[lineno - 1].strip())
-            return SingleLineMatch.from_lines(lines, lineno - 1), error
+            return SingleLineMatch.from_lines(lines, lineno - 1, origin="direct match"), error
         if line == "E: Unable to correct problems, you have held broken packages.":
             offsets = []
             broken = []
@@ -169,10 +154,10 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
                     continue
                 break
             error = AptBrokenPackages(lines[lineno].strip(), broken)
-            return MultiLineMatch.from_lines(lines, offsets + [lineno]), error
+            return MultiLineMatch.from_lines(lines, offsets + [lineno], origin="direct match"), error
         m = re.match("E: The repository '([^']+)' does not have a Release file.", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), AptMissingReleaseFile(
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), AptMissingReleaseFile(
                 m.group(1)
             )
         m = re.match(
@@ -180,29 +165,29 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
             line,
         )
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         m = re.match(r"E: You don't have enough free space in (.*)\.", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         if line.startswith("E: ") and ret[0] is None:
-            ret = SingleLineMatch.from_lines(lines, lineno), None
+            ret = SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), None
         m = re.match(r"E: Unable to locate package (.*)", line)
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), AptPackageUnknown(
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), AptPackageUnknown(
                 m.group(1)
             )
         if line == "E: Write error - write (28: No space left on device)":
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         m = re.match(r"dpkg: error: (.*)", line)
         if m:
             if m.group(1).endswith(": No space left on device"):
-                return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
-            return SingleLineMatch.from_lines(lines, lineno), DpkgError(m.group(1))
+                return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), DpkgError(m.group(1))
         m = re.match(r"dpkg: error processing package (.*) \((.*)\):", line)
         if m:
             return (
-                SingleLineMatch.from_lines(lines, lineno + 1),
-                DpkgError("processing package %s (%s)" % (m.group(1), m.group(2))),
+                SingleLineMatch.from_lines(lines, lineno + 1, origin="direct regex"),
+                DpkgError(f"processing package {m.group(1)} ({m.group(2)})"),
             )
 
     for i, line in enumerate(lines):
@@ -212,10 +197,10 @@ def find_apt_get_failure(lines: List[str]) -> Tuple[Optional[Match], Optional[Pr
             line,
         )
         if m:
-            return SingleLineMatch.from_lines(lines, lineno), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), NoSpaceOnDevice()
         m = re.match(r" .*: No space left on device", line)
         if m:
-            return SingleLineMatch.from_lines(lines, i), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(lines, i, origin="direct regex"), NoSpaceOnDevice()
 
     return ret
 
@@ -241,39 +226,36 @@ def find_cudf_output(lines):
     return yaml.safe_load("\n".join(output))
 
 
-try:
-    from typing import TypedDict
-except ImportError:  # python < 3.9
-    from typing import Dict, Any
-
-    ParsedRelation = Dict[str, Dict[str, Any]]
-else:
-    ParsedRelation = TypedDict(
-        "ParsedRelation",
-        {
-            "name": str,
-            "archqual": Optional[str],
-            "version": Optional[Tuple[str, str]],
-            "arch": Optional[List["PkgRelation.ArchRestriction"]],
-            "restrictions": Optional[List[List["PkgRelation.BuildRestriction"]]],
-        },
-    )
+class ParsedRelation(TypedDict):
+    name: str
+    archqual: Optional[str]
+    version: Optional[tuple[str, str]]
+    arch: Optional[list['PkgRelation.ArchRestriction']]
+    restrictions: Optional[list[list['PkgRelation.BuildRestriction']]]
 
 
-@problem("unsatisfied-apt-dependencies")
-class UnsatisfiedAptDependencies:
+class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
 
-    relations: List[List[List[ParsedRelation]]]
+    relations: list[list[list[ParsedRelation]]]
 
-    def __str__(self):
-        return "Unsatisfied APT dependencies: %s" % PkgRelation.str(self.relations)
+    def __str__(self) -> str:
+        return "Unsatisfied APT dependencies: %s" % (
+            PkgRelation.str(self.relations))  # type: ignore
 
     @classmethod
     def from_str(cls, text):
         return cls(PkgRelation.parse_relations(text))
 
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and other.relations == self.relations
+
+    def json(self):
+        return PkgRelation.str(self.relations)  # type: ignore
+
     @classmethod
     def from_json(cls, data):
+        if isinstance(data, str):
+            return cls.from_str(data)
         relations = []
         for relation in data['relations']:
             sub = []
@@ -283,26 +265,28 @@ class UnsatisfiedAptDependencies:
                     'archqual': entry.get('archqual'),
                     'arch': entry.get('arch'),
                     'restrictions': entry.get('restrictions'),
-                    'version': (entry['version'][0], Version(entry['version'][1])) if entry['version'] else None,
-                    }
+                    'version':
+                        (entry['version'][0], Version(entry['version'][1]))
+                        if entry['version'] else None,
+                }
                 sub.append(pkg)
             relations.append(sub)
         return cls(relations=relations)
 
-    def __repr__(self):
-        return "%s.from_str(%r)" % (
+    def __repr__(self) -> str:
+        return "{}.from_str({!r})".format(
             type(self).__name__,
-            PkgRelation.str(self.relations),
+            PkgRelation.str(self.relations),  # type: ignore
         )
 
 
-@problem("unsatisfied-apt-conflicts")
-class UnsatisfiedAptConflicts:
+class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):
 
-    relations: List[List[List[ParsedRelation]]]
+    relations: list[list[list[ParsedRelation]]]
 
-    def __str__(self):
-        return "Unsatisfied APT conflicts: %s" % PkgRelation.str(self.relations)
+    def __str__(self) -> str:
+        return "Unsatisfied APT conflicts: %s" % PkgRelation.str(
+            self.relations)  # type: ignore
 
 
 def error_from_dose3_report(report):
@@ -341,7 +325,7 @@ def error_from_dose3_report(report):
         return UnsatisfiedAptConflicts(conflict)
 
 
-def find_install_deps_failure_description(sbuildlog) -> Tuple[Optional[str], Optional[SingleLineMatch], Optional[Problem]]:
+def find_install_deps_failure_description(sbuildlog) -> tuple[Optional[str], Optional[Match], Optional[Problem]]:
     error = None
 
     DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
@@ -391,7 +375,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=loglevel, format="%(message)s")
 
-    with open(args.path, "r") as f:
+    with open(args.path) as f:
         lines = list(f.readlines())
     match, error = find_apt_get_failure(lines)
 

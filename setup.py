@@ -1,30 +1,7 @@
 #!/usr/bin/python3
-
 from setuptools import setup
+from setuptools_rust import Binding, RustExtension
 
 setup(
-    name="buildlog-consultant",
-    packages=[
-        "buildlog_consultant",
-        "buildlog_consultant.tests",
-    ],
-    version="0.0.21",
-    author="Jelmer Vernooij",
-    author_email="jelmer@jelmer.uk",
-    url="https://github.com/jelmer/buildlog-consultant",
-    description="buildlog parser and analyser",
-    project_urls={
-        "Repository": "https://github.com/jelmer/buildlog-consultant.git",
-    },
-    test_suite="buildlog_consultant.tests.test_suite",
-    install_requires=['python_debian', 'PyYAML', 'requirements-parser'],
-    entry_points={
-        'console_scripts': [
-            ('analyse-sbuild-log='
-             'buildlog_consultant.sbuild:main'),
-            ('analyse-build-log='
-             'buildlog_consultant.common:main'),
-        ],
-    },
-
+    rust_extensions=[RustExtension("buildlog_consultant._buildlog_consultant_rs", "buildlog-consultant-py/Cargo.toml", binding=Binding.PyO3)],
 )

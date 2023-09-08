@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.2", "setuptools-rust"]
+build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+warn_redundant_casts = true
+warn_unused_configs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "requirements.*",
+    "openai.*",
+]
+ignore_missing_imports = true
+
+[project]
+name = "buildlog-consultant"
+authors = [{name = "Jelmer Vernooĳ", email = "jelmer@jelmer.uk"}]
+description = "buildlog parser and analyser"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "python_debian",
+    "PyYAML",
+    "requirements-parser",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/jelmer/buildlog-consultant"
+Repository = "https://github.com/jelmer/buildlog-consultant.git"
+
+[project.optional-dependencies]
+chatgpt = ["openai"]
+
+[project.scripts]
+analyse-sbuild-log = "buildlog_consultant.sbuild:main"
+analyse-build-log = "buildlog_consultant.common:main"
+analyse-autopkgtest-log = "buildlog_consultant.autopkgtest:main"
+
+[tool.setuptools]
+packages = ["buildlog_consultant"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+buildlog_consultant = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "buildlog_consultant.__version__"}
+
+[tool.ruff]
+select = [
+    "ANN",
+    "D",
+    "E",
+    "F",
+    "I",
+    "UP",
+]
+target-version = "py37"
+ignore = [
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "ANN101",
+    "ANN102",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN206",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "E501",
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"

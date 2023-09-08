@@ -1,10 +1,21 @@
-all: check flake8 mypy
+export PYTHON=python3
 
-check:
-	python3 setup.py test
+all: check
 
-flake8:
+build-inplace:
+	$(PYTHON) setup.py build_ext --inplace
+
+check:: testsuite
+
+testsuite: build-inplace
+	$(PYTHON) -m unittest tests.test_suite
+
+check:: style
+
+style:
 	flake8
 
-mypy:
-	python3 -m mypy buildlog_consultant
+check:: typing
+
+typing: build-inplace
+	$(PYTHON) -m mypy buildlog_consultant

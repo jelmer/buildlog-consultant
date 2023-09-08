@@ -1,0 +1,16 @@
+[package]
+name = "buildlog-consultant-py"
+version = "0.0.0"
+authors = ["Jelmer Vernooĳ <jelmer@jelmer.uk>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/jelmer/buildlog-consultant.git"
+homepage = "https://github.com/jelmer/buildlog-consultant"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+buildlog-consultant = { path = ".." }
+pyo3 = { workspace = true, features = ["extension-module"] }
+serde_json = { workspace = true }

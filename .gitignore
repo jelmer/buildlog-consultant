@@ -3,3 +3,7 @@ buildlog_consultant.egg-info
 __pycache__
 *~
 build
+.tox
+target
+buildlog_consultant/_buildlog_consultant_rs.*.so
+dist/*

@@ -17,11 +17,11 @@
 
 import unittest
 
-from ..sbuild import (
-    find_brz_build_error,
-    parse_brz_error,
+from buildlog_consultant.sbuild import (
     InconsistentSourceFormat,
     MissingDebcargoCrate,
+    find_brz_build_error,
+    parse_brz_error,
 )
 
 
