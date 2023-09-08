@@ -6,3 +6,4 @@ build
 .tox
 target
 buildlog_consultant/_buildlog_consultant_rs.*.so
+dist/*
