@@ -1,7 +1,7 @@
 [package]
 name = "buildlog-consultant"
 version = "0.0.35"
-authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
+authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>",]
 edition = "2021"
 license = "GPL-2.0+"
 description = "buildlog parser and analyser"
@@ -9,17 +9,24 @@ repository = "https://github.com/jelmer/buildlog-consultant.git"
 homepage = "https://github.com/jelmer/buildlog-consultant"
 
 [workspace]
-members = ["buildlog-consultant-py"]
+members = [ "buildlog-consultant-py",]
+
+[dependencies]
+inventory = "0.3"
+regex = "1"
+lazy_static = "1"
+shlex = "1"
 
 [workspace.dependencies]
 pyo3 = "0.19"
 serde_json = "1"
 
-[dependencies]
-pyo3 = { workspace = true }
-inventory = "0.3"
-regex = "1"
-lazy_static = "1"
-serde_json = { workspace = true }
-serde = { version = "1", features = ["derive"] }
-shlex = "1"
+[dependencies.pyo3]
+workspace = true
+
+[dependencies.serde_json]
+workspace = true
+
+[dependencies.serde]
+version = "1"
+features = [ "derive",]
