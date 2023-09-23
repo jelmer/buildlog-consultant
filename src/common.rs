@@ -1366,6 +1366,246 @@ fn maven_missing_artifact(m: &regex::Captures) -> Result<Option<Box<dyn Problem>
     Ok(Some(Box::new(MissingMavenArtifacts(artifacts))))
 }
 
+pub struct NotExecutableFile(String);
+
+impl NotExecutableFile {
+    pub fn new(path: String) -> Self {
+        Self(path)
+    }
+}
+
+impl Problem for NotExecutableFile {
+    fn kind(&self) -> Cow<str> {
+        "not-executable-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0
+        })
+    }
+}
+
+impl Display for NotExecutableFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Command not executable: {}", self.0)
+    }
+}
+
+struct DhMissingUninstalled(String);
+
+impl DhMissingUninstalled {
+    pub fn new(missing_file: String) -> Self {
+        Self(missing_file)
+    }
+}
+
+impl Problem for DhMissingUninstalled {
+    fn kind(&self) -> Cow<str> {
+        "dh-missing-uninstalled".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "missing_file": self.0
+        })
+    }
+}
+
+impl Display for DhMissingUninstalled {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh_missing file not installed: {}", self.0)
+    }
+}
+
+struct DhLinkDestinationIsDirectory(String);
+
+impl DhLinkDestinationIsDirectory {
+    pub fn new(path: String) -> Self {
+        Self(path)
+    }
+}
+
+impl Problem for DhLinkDestinationIsDirectory {
+    fn kind(&self) -> Cow<str> {
+        "dh-link-destination-is-directory".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0
+        })
+    }
+}
+
+impl Display for DhLinkDestinationIsDirectory {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Link destination {} is directory", self.0)
+    }
+}
+
+struct MissingXmlEntity {
+    url: String,
+}
+
+impl MissingXmlEntity {
+    pub fn new(url: String) -> Self {
+        Self { url }
+    }
+}
+
+impl Problem for MissingXmlEntity {
+    fn kind(&self) -> Cow<str> {
+        "missing-xml-entity".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "url": self.url
+        })
+    }
+}
+
+impl Display for MissingXmlEntity {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing XML entity: {}", self.url)
+    }
+}
+
+struct CcacheError(String);
+
+impl CcacheError {
+    pub fn new(error: String) -> Self {
+        Self(error)
+    }
+}
+
+impl Problem for CcacheError {
+    fn kind(&self) -> Cow<str> {
+        "ccache-error".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "error": self.0
+        })
+    }
+}
+
+impl Display for CcacheError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "ccache error: {}", self.0)
+    }
+}
+
+struct DhAddonLoadFailure {
+    name: String,
+    path: String,
+}
+
+impl DhAddonLoadFailure {
+    pub fn new(name: String, path: String) -> Self {
+        Self { name, path }
+    }
+}
+
+impl Problem for DhAddonLoadFailure {
+    fn kind(&self) -> Cow<str> {
+        "dh-addon-load-failure".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "path": self.path
+        })
+    }
+}
+
+impl Display for DhAddonLoadFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh addon loading failed: {}", self.name)
+    }
+}
+
+struct DhUntilUnsupported;
+
+impl DhUntilUnsupported {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for DhUntilUnsupported {
+    fn kind(&self) -> Cow<str> {
+        "dh-until-unsupported".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DhUntilUnsupported {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh --until is no longer supported")
+    }
+}
+
+fn r_missing_package(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let fragment = m.get(1).unwrap().as_str();
+    let deps = fragment
+        .split(",")
+        .map(|dep| {
+            dep.trim_matches('‘')
+                .trim_matches('’')
+                .trim_matches('\'')
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+    Ok(Some(Box::new(MissingRPackage::simple(deps[0].clone()))))
+}
+
+struct DebhelperPatternNotFound {
+    pattern: String,
+    tool: String,
+    directories: Vec<String>,
+}
+
+impl DebhelperPatternNotFound {
+    pub fn new(pattern: String, tool: String, directories: Vec<String>) -> Self {
+        Self {
+            pattern,
+            tool,
+            directories,
+        }
+    }
+}
+
+impl Problem for DebhelperPatternNotFound {
+    fn kind(&self) -> Cow<str> {
+        "debhelper-pattern-not-found".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "pattern": self.pattern,
+            "tool": self.tool,
+            "directories": self.directories
+        })
+    }
+}
+
+impl Display for DebhelperPatternNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "debhelper ({}) expansion failed for {:?} (directories: {:?})",
+            self.tool, self.pattern, self.directories
+        )
+    }
+}
+
 const MAVEN_ERROR_PREFIX: &str = "(?:\\[ERROR\\]|\\[\x1b\\[1;31mERROR\x1b\\[m\\]) ";
 
 lazy_static::lazy_static! {
@@ -2071,6 +2311,110 @@ lazy_static::lazy_static! {
         format!("{}{}", MAVEN_ERROR_PREFIX, r"Error resolving version for plugin \'(.*)\' from the repositories \[.*\]: Plugin not found in any plugin repository -> \[Help 1\]").as_str(),
         |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))
     ),
+    regex_line_matcher!(
+        r"E: eatmydata: unable to find '(.*)' in PATH",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"'(.*)' not found in PATH at (.*) line ([0-9]+)\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"/usr/bin/eatmydata: [0-9]+: exec: (.*): not found",
+        command_missing
+    ),
+    regex_line_matcher!(
+        r"/usr/bin/eatmydata: [0-9]+: exec: (.*): Permission denied",
+        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"(.*): exec: "(.*)": executable file not found in \$PATH"#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"Can't exec "(.*)": No such file or directory at (.*) line ([0-9]+)\."#,
+        command_missing
+    ),
+    regex_line_matcher!(
+        r"dh_missing: (warning: )?(.*) exists in debian/.* but is not installed to anywhere",
+        |m| Ok(Some(Box::new(DhMissingUninstalled(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"dh_link: link destination (.*) is a directory",
+                        |m| Ok(Some(Box::new(DhLinkDestinationIsDirectory(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"I/O error : Attempt to load network entity (.*)",
+                        |m| Ok(Some(Box::new(MissingXmlEntity::new(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"ccache: error: (.*)",
+    |m| Ok(Some(Box::new(CcacheError(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"dh: The --until option is not supported any longer \(#932537\). Use override targets instead.",
+        |_| Ok(Some(Box::new(DhUntilUnsupported::new())))
+    ),
+    regex_line_matcher!(
+        r"dh: unable to load addon (.*): (.*) did not return a true value at \(eval 11\) line ([0-9]+).",
+        |m| Ok(Some(Box::new(DhAddonLoadFailure::new(m.get(1).unwrap().as_str().to_string(), m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        "ERROR: dependencies (.*) are not available for package [‘'](.*)['’]",
+        r_missing_package
+    ),
+    regex_line_matcher!(
+        "ERROR: dependency [‘'](.*)['’] is not available for package [‘'](.*)[’']",
+        r_missing_package
+    ),
+    regex_line_matcher!(
+        r"Error in library\(.*\) : there is no package called \'(.*)\'",
+        r_missing_package
+    ),
+    regex_line_matcher!(r"Error in .* : there is no package called \'(.*)\'", r_missing_package),
+    regex_line_matcher!(r"there is no package called \'(.*)\'", r_missing_package),
+    regex_line_matcher!(
+        r"  namespace ‘(.*)’ ([^ ]+) is being loaded, but >= ([^ ]+) is required",
+        |m| Ok(Some(Box::new(MissingRPackage{ package: m.get(1).unwrap().as_str().to_string(), minimum_version: Some(m.get(3).unwrap().as_str().to_string())})))
+    ),
+    regex_line_matcher!(
+        r"  namespace ‘(.*)’ ([^ ]+) is already loaded, but >= ([^ ]+) is required",
+        |m| Ok(Some(Box::new(MissingRPackage{package: m.get(1).unwrap().as_str().to_string(), minimum_version: Some(m.get(3).unwrap().as_str().to_string())})))
+    ),
+    regex_line_matcher!(r"b\'convert convert: Unable to read font \((.*)\) \[No such file or directory\]\.\\n\'",
+     file_not_found),
+    regex_line_matcher!(r"mv: cannot stat \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(
+        r"(/usr/bin/install|mv): will not overwrite just-created \'(.*)\' with \'(.*)\'",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found_maybe_executable),
+    regex_line_matcher!(r"error: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found_maybe_executable),
+    regex_line_matcher!(r"E   IOError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found_maybe_executable),
+    regex_line_matcher!("FAIL\t(.+\\/.+\\/.+)\t([0-9.]+)s", |_| Ok(None)),
+    regex_line_matcher!(
+        r#"dh_(.*): Cannot find \(any matches for\) "(.*)" \(tried in (.*)\)"#,
+        |m| Ok(Some(Box::new(DebhelperPatternNotFound {
+            pattern: m.get(2).unwrap().as_str().to_string(),
+            tool: m.get(1).unwrap().as_str().to_string(),
+            directories: m.get(3).unwrap().as_str().split(",").map(|s| s.trim().to_string()).collect(),
+        })))
+    ),
+    regex_line_matcher!(
+        r#"Can't exec "(.*)": No such file or directory at /usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line [0-9]+."#,
+        command_missing
+    ),
+    regex_line_matcher!(
+        r#"Can\'t exec "(.*)": Permission denied at (.*) line [0-9]+\."#,
+        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"/usr/bin/fakeroot: [0-9]+: (.*): Permission denied",
+        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r".*: error: (.*) command not found", command_missing),
+    regex_line_matcher!(r"error: command '(.*)' failed: No such file or directory",
+     command_missing),
+    regex_line_matcher!(
+        r"dh_install: Please use dh_missing --list-missing/--fail-missing instead",
+        |_| Ok(None)
+    ),
+
     ]);
 }
 
