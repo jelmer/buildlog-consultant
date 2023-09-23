@@ -1633,6 +1633,152 @@ impl Display for MissingPerlManifest {
     }
 }
 
+struct ImageMagickDelegateMissing {
+    delegate: String,
+}
+
+impl ImageMagickDelegateMissing {
+    pub fn new(delegate: String) -> Self {
+        Self { delegate }
+    }
+}
+
+impl Problem for ImageMagickDelegateMissing {
+    fn kind(&self) -> Cow<str> {
+        "imagemagick-delegate-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "delegate": self.delegate
+        })
+    }
+}
+
+impl Display for ImageMagickDelegateMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Imagemagick missing delegate: {}", self.delegate)
+    }
+}
+
+struct Cancelled;
+
+impl Cancelled {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for Cancelled {
+    fn kind(&self) -> Cow<str> {
+        "cancelled".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for Cancelled {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Cancelled by runner or job manager")
+    }
+}
+
+fn webpack_file_missing(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let path = std::path::Path::new(m.get(1).unwrap().as_str());
+    let container = std::path::Path::new(m.get(2).unwrap().as_str());
+    let path = container.join(path);
+    if path.starts_with("/") && !path.as_path().starts_with("/<<PKGBUILDDIR>>") {
+        return Ok(Some(Box::new(MissingFile { path })));
+    }
+    Ok(None)
+}
+
+struct DisappearedSymbols;
+
+impl DisappearedSymbols {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for DisappearedSymbols {
+    fn kind(&self) -> Cow<str> {
+        "disappeared-symbols".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DisappearedSymbols {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Disappeared symbols")
+    }
+}
+
+struct DuplicateDHCompatLevel {
+    command: String,
+}
+
+impl DuplicateDHCompatLevel {
+    pub fn new(command: String) -> Self {
+        Self { command }
+    }
+}
+
+impl Problem for DuplicateDHCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "duplicate-dh-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.command
+        })
+    }
+}
+
+impl Display for DuplicateDHCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "DH Compat Level specified twice (command: {})",
+            self.command
+        )
+    }
+}
+
+struct MissingDHCompatLevel {
+    command: String,
+}
+
+impl MissingDHCompatLevel {
+    pub fn new(command: String) -> Self {
+        Self { command }
+    }
+}
+
+impl Problem for MissingDHCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "missing-dh-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.command
+        })
+    }
+}
+
+impl Display for MissingDHCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing DH Compat Level (command: {})", self.command)
+    }
+}
+
 struct MissingJVM;
 
 impl MissingJVM {
@@ -2905,6 +3051,115 @@ lazy_static::lazy_static! {
         r"dh: unable to load addon systemd: dh: The systemd-sequence is no longer provided in compat >= 11, please rely on dh_installsystemd instead",
         |_| Ok(None)
     ),
+    regex_line_matcher!(
+        r"dh: The --before option is not supported any longer \(#932537\). Use override targets instead.",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"\(.*\): undefined reference to `(.*)'", |_| Ok(None)),
+    regex_line_matcher!("(.*):([0-9]+): undefined reference to `(.*)'", |_| Ok(None)),
+    regex_line_matcher!("(.*):([0-9]+): error: undefined reference to '(.*)'", |_| Ok(None)),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*): first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r".+\.go:[0-9]+: undefined reference to `(.*)'", |_| Ok(None)),
+    regex_line_matcher!(r"ar: libdeps specified more than once", |_| Ok(None)),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"\/usr\/bin\/ld: (.*): undefined reference to `(.*)\'", |_| Ok(None)),
+    regex_line_matcher!(r"\/usr\/bin\/ld: (.*): undefined reference to symbol \'(.*)\'", |_| Ok(None)),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld: (.*): relocation (.*) against symbol `(.*)\' can not be used when making a shared object; recompile with -fPIC",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        "(.*):([0-9]+): multiple definition of `(.*)'; (.*):([0-9]+): first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        "(dh.*): debhelper compat level specified both in debian/compat and via build-dependency on debhelper-compat",
+        |m| Ok(Some(Box::new(DuplicateDHCompatLevel::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        "(dh.*): (error: )?Please specify the compatibility level in debian/compat",
+        |m| Ok(Some(Box::new(MissingDHCompatLevel::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        "dh_makeshlibs: The udeb (.*) does not contain any shared libraries but --add-udeb=(.*) was passed!?",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        "dpkg-gensymbols: error: some symbols or patterns disappeared in the symbols file: see diff output below",
+        |m| Ok(Some(Box::new(DisappearedSymbols)))
+    ),
+    regex_line_matcher!(
+        r"Failed to copy \'(.*)\': No such file or directory at /usr/share/dh-exec/dh-exec-install-rename line [0-9]+.*",
+        file_not_found
+    ),
+    regex_line_matcher!(r"Invalid gemspec in \[.*\]: No such file or directory - (.*)", command_missing),
+    regex_line_matcher!(
+        r".*meson.build:[0-9]+:[0-9]+: ERROR: Program\(s\) \[\'(.*)\'\] not found or not executable",
+        command_missing
+    ),
+    regex_line_matcher!(
+        r".*meson.build:[0-9]+:[0-9]: ERROR: Git program not found\.",
+        |m| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"Failed: [pytest] section in setup.cfg files is no longer supported, change to [tool:pytest] instead.",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"cp: cannot stat \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(r"cp: \'(.*)\' and \'(.*)\' are the same file", |_| Ok(None)),
+    regex_line_matcher!(r".?PHP Fatal error: (.*)", |_| Ok(None)),
+    regex_line_matcher!(r"sed: no input files", |_| Ok(None)),
+    regex_line_matcher!(r"sed: can\'t read (.*): No such file or directory", file_not_found),
+    regex_line_matcher!(
+        r"ERROR in Entry module not found: Error: Can\'t resolve \'(.*)\' in \'(.*)\'",
+        webpack_file_missing
+    ),
+    regex_line_matcher!(
+        r".*:([0-9]+): element include: XInclude error : could not load (.*), and no fallback was found",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"E: Child terminated by signal ‘Terminated’",
+     |_| Ok(Some(Box::new(Cancelled)))
+     ),
+    regex_line_matcher!(r"E: Caught signal ‘Terminated’",
+     |_| Ok(Some(Box::new(Cancelled)))
+     ),
+    regex_line_matcher!(r"E: Failed to execute “(.*)”: No such file or directory", command_missing),
+    regex_line_matcher!(r"E ImportError: Bad (.*) executable(\.?)", command_missing),
+    regex_line_matcher!(r"E: The Debian version .* cannot be used as an ELPA version.", |_| Ok(None)),
+    // ImageMagick
+    regex_line_matcher!(
+        r"convert convert: Image pixel limit exceeded \(see -limit Pixels\) \(-1\).",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"convert convert: Improper image header \(.*\).", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: invalid primitive argument \([0-9]+\).", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: Unexpected end-of-file \(\)\.", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: Unrecognized option \((.*)\)\.", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: Unrecognized channel type \((.*)\)\.", |_| Ok(None)),
+    regex_line_matcher!(
+        r"convert convert: Unable to read font \((.*)\) \[No such file or directory\].",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"convert convert: Unable to open file (.*) \[No such file or directory\]\.",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"convert convert: No encode delegate for this image format \((.*)\) \[No such file or directory\].",
+        |m| Ok(Some(Box::new(ImageMagickDelegateMissing::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+
     ]);
 }
 
