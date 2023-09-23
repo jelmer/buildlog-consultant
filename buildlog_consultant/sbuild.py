@@ -18,11 +18,15 @@
 
 import logging
 import re
-from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import BinaryIO, Optional, Union
 
-from . import Match, Problem, SingleLineMatch, version_string
+from . import (
+    Match,
+    Problem,
+    SingleLineMatch,
+    version_string,
+)
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
@@ -35,11 +39,16 @@ from .common import (
     PatchApplicationFailed,
     find_build_failure_description,
 )
+from ._buildlog_consultant_rs import (
+    parse_sbuild_log,
+    SbuildLogSection,
+)
 
 __all__ = [
     "SbuildFailure",
     "parse_sbuild_log",
     "SbuildLog",
+    "SbuildLogSection",
 ]
 
 logger = logging.getLogger(__name__)
@@ -642,14 +651,6 @@ def find_brz_build_error(lines):
 
 
 @dataclass
-class SbuildLogSection:
-
-    title: Optional[str]
-    offsets: tuple[int, int]
-    lines: list[str]
-
-
-@dataclass
 class SbuildLog:
 
     sections: list[SbuildLogSection]
@@ -673,7 +674,7 @@ class SbuildLog:
     @classmethod
     def parse(cls, f: BinaryIO):
         sections = []
-        for section in parse_sbuild_log(f):
+        for section in parse_sbuild_log(list(f)):
             logging.debug(
                 "Section %s (lines %d-%d)"
                 % (section.title, section.offsets[0], section.offsets[1])
@@ -937,45 +938,6 @@ def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailu
         section=None,
         match=None,
     )
-
-
-def parse_sbuild_log(f: BinaryIO) -> Iterator[SbuildLogSection]:
-    begin_offset = 1
-    lines: list[str] = []
-    title = None
-    sep = b"+" + (b"-" * 78) + b"+"
-    lineno = 0
-    line = f.readline()
-    lineno += 1
-    while line:
-        if line.strip() == sep:
-            l1 = f.readline()
-            l2 = f.readline()
-            lineno += 2
-            if l1.startswith(b"|") and l1.strip().endswith(b"|") and l2.strip() == sep:
-                end_offset = lineno - 3
-                # Drop trailing empty lines
-                while lines and lines[-1] == "\n":
-                    lines.pop(-1)
-                    end_offset -= 1
-                if lines:
-                    yield SbuildLogSection(title, (begin_offset, end_offset), lines)
-                title = l1.rstrip()[1:-1].strip().decode(errors="replace")
-                lines = []
-                begin_offset = lineno
-            else:
-                lines.extend(
-                    [
-                        line.decode(errors="replace"),
-                        l1.decode(errors="replace"),
-                        l2.decode(errors="replace"),
-                    ]
-                )
-        else:
-            lines.append(line.decode(errors="replace"))
-        line = f.readline()
-        lineno += 1
-    yield SbuildLogSection(title, (begin_offset, lineno), lines)
 
 
 def find_failed_stage(lines: list[str]) -> Optional[str]:

@@ -116,10 +116,45 @@ fn match_lines(lines: Vec<&str>, offset: usize) -> PyResult<(Option<Match>, Opti
     }
 }
 
+#[pyclass]
+struct SbuildLogSection(buildlog_consultant::sbuild::SbuildLogSection);
+
+#[pymethods]
+impl SbuildLogSection {
+    #[getter]
+    fn title(&self) -> Option<String> {
+        self.0.title.clone()
+    }
+
+    #[getter]
+    fn offsets(&self) -> (usize, usize) {
+        self.0.offsets
+    }
+
+    #[getter]
+    fn lines(&self) -> Vec<String> {
+        self.0.lines.clone()
+    }
+}
+
+#[pyfunction]
+fn parse_sbuild_log(lines: Vec<Vec<u8>>) -> PyResult<Vec<SbuildLogSection>> {
+    let text = lines.concat();
+    let cursor = std::io::Cursor::new(text);
+    let mut ret = Vec::new();
+    let sections = buildlog_consultant::sbuild::parse_sbuild_log(cursor);
+    for section in sections {
+        ret.push(SbuildLogSection(section));
+    }
+    Ok(ret)
+}
+
 #[pymodule]
 fn _buildlog_consultant_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Match>()?;
     m.add_class::<Problem>()?;
+    m.add_class::<SbuildLogSection>()?;
     m.add_function(wrap_pyfunction!(match_lines, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_sbuild_log, m)?)?;
     Ok(())
 }

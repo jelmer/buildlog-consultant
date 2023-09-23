@@ -255,3 +255,5 @@ mod test {
 pub mod common;
 
 pub mod r#match;
+
+pub mod sbuild;
