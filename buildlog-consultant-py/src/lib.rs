@@ -1,7 +1,7 @@
 use pyo3::exceptions::PyNotImplementedError;
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
-use std::collections::HashMap;
+
 use std::io::BufReader;
 
 #[pyclass]
@@ -11,7 +11,7 @@ struct Match(Box<dyn buildlog_consultant::Match>);
 impl Match {
     #[getter]
     fn line(&self) -> String {
-        self.0.line().to_string()
+        self.0.line()
     }
 
     #[getter]
@@ -68,7 +68,7 @@ fn json_to_py(py: Python, json: serde_json::Value) -> PyResult<PyObject> {
             Ok(ret.into_py(py))
         }
         serde_json::Value::Object(o) => {
-            let mut ret = pyo3::types::PyDict::new(py);
+            let ret = pyo3::types::PyDict::new(py);
             for (k, v) in o {
                 ret.set_item(k, json_to_py(py, v)?)?;
             }
@@ -144,7 +144,7 @@ struct SbuildLog(buildlog_consultant::sbuild::SbuildLog);
 #[pymethods]
 impl SbuildLog {
     fn get_failed_stage(&self) -> Option<String> {
-        self.0.get_failed_stage().map(|s| s.to_string())
+        self.0.get_failed_stage()
     }
 
     fn get_section_lines(&self, section: Option<&str>) -> Option<Vec<String>> {
