@@ -1,3 +1,6 @@
+/// Common code for all environments.
+// TODO(jelmer): Right now this is just a straight port from Python. It needs a massive amount of
+// refactoring, including a split of the file.
 use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
 use crate::{Match, Problem};
@@ -1606,6 +1609,353 @@ impl Display for DebhelperPatternNotFound {
     }
 }
 
+struct MissingPerlManifest;
+
+impl MissingPerlManifest {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingPerlManifest {
+    fn kind(&self) -> Cow<str> {
+        "missing-perl-manifest".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingPerlManifest {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing Perl MANIFEST")
+    }
+}
+
+struct MissingJVM;
+
+impl MissingJVM {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingJVM {
+    fn kind(&self) -> Cow<str> {
+        "missing-jvm".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingJVM {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing JVM")
+    }
+}
+
+struct MissingRubyGem {
+    gem: String,
+    version: Option<String>,
+}
+
+impl MissingRubyGem {
+    pub fn new(gem: String, version: Option<String>) -> Self {
+        Self { gem, version }
+    }
+
+    pub fn simple(gem: String) -> Self {
+        Self::new(gem, None)
+    }
+}
+
+impl Problem for MissingRubyGem {
+    fn kind(&self) -> Cow<str> {
+        "missing-ruby-gem".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "gem": self.gem,
+            "version": self.version
+        })
+    }
+}
+
+impl Display for MissingRubyGem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(version) = &self.version {
+            write!(f, "missing ruby gem: {} (>= {})", self.gem, version)
+        } else {
+            write!(f, "missing ruby gem: {}", self.gem)
+        }
+    }
+}
+
+fn ruby_missing_gem(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let mut minimum_version = None;
+    for grp in m.get(2).unwrap().as_str().split(",") {
+        if let Some((cond, val)) = grp.trim().split_once(" ") {
+            if cond == ">=" {
+                minimum_version = Some(val.to_string());
+                break;
+            }
+            if cond == "~>" {
+                minimum_version = Some(val.to_string());
+            }
+        }
+    }
+    Ok(Some(Box::new(MissingRubyGem::new(
+        m.get(1).unwrap().as_str().to_string(),
+        minimum_version,
+    ))))
+}
+
+struct MissingPhpClass {
+    php_class: String,
+}
+
+impl MissingPhpClass {
+    pub fn new(php_class: String) -> Self {
+        Self { php_class }
+    }
+
+    pub fn simple(php_class: String) -> Self {
+        Self::new(php_class)
+    }
+}
+
+impl Problem for MissingPhpClass {
+    fn kind(&self) -> Cow<str> {
+        "missing-php-class".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "php_class": self.php_class
+        })
+    }
+}
+
+impl Display for MissingPhpClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing PHP class: {}", self.php_class)
+    }
+}
+
+struct MissingJavaClass {
+    classname: String,
+}
+
+impl MissingJavaClass {
+    pub fn new(classname: String) -> Self {
+        Self { classname }
+    }
+
+    pub fn simple(classname: String) -> Self {
+        Self::new(classname)
+    }
+}
+
+impl Problem for MissingJavaClass {
+    fn kind(&self) -> Cow<str> {
+        "missing-java-class".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "classname": self.classname
+        })
+    }
+}
+
+impl Display for MissingJavaClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing Java class: {}", self.classname)
+    }
+}
+
+struct MissingSprocketsFile {
+    name: String,
+    content_type: String,
+}
+
+impl MissingSprocketsFile {
+    pub fn new(name: String, content_type: String) -> Self {
+        Self { name, content_type }
+    }
+}
+
+impl Problem for MissingSprocketsFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-sprockets-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "content_type": self.content_type
+        })
+    }
+}
+
+impl Display for MissingSprocketsFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "missing sprockets file: {} (type: {})",
+            self.name, self.content_type
+        )
+    }
+}
+
+struct MissingXfceDependency {
+    package: String,
+}
+
+impl MissingXfceDependency {
+    pub fn new(package: String) -> Self {
+        Self { package }
+    }
+}
+
+impl Problem for MissingXfceDependency {
+    fn kind(&self) -> Cow<str> {
+        "missing-xfce-dependency".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package
+        })
+    }
+}
+
+impl Display for MissingXfceDependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing XFCE build dependency: {}", self.package)
+    }
+}
+
+struct GnomeCommonMissing;
+
+impl Problem for GnomeCommonMissing {
+    fn kind(&self) -> Cow<str> {
+        "missing-gnome-common".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for GnomeCommonMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "gnome-common is not installed")
+    }
+}
+
+struct MissingConfigStatusInput {
+    path: String,
+}
+
+impl MissingConfigStatusInput {
+    pub fn new(path: String) -> Self {
+        Self { path }
+    }
+}
+
+impl Problem for MissingConfigStatusInput {
+    fn kind(&self) -> Cow<str> {
+        "missing-config.status-input".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.path
+        })
+    }
+}
+
+impl Display for MissingConfigStatusInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing config.status input {}", self.path)
+    }
+}
+
+struct MissingGnomeCommonDependency {
+    package: String,
+    minimum_version: Option<String>,
+}
+
+impl MissingGnomeCommonDependency {
+    pub fn new(package: String, minimum_version: Option<String>) -> Self {
+        Self {
+            package,
+            minimum_version,
+        }
+    }
+
+    pub fn simple(package: String) -> Self {
+        Self::new(package, None)
+    }
+}
+
+impl Problem for MissingGnomeCommonDependency {
+    fn kind(&self) -> Cow<str> {
+        "missing-gnome-common-dependency".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "minimum_version": self.minimum_version
+        })
+    }
+}
+
+impl Display for MissingGnomeCommonDependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "missing gnome-common dependency: {}: (>= {})",
+            self.package,
+            self.minimum_version.as_deref().unwrap_or("any")
+        )
+    }
+}
+
+struct MissingAutomakeInput {
+    path: String,
+}
+
+impl MissingAutomakeInput {
+    pub fn new(path: String) -> Self {
+        Self { path }
+    }
+}
+
+impl Problem for MissingAutomakeInput {
+    fn kind(&self) -> Cow<str> {
+        "missing-automake-input".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.path
+        })
+    }
+}
+
+impl Display for MissingAutomakeInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "automake input file {} missing", self.path)
+    }
+}
+
 const MAVEN_ERROR_PREFIX: &str = "(?:\\[ERROR\\]|\\[\x1b\\[1;31mERROR\x1b\\[m\\]) ";
 
 lazy_static::lazy_static! {
@@ -2415,6 +2765,146 @@ lazy_static::lazy_static! {
         |_| Ok(None)
     ),
 
+    regex_line_matcher!(
+        r#"dh([^:]*): Please use the third-party "pybuild" build system instead of python-distutils"#,
+        |_| Ok(None)
+    ),
+    // A Python error, but not likely to be actionable. The previous line will have the actual line that failed.
+    regex_line_matcher!(r"ImportError: cannot import name (.*)", |_| Ok(None)),
+    // Rust ?
+    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"Could not find gem \'([^ ]+) \(([^)]+)\)\', which is required by gem.*",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r"Could not find gem \'([^ \']+)\', which is required by gem.*",
+        |m| Ok(Some(Box::new(MissingRubyGem::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`to_specs\': Could not find \'(.*)\' \(([^)]+)\) among [0-9]+ total gem\(s\) \(Gem::MissingSpecError\)",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`to_specs\': Could not find \'(.*)\' \(([^)]+)\) - .* \(Gem::MissingSpecVersionError\)",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`block in verify_gemfile_dependencies_are_found\!\': Could not find gem \'(.*)\' in any of the gem sources listed in your Gemfile\. \(Bundler::GemNotFound\)",
+        |m| Ok(Some(Box::new(MissingRubyGem::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"Exception: (.*) not in path[!.]*",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"Exception: Building sdist requires that ([^ ]+) be installed\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`find_spec_for_exe\': can\'t find gem (.*) \(([^)]+)\) with executable (.*) \(Gem::GemNotFoundException\)",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r".?PHP Fatal error:  Uncaught Error: Class \'(.*)\' not found in (.*):([0-9]+)",
+        |m| Ok(Some(Box::new(MissingPhpClass::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"Caused by: java.lang.ClassNotFoundException: (.*)", |m| Ok(Some(Box::new(MissingJavaClass::simple(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"\[(.*)\] \t\t:: (.*)\#(.*);\$\{(.*)\}: not found",
+        |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![format!("{}:{}:jar:debian", m.get(2).unwrap().as_str(), m.get(3).unwrap().as_str())]))))
+    ),
+    regex_line_matcher!(
+        r"Caused by: java.lang.IllegalArgumentException: Cannot find JAR \'(.*)\' required by module \'(.*)\' using classpath or distribution directory \'(.*)\'",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r".*\.xml:[0-9]+: Unable to find a javac compiler;",
+        |m| Ok(Some(Box::new(MissingJavaClass::simple("com.sun.tools.javac.Main".to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"checking for (.*)\.\.\. configure: error: "Cannot check for existence of module (.*) without pkgconf""#,
+        |m| Ok(Some(Box::new(MissingCommand("pkgconf".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure: error: Could not find '(.*)' in path\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"autoreconf was not found; .*",
+        |m| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+    ),
+    regex_line_matcher!(r"g\+\+: error: (.*): No such file or directory", file_not_found),
+    regex_line_matcher!(r"strip: \'(.*)\': No such file", file_not_found),
+    regex_line_matcher!(
+        r"Sprockets::FileNotFound: couldn\'t find file \'(.*)\' with type \'(.*)\'",
+        |m| Ok(Some(Box::new(MissingSprocketsFile{ name: m.get(1).unwrap().as_str().to_string(), content_type: m.get(2).unwrap().as_str().to_string()})))
+    ),
+    regex_line_matcher!(
+        r#"xdt-autogen: You must have "(.*)" installed. You can get if from"#,
+        |m| Ok(Some(Box::new(MissingXfceDependency::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"autogen.sh: You must have GNU autoconf installed.",
+        |m| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\s*You must have (autoconf|automake|aclocal|libtool|libtoolize) installed to compile (.*)\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"It appears that Autotools is not correctly installed on this system.",
+        |m| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\*\*\* No autoreconf found \*\*\*",
+        |m| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+    ),
+    regex_line_matcher!(r"You need to install gnome-common module and make.*", |m| Ok(Some(Box::new(GnomeCommonMissing)))),
+    regex_line_matcher!(r"You need to install the gnome-common module and make.*", |m| Ok(Some(Box::new(GnomeCommonMissing)))),
+    regex_line_matcher!(
+        r"You need to install gnome-common from the GNOME (git|CVS|SVN)",
+        |m| Ok(Some(Box::new(GnomeCommonMissing)))
+    ),
+    regex_line_matcher!(
+        r"automake: error: cannot open < (.*): No such file or directory",
+        |m| Ok(Some(Box::new(MissingAutomakeInput::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure(|\.in|\.ac):[0-9]+: error: possibly undefined macro: (.*)",
+        |m| Ok(Some(Box::new(MissingAutoconfMacro::new(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure.(in|ac):[0-9]+: error: macro (.*) is not defined; is a m4 file missing\?",
+        |m| Ok(Some(Box::new(MissingAutoconfMacro::new(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"config.status: error: cannot find input file: `(.*)\'",
+        |m| Ok(Some(Box::new(MissingConfigStatusInput::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\*\*\*Error\*\*\*: You must have glib-gettext >= (.*) installed.*",
+        |m| Ok(Some(Box::new(MissingGnomeCommonDependency::new("glib-gettext".to_string(), Some(m.get(1).unwrap().as_str().to_string())))))
+    ),
+    regex_line_matcher!(
+        r"ERROR: JAVA_HOME is set to an invalid directory: /usr/lib/jvm/default-java/",
+        |m| Ok(Some(Box::new(MissingJVM)))
+    ),
+    regex_line_matcher!(
+        r#"Error: The file "MANIFEST" is missing from this distribution\. The MANIFEST lists all files included in the distribution\."#,
+        |_| Ok(Some(Box::new(MissingPerlManifest)))
+    ),
+    regex_line_matcher!(
+        r"dh_installdocs: --link-doc not allowed between (.*) and (.*) \(one is arch:all and the other not\)",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"dh: unable to load addon systemd: dh: The systemd-sequence is no longer provided in compat >= 11, please rely on dh_installsystemd instead",
+        |_| Ok(None)
+    ),
     ]);
 }
 
