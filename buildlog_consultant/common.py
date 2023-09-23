@@ -2990,7 +2990,7 @@ def find_build_failure_description(  # noqa: C901
     # And forwards for vague ("secondary") errors.
     match = find_secondary_build_failure(lines, OFFSET)
     if match:
-        return match, None
+        return cast(Match, match), None
 
     return None, None
 
