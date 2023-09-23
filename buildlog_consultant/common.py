@@ -567,11 +567,6 @@ class DhLinkDestinationIsDirectory(Problem, kind="dh-link-destination-is-directo
         return "Link destination %s is directory" % self.path
 
 
-def maven_missing_artifact(m):
-    artifacts = m.group(1).split(",")
-    return MissingMavenArtifacts([a.strip() for a in artifacts])
-
-
 class MissingXmlEntity(Problem, kind="missing-xml-entity"):
 
     url: str
@@ -792,9 +787,6 @@ class MissingValaPackage(Problem, kind="missing-vala-package"):
 
     def __str__(self) -> str:
         return "Missing Vala package: %s" % self.package
-
-
-MAVEN_ERROR_PREFIX = "(?:\\[ERROR\\]|\\[\x1b\\[1;31mERROR\x1b\\[m\\]) "
 
 
 class DirectoryNonExistant(Problem, kind="local-directory-not-existing"):
@@ -1423,86 +1415,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    # Maven
-    (
-        MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
-        "\x1b\\[1;31mCould not resolve dependencies for project .*: "
-        "The following artifacts could not be resolved: (.*): "
-        "Could not find artifact (.*) in (.*) \\((.*)\\)\x1b\\[m -> \x1b\\[1m\\[Help 1\\]\x1b\\[m",
-        maven_missing_artifact,
-    ),
-
-    (
-        MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
-        "\x1b\\[1;31mCould not resolve dependencies for project .*: "
-        "Could not find artifact (.*)\x1b\\[m .*",
-        maven_missing_artifact,
-    ),
-
-    (
-        MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
-        r"Could not resolve dependencies for project .*: "
-        r"The following artifacts could not be resolved: (.*): "
-        r"Cannot access central \(https://repo\.maven\.apache\.org/maven2\) "
-        r"in offline mode and the artifact .* has not been downloaded from "
-        r"it before..*",
-        maven_missing_artifact,
-    ),
-    (
-        MAVEN_ERROR_PREFIX + r"Unresolveable build extension: "
-        r"Plugin (.*) or one of its dependencies could not be resolved: "
-        r"Cannot access central \(https://repo.maven.apache.org/maven2\) "
-        r"in offline mode and the artifact .* has not been downloaded "
-        "from it before. @",
-        lambda m: MissingMavenArtifacts([m.group(1)])
-    ),
-    (
-        MAVEN_ERROR_PREFIX + r"Non-resolvable import POM: Cannot access central "
-        r"\(https://repo.maven.apache.org/maven2\) in offline mode and the "
-        r"artifact (.*) has not been downloaded from it before. "
-        r"@ line [0-9]+, column [0-9]+",
-        maven_missing_artifact,
-    ),
-    (
-        r"\[FATAL\] Non-resolvable parent POM for .*: Cannot access central "
-        r"\(https://repo.maven.apache.org/maven2\) in offline mode and the "
-        "artifact (.*) has not been downloaded from it before. .*",
-        maven_missing_artifact,
-    ),
-    (
-        MAVEN_ERROR_PREFIX + r"Plugin (.*) or one of its dependencies could "
-        r"not be resolved: Cannot access central "
-        r"\(https://repo.maven.apache.org/maven2\) in offline mode and the "
-        r"artifact .* has not been downloaded from it before. -> \[Help 1\]",
-        lambda m: MissingMavenArtifacts([m.group(1)])
-    ),
-    (
-        MAVEN_ERROR_PREFIX + r"Plugin (.+) or one of its dependencies could "
-        r"not be resolved: Failed to read artifact descriptor for "
-        r"(.*): (.*)",
-        lambda m: MissingMavenArtifacts([m.group(1)]),
-    ),
-    (
-        MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
-        r"Could not resolve dependencies for project .*: Cannot access "
-        r".* \([^\)]+\) in offline mode and the artifact "
-        r"(.*) has not been downloaded from it before. -> \[Help 1\]",
-        maven_missing_artifact,
-    ),
-    (
-        MAVEN_ERROR_PREFIX + r"Failed to execute goal on project .*: "
-        r"Could not resolve dependencies for project .*: Cannot access central "
-        r"\(https://repo.maven.apache.org/maven2\) in offline mode and the "
-        r"artifact (.*) has not been downloaded from it before..*",
-        maven_missing_artifact,
-    ),
-    (MAVEN_ERROR_PREFIX + "Failed to execute goal (.*) on project (.*): (.*)", None),
-    (
-        MAVEN_ERROR_PREFIX
-        + r"Error resolving version for plugin \'(.*)\' from the repositories "
-        r"\[.*\]: Plugin not found in any plugin repository -> \[Help 1\]",
-        lambda m: MissingMavenArtifacts([m.group(1)])
-    ),
     (
         r'E: eatmydata: unable to find \'(.*)\' in PATH',
         lambda m: MissingCommand(m.group(1)),
