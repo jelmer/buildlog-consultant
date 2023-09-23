@@ -96,7 +96,8 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
         else:
             self.assertIsNone(match)
         if err:
-            self.assertEqual(actual_err, err)
+            assert match
+            self.assertEqual(actual_err, err, "origin was: %r" % match.origin)
         else:
             self.assertIs(None, actual_err)
 
@@ -701,6 +702,7 @@ Call Stack (most recent call first):
         )
 
     def test_lazy_font(self):
+        self.maxDiff = None
         self.run_test(
             [
                 "[ERROR] LazyFont - Failed to read font file "
