@@ -21,7 +21,7 @@ import os
 import posixpath
 import re
 import textwrap
-from typing import Optional
+from typing import Optional, cast
 
 from . import (
     Match,
@@ -3158,7 +3158,7 @@ def find_secondary_build_failure(lines, offset):
 
 def find_build_failure_description(  # noqa: C901
     lines: list[str],
-) -> tuple[Optional[Match], Optional["Problem"]]:
+) -> tuple[Optional[Match], Optional[Problem]]:
     """Find the key failure line in build output.
 
     Returns:
@@ -3174,9 +3174,9 @@ def find_build_failure_description(  # noqa: C901
             break
         if "cmake" in lines[lineno]:
             cmake = True
-        m, err = _buildlog_consultant_rs.match_lines(lines, lineno)
-        if m:
-            return m, err
+        mm, merr = _buildlog_consultant_rs.match_lines(lines, lineno)
+        if mm:
+            return cast(Match, mm), cast(Problem, merr)
         for matcher in compiled_build_failure_regexps:
             linenos, err, origin = matcher.match(lines, lineno)
             if linenos:
@@ -3198,22 +3198,22 @@ def find_build_failure_description(  # noqa: C901
         # Urgh, multi-line regexes---
         for lineno in range(len(lines)):
             line = lines[lineno].rstrip("\n")
-            m = re.fullmatch(binary_pat, line)
-            if m:
+            rm = re.fullmatch(binary_pat, line)
+            if rm:
                 return (
                     SingleLineMatch.from_lines(
                         lines, lineno, origin=f"direct regex ({binary_pat}"),
-                    MissingCommand(m.group(1).lower()),
+                    MissingCommand(rm.group(1).lower()),
                 )
-            m = re.fullmatch(missing_file_pat, line)
-            if m:
+            rm = re.fullmatch(missing_file_pat, line)
+            if rm:
                 lineno += 1
                 while lineno < len(lines) and not line:
                     lineno += 1
                 if lines[lineno + 2].startswith("  but this file does not exist."):
-                    m = re.fullmatch(r'\s*"(.*)"', line)
-                    if m:
-                        filename = m.group(1)
+                    rm = re.fullmatch(r'\s*"(.*)"', line)
+                    if rm:
+                        filename = rm.group(1)
                     else:
                         filename = line
                     return (
@@ -3223,11 +3223,11 @@ def find_build_failure_description(  # noqa: C901
                     )
                 continue
             if lineno + 1 < len(lines):
-                m = re.fullmatch(
+                rm = re.fullmatch(
                     cmake_files_pat,
                     line + " " + lines[lineno + 1].lstrip(" ").strip("\n"),
                 )
-                if m and lines[lineno + 2] == "\n":
+                if rm and lines[lineno + 2] == "\n":
                     i = 3
                     filenames = []
                     while lines[lineno + i].strip():

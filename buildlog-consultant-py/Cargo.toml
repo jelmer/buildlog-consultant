@@ -14,3 +14,5 @@ crate-type = ["cdylib"]
 buildlog-consultant = { path = ".." }
 pyo3 = { workspace = true, features = ["extension-module"] }
 serde_json = { workspace = true }
+pyo3-file = "0.7.0"
+pyo3-log = "0.8.3"

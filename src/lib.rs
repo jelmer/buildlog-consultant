@@ -245,6 +245,7 @@ pub fn find_build_failure_description(
 mod test {
     #[test]
     fn test_simple() {
+        pyo3::prepare_freethreaded_python();
         let (m, p) = super::find_build_failure_description(&[
             "make[1]: *** No rule to make target 'nno.autopgen.bin', needed by 'dan-nno.autopgen.bin'.  Stop."]);
         assert!(m.is_some());
@@ -255,3 +256,5 @@ mod test {
 pub mod common;
 
 pub mod r#match;
+
+pub mod sbuild;

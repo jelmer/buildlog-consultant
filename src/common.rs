@@ -1776,7 +1776,7 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(
         r"configure: error: OpenSSL developer library 'libssl-dev' or 'openssl-devel' not installed; cannot continue.",
-        |m| Ok(Some(Box::new(MissingLibrary("ssl".to_string()))))),
+        |_m| Ok(Some(Box::new(MissingLibrary("ssl".to_string()))))),
     regex_line_matcher!(
         r"configure: error: \*\*\* Cannot find (.*)",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
@@ -1866,8 +1866,8 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(r"\{standard input\}: Error: (.*)"),
     regex_line_matcher!(r"dh: Unknown sequence (.*) \(choose from: .*\)"),
-    regex_line_matcher!(r".*: .*: No space left on device", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
-    regex_line_matcher!(r"^No space left on device.", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(r".*: .*: No space left on device", |_m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(r"^No space left on device.", |_m| Ok(Some(Box::new(NoSpaceOnDevice)))),
     regex_line_matcher!(
         r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC contains: (.*)\) at .* line [0-9]+\.",
         |m| {

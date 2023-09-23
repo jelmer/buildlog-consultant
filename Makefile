@@ -10,6 +10,11 @@ check:: testsuite
 testsuite: build-inplace
 	$(PYTHON) -m unittest tests.test_suite
 
+check:: cargo-test
+
+cargo-test:
+	cargo test
+
 check:: style
 
 style:
