@@ -3,10 +3,12 @@
 //! This module provides a parser for Debian sbuild logs. It extracts the different sections of the
 //! log file, and makes them accessible.
 
+use debversion::Version;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::iter::Iterator;
 use std::str::FromStr;
+use std::time::Duration;
 
 pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
     for line in lines {
@@ -15,6 +17,98 @@ pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
         }
     }
     None
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Summary {
+    build_architecture: Option<String>,
+    build_type: Option<String>,
+    build_time: Option<Duration>,
+    build_space: Option<u64>,
+    host_architecture: Option<String>,
+    install_time: Option<Duration>,
+    lintian: Option<String>,
+    package: Option<String>,
+    package_time: Option<Duration>,
+    distribution: Option<String>,
+    fail_stage: Option<String>,
+    job: Option<String>,
+    autopkgtest: Option<String>,
+    source_version: Option<Version>,
+    machine_architecture: Option<String>,
+    status: Option<String>,
+    space: Option<u64>,
+}
+
+pub fn parse_summary(lines: &[&str]) -> Summary {
+    let mut build_architecture = None;
+    let mut build_type = None;
+    let mut build_time = None;
+    let mut build_space = None;
+    let mut host_architecture = None;
+    let mut install_time = None;
+    let mut lintian = None;
+    let mut package = None;
+    let mut distribution = None;
+    let mut job = None;
+    let mut autopkgtest = None;
+    let mut status = None;
+    let mut package_time = None;
+    let mut source_version = None;
+    let mut machine_architecture = None;
+    let mut fail_stage = None;
+    let mut space = None;
+    for line in lines {
+        if line.trim() == "" {
+            continue;
+        }
+        if let Some((key, value)) = line.trim_end().split_once(": ") {
+            let value = value.trim();
+            match key {
+                "Fail-Stage" => fail_stage = Some(value.to_string()),
+                "Build Architecture" => build_architecture = Some(value.to_string()),
+                "Build Type" => build_type = Some(value.to_string()),
+                "Build-Time" => build_time = Some(Duration::from_secs(value.parse().unwrap())),
+                "Build-Space" => build_space = Some(value.parse().unwrap()),
+                "Host Architecture" => host_architecture = Some(value.to_string()),
+                "Install-Time" => install_time = Some(Duration::from_secs(value.parse().unwrap())),
+                "Lintian" => lintian = Some(value.to_string()),
+                "Package" => package = Some(value.to_string()),
+                "Package-Time" => package_time = Some(Duration::from_secs(value.parse().unwrap())),
+                "Source-Version" => source_version = Some(value.parse().unwrap()),
+                "Job" => job = Some(value.parse().unwrap()),
+                "Machine Architecture" => machine_architecture = Some(value.to_string()),
+                "Distribution" => distribution = Some(value.to_string()),
+                "Autopkgtest" => autopkgtest = Some(value.to_string()),
+                "Status" => status = Some(value.to_string()),
+                "Space" => space = Some(value.parse().unwrap()),
+                n => {
+                    log::warn!("Unknown key in summary: {}", n);
+                }
+            }
+        } else {
+            log::warn!("Unknown line in summary: {}", line);
+        }
+    }
+    Summary {
+        build_architecture,
+        build_type,
+        build_time,
+        build_space,
+        host_architecture,
+        install_time,
+        lintian,
+        package,
+        package_time,
+        distribution,
+        fail_stage,
+        job,
+        autopkgtest,
+        source_version,
+        machine_architecture,
+        status,
+        space,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -39,9 +133,8 @@ impl SbuildLog {
 
     /// Get the failed stage, if it is provided
     pub fn get_failed_stage(&self) -> Option<String> {
-        let lines = self.get_section_lines(Some("summary"));
-        if let Some(lines) = lines {
-            find_failed_stage(lines.as_slice()).map(|s| s.to_string())
+        if let Some(summary) = self.summary() {
+            summary.fail_stage
         } else {
             None
         }
@@ -50,6 +143,11 @@ impl SbuildLog {
     /// Iterate ove the sections
     pub fn sections(&self) -> impl Iterator<Item = &SbuildLogSection> {
         self.0.iter()
+    }
+
+    pub fn summary(&self) -> Option<Summary> {
+        let lines = self.get_section_lines(Some("Summary"));
+        lines.map(|lines| parse_summary(lines.as_slice()))
     }
 }
 
@@ -265,5 +363,30 @@ Build needed 00:01:12, 41428k disk space
             ]
         );
         assert_eq!(sbuild_log.get_failed_stage(), None);
+        assert_eq!(
+            sbuild_log.summary().unwrap(),
+            Summary {
+                fail_stage: None,
+                autopkgtest: Some("pass".to_string()),
+                build_architecture: Some("amd64".to_string()),
+                build_type: Some("binary".to_string()),
+                build_space: Some(41428),
+                build_time: Some(Duration::from_secs(3)),
+                distribution: Some("unstable".to_string()),
+                host_architecture: Some("amd64".to_string()),
+                install_time: Some(Duration::from_secs(4)),
+                job: Some(
+                    "/home/jelmer/src/debcargo-conf/build/rust-always-assert_0.1.3-1.dsc"
+                        .to_string()
+                ),
+                lintian: Some("warn".to_string()),
+                machine_architecture: Some("amd64".to_string()),
+                package: Some("rust-always-assert".to_string()),
+                package_time: Some(Duration::from_secs(72)),
+                source_version: Some("0.1.3-1".parse().unwrap()),
+                space: Some(41428),
+                status: Some("successful".to_string()),
+            }
+        );
     }
 }

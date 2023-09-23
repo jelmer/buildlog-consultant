@@ -1016,8 +1016,6 @@ def main(argv=None):
     with open(args.path, "rb") as f:
         sbuildlog = SbuildLog.parse(f)
 
-        import pdb; pdb.set_trace()
-
         failed_stage = sbuildlog.get_failed_stage()
         if failed_stage:
             logging.info("Failed stage: %s" % failed_stage)

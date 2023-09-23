@@ -25,3 +25,5 @@ serde = { version = "1", features = ["derive"] }
 shlex = "1"
 log = "0.4.20"
 text-size = "1.1.1"
+debversion = "0.2.1"
+chrono = "0.4.31"
