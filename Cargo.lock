@@ -73,6 +73,7 @@ dependencies = [
  "debversion",
  "fancy-regex",
  "inventory",
+ "lazy-regex",
  "lazy_static",
  "log",
  "pyo3",
