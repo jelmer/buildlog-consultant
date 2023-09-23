@@ -33,7 +33,7 @@ impl Match {
         format!(
             "Match({:?}, {}, {})",
             self.0.line(),
-            self.0.lineno(),
+            self.0.offset(),
             self.0.lineno()
         )
     }
@@ -197,6 +197,13 @@ fn parse_sbuild_log(lines: Vec<Vec<u8>>) -> PyResult<Vec<SbuildLogSection>> {
     Ok(ret)
 }
 
+#[pyfunction]
+fn find_secondary_build_failure(lines: Vec<String>, offset: usize) -> Option<Match> {
+    let lines = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    buildlog_consultant::common::find_secondary_build_failure(lines.as_slice(), offset)
+        .map(|m| Match(Box::new(m)))
+}
+
 #[pymodule]
 fn _buildlog_consultant_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
@@ -206,5 +213,6 @@ fn _buildlog_consultant_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<SbuildLog>()?;
     m.add_function(wrap_pyfunction!(match_lines, m)?)?;
     m.add_function(wrap_pyfunction!(parse_sbuild_log, m)?)?;
+    m.add_function(wrap_pyfunction!(find_secondary_build_failure, m)?)?;
     Ok(())
 }
