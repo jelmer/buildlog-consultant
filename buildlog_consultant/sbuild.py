@@ -18,7 +18,6 @@
 
 import logging
 import re
-from dataclasses import dataclass
 from typing import BinaryIO, Optional, Union
 
 from . import (
@@ -42,6 +41,7 @@ from .common import (
 from ._buildlog_consultant_rs import (
     parse_sbuild_log,
     SbuildLogSection,
+    SbuildLog,
 )
 
 __all__ = [
@@ -650,42 +650,6 @@ def find_brz_build_error(lines):
     return (None, None)
 
 
-@dataclass
-class SbuildLog:
-
-    sections: list[SbuildLogSection]
-
-    def get_section(self, title):
-        for section in self.sections:
-            if section.title is None and title is None:
-                return section
-            if section.title and title and section.title.lower() == title.lower():
-                return section
-
-    def get_section_lines(self, title):
-        section = self.get_section(title)
-        if section:
-            return section.lines
-        return []
-
-    def section_titles(self):
-        return [section.title for section in self.sections]
-
-    @classmethod
-    def parse(cls, f: BinaryIO):
-        sections = []
-        for section in parse_sbuild_log(list(f)):
-            logging.debug(
-                "Section %s (lines %d-%d)"
-                % (section.title, section.offsets[0], section.offsets[1])
-            )
-            sections.append(section)
-        return cls(sections)
-
-    def get_failed_stage(self) -> Optional[str]:
-        return find_failed_stage(self.get_section_lines("summary"))
-
-
 def find_failure_fetch_src(sbuildlog, failed_stage):
     section = sbuildlog.get_section("fetch source files")
     if not section:
@@ -940,15 +904,6 @@ def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailu
     )
 
 
-def find_failed_stage(lines: list[str]) -> Optional[str]:
-    for line in lines:
-        if not line.startswith("Fail-Stage: "):
-            continue
-        (key, value) = line.split(": ", 1)
-        return value.strip()
-    return None
-
-
 DEFAULT_LOOK_BACK = 50
 
 
@@ -1060,6 +1015,8 @@ def main(argv=None):
 
     with open(args.path, "rb") as f:
         sbuildlog = SbuildLog.parse(f)
+
+        import pdb; pdb.set_trace()
 
         failed_stage = sbuildlog.get_failed_stage()
         if failed_stage:

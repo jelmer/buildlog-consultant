@@ -2,6 +2,7 @@ use pyo3::exceptions::PyNotImplementedError;
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 use std::collections::HashMap;
+use std::io::BufReader;
 
 #[pyclass]
 struct Match(Box<dyn buildlog_consultant::Match>);
@@ -137,6 +138,53 @@ impl SbuildLogSection {
     }
 }
 
+#[pyclass]
+struct SbuildLog(buildlog_consultant::sbuild::SbuildLog);
+
+#[pymethods]
+impl SbuildLog {
+    fn get_failed_stage(&self) -> Option<String> {
+        self.0.get_failed_stage().map(|s| s.to_string())
+    }
+
+    fn get_section_lines(&self, section: Option<&str>) -> Option<Vec<String>> {
+        self.0
+            .get_section_lines(section)
+            .map(|v| v.into_iter().map(|s| s.to_string()).collect())
+    }
+
+    #[getter]
+    fn sections(&self) -> Vec<SbuildLogSection> {
+        self.0
+            .sections()
+            .map(|s| SbuildLogSection(s.clone()))
+            .collect()
+    }
+
+    fn section_titles(&self) -> Vec<String> {
+        self.0
+            .section_titles()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect()
+    }
+
+    fn get_section(&self, section: Option<&str>) -> Option<SbuildLogSection> {
+        self.0
+            .get_section(section)
+            .map(|s| SbuildLogSection(s.clone()))
+    }
+
+    #[staticmethod]
+    fn parse(f: PyObject) -> PyResult<SbuildLog> {
+        let f = pyo3_file::PyFileLikeObject::with_requirements(f, true, false, false)?;
+        let bufread = BufReader::new(f);
+        Ok(SbuildLog(buildlog_consultant::sbuild::SbuildLog(
+            buildlog_consultant::sbuild::parse_sbuild_log(bufread).collect(),
+        )))
+    }
+}
+
 #[pyfunction]
 fn parse_sbuild_log(lines: Vec<Vec<u8>>) -> PyResult<Vec<SbuildLogSection>> {
     let text = lines.concat();
@@ -151,9 +199,11 @@ fn parse_sbuild_log(lines: Vec<Vec<u8>>) -> PyResult<Vec<SbuildLogSection>> {
 
 #[pymodule]
 fn _buildlog_consultant_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+    pyo3_log::init();
     m.add_class::<Match>()?;
     m.add_class::<Problem>()?;
     m.add_class::<SbuildLogSection>()?;
+    m.add_class::<SbuildLog>()?;
     m.add_function(wrap_pyfunction!(match_lines, m)?)?;
     m.add_function(wrap_pyfunction!(parse_sbuild_log, m)?)?;
     Ok(())
