@@ -1,4 +1,4 @@
-from typing import Iterator, BinaryIO
+from typing import Iterator, BinaryIO, Any
 
 class  SbuildLog:
 
@@ -23,3 +23,23 @@ class SbuildLogSection:
 
 
 def parse_sbuild_log(lines: list[bytes]) -> Iterator[SbuildLogSection]: ...
+
+class Match:
+
+    line: str
+
+    offset: int
+
+    origin: str
+
+    lineno: int
+
+
+class Problem:
+
+    kind: str
+
+    def json(self) -> Any: ...
+
+
+def match_lines(lines: list[str], lineno: int) -> tuple[Match | None, Problem | None]: ...
