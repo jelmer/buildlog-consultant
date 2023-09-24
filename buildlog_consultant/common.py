@@ -869,24 +869,6 @@ class MissingSetupPyCommand(Problem, kind="missing-setup.py-command"):
         return "missing setup.py subcommand: %s" % self.command
 
 
-class SetupPyCommandMissingMatcher(Matcher):
-
-    final_line_re = re.compile(r"error: invalid command \'(.*)\'")
-    warning_match = re.compile(
-        r"usage: setup.py \[global_opts\] cmd1 "
-        r"\[cmd1_opts\] \[cmd2 \[cmd2_opts\] \.\.\.\]"
-    )
-
-    def match(self, lines, i):
-        m = self.final_line_re.fullmatch(lines[i].rstrip("\n"))
-        if not m:
-            return [], None, None
-        for j in range(i, max(0, i - 20), -1):
-            if self.warning_match.fullmatch(lines[j].rstrip("\n")):
-                return [i], MissingSetupPyCommand(m.group(1)), f"direct regex ({self.final_line_re.pattern})"
-        return [], None, None
-
-
 class PythonFileNotFoundErrorMatcher(Matcher):
 
     final_line_re = re.compile(
@@ -1384,7 +1366,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    SetupPyCommandMissingMatcher(),
     CMakeErrorMatcher(),
     (
         r"error: failed to select a version for the requirement `(.*)`",
