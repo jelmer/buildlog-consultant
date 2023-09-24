@@ -869,24 +869,6 @@ class MissingSetupPyCommand(Problem, kind="missing-setup.py-command"):
         return "missing setup.py subcommand: %s" % self.command
 
 
-class SetupPyCommandMissingMatcher(Matcher):
-
-    final_line_re = re.compile(r"error: invalid command \'(.*)\'")
-    warning_match = re.compile(
-        r"usage: setup.py \[global_opts\] cmd1 "
-        r"\[cmd1_opts\] \[cmd2 \[cmd2_opts\] \.\.\.\]"
-    )
-
-    def match(self, lines, i):
-        m = self.final_line_re.fullmatch(lines[i].rstrip("\n"))
-        if not m:
-            return [], None, None
-        for j in range(i, max(0, i - 20), -1):
-            if self.warning_match.fullmatch(lines[j].rstrip("\n")):
-                return [i], MissingSetupPyCommand(m.group(1)), f"direct regex ({self.final_line_re.pattern})"
-        return [], None, None
-
-
 class PythonFileNotFoundErrorMatcher(Matcher):
 
     final_line_re = re.compile(
@@ -901,24 +883,6 @@ class PythonFileNotFoundErrorMatcher(Matcher):
         if i - 2 >= 0 and "subprocess" in lines[i - 2]:
             return [i], MissingCommand(m.group(1)), f"direct regex ({self.final_line_re.pattern})"
         return [i], file_not_found_maybe_executable(m), None
-
-
-class HaskellMissingDependencyMatcher(Matcher):
-
-    regexp = re.compile(r"(.*): Encountered missing or private dependencies:")
-
-    def match(self, lines, i):
-        m = self.regexp.fullmatch(lines[i].rstrip("\n"))
-        if not m:
-            return [], None, None
-        deps = []
-        linenos = [i]
-        for line in lines[i + 1 :]:
-            if not line.strip("\n"):
-                break
-            deps.extend([x.strip() for x in line.split(",", 1)])
-            linenos.append(linenos[-1] + 1)
-        return linenos, MissingHaskellDependencies([dep for dep in deps if dep]), f"direct regex ({self.regexp.pattern})"
 
 
 def cmake_compiler_failure(m):
@@ -1402,8 +1366,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    HaskellMissingDependencyMatcher(),
-    SetupPyCommandMissingMatcher(),
     CMakeErrorMatcher(),
     (
         r"error: failed to select a version for the requirement `(.*)`",
