@@ -5,6 +5,7 @@ use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
 use crate::{Match, Problem};
 use crate::{MultiLineMatch, Origin, SingleLineMatch};
+use lazy_regex::regex_is_match;
 use pyo3::prelude::*;
 use regex::Captures;
 use regex::Regex;
@@ -928,6 +929,64 @@ impl Matcher for MultiLineConfigureErrorMatcher {
         );
 
         Ok(Some((Box::new(m), None)))
+    }
+}
+
+struct MissingHaskellDependencies(Vec<String>);
+
+impl Problem for MissingHaskellDependencies {
+    fn kind(&self) -> Cow<str> {
+        "missing-haskell-dependencies".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "deps": self.0,
+        })
+    }
+}
+
+impl Display for MissingHaskellDependencies {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Haskell dependencies: {:?}", self.0)
+    }
+}
+
+struct HaskellMissingDependencyMatcher;
+
+impl Matcher for HaskellMissingDependencyMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        if !regex_is_match!(
+            r"(.*): Encountered missing or private dependencies:",
+            lines[offset].trim_end_matches('\n')
+        ) {
+            return Ok(None);
+        }
+
+        let mut deps = vec![];
+        let mut offsets = vec![offset];
+
+        for (i, line) in lines[offset + 1..].iter().enumerate() {
+            let offset = offset + 1 + i;
+            if line.trim().is_empty() {
+                break;
+            }
+            if let Some((dep, _)) = line.trim().split_once(',') {
+                deps.push(dep.to_string());
+            }
+            offsets.push(offset);
+        }
+        let m = MultiLineMatch {
+            origin: Origin("haskell dependencies".into()),
+            offsets: offsets.clone(),
+            lines: offsets.iter().map(|i| lines[*i].to_string()).collect(),
+        };
+        let p = MissingHaskellDependencies(deps);
+        Ok(Some((Box::new(m), Some(Box::new(p)))))
     }
 }
 
@@ -3722,6 +3781,7 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingHaskellModule::new(m.get(1).unwrap().as_str().to_string()))))
     ),
     regex_line_matcher!(r"E: session: (.*): Chroot not found", |m| Ok(Some(Box::new(ChrootNotFound::new(m.get(1).unwrap().as_str().to_string()))))),
+    Box::new(HaskellMissingDependencyMatcher),
     ]);
 }
 

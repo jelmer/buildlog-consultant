@@ -903,24 +903,6 @@ class PythonFileNotFoundErrorMatcher(Matcher):
         return [i], file_not_found_maybe_executable(m), None
 
 
-class HaskellMissingDependencyMatcher(Matcher):
-
-    regexp = re.compile(r"(.*): Encountered missing or private dependencies:")
-
-    def match(self, lines, i):
-        m = self.regexp.fullmatch(lines[i].rstrip("\n"))
-        if not m:
-            return [], None, None
-        deps = []
-        linenos = [i]
-        for line in lines[i + 1 :]:
-            if not line.strip("\n"):
-                break
-            deps.extend([x.strip() for x in line.split(",", 1)])
-            linenos.append(linenos[-1] + 1)
-        return linenos, MissingHaskellDependencies([dep for dep in deps if dep]), f"direct regex ({self.regexp.pattern})"
-
-
 def cmake_compiler_failure(m):
     compiler_output = textwrap.dedent(m.group(3))
     match, error = find_build_failure_description(compiler_output.splitlines(True))
@@ -1402,7 +1384,6 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 build_failure_regexps = [
-    HaskellMissingDependencyMatcher(),
     SetupPyCommandMissingMatcher(),
     CMakeErrorMatcher(),
     (
