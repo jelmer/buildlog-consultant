@@ -372,8 +372,8 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         return (
                             SingleLineMatch.from_lines(
                                 lines,
-                                test_output_offset[current_field],
-                                origin="direct regex",  # type: ignore
+                                test_output_offset[current_field],  # type: ignore
+                                origin="direct regex",
                             ),
                             last_test,
                             AutopkgtestTimedOut(),

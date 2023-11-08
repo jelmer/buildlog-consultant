@@ -34,7 +34,7 @@ def chatgpt_analyze(lines):
         + truncated
     )
 
-    response = openai.Completion.create(
+    response = openai.Completion.create(  # type: ignore
         model="text-davinci-003", temperature=0, max_tokens=256, prompt=prompt
     )
 
