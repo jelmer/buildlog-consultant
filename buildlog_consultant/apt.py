@@ -20,6 +20,7 @@ import re
 from typing import Optional, TypedDict
 
 import yaml
+
 from debian.changelog import Version
 from debian.deb822 import PkgRelation
 
