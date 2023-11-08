@@ -26,6 +26,11 @@ from . import (
     SingleLineMatch,
     version_string,
 )
+from ._buildlog_consultant_rs import (
+    SbuildLog,
+    SbuildLogSection,
+    parse_sbuild_log,
+)
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
@@ -37,11 +42,6 @@ from .common import (
     NoSpaceOnDevice,
     PatchApplicationFailed,
     find_build_failure_description,
-)
-from ._buildlog_consultant_rs import (
-    parse_sbuild_log,
-    SbuildLogSection,
-    SbuildLog,
 )
 
 __all__ = [
@@ -167,8 +167,7 @@ class SourceFormatUnbuildable(Problem, kind="source-format-unbuildable"):
     reason: str
 
     def __str__(self) -> str:
-        return "Source format {} unusable: {}".format(
-            self.source_format, self.reason)
+        return f"Source format {self.source_format} unusable: {self.reason}"
 
 
 class SourceFormatUnsupported(Problem, kind="unsupported-source-format"):

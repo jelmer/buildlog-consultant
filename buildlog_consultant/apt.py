@@ -274,10 +274,7 @@ class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
         return cls(relations=relations)
 
     def __repr__(self) -> str:
-        return "{}.from_str({!r})".format(
-            type(self).__name__,
-            PkgRelation.str(self.relations),  # type: ignore
-        )
+        return "{type(self).__name__}.from_str({PkgRelation.str(self.relations)!r})"  # type: ignore
 
 
 class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):

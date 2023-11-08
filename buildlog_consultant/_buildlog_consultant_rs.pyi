@@ -1,4 +1,4 @@
-from typing import Iterator, BinaryIO, Any
+from typing import BinaryIO, Iterator
 
 class  SbuildLog:
 
@@ -39,7 +39,7 @@ class Problem:
 
     kind: str
 
-    def json(self) -> Any: ...
+    def json(self): ...
 
 
 def match_lines(lines: list[str], lineno: int) -> tuple[Match | None, Problem | None]: ...

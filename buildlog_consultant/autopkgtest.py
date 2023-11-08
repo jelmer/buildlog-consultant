@@ -446,8 +446,8 @@ def find_autopkgtest_failure_description(  # noqa: C901
                     error = AutopkgtestStderrFailure(output)
                     if description is None:
                         description = (
-                            "Test {} failed due to "
-                            "unauthorized stderr output: {}".format(testname, error.stderr_line)
+                            f"Test {testname} failed due to "
+                            f"unauthorized stderr output: {error.stderr_line}"
                         )
                 return (
                     SingleLineMatch.from_lines(lines, offset, origin="direct regex"),

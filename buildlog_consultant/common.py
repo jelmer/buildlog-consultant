@@ -27,9 +27,9 @@ from . import (
     MultiLineMatch,
     Problem,
     SingleLineMatch,
+    _buildlog_consultant_rs,  # type: ignore
     version_string,
 )
-from . import _buildlog_consultant_rs  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -393,10 +393,7 @@ class MissingPkgConfig(Problem, kind="missing-pkg-config-package"):
 
     def __str__(self) -> str:
         if self.minimum_version:
-            return "Missing pkg-config file: {} (>= {})".format(
-                self.module,
-                self.minimum_version,
-            )
+            return f"Missing pkg-config file: {self.module} (>= {self.minimum_version})"
         else:
             return "Missing pkg-config file: %s" % self.module
 
@@ -508,10 +505,7 @@ class MissingPerlModule(Problem, kind="missing-perl-module"):
 
     def __str__(self) -> str:
         if self.filename:
-            return "Missing Perl module: {} (filename: {!r})".format(
-                self.module,
-                self.filename,
-            )
+            return f"Missing Perl module: {self.module} (filename: {self.filename!r})"
         else:
             return "Missing Perl Module: %s" % self.module
 
@@ -596,8 +590,7 @@ class MissingGoSumEntry(Problem, kind="missing-go.sum-entry"):
     version: str
 
     def __str__(self) -> str:
-        return "Missing go.sum entry: {}@{}".format(
-            self.package, self.version)
+        return f"Missing go.sum entry: {self.package}@{self.version}"
 
 
 class MissingLibrary(Problem, kind="missing-library"):
@@ -660,10 +653,7 @@ class MissingRPackage(Problem, kind="missing-r-package"):
 
     def __str__(self) -> str:
         if self.minimum_version:
-            return "missing R package: {} (>= {})".format(
-                self.package,
-                self.minimum_version,
-            )
+            return f"missing R package: {self.package} (>= {self.minimum_version})"
         else:
             return "missing R package: %s" % self.package
 
@@ -1318,8 +1308,7 @@ class MismatchGettextVersions(Problem, kind="mismatch-gettext-versions"):
     autoconf_version: str
 
     def __str__(self) -> str:
-        return "Mismatch versions ({}, {})".format(
-            self.makefile_version, self.autoconf_version)
+        return f"Mismatch versions ({self.makefile_version}, {self.autoconf_version})"
 
 
 class DisappearedSymbols(Problem, kind="disappeared-symbols"):
