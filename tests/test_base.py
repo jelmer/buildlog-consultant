@@ -20,21 +20,19 @@ import unittest
 from buildlog_consultant import Problem, problem_clses
 
 
-class DummyProblem(Problem, kind='dummy-problem'):
-
+class DummyProblem(Problem, kind="dummy-problem"):
     param: str
 
 
 class TestJson(unittest.TestCase):
-
     def test_json(self):
         self.assertEqual(DummyProblem(param="para").json(), {"param": "para"})
-        ret = DummyProblem.from_json({"param": 'parameter'})
+        ret = DummyProblem.from_json({"param": "parameter"})
         self.assertEqual(ret.kind, "dummy-problem")
         self.assertEqual(ret.param, "parameter")
 
     def test_from_json(self):
-        ret = problem_clses['dummy-problem'].from_json({'param': 'para'})
+        ret = problem_clses["dummy-problem"].from_json({"param": "para"})
         self.assertIsInstance(ret, DummyProblem)
         self.assertEqual(ret.kind, "dummy-problem")
         self.assertEqual(ret.param, "para")

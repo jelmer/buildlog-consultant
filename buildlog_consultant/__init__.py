@@ -19,14 +19,13 @@
 from typing import Optional
 
 __version__ = (0, 0, 35)
-version_string = '.'.join(map(str, __version__))
+version_string = ".".join(map(str, __version__))
 
 
 problem_clses: dict[str, type["Problem"]] = {}
 
 
 class Problem:
-
     kind: str
     is_global: bool = False
 
@@ -35,20 +34,23 @@ class Problem:
         cls.kind = kind
         cls.is_global = is_global
         if kind in problem_clses:
-            raise AssertionError('class {!r} already registered for kind {} (not {!r})'.format(
-                problem_clses[kind], kind, cls))
+            raise AssertionError(
+                "class {!r} already registered for kind {} (not {!r})".format(
+                    problem_clses[kind], kind, cls
+                )
+            )
         problem_clses[kind] = cls
 
     def __init__(self, *args, **kwargs) -> None:
-        for name, arg in list(zip(
-                list(type(self).__annotations__.keys()),
-                list(args))) + list(kwargs.items()):
+        for name, arg in list(
+            zip(list(type(self).__annotations__.keys()), list(args))
+        ) + list(kwargs.items()):
             setattr(self, name, arg)
 
     def json(self):
         ret = {}
         for key in type(self).__annotations__.keys():
-            if key not in ('kind', 'is_global'):
+            if key not in ("kind", "is_global"):
                 ret[key] = getattr(self, key)
         return ret
 
@@ -66,7 +68,6 @@ class Problem:
 
 
 class Match:
-
     origin: Optional[str]
     line: str
     lines: list[str]
@@ -77,7 +78,6 @@ class Match:
 
 
 class SingleLineMatch(Match):
-
     offset: int
     line: str
 
@@ -118,11 +118,12 @@ class SingleLineMatch(Match):
 
 
 class MultiLineMatch(Match):
-
     offsets: list[int]
     lines: list[str]
 
-    def __init__(self, offsets: list[int], lines: list[str], *, origin: Optional[str] = None) -> None:
+    def __init__(
+        self, offsets: list[int], lines: list[str], *, origin: Optional[str] = None
+    ) -> None:
         self.offsets = offsets
         self.lines = lines
         self.origin = origin

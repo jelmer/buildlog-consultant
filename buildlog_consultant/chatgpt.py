@@ -24,41 +24,41 @@ from . import SingleLineMatch
 
 
 def chatgpt_analyze(lines):
-    truncated = ''.join(lines)[-4000:]
+    truncated = "".join(lines)[-4000:]
 
     openai_logger = logging.getLogger("openai")
     openai_logger.setLevel(logging.WARNING)
 
     prompt = (
         "Which line in the log file below is the clearest explanation of a problem:\n\n"
-        + truncated)
+        + truncated
+    )
 
     response = openai.Completion.create(
-        model="text-davinci-003",
-        temperature=0,
-        max_tokens=256,
-        prompt=prompt)
+        model="text-davinci-003", temperature=0, max_tokens=256, prompt=prompt
+    )
 
-    text = response["choices"][0]["text"].lstrip('\n').split('\n')[0]
+    text = response["choices"][0]["text"].lstrip("\n").split("\n")[0]
     for i, line in enumerate(lines):
         if line.startswith(text):
             return SingleLineMatch.from_lines(lines, i, origin="chatgpt")
-    logging.debug('Unable to find chatgpt answer in lines: %r', text)
+    logging.debug("Unable to find chatgpt answer in lines: %r", text)
     return None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--debug', action='store_true')
-    parser.add_argument('path', type=str)
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("path", type=str)
     args = parser.parse_args()
 
     logging.basicConfig(
-        format='%(message)s',
-        level=(logging.INFO if not args.debug else logging.DEBUG))
+        format="%(message)s", level=(logging.INFO if not args.debug else logging.DEBUG)
+    )
 
-    with open(args.path, encoding='utf-8') as f:
+    with open(args.path, encoding="utf-8") as f:
         match = chatgpt_analyze(f.readlines())
         if match:
-            logging.info('match: %s', match)
+            logging.info("match: %s", match)
