@@ -108,7 +108,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
                 "needed by 'dan-nno.autopgen.bin'.  Stop."
             ],
             1,
-            MissingBuildFile('nno.autopgen.bin'),
+            MissingBuildFile("nno.autopgen.bin"),
         )
         self.run_test(
             [
@@ -152,7 +152,10 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             [
                 "Error: processing vignette 'uroot-intro.Rnw' failed with diagnostics:",
                 "pdflatex is not available",
-            ], 2, MissingVagueDependency("pdflatex"))
+            ],
+            2,
+            MissingVagueDependency("pdflatex"),
+        )
 
     def test_upstart_file_present(self):
         self.run_test(
@@ -170,7 +173,10 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             [
                 "go: go.mod file not found in current directory or any "
                 "parent directory; see 'go help modules'"
-            ], 1, MissingGoModFile())
+            ],
+            1,
+            MissingGoModFile(),
+        )
 
     def test_missing_javascript_runtime(self):
         self.run_test(
@@ -195,9 +201,8 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
 
     def test_vcs_control_directory(self):
         self.run_test(
-            ["   > Cannot find '.git' directory"],
-            1,
-            VcsControlDirectoryNeeded(['git']))
+            ["   > Cannot find '.git' directory"], 1, VcsControlDirectoryNeeded(["git"])
+        )
 
     def test_missing_sprockets_file(self):
         self.run_test(
@@ -223,7 +228,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
         self.run_test(
             ["/<<PKGBUILDDIR>>/build.xml:59: " "/<<PKGBUILDDIR>>/lib does not exist."],
             1,
-            MissingBuildFile('lib')
+            MissingBuildFile("lib"),
         )
 
     def test_vignette_builder(self):
@@ -296,7 +301,7 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
                 "[Errno 2] No such file or directory"
             ],
             1,
-            MissingBuildFile('setup.py')
+            MissingBuildFile("setup.py"),
         )
         self.run_test(
             [
@@ -317,8 +322,8 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             MissingVagueDependency("gnu flex", "http://www.gnu.org/software/flex/"),
         )
         self.run_test(
-            ["RuntimeError: cython is missing"], 1,
-            MissingVagueDependency("cython"))
+            ["RuntimeError: cython is missing"], 1, MissingVagueDependency("cython")
+        )
         self.run_test(
             [
                 "configure: error:",
@@ -329,43 +334,64 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             MissingVagueDependency("the Multi Emulator Super System (MESS)"),
         )
         self.run_test(
-            ["configure: error: libwandio 4.0.0 or better is required to compile "
-             "this version of libtrace. If you have installed libwandio in a "
-             "non-standard location please use LDFLAGS to specify the location of "
-             "the library. WANDIO can be obtained from "
-             "http://research.wand.net.nz/software/libwandio.php"],
-            1, MissingVagueDependency("libwandio", minimum_version="4.0.0"))
+            [
+                "configure: error: libwandio 4.0.0 or better is required to compile "
+                "this version of libtrace. If you have installed libwandio in a "
+                "non-standard location please use LDFLAGS to specify the location of "
+                "the library. WANDIO can be obtained from "
+                "http://research.wand.net.nz/software/libwandio.php"
+            ],
+            1,
+            MissingVagueDependency("libwandio", minimum_version="4.0.0"),
+        )
         self.run_test(
-            ["configure: error: libpcap0.8 or greater is required to compile "
-             "libtrace. If you have installed it in a non-standard location please "
-             "use LDFLAGS to specify the location of the library"],
-            1, MissingVagueDependency("libpcap0.8"))
+            [
+                "configure: error: libpcap0.8 or greater is required to compile "
+                "libtrace. If you have installed it in a non-standard location please "
+                "use LDFLAGS to specify the location of the library"
+            ],
+            1,
+            MissingVagueDependency("libpcap0.8"),
+        )
         self.run_test(
-            ["Error: Please install xml2 package"], 1, MissingVagueDependency("xml2"))
+            ["Error: Please install xml2 package"], 1, MissingVagueDependency("xml2")
+        )
 
     def test_gettext_mismatch(self):
         self.run_test(
-            ["*** error: gettext infrastructure mismatch: using a "
-             "Makefile.in.in from gettext version 0.19 but the autoconf "
-             "macros are from gettext version 0.20"],
-            1, MismatchGettextVersions('0.19', '0.20'))
+            [
+                "*** error: gettext infrastructure mismatch: using a "
+                "Makefile.in.in from gettext version 0.19 but the autoconf "
+                "macros are from gettext version 0.20"
+            ],
+            1,
+            MismatchGettextVersions("0.19", "0.20"),
+        )
         self.run_test(
-            ["configure: error: *** "
-             "No X11! Install X-Windows development headers/libraries! ***"],
-            1, MissingX11())
+            [
+                "configure: error: *** "
+                "No X11! Install X-Windows development headers/libraries! ***"
+            ],
+            1,
+            MissingX11(),
+        )
 
     def test_multi_line_configure_error(self):
         self.run_test(["configure: error:", "", "        Some other error."], 3, None)
-        self.run_test([
-            "configure: error:",
-            "",
-            "   Unable to find the Multi Emulator Super System (MESS).",
-            "",
-            "   Please install MESS, or specify the MESS command with",
-            "   a MESS environment variable.",
-            "",
-            "e.g. MESS=/path/to/program/mess ./configure"
-        ], 3, MissingVagueDependency("the Multi Emulator Super System (MESS)"))
+        self.run_test(
+            [
+                "configure: error:",
+                "",
+                "   Unable to find the Multi Emulator Super System (MESS).",
+                "",
+                "   Please install MESS, or specify the MESS command with",
+                "   a MESS environment variable.",
+                "",
+                "e.g. MESS=/path/to/program/mess ./configure",
+            ],
+            3,
+            MissingVagueDependency("the Multi Emulator Super System (MESS)"),
+        )
 
     def test_interpreter_missing(self):
         self.run_test(
@@ -430,9 +456,7 @@ Call Stack (most recent call first):
   /usr/lib/x86_64-linux-gnu/Qt/Qt5Config.cmake:28 (find_package)
   CMakeLists.txt:34 (find_package)
 dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
-""".splitlines(
-                True
-            ),
+""".splitlines(True),
             16,
             MissingFile("/usr/lib/x86_64-linux-gnu/libEGL.so"),
         )
@@ -446,25 +470,41 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
 
     def test_meson_missing_lib(self):
         self.run_test(
-            ["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
-            1, MissingLibrary("vulkan-1"))
+            [
+                "meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"
+            ],
+            1,
+            MissingLibrary("vulkan-1"),
+        )
 
     def test_ocaml_library_missing(self):
         self.run_test(
             ['Error: Library "camlp-streams" not found.'],
-            1, MissingOCamlPackage('camlp-streams'))
+            1,
+            MissingOCamlPackage("camlp-streams"),
+        )
 
     def test_meson_version(self):
         self.run_test(
-            ["meson.build:1:0: ERROR: Meson version is 0.49.2 but "
-             "project requires >=0.50"], 1,
+            [
+                "meson.build:1:0: ERROR: Meson version is 0.49.2 but "
+                "project requires >=0.50"
+            ],
+            1,
             MissingVagueDependency(
-                "meson", minimum_version="0.50", current_version="0.49.2"))
+                "meson", minimum_version="0.50", current_version="0.49.2"
+            ),
+        )
         self.run_test(
-            ["../meson.build:1:0: ERROR: Meson version is 0.49.2 but "
-             "project requires >=0.50"], 1,
+            [
+                "../meson.build:1:0: ERROR: Meson version is 0.49.2 but "
+                "project requires >=0.50"
+            ],
+            1,
             MissingVagueDependency(
-                "meson", minimum_version="0.50", current_version="0.49.2"))
+                "meson", minimum_version="0.50", current_version="0.49.2"
+            ),
+        )
 
     def test_need_pgbuildext(self):
         self.run_test(
@@ -501,7 +541,10 @@ CMake Error at CMakeLists.txt:43 (include):
 
 -- Found KF5Activities: /usr/lib/x86_64-linux-gnu/cmake/KF5Activities/KF5ActivitiesConfig.cmake (found version "5.78.0") 
 -- Found KF5Config: /usr/lib/x86_64-linux-gnu/cmake/KF5Config/KF5ConfigConfig.cmake (found version "5.78.0") 
-""".splitlines(True), 8, CMakeFilesMissing(['KDEGitCommitHooks.cmake']))
+""".splitlines(True),
+            8,
+            CMakeFilesMissing(["KDEGitCommitHooks.cmake"]),
+        )
 
     def test_cmake_missing_cmake_files(self):
         self.run_test(
@@ -517,9 +560,7 @@ CMake Error at CMakeLists.txt:43 (include):
   "sensor_msgs" provides a separate development package or SDK, be sure it
   has been installed.
 dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
-""".splitlines(
-                True
-            ),
+""".splitlines(True),
             1,
             CMakeFilesMissing(["sensor_msgsConfig.cmake", "sensor_msgs-config.cmake"]),
         )
@@ -529,7 +570,19 @@ CMake Error at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake
   Could NOT find KF5 (missing: Plasma PlasmaQuick Wayland ModemManagerQt
   NetworkManagerQt) (found suitable version "5.92.0", minimum required is
   "5.86")
-""".splitlines(True), 4, MissingCMakeComponents("KF5", ["Plasma", "PlasmaQuick", "Wayland", "ModemManagerQt", "NetworkManagerQt"]))
+""".splitlines(True),
+            4,
+            MissingCMakeComponents(
+                "KF5",
+                [
+                    "Plasma",
+                    "PlasmaQuick",
+                    "Wayland",
+                    "ModemManagerQt",
+                    "NetworkManagerQt",
+                ],
+            ),
+        )
 
     def test_cmake_missing_exact_version(self):
         self.run_test(
@@ -538,9 +591,7 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
   Could NOT find SignalProtocol: Found unsuitable version "2.3.3", but
   required is exact version "2.3.2" (found
   /usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so)
-""".splitlines(
-                True
-            ),
+""".splitlines(True),
             4,
             CMakeNeedExactVersion(
                 "SignalProtocol",
@@ -557,8 +608,10 @@ CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake
             MissingVagueDependency("alut"),
         )
         self.run_test(
-            ["CMake Error at CMakeLists.txt:213 (message):",
-             "  could not find zlib"], 2, MissingVagueDependency("zlib"))
+            ["CMake Error at CMakeLists.txt:213 (message):", "  could not find zlib"],
+            2,
+            MissingVagueDependency("zlib"),
+        )
         self.run_test(
             """\
 -- Found LibSolv_ext: /usr/lib/x86_64-linux-gnu/libsolvext.so  
@@ -568,7 +621,10 @@ CMake Error at cmake/modules/FindGpgme.cmake:398 (message):
   Did not find GPGME
 Call Stack (most recent call first):
   CMakeLists.txt:223 (FIND_PACKAGE)
-  """.splitlines(True), 5, MissingVagueDependency('GPGME'))
+  """.splitlines(True),
+            5,
+            MissingVagueDependency("GPGME"),
+        )
 
     def test_dh_compat_dupe(self):
         self.run_test(
@@ -588,10 +644,14 @@ Call Stack (most recent call first):
         )
 
     def test_dh_compat_too_old(self):
-        self.run_test([
-            "dh_clean: error: Compatibility levels before 7 are no longer "
-            "supported (level 5 requested)"], 1,
-            UnsupportedDebhelperCompatLevel(7, 5))
+        self.run_test(
+            [
+                "dh_clean: error: Compatibility levels before 7 are no longer "
+                "supported (level 5 requested)"
+            ],
+            1,
+            UnsupportedDebhelperCompatLevel(7, 5),
+        )
 
     def test_dh_udeb_shared_library(self):
         self.run_test(
@@ -624,18 +684,29 @@ Call Stack (most recent call first):
 
     def test_pytest_args(self):
         self.run_test(
-            ['pytest: error: unrecognized arguments: --cov=janitor '
-             '--cov-report=html --cov-report=term-missing:skip-covered'],
+            [
+                "pytest: error: unrecognized arguments: --cov=janitor "
+                "--cov-report=html --cov-report=term-missing:skip-covered"
+            ],
             1,
-            UnsupportedPytestArguments([
-                '--cov=janitor', '--cov-report=html',
-                '--cov-report=term-missing:skip-covered']))
+            UnsupportedPytestArguments(
+                [
+                    "--cov=janitor",
+                    "--cov-report=html",
+                    "--cov-report=term-missing:skip-covered",
+                ]
+            ),
+        )
 
     def test_pytest_config(self):
         self.run_test(
-            ['INTERNALERROR> pytest.PytestConfigWarning: '
-             'Unknown config option: asyncio_mode'], 1,
-            UnsupportedPytestConfigOption('asyncio_mode'))
+            [
+                "INTERNALERROR> pytest.PytestConfigWarning: "
+                "Unknown config option: asyncio_mode"
+            ],
+            1,
+            UnsupportedPytestConfigOption("asyncio_mode"),
+        )
 
     def test_distutils_missing(self):
         self.run_test(
@@ -918,8 +989,12 @@ Call Stack (most recent call first):
             MissingNodeModule("fs-extra"),
         )
         self.run_test(
-            ["\x1b[1m\x1b[31m[!] \x1b[1mError: Cannot find module '@rollup/plugin-buble'"],
-            1, MissingNodeModule('@rollup/plugin-buble'))
+            [
+                "\x1b[1m\x1b[31m[!] \x1b[1mError: Cannot find module '@rollup/plugin-buble'"
+            ],
+            1,
+            MissingNodeModule("@rollup/plugin-buble"),
+        )
 
     def test_setup_py_command(self):
         self.run_test(
@@ -936,9 +1011,7 @@ usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
    or: setup.py cmd --help
 
 error: invalid command 'test'
-""".splitlines(
-                True
-            ),
+""".splitlines(True),
             12,
             MissingSetupPyCommand("test"),
         )
@@ -1064,15 +1137,11 @@ error: invalid command 'test'
             1,
             MissingCommand("git"),
         )
+        self.run_test(["E ImportError: Bad git executable"], 1, MissingCommand("git"))
+        self.run_test(["E ImportError: Bad git executable."], 1, MissingCommand("git"))
         self.run_test(
-            ["E ImportError: Bad git executable"], 1,
-            MissingCommand("git"))
-        self.run_test(
-            ["E ImportError: Bad git executable."], 1,
-            MissingCommand("git"))
-        self.run_test(
-            ["Could not find external command \"java\""], 1,
-            MissingCommand("java"))
+            ['Could not find external command "java"'], 1, MissingCommand("java")
+        )
 
     def test_ts_error(self):
         self.run_test(
@@ -1128,10 +1197,12 @@ error: invalid command 'test'
         self.run_test(
             ["ValueError: Namespace GnomeDesktop not available"],
             1,
-            MissingIntrospectionTypelib("GnomeDesktop"))
+            MissingIntrospectionTypelib("GnomeDesktop"),
+        )
 
     def test_missing_boost_components(self):
-        self.run_test("""\
+        self.run_test(
+            """\
 CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
   Could NOT find Boost (missing: program_options filesystem system graph
   serialization iostreams) (found suitable version "1.74.0", minimum required
@@ -1140,8 +1211,20 @@ Call Stack (most recent call first):
   /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
   /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
   src/CMakeLists.txt:4 (find_package)
-""".splitlines(True), 4, MissingCMakeComponents("Boost", [
-            'program_options', 'filesystem', 'system', 'graph', 'serialization', 'iostreams']))
+""".splitlines(True),
+            4,
+            MissingCMakeComponents(
+                "Boost",
+                [
+                    "program_options",
+                    "filesystem",
+                    "system",
+                    "graph",
+                    "serialization",
+                    "iostreams",
+                ],
+            ),
+        )
 
     def test_pkg_config_too_old(self):
         self.run_test(
@@ -1153,8 +1236,11 @@ Call Stack (most recent call first):
                 "*** from the freedesktop.org software repository at",
                 "***",
                 "***    https://www.freedesktop.org/wiki/Software/pkg-config/",
-                "***"
-            ], 4, MissingVagueDependency("pkg-config", minimum_version="0.9.0"))
+                "***",
+            ],
+            4,
+            MissingVagueDependency("pkg-config", minimum_version="0.9.0"),
+        )
 
     def test_pkg_config_missing(self):
         self.run_test(
@@ -1166,8 +1252,12 @@ Call Stack (most recent call first):
             MissingPkgConfig("apertium-3.2", "3.2.0"),
         )
         self.run_test(
-            ["checking for GLEW... configure: error: Package requirements (glew) were not met:"],
-            1, MissingPkgConfig("glew"))
+            [
+                "checking for GLEW... configure: error: Package requirements (glew) were not met:"
+            ],
+            1,
+            MissingPkgConfig("glew"),
+        )
         self.run_test(
             [
                 'meson.build:10:0: ERROR: Dependency "gssdp-1.2" not '
@@ -1315,8 +1405,12 @@ Call Stack (most recent call first):
             MissingPerlPredeclared("author_tests"),
         )
         self.run_test(
-            ["String found where operator expected at Makefile.PL line 8, near \"readme_from    'lib/URL/Encode.pod'\""],
-            1, MissingPerlPredeclared("readme_from"))
+            [
+                "String found where operator expected at Makefile.PL line 8, near \"readme_from    'lib/URL/Encode.pod'\""
+            ],
+            1,
+            MissingPerlPredeclared("readme_from"),
+        )
 
         self.run_test(
             [
@@ -1405,38 +1499,63 @@ Call Stack (most recent call first):
             ),
         )
         self.run_test(
-            ["- ExtUtils::Depends         ...missing. (would need 0.302)"], 1,
-            MissingPerlModule(None, "ExtUtils::Depends", None, "0.302"))
+            ["- ExtUtils::Depends         ...missing. (would need 0.302)"],
+            1,
+            MissingPerlModule(None, "ExtUtils::Depends", None, "0.302"),
+        )
         self.run_test(
-            ['Can\'t locate object method "new" via package "Dist::Inkt::Profile::TOBYINK" '
-             '(perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at '
-             '/usr/share/perl5/Dist/Inkt.pm line 208.'], 1,
-            MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None))
+            [
+                'Can\'t locate object method "new" via package "Dist::Inkt::Profile::TOBYINK" '
+                '(perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at '
+                "/usr/share/perl5/Dist/Inkt.pm line 208."
+            ],
+            1,
+            MissingPerlModule(None, "Dist::Inkt::Profile::TOBYINK", None),
+        )
         self.run_test(
-            ["Can't locate ExtUtils/Depends.pm in @INC (you may need to "
-             "install the ExtUtils::Depends module) (@INC contains: "
-             "/etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.32.1 "
-             "/usr/local/share/perl/5.32.1 /usr/lib/x86_64-linux-gnu/perl5/5.32 "
-             "/usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base "
-             "/usr/lib/x86_64-linux-gnu/perl/5.32 "
-             "/usr/share/perl/5.32 /usr/local/lib/site_perl) at "
-             "(eval 11) line 1."], 1, MissingPerlModule(
-                 "ExtUtils/Depends.pm", "ExtUtils::Depends", [
-                     "/etc/perl",
-                     "/usr/local/lib/x86_64-linux-gnu/perl/5.32.1",
-                     "/usr/local/share/perl/5.32.1",
-                     "/usr/lib/x86_64-linux-gnu/perl5/5.32",
-                     "/usr/share/perl5", "/usr/lib/x86_64-linux-gnu/perl-base",
-                     "/usr/lib/x86_64-linux-gnu/perl/5.32",
-                     "/usr/share/perl/5.32", "/usr/local/lib/site_perl"]))
+            [
+                "Can't locate ExtUtils/Depends.pm in @INC (you may need to "
+                "install the ExtUtils::Depends module) (@INC contains: "
+                "/etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.32.1 "
+                "/usr/local/share/perl/5.32.1 /usr/lib/x86_64-linux-gnu/perl5/5.32 "
+                "/usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base "
+                "/usr/lib/x86_64-linux-gnu/perl/5.32 "
+                "/usr/share/perl/5.32 /usr/local/lib/site_perl) at "
+                "(eval 11) line 1."
+            ],
+            1,
+            MissingPerlModule(
+                "ExtUtils/Depends.pm",
+                "ExtUtils::Depends",
+                [
+                    "/etc/perl",
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.32.1",
+                    "/usr/local/share/perl/5.32.1",
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.32",
+                    "/usr/share/perl5",
+                    "/usr/lib/x86_64-linux-gnu/perl-base",
+                    "/usr/lib/x86_64-linux-gnu/perl/5.32",
+                    "/usr/share/perl/5.32",
+                    "/usr/local/lib/site_perl",
+                ],
+            ),
+        )
         self.run_test(
-            ["Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) "
-             "does not appear to be installed"], 1,
-            MissingPerlModule(None, "Pod::Weaver::Plugin::WikiDoc"))
+            [
+                "Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) "
+                "does not appear to be installed"
+            ],
+            1,
+            MissingPerlModule(None, "Pod::Weaver::Plugin::WikiDoc"),
+        )
         self.run_test(
-            ["List::Util version 1.56 required--this is only version 1.55 "
-             "at /build/tmpttq5hhpt/package/blib/lib/List/AllUtils.pm line 8."],
-            1, MissingPerlModule(None, "List::Util", minimum_version="1.56"))
+            [
+                "List::Util version 1.56 required--this is only version 1.55 "
+                "at /build/tmpttq5hhpt/package/blib/lib/List/AllUtils.pm line 8."
+            ],
+            1,
+            MissingPerlModule(None, "List::Util", minimum_version="1.56"),
+        )
 
     def test_missing_perl_file(self):
         self.run_test(
@@ -1572,15 +1691,20 @@ Call Stack (most recent call first):
             ),
         )
         self.run_test(
-            ["[ERROR] Plugin org.apache.maven.plugins:maven-compiler-plugin:3.10.1 "
-             "or one of its dependencies could not be resolved: Failed to "
-             "read artifact descriptor for "
-             "org.apache.maven.plugins:maven-compiler-plugin:jar:3.10.1: "
-             "1 problem was encountered while building the effective "
-             "model for "
-             "org.apache.maven.plugins:maven-compiler-plugin:3.10.1"],
-            1, MissingMavenArtifacts(
-                ["org.apache.maven.plugins:maven-compiler-plugin:3.10.1"]))
+            [
+                "[ERROR] Plugin org.apache.maven.plugins:maven-compiler-plugin:3.10.1 "
+                "or one of its dependencies could not be resolved: Failed to "
+                "read artifact descriptor for "
+                "org.apache.maven.plugins:maven-compiler-plugin:jar:3.10.1: "
+                "1 problem was encountered while building the effective "
+                "model for "
+                "org.apache.maven.plugins:maven-compiler-plugin:3.10.1"
+            ],
+            1,
+            MissingMavenArtifacts(
+                ["org.apache.maven.plugins:maven-compiler-plugin:3.10.1"]
+            ),
+        )
 
     def test_maven_errors(self):
         self.run_test(
@@ -1675,7 +1799,7 @@ Call Stack (most recent call first):
         )
 
     def test_assembler(self):
-        self.run_test(['Found no assembler'], 1, MissingAssembler())
+        self.run_test(["Found no assembler"], 1, MissingAssembler())
 
     def test_fpic(self):
         self.run_test(
@@ -1879,12 +2003,17 @@ arch:all and the other not)""".splitlines(),
         self.run_test(
             [
                 "Error: package ‘AnnotationDbi’ 1.52.0 was found, but >= 1.53.1 is required by ‘GO.db’"
-            ], 1,
-            MissingRPackage("AnnotationDbi", "1.53.1"))
-        self.run_test(
-            ["  namespace 'alakazam' 1.1.0 is being loaded, but >= 1.1.0.999 is required"],
+            ],
             1,
-            MissingRPackage('alakazam', '1.1.0.999'))
+            MissingRPackage("AnnotationDbi", "1.53.1"),
+        )
+        self.run_test(
+            [
+                "  namespace 'alakazam' 1.1.0 is being loaded, but >= 1.1.0.999 is required"
+            ],
+            1,
+            MissingRPackage("alakazam", "1.1.0.999"),
+        )
 
     def test_mv_stat(self):
         self.run_test(
@@ -1963,18 +2092,22 @@ arch:all and the other not)""".splitlines(),
                 "./configure: line 15968: `\t\t\t\t\t\tPKG_CHECK_MODULES(LIBEXIF,libexif >= 0.6.18,have_LIBEXIF=yes,:)'",
             ],
             2,
-            MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True))
+            MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True),
+        )
 
     def test_autoconf_version(self):
         self.run_test(
-            ["configure.ac:13: error: Autoconf version 2.71 or higher is required"], 1,
-            MissingVagueDependency("autoconf", minimum_version="2.71"))
+            ["configure.ac:13: error: Autoconf version 2.71 or higher is required"],
+            1,
+            MissingVagueDependency("autoconf", minimum_version="2.71"),
+        )
 
     def test_claws_version(self):
         self.run_test(
-            ["configure: error: libetpan 0.57 not found"], 1,
-            MissingVagueDependency(
-                'libetpan', minimum_version='0.57'))
+            ["configure: error: libetpan 0.57 not found"],
+            1,
+            MissingVagueDependency("libetpan", minimum_version="0.57"),
+        )
 
     def test_config_status_input(self):
         self.run_test(
@@ -2006,9 +2139,10 @@ arch:all and the other not)""".splitlines(),
 
     def test_bash_redir_missing(self):
         self.run_test(
-            ["/bin/bash: idna-tables-properties.csv: "
-             "No such file or directory"],
-            1, MissingBuildFile("idna-tables-properties.csv"))
+            ["/bin/bash: idna-tables-properties.csv: " "No such file or directory"],
+            1,
+            MissingBuildFile("idna-tables-properties.csv"),
+        )
 
     def test_automake_input(self):
         self.run_test(
@@ -2032,7 +2166,6 @@ arch:all and the other not)""".splitlines(),
 
 
 class SecondaryErrorFinder(unittest.TestCase):
-
     def assertMatches(self, line):
         m = find_secondary_build_failure([line], 100)
         self.assertIsNotNone(m)
@@ -2042,5 +2175,5 @@ class SecondaryErrorFinder(unittest.TestCase):
         self.assertIsNone(m)
 
     def test_unknown_option(self):
-        self.assertMatches('Unknown option --foo')
-        self.assertNotMatches('Unknown option --foo, ignoring.')
+        self.assertMatches("Unknown option --foo")
+        self.assertNotMatches("Unknown option --foo, ignoring.")

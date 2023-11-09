@@ -69,7 +69,5 @@ Try `debcargo update` to update the crates.io index.\x1b[0m
 brz: ERROR: Debcargo failed to run.
 """.splitlines(True)
         err, line = find_brz_build_error(lines)
-        self.assertEqual(
-            line, "debcargo can't find crate utf8parse (version: 0.10.1)"
-        )
+        self.assertEqual(line, "debcargo can't find crate utf8parse (version: 0.10.1)")
         self.assertEqual(err, MissingDebcargoCrate("utf8parse", "0.10.1"))
