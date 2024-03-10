@@ -8,6 +8,7 @@ setup(
             "buildlog_consultant._buildlog_consultant_rs",
             "buildlog-consultant-py/Cargo.toml",
             binding=Binding.PyO3,
+            features = ["extension-module"],
         )
     ],
 )

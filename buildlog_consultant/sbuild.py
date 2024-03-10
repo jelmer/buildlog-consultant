@@ -74,13 +74,7 @@ class SbuildFailure(Exception):
         self.match = match
 
     def __repr__(self) -> str:
-        return "{}({!r}, {!r}, error={!r}, phase={!r})".format(
-            type(self).__name__,
-            self.stage,
-            self.description,
-            self.error,
-            self.phase,
-        )
+        return f"{type(self).__name__}({self.stage!r}, {self.description!r}, error={self.error!r}, phase={self.phase!r})"
 
     def json(self):
         ret = {
