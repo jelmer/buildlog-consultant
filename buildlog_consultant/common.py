@@ -51,12 +51,7 @@ class MissingPythonModule(Problem, kind="missing-python-module"):
             return ret
 
     def __repr__(self) -> str:
-        return "{}({!r}, python_version={!r}, minimum_version={!r})".format(
-            type(self).__name__,
-            self.module,
-            self.python_version,
-            self.minimum_version,
-        )
+        return f"{type(self).__name__}({self.module!r}, python_version={self.python_version!r}, minimum_version={self.minimum_version!r})"
 
 
 class SetuptoolScmVersionIssue(Problem, kind="setuptools-scm-version-issue"):
@@ -97,12 +92,7 @@ class MissingPythonDistribution(Problem, kind="missing-python-distribution"):
         return cls(req.name, python_version)
 
     def __repr__(self) -> str:
-        return "{}({!r}, python_version={!r}, minimum_version={!r})".format(
-            type(self).__name__,
-            self.distribution,
-            self.python_version,
-            self.minimum_version,
-        )
+        return f"{type(self).__name__}({self.distribution!r}, python_version={self.python_version!r}, minimum_version={self.minimum_version!r})"
 
 
 class VcsControlDirectoryNeeded(Problem, kind="vcs-control-directory-needed"):
@@ -126,13 +116,7 @@ class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
     current_version: Optional[str] = None
 
     def __repr__(self) -> str:
-        return "{}({!r}, url={!r}, minimum_version={!r}, current_version={!r})".format(
-            type(self).__name__,
-            self.name,
-            self.url,
-            self.minimum_version,
-            self.current_version,
-        )
+        return f"{type(self).__name__}({self.name!r}, url={self.url!r}, minimum_version={self.minimum_version!r}, current_version={self.current_version!r})"
 
     def __str__(self) -> str:
         return "Missing dependency: %s" % self.name
@@ -378,11 +362,7 @@ class MissingPkgConfig(Problem, kind="missing-pkg-config-package"):
             return "Missing pkg-config file: %s" % self.module
 
     def __repr__(self) -> str:
-        return "{}({!r}, minimum_version={!r})".format(
-            type(self).__name__,
-            self.module,
-            self.minimum_version,
-        )
+        return f"{type(self).__name__}({self.module!r}, minimum_version={self.minimum_version!r})"
 
 
 class MissingGoRuntime(Problem, kind="missing-go-runtime"):
@@ -630,11 +610,7 @@ class DebhelperPatternNotFound(Problem, kind="debhelper-pattern-not-found"):
     directories: list[str]
 
     def __str__(self) -> str:
-        return "debhelper ({}) expansion failed for {!r} (directories: {!r})".format(
-            self.tool,
-            self.pattern,
-            self.directories,
-        )
+        return f"debhelper ({self.tool}) expansion failed for {self.pattern!r} (directories: {self.directories!r})"
 
 
 class GnomeCommonMissing(Problem, kind="missing-gnome-common"):
@@ -669,10 +645,7 @@ class MissingGnomeCommonDependency(Problem, kind="missing-gnome-common-dependenc
     minimum_version: Optional[str] = None
 
     def __str__(self) -> str:
-        return "Missing gnome-common dependency: {}: (>= {})".format(
-            self.package,
-            self.minimum_version,
-        )
+        return f"Missing gnome-common dependency: {self.package}: (>= {self.minimum_version})"
 
 
 class MissingConfigStatusInput(Problem, kind="missing-config.status-input"):
@@ -790,9 +763,7 @@ class SingleLineMatcher(Matcher):
                 err = self.cb(m)
             except (ValueError, IndexError) as e:
                 raise MatcherError(
-                    "Error while matching {!r} against {!r} ({!r}): {!r}".format(
-                        self.regexp, lines[i], m, e
-                    )
+                    f"Error while matching {self.regexp!r} against {lines[i]!r} ({m!r}): {e!r}"
                 ) from e
         else:
             err = None
@@ -842,19 +813,10 @@ class CMakeNeedExactVersion(Problem, kind="cmake-exact-version-missing"):
     path: str
 
     def __repr__(self) -> str:
-        return "{}({!r}, {!r}, {!r}, {!r})".format(
-            type(self).__name__,
-            self.package,
-            self.version_found,
-            self.exact_version_needed,
-            self.path,
-        )
+        return f"{type(self).__name__}({self.package!r}, {self.version_found!r}, {self.exact_version_needed!r}, {self.path!r})"
 
     def __str__(self) -> str:
-        return "CMake needs exact package {}, version {}".format(
-            self.package,
-            self.exact_version_needed,
-        )
+        return f"CMake needs exact package {self.package}, version {self.exact_version_needed}"
 
 
 class CMakeErrorMatcher(Matcher):

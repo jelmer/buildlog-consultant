@@ -35,9 +35,7 @@ class Problem:
         cls.is_global = is_global
         if kind in problem_clses:
             raise AssertionError(
-                "class {!r} already registered for kind {} (not {!r})".format(
-                    problem_clses[kind], kind, cls
-                )
+                f"class {problem_clses[kind]!r} already registered for kind {kind} (not {cls!r})"
             )
         problem_clses[kind] = cls
 
