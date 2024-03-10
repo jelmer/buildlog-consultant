@@ -10,9 +10,12 @@ homepage = "https://github.com/jelmer/buildlog-consultant"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+extension-module = ["pyo3/extension-module"]
+
 [dependencies]
 buildlog-consultant = { path = ".." }
-pyo3 = { workspace = true, features = ["extension-module"] }
+pyo3 = { workspace = true }
 serde_json = { workspace = true }
 pyo3-file = "0.7.0"
 pyo3-log = "0.8.3"
