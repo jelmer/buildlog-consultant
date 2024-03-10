@@ -18,7 +18,7 @@ cargo-test:
 check:: style
 
 style:
-	flake8
+	ruff check .
 
 check:: typing
 
