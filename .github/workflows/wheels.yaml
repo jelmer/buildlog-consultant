@@ -44,24 +44,8 @@ jobs:
         if: "matrix.os == 'ubuntu-latest'"
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
-        env:
-          CIBW_ARCHS_LINUX: x86_64
-          # ARM builds fail at the moment:
-          # CIBW_ARCHS_LINUX: x86_64 aarch64
-          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-          CIBW_SKIP: '*-win32'
-          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
-          CIBW_BEFORE_BUILD: >
-            pip install -U setuptools-rust &&
-            rustup default stable &&
-            rustup show
-          CIBW_BEFORE_BUILD_LINUX: >
-            pip install -U setuptools-rust &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y &&
-            rustup target add all &&
-            rustup show
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v2
         with:
           path: ./wheelhouse/*.whl
 
@@ -79,7 +63,7 @@ jobs:
       - uses: actions/setup-python@v5
 
       - name: Download wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v2
         with:
           name: artifact
           path: dist
