@@ -85,7 +85,7 @@ ignore = [
 convention = "google"
 
 [tool.cibuildwheel]
-skip = "*-win32"
+skip = "*-win32 *musllinux*"
 before-build = "pip install -U setuptools-rust && rustup default stable && rustup show"
 environment = {PATH = "$HOME/.cargo/bin:$PATH"}
 
