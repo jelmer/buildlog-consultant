@@ -83,3 +83,14 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.cibuildwheel]
+skip = "*-win32"
+before-build = "pip install -U setuptools-rust && rustup default stable && rustup show"
+environment = {PATH = "$HOME/.cargo/bin:$PATH"}
+
+[tool.cibuildwheel.linux]
+before-build = "pip install -U setuptools-rust && curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y && rustup show"
+
+[tool.cibuildwheel.macos]
+before-build = "rustup target add aarch64-apple-darwin"
