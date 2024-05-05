@@ -110,7 +110,7 @@ class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
 
     def __str__(self) -> str:
         if self.files and len(self.files) < 5:
-            return "Tree has local changes: %r" % self.files
+            return f"Tree has local changes: {self.files!r}"
         elif self.files:
             return "Tree has local changes: %d files" % len(self.files)
         else:
@@ -131,14 +131,14 @@ class DpkgBinaryFileChanged(Problem, kind="changed-binary-files"):
     paths: list[str]
 
     def __str__(self) -> str:
-        return "Tree has binary files with changes: %r" % self.paths
+        return f"Tree has binary files with changes: {self.paths!r}"
 
 
 class MissingControlFile(Problem, kind="missing-control-file"):
     path: str
 
     def __str__(self) -> str:
-        return "Tree is missing control file %s" % self.path
+        return f"Tree is missing control file {self.path}"
 
 
 class UnableToFindUpstreamTarball(Problem, kind="unable-to-find-upstream-tarball"):
@@ -164,21 +164,21 @@ class SourceFormatUnsupported(Problem, kind="unsupported-source-format"):
     source_format: str
 
     def __str__(self) -> str:
-        return "Source format %r unsupported" % self.source_format
+        return f"Source format {self.source_format!r} unsupported"
 
 
 class PatchFileMissing(Problem, kind="patch-file-missing"):
     path: str
 
     def __str__(self) -> str:
-        return "Patch file %s missing" % self.path
+        return f"Patch file {self.path} missing"
 
 
 class UnknownMercurialExtraFields(Problem, kind="unknown-mercurial-extra-fields"):
     field: str
 
     def __str__(self) -> str:
-        return "Unknown Mercurial extra fields: %s" % self.field
+        return f"Unknown Mercurial extra fields: {self.field}"
 
 
 class UpstreamPGPSignatureVerificationFailed(
@@ -192,7 +192,7 @@ class UScanRequestVersionMissing(Problem, kind="uscan-requested-version-missing"
     version: str
 
     def __str__(self) -> str:
-        return "UScan can not find requested version %s." % self.version
+        return f"UScan can not find requested version {self.version}."
 
 
 class DebcargoFailure(Problem, kind="debcargo-failed"):
@@ -200,7 +200,7 @@ class DebcargoFailure(Problem, kind="debcargo-failed"):
 
     def __str__(self) -> str:
         if self.reason:
-            return "Debcargo failed: %s" % self.reason
+            return f"Debcargo failed: {self.reason}"
         else:
             return "Debcargo failed"
 
@@ -209,7 +209,7 @@ class ChangelogParseError(Problem, kind="changelog-parse-failed"):
     reason: str
 
     def __str__(self) -> str:
-        return "Changelog failed to parse: %s" % self.reason
+        return f"Changelog failed to parse: {self.reason}"
 
 
 class UScanFailed(Problem, kind="uscan-failed"):
@@ -233,7 +233,7 @@ class UpstreamMetadataFileParseError(Problem, kind="debian-upstream-metadata-inv
     reason: str
 
     def __str__(self) -> str:
-        return "%s is invalid" % self.path
+        return f"{self.path} is invalid"
 
 
 class DpkgSourcePackFailed(Problem, kind="dpkg-source-pack-failed"):
@@ -241,7 +241,7 @@ class DpkgSourcePackFailed(Problem, kind="dpkg-source-pack-failed"):
 
     def __str__(self) -> str:
         if self.reason:
-            return "Packing source directory failed: %s" % self.reason
+            return f"Packing source directory failed: {self.reason}"
         else:
             return "Packing source directory failed."
 
@@ -254,7 +254,7 @@ class DpkgBadVersion(Problem, kind="dpkg-bad-version"):
         if self.reason:
             return f"Version ({self.version}) is invalid: {self.reason}"
         else:
-            return "Version (%s) is invalid" % self.version
+            return f"Version ({self.version}) is invalid"
 
 
 class MissingDebcargoCrate(Problem, kind="debcargo-missing-crate"):
@@ -271,9 +271,9 @@ class MissingDebcargoCrate(Problem, kind="debcargo-missing-crate"):
             return cls(text)
 
     def __str__(self) -> str:
-        ret = "debcargo can't find crate %s" % self.crate
+        ret = f"debcargo can't find crate {self.crate}"
         if self.version:
-            ret += " (version: %s)" % self.version
+            ret += f" (version: {self.version})"
         return ret
 
 
@@ -442,7 +442,7 @@ class DebcargoUnacceptablePredicate(Problem, kind="debcargo-unacceptable-predica
     predicate: str
 
     def __str__(self) -> str:
-        return "Cannot represent prerelease part of dependency: %s" % (self.predicate)
+        return f"Cannot represent prerelease part of dependency: {self.predicate}"
 
 
 class DebcargoUnacceptableComparator(Problem, kind="debcargo-unacceptable-comparator"):
@@ -450,7 +450,7 @@ class DebcargoUnacceptableComparator(Problem, kind="debcargo-unacceptable-compar
     comparator: str
 
     def __str__(self) -> str:
-        return "Cannot represent prerelease part of dependency: %s" % (self.comparator)
+        return f"Cannot represent prerelease part of dependency: {self.comparator}"
 
 
 def _parse_debcargo_failure(m, pl):
@@ -500,7 +500,7 @@ class UScanTooManyRequests(Problem, kind="uscan-too-many-requests"):
     url: str
 
     def __str__(self) -> str:
-        return "UScan: %s: too many requests" % self.url
+        return f"UScan: {self.url}: too many requests"
 
 
 BRZ_ERRORS = [
@@ -587,14 +587,14 @@ class MissingRevision(Problem, kind="missing-revision"):
         return cls(revision=json["revision"].encode("utf-8"))
 
     def __str__(self) -> str:
-        return "Missing revision: %r" % self.revision
+        return f"Missing revision: {self.revision!r}"
 
 
 class PristineTarTreeMissing(Problem, kind="pristine-tar-missing-tree"):
     treeish: str
 
     def __str__(self) -> str:
-        return "pristine-tar can not find tree %r" % self.treeish
+        return f"pristine-tar can not find tree {self.treeish!r}"
 
 
 def find_creation_session_error(lines):
@@ -645,7 +645,7 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
         )
         return SbuildFailure("unpack", str(error), error, section=section, match=match)
     (match, error) = find_apt_get_failure(section.lines)
-    description = "build failed stage %s" % failed_stage
+    description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage, description, error=error, phase=None, section=section, match=match
     )
@@ -655,7 +655,7 @@ def find_failure_create_session(sbuildlog, failed_stage):
     section = sbuildlog.get_section(None)
     match, error = find_creation_session_error(section.lines)
     phase = ("create-session",)
-    description = "build failed stage %s" % failed_stage
+    description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -673,7 +673,7 @@ def find_failure_unpack(sbuildlog, failed_stage):
         return SbuildFailure(
             failed_stage, str(error), error, section=section, match=match
         )
-    description = "build failed stage %s" % failed_stage
+    description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage, description, error=error, phase=None, section=section, match=match
     )
@@ -689,7 +689,7 @@ def find_failure_build(sbuildlog, failed_stage):
     elif match:
         description = match.line.rstrip("\n")
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -723,7 +723,7 @@ def find_failure_autopkgtest(sbuildlog, failed_stage):
         match = None
         phase = None
     if not description:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -741,7 +741,7 @@ def find_failure_apt_get_update(sbuildlog, failed_stage):
     elif match:
         description = match.line.rstrip("\n")
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -760,7 +760,7 @@ def find_failure_arch_check(sbuildlog, failed_stage):
     if error:
         description = str(error)
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage, description, error=error, phase=None, section=section, match=match
     )
@@ -772,7 +772,7 @@ def find_failure_check_space(sbuildlog, failed_stage):
     if error:
         description = str(error)
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage, description, error=error, phase=None, section=section, match=match
     )
@@ -788,7 +788,7 @@ def find_failure_install_deps(sbuildlog, failed_stage):
         else:
             description = match.line.rstrip("\n")
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     phase = ("build",)
     return SbuildFailure(
         failed_stage,
@@ -843,7 +843,7 @@ def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailu
     except KeyError:
         if failed_stage is not None:
             logging.warning("unknown failed stage: %s", failed_stage)
-            description = "build failed stage %s" % failed_stage
+            description = f"build failed stage {failed_stage}"
             return SbuildFailure(
                 failed_stage,
                 description,
@@ -1004,17 +1004,17 @@ def main(argv=None):
 
         failed_stage = sbuildlog.get_failed_stage()
         if failed_stage:
-            logging.info("Failed stage: %s" % failed_stage)
+            logging.info("Failed stage: %s", failed_stage)
         failure = worker_failure_from_sbuild_log(sbuildlog)
 
         if args.json:
             json.dump(failure.json(), sys.stdout, indent=4)
 
     if failure.error:
-        logging.info("Error: %s" % failure.error)
+        logging.info("Error: %s", failure.error)
     if failure.match and failure.section:
         logging.info(
-            "Failed line: %d:" % (failure.section.offsets[0] + failure.match.lineno)
+            "Failed line: %d:", (failure.section.offsets[0] + failure.match.lineno)
         )
         for i in range(
             max(0, failure.match.offset - args.context),
