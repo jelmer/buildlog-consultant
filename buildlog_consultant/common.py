@@ -41,12 +41,12 @@ class MissingPythonModule(Problem, kind="missing-python-module"):
 
     def __str__(self) -> str:
         if self.python_version:
-            ret = "Missing python %s module: " % self.python_version
+            ret = f"Missing python {self.python_version} module: "
         else:
             ret = "Missing python module: "
         ret += self.module
         if self.minimum_version:
-            return ret + " (>= %s)" % self.minimum_version
+            return ret + f" (>= {self.minimum_version})"
         else:
             return ret
 
@@ -63,7 +63,7 @@ class MissingOCamlPackage(Problem, kind="missing-ocaml-package"):
     package: str
 
     def __str__(self) -> str:
-        return "Missing OCaml package: %s" % self.package
+        return f"Missing OCaml package: {self.package}"
 
 
 class MissingPythonDistribution(Problem, kind="missing-python-distribution"):
@@ -78,7 +78,7 @@ class MissingPythonDistribution(Problem, kind="missing-python-distribution"):
             ret = "Missing python distribution: "
         ret += self.distribution
         if self.minimum_version:
-            return ret + " (>= %s)" % self.minimum_version
+            return ret + f" (>= {self.minimum_version})"
         else:
             return ret
 
@@ -106,7 +106,7 @@ class PatchApplicationFailed(Problem, kind="patch-application-failed"):
     patchname: str
 
     def __str__(self) -> str:
-        return "Patch application failed: %s" % self.patchname
+        return f"Patch application failed: {self.patchname}"
 
 
 class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
@@ -119,7 +119,7 @@ class MissingVagueDependency(Problem, kind="missing-vague-dependency"):
         return f"{type(self).__name__}({self.name!r}, url={self.url!r}, minimum_version={self.minimum_version!r}, current_version={self.current_version!r})"
 
     def __str__(self) -> str:
-        return "Missing dependency: %s" % self.name
+        return f"Missing dependency: {self.name}"
 
 
 class MissingQt(Problem, kind="missing-qt"):
@@ -127,7 +127,7 @@ class MissingQt(Problem, kind="missing-qt"):
 
     def __str__(self) -> str:
         if self.minimum_version:
-            return "Missing QT installation (at least %s)" % (self.minimum_version)
+            return f"Missing QT installation (at least {self.minimum_version})"
         return "Missing QT installation"
 
 
@@ -135,7 +135,7 @@ class MissingQtModules(Problem, kind="missing-qt-modules"):
     modules: list[str]
 
     def __str__(self) -> str:
-        return "Missing QT modules: %r" % self.modules
+        return f"Missing QT modules: {self.modules!r}"
 
 
 class MissingX11(Problem, kind="missing-x11"):
@@ -152,7 +152,7 @@ class MissingFile(Problem, kind="missing-file"):
     path: str
 
     def __str__(self) -> str:
-        return "Missing file: %s" % self.path
+        return f"Missing file: {self.path}"
 
 
 class MissingCommandOrBuildFile(Problem, kind="missing-command-or-build-file"):
@@ -163,14 +163,14 @@ class MissingCommandOrBuildFile(Problem, kind="missing-command-or-build-file"):
         return self.filename
 
     def __str__(self) -> str:
-        return "Missing command or build file: %s" % self.filename
+        return f"Missing command or build file: {self.filename}"
 
 
 class MissingBuildFile(Problem, kind="missing-build-file"):
     filename: str
 
     def __str__(self) -> str:
-        return "Missing build file: %s" % self.filename
+        return f"Missing build file: {self.filename}"
 
 
 def file_not_found(m):
@@ -216,7 +216,7 @@ class MissingJDK(Problem, kind="missing-jdk"):
     jdk_path: str
 
     def __str__(self) -> str:
-        return "Missing JDK (JDK Path: %s)" % (self.jdk_path)
+        return f"Missing JDK (JDK Path: {self.jdk_path})"
 
 
 class MissingJRE(Problem, kind="missing-jre"):
@@ -238,7 +238,7 @@ class ChrootNotFound(Problem, kind="chroot-not-found"):
     chroot: str
 
     def __str__(self) -> str:
-        return "Chroot not found: %s" % self.chroot
+        return f"Chroot not found: {self.chroot}"
 
 
 class MissingSprocketsFile(Problem, kind="missing-sprockets-file"):
@@ -253,28 +253,28 @@ class MissingGoPackage(Problem, kind="missing-go-package"):
     package: str
 
     def __str__(self) -> str:
-        return "Missing Go package: %s" % self.package
+        return f"Missing Go package: {self.package}"
 
 
 class MissingCHeader(Problem, kind="missing-c-header"):
     header: str
 
     def __str__(self) -> str:
-        return "Missing C Header: %s" % self.header
+        return f"Missing C Header: {self.header}"
 
 
 class MissingNodeModule(Problem, kind="missing-node-module"):
     module: str
 
     def __str__(self) -> str:
-        return "Missing Node Module: %s" % self.module
+        return f"Missing Node Module: {self.module}"
 
 
 class MissingNodePackage(Problem, kind="missing-node-package"):
     package: str
 
     def __str__(self) -> str:
-        return "Missing Node Package: %s" % self.package
+        return f"Missing Node Package: {self.package}"
 
 
 def node_module_missing(m):
@@ -289,7 +289,7 @@ class MissingCommand(Problem, kind="command-missing"):
     command: str
 
     def __str__(self) -> str:
-        return "Missing command: %s" % self.command
+        return f"Missing command: {self.command}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.command!r})"
@@ -299,7 +299,7 @@ class NotExecutableFile(Problem, kind="command-not-executable"):
     path: str
 
     def __str__(self) -> str:
-        return "Command not executable: %s" % self.path
+        return f"Command not executable: {self.path}"
 
 
 class MissingSecretGpgKey(Problem, kind="no-secret-gpg-key"):
@@ -339,7 +339,7 @@ class MissingPHPExtension(Problem, kind="missing-php-extension"):
     extension: str
 
     def __str__(self) -> str:
-        return "Missing PHP Extension: %s" % self.extension
+        return f"Missing PHP Extension: {self.extension}"
 
 
 class MinimumAutoconfTooOld(Problem, kind="minimum-autoconf-too-old"):
@@ -347,7 +347,7 @@ class MinimumAutoconfTooOld(Problem, kind="minimum-autoconf-too-old"):
 
     def __str__(self) -> str:
         return (
-            "configure.{ac,in} should require newer autoconf %s" % self.minimum_version
+            f"configure.{{ac,in}} should require newer autoconf {self.minimum_version}"
         )
 
 
@@ -359,7 +359,7 @@ class MissingPkgConfig(Problem, kind="missing-pkg-config-package"):
         if self.minimum_version:
             return f"Missing pkg-config file: {self.module} (>= {self.minimum_version})"
         else:
-            return "Missing pkg-config file: %s" % self.module
+            return f"Missing pkg-config file: {self.module}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.module!r}, minimum_version={self.minimum_version!r})"
@@ -436,21 +436,21 @@ class MissingPerlPredeclared(Problem, kind="missing-perl-predeclared"):
     name: str
 
     def __str__(self) -> str:
-        return "missing predeclared function: %s" % self.name
+        return f"missing predeclared function: {self.name}"
 
 
 class MissingPerlDistributionFile(Problem, kind="missing-perl-distribution-file"):
     filename: str
 
     def __str__(self) -> str:
-        return "Missing perl distribution file: %s" % self.filename
+        return f"Missing perl distribution file: {self.filename}"
 
 
 class InvalidCurrentUser(Problem, kind="invalid-current-user"):
     user: str
 
     def __str__(self) -> str:
-        return "Can not run as %s" % self.user
+        return f"Can not run as {self.user}"
 
 
 class MissingPerlModule(Problem, kind="missing-perl-module"):
@@ -463,7 +463,7 @@ class MissingPerlModule(Problem, kind="missing-perl-module"):
         if self.filename:
             return f"Missing Perl module: {self.module} (filename: {self.filename!r})"
         else:
-            return "Missing Perl Module: %s" % self.module
+            return f"Missing Perl Module: {self.module}"
 
 
 class MissingPerlFile(Problem, kind="missing-perl-file"):
@@ -478,7 +478,7 @@ class MissingMavenArtifacts(Problem, kind="missing-maven-artifacts"):
     artifacts: list[tuple[str, str, str, str]]
 
     def __str__(self) -> str:
-        return "Missing maven artifacts: %r" % self.artifacts
+        return f"Missing maven artifacts: {self.artifacts!r}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.artifacts!r})"
@@ -494,35 +494,35 @@ class DhAddonLoadFailure(Problem, kind="dh-addon-load-failure"):
     path: str
 
     def __str__(self) -> str:
-        return "dh addon loading failed: %s" % self.name
+        return f"dh addon loading failed: {self.name}"
 
 
 class DhMissingUninstalled(Problem, kind="dh-missing-uninstalled"):
     missing_file: str
 
     def __str__(self) -> str:
-        return "File built by Debian not installed: %r" % self.missing_file
+        return f"File built by Debian not installed: {self.missing_file!r}"
 
 
 class DhLinkDestinationIsDirectory(Problem, kind="dh-link-destination-is-directory"):
     path: str
 
     def __str__(self) -> str:
-        return "Link destination %s is directory" % self.path
+        return f"Link destination {self.path} is directory"
 
 
 class MissingXmlEntity(Problem, kind="missing-xml-entity"):
     url: str
 
     def __str__(self) -> str:
-        return "Missing XML entity: %s" % self.url
+        return f"Missing XML entity: {self.url}"
 
 
 class CcacheError(Problem, kind="ccache-error"):
     error: str
 
     def __str__(self) -> str:
-        return "ccache error: %s" % self.error
+        return f"ccache error: {self.error}"
 
 
 class MissingDebianBuildDep(Problem, kind="missing-debian-build-dep"):
@@ -544,7 +544,7 @@ class MissingLibrary(Problem, kind="missing-library"):
     library: str
 
     def __str__(self) -> str:
-        return "missing library: %s" % self.library
+        return f"missing library: {self.library}"
 
 
 class MissingStaticLibrary(Problem, kind="missing-static-library"):
@@ -552,7 +552,7 @@ class MissingStaticLibrary(Problem, kind="missing-static-library"):
     filename: str
 
     def __str__(self) -> str:
-        return "missing static library: %s" % self.library
+        return f"missing static library: {self.library}"
 
 
 class MissingRubyGem(Problem, kind="missing-ruby-gem"):
@@ -563,7 +563,7 @@ class MissingRubyGem(Problem, kind="missing-ruby-gem"):
         if self.version:
             return f"missing ruby gem: {self.gem} (>= {self.version})"
         else:
-            return "missing ruby gem: %s" % self.gem
+            return f"missing ruby gem: {self.gem}"
 
 
 class MissingRubyFile(Problem, kind="missing-ruby-file"):
@@ -577,14 +577,14 @@ class MissingPhpClass(Problem, kind="missing-php-class"):
     php_class: str
 
     def __str__(self) -> str:
-        return "missing PHP class: %s" % self.php_class
+        return f"missing PHP class: {self.php_class}"
 
 
 class MissingJavaClass(Problem, kind="missing-java-class"):
     classname: str
 
     def __str__(self) -> str:
-        return "missing java class: %s" % self.classname
+        return f"missing java class: {self.classname}"
 
 
 class MissingRPackage(Problem, kind="missing-r-package"):
@@ -595,7 +595,7 @@ class MissingRPackage(Problem, kind="missing-r-package"):
         if self.minimum_version:
             return f"missing R package: {self.package} (>= {self.minimum_version})"
         else:
-            return "missing R package: %s" % self.package
+            return f"missing R package: {self.package}"
 
 
 def r_missing_package(m):
@@ -622,14 +622,14 @@ class MissingXfceDependency(Problem, kind="missing-xfce-dependency"):
     package: str
 
     def __str__(self) -> str:
-        return "Missing XFCE build dependency: %s" % (self.package)
+        return f"Missing XFCE build dependency: {self.package}"
 
 
 class MissingAutomakeInput(Problem, kind="missing-automake-input"):
     path: str
 
     def __str__(self) -> str:
-        return "automake input file %s missing" % self.path
+        return f"automake input file {self.path} missing"
 
 
 class MissingAutoconfMacro(Problem, kind="missing-autoconf-macro"):
@@ -637,7 +637,7 @@ class MissingAutoconfMacro(Problem, kind="missing-autoconf-macro"):
     need_rebuild: bool = False
 
     def __str__(self) -> str:
-        return "autoconf macro %s missing" % self.macro
+        return f"autoconf macro {self.macro} missing"
 
 
 class MissingGnomeCommonDependency(Problem, kind="missing-gnome-common-dependency"):
@@ -652,7 +652,7 @@ class MissingConfigStatusInput(Problem, kind="missing-config.status-input"):
     path: str
 
     def __str__(self) -> str:
-        return "missing config.status input %s" % self.path
+        return f"missing config.status input {self.path}"
 
 
 class MissingJVM(Problem, kind="missing-jvm"):
@@ -669,7 +669,7 @@ class UpstartFilePresent(Problem, kind="upstart-file-present"):
     filename: str
 
     def __str__(self) -> str:
-        return "Upstart file present: %s" % self.filename
+        return f"Upstart file present: {self.filename}"
 
 
 class NeedPgBuildExtUpdateControl(Problem, kind="need-pg-buildext-updatecontrol"):
@@ -677,37 +677,35 @@ class NeedPgBuildExtUpdateControl(Problem, kind="need-pg-buildext-updatecontrol"
     template_path: str
 
     def __str__(self) -> str:
-        return "Need to run 'pg_buildext updatecontrol' to update %s" % (
-            self.generated_path
-        )
+        return f"Need to run 'pg_buildext updatecontrol' to update {self.generated_path}"
 
 
 class MissingValaPackage(Problem, kind="missing-vala-package"):
     package: str
 
     def __str__(self) -> str:
-        return "Missing Vala package: %s" % self.package
+        return f"Missing Vala package: {self.package}"
 
 
 class DirectoryNonExistant(Problem, kind="local-directory-not-existing"):
     path: str
 
     def __str__(self) -> str:
-        return "Directory does not exist: %s" % self.path
+        return f"Directory does not exist: {self.path}"
 
 
 class ImageMagickDelegateMissing(Problem, kind="imagemagick-delegate-missing"):
     delegate: str
 
     def __str__(self) -> str:
-        return "Imagemagick missing delegate: %s" % self.delegate
+        return f"Imagemagick missing delegate: {self.delegate}"
 
 
 class DebianVersionRejected(Problem, kind="debian-version-rejected"):
     version: str
 
     def __str__(self) -> str:
-        return "Debian Version Rejected; %s" % self.version
+        return f"Debian Version Rejected; {self.version}"
 
 
 class ValaCompilerCannotCompile(Problem, kind="valac-cannot-compile"):
@@ -722,7 +720,7 @@ class MissingHaskellDependencies(Problem, kind="missing-haskell-dependencies"):
         return f"{type(self).__name__}({self.deps!r})"
 
     def __str__(self) -> str:
-        return "Missing Haskell dependencies: %r" % self.deps
+        return f"Missing Haskell dependencies: {self.deps!r}"
 
 
 class MissingHaskellModule(Problem, kind="missing-haskell-module"):
@@ -732,7 +730,7 @@ class MissingHaskellModule(Problem, kind="missing-haskell-module"):
         return f"{type(self).__name__}({self.module!r})"
 
     def __str__(self) -> str:
-        return "Missing Haskell module: %r" % self.module
+        return f"Missing Haskell module: {self.module!r}"
 
 
 class Matcher:
@@ -774,7 +772,7 @@ class MissingSetupPyCommand(Problem, kind="missing-setup.py-command"):
     command: str
 
     def __str__(self) -> str:
-        return "missing setup.py subcommand: %s" % self.command
+        return f"missing setup.py subcommand: {self.command}"
 
 
 class PythonFileNotFoundErrorMatcher(Matcher):
@@ -1132,7 +1130,7 @@ class UnsupportedPytestArguments(Problem, kind="unsupported-pytest-arguments"):
     args: list[str]
 
     def __str__(self) -> str:
-        return "Unsupported pytest arguments: %r" % self.args
+        return f"Unsupported pytest arguments: {self.args!r}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.args!r})"
@@ -1149,7 +1147,7 @@ class MissingPytestFixture(Problem, kind="missing-pytest-fixture"):
     fixture: str
 
     def __str__(self) -> str:
-        return "Missing pytest fixture: %s" % self.fixture
+        return f"Missing pytest fixture: {self.fixture}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.fixture!r})"
@@ -1163,7 +1161,7 @@ class MissingCargoCrate(Problem, kind="missing-cargo-crate"):
         if self.requirement:
             return f"Missing crate: {self.crate} ({self.requirement})"
         else:
-            return "Missing crate: %s" % self.crate
+            return f"Missing crate: {self.crate}"
 
 
 def cargo_missing_requirement(m):
@@ -1179,42 +1177,42 @@ class MissingLatexFile(Problem, kind="missing-latex-file"):
     filename: str
 
     def __str__(self) -> str:
-        return "Missing LaTeX file: %s" % self.filename
+        return f"Missing LaTeX file: {self.filename}"
 
 
 class MissingFontspec(Problem, kind="missing-fontspec"):
     fontspec: str
 
     def __str__(self) -> str:
-        return "Missing font spec: %s" % self.fontspec
+        return f"Missing font spec: {self.fontspec}"
 
 
 class MissingDHCompatLevel(Problem, kind="missing-dh-compat-level"):
     command: str
 
     def __str__(self) -> str:
-        return "Missing DH Compat Level (command: %s)" % self.command
+        return f"Missing DH Compat Level (command: {self.command})"
 
 
 class DuplicateDHCompatLevel(Problem, kind="duplicate-dh-compat-level"):
     command: str
 
     def __str__(self) -> str:
-        return "DH Compat Level specified twice (command: %s)" % self.command
+        return f"DH Compat Level specified twice (command: {self.command})"
 
 
 class MissingIntrospectionTypelib(Problem, kind="missing-introspection-typelib"):
     library: str
 
     def __str__(self) -> str:
-        return "Missing introspection typelib: %s" % self.library
+        return f"Missing introspection typelib: {self.library}"
 
 
 class UnknownCertificateAuthority(Problem, kind="unknown-certificate-authority"):
     url: str
 
     def __str__(self) -> str:
-        return "Unknown Certificate Authority for %s" % self.url
+        return f"Unknown Certificate Authority for {self.url}"
 
 
 class MissingXDisplay(Problem, kind="missing-x-display"):
@@ -1226,14 +1224,14 @@ class MissingPostgresExtension(Problem, kind="missing-postgresql-extension"):
     extension: str
 
     def __str__(self) -> str:
-        return "Missing postgres extension: %s" % self.extension
+        return f"Missing postgres extension: {self.extension}"
 
 
 class MissingLuaModule(Problem, kind="missing-lua-module"):
     module: str
 
     def __str__(self) -> str:
-        return "Missing Lua Module: %s" % self.module
+        return f"Missing Lua Module: {self.module}"
 
 
 class Cancelled(Problem, kind="cancelled"):
@@ -1270,7 +1268,7 @@ class MissingGnulibDirectory(Problem, kind="missing-gnulib-directory"):
     directory: str
 
     def __str__(self) -> str:
-        return "Missing gnulib directory %s" % self.directory
+        return f"Missing gnulib directory {self.directory}"
 
 
 class MissingGoModFile(Problem, kind="missing-go.mod-file"):
@@ -1295,7 +1293,7 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
     path: str
 
     def __str__(self) -> str:
-        return "ESM-only module %s must use import()" % self.path
+        return f"ESM-only module {self.path} must use import()"
 
 
 build_failure_regexps = [

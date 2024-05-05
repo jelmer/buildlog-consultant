@@ -35,7 +35,7 @@ class DpkgError(Problem, kind="dpkg-error"):
         return isinstance(other, type(self)) and self.error == other.error
 
     def __str__(self) -> str:
-        return "Dpkg Error: %s" % self.error
+        return f"Dpkg Error: {self.error}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.error!r})"
@@ -61,7 +61,7 @@ class AptFetchFailure(AptUpdateError, kind="apt-file-fetch-failure"):
         return True
 
     def __str__(self) -> str:
-        return "Apt file fetch error: %s" % self.error
+        return f"Apt file fetch error: {self.error}"
 
 
 class AptMissingReleaseFile(AptUpdateError, kind="missing-release-file"):
@@ -75,7 +75,7 @@ class AptMissingReleaseFile(AptUpdateError, kind="missing-release-file"):
         return True
 
     def __str__(self) -> str:
-        return "Missing release file: %s" % self.url
+        return f"Missing release file: {self.url}"
 
 
 class AptPackageUnknown(Problem, kind="apt-package-unknown"):
@@ -85,7 +85,7 @@ class AptPackageUnknown(Problem, kind="apt-package-unknown"):
         return isinstance(other, type(self)) and self.package == other.package
 
     def __str__(self) -> str:
-        return "Unknown package: %s" % self.package
+        return f"Unknown package: {self.package}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.package!r})"
@@ -97,7 +97,7 @@ class AptBrokenPackages(Problem, kind="apt-broken-packages"):
 
     def __str__(self) -> str:
         if self.broken:
-            return "Broken apt packages: %r" % self.broken
+            return f"Broken apt packages: {self.broken!r}"
         return f"Broken apt packages: {self.description}"
 
     def __repr__(self) -> str:
@@ -265,7 +265,7 @@ class UnsatisfiedAptDependencies(Problem, kind="unsatisfied-apt-dependencies"):
     relations: list[list[list[ParsedRelation]]]
 
     def __str__(self) -> str:
-        return "Unsatisfied APT dependencies: %s" % (PkgRelation.str(self.relations))  # type: ignore
+        return f"Unsatisfied APT dependencies: {PkgRelation.str(self.relations)}"  # type: ignore
 
     @classmethod
     def from_str(cls, text):
@@ -306,7 +306,7 @@ class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):
     relations: list[list[list[ParsedRelation]]]
 
     def __str__(self) -> str:
-        return "Unsatisfied APT conflicts: %s" % PkgRelation.str(self.relations)  # type: ignore
+        return f"Unsatisfied APT conflicts: {PkgRelation.str(self.relations)}"  # type: ignore
 
 
 def error_from_dose3_report(report):

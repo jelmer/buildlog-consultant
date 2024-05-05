@@ -74,7 +74,7 @@ class AutopkgtestDepChrootDisappeared(Problem, kind="testbed-chroot-disappeared"
         return "chroot disappeared"
 
     def __repr__(self) -> str:
-        return "%s()" % (type(self).__name__)
+        return f"{type(self).__name__}()"
 
     def __eq__(self, other):
         return isinstance(self, type(other))
@@ -103,7 +103,7 @@ class AutopkgtestStderrFailure(Problem, kind="stderr-output"):
         return f"{type(self).__name__}({self.stderr_line!r})"
 
     def __str__(self) -> str:
-        return "output on stderr: %s" % self.stderr_line
+        return f"output on stderr: {self.stderr_line}"
 
 
 def parse_autopgktest_line(line: str) -> Union[str, tuple[str, Union[tuple[str, ...]]]]:
@@ -496,7 +496,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
                         testname, badpkg.rstrip("\n")
                     )
                 else:
-                    description = "Test %s failed" % testname
+                    description = f"Test {testname} failed"
 
                 error = AutopkgtestDepsUnsatisfiable.from_blame_line(blame)
                 return (
