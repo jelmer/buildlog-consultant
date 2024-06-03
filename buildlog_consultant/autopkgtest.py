@@ -213,7 +213,7 @@ def find_autopkgtest_failure_description(  # noqa: C901
     Returns:
       tuple with (line offset, testname, error, description)
     """
-    error: Optional["Problem"]
+    error: Optional[Problem]
     test_output: dict[tuple[str, ...], list[str]] = {}
     test_output_offset: dict[tuple[str, ...], int] = {}
     current_field: Optional[tuple[str, ...]] = None
