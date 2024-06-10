@@ -41,8 +41,11 @@ analyse-build-log = "buildlog_consultant.common:main"
 analyse-autopkgtest-log = "buildlog_consultant.autopkgtest:main"
 
 [tool.setuptools]
-packages = ["buildlog_consultant"]
 include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["py"]
+include = ["buildlog_consultant*"]
 
 [tool.setuptools.package-data]
 buildlog_consultant = ["py.typed"]

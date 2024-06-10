@@ -8,7 +8,7 @@ build-inplace:
 check:: testsuite
 
 testsuite: build-inplace
-	$(PYTHON) -m unittest tests.test_suite
+	PYTHONPATH=$(shell pwd)/py $(PYTHON) -m unittest tests.test_suite
 
 check:: cargo-test
 
@@ -18,9 +18,9 @@ cargo-test:
 check:: style
 
 style:
-	ruff check .
+	ruff check py
 
 check:: typing
 
 typing: build-inplace
-	$(PYTHON) -m mypy buildlog_consultant
+	$(PYTHON) -m mypy py/buildlog_consultant
