@@ -7,3 +7,4 @@ build
 target
 buildlog_consultant/_buildlog_consultant_rs.*.so
 dist/*
+py/buildlog_consultant/_buildlog_consultant_rs.*.so

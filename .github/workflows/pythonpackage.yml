@@ -32,14 +32,15 @@ jobs:
     - name: Style checks
       run: |
         python -m pip install --upgrade ".[dev]"
-        python -m ruff check .
+        python -m ruff check py
     - name: Typing checks
       run: |
         pip install -U mypy types-PyYAML
-        python -m mypy buildlog_consultant
+        python -m mypy py/buildlog_consultant
       if: "matrix.python-version != 'pypy3'"
     - name: Test suite run
       run: |
         python -m unittest tests.test_suite
       env:
         PYTHONHASHSEED: random
+        PYTHONPATH: py
