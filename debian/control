@@ -1,6 +1,18 @@
 Rules-Requires-Root: no
 Standards-Version: 4.6.2
-Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools, python3-debian, python3-yaml, python3-requirement-parser, python3-setuptools-rust, librust-pyo3-dev, librust-pyo3-file-dev, librust-pyo3-log-dev, librust-shlex-dev, librust-fancy-regex-dev
+Build-Depends: debhelper-compat (= 13),
+               dh-sequence-python3,
+               librust-fancy-regex-dev,
+               librust-pyo3-dev,
+               librust-pyo3-file-dev,
+               librust-pyo3-log-dev,
+               librust-shlex-dev,
+               python3-all,
+               python3-debian,
+               python3-requirement-parser,
+               python3-setuptools,
+               python3-setuptools-rust,
+               python3-yaml
 Source: buildlog-consultant
 Priority: optional
 Section: python
@@ -11,7 +23,12 @@ Vcs-Browser: https://salsa.debian.org/jelmer/buildlog-consultant
 
 Package: python3-buildlog-consultant
 Architecture: any
-Depends: ${misc:Depends}, ${python3:Depends}, ${shlibs:Depends}, python3-debian, python3-yaml, python3-requirement-parser
+Depends: python3-debian,
+         python3-requirement-parser,
+         python3-yaml,
+         ${misc:Depends},
+         ${python3:Depends},
+         ${shlibs:Depends}
 Description: build log parser and analyser
  buildlog-consultant can parse build logs and highlight and extract the key
  error lines. This can be used to extract a snippet from a build log with the
