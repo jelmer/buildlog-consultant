@@ -1,6 +1,6 @@
 [package]
 name = "buildlog-consultant"
-version = "0.0.35"
+version = "0.0.36"
 authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>",]
 edition = "2021"
 license = "GPL-2.0+"
