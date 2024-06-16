@@ -17,5 +17,5 @@ extension-module = ["pyo3/extension-module"]
 buildlog-consultant = { path = ".." }
 pyo3 = { workspace = true }
 serde_json = { workspace = true }
-pyo3-file = "0.7.0"
-pyo3-log = "0.8.3"
+pyo3-filelike = ">=0.2.0"
+pyo3-log = ">=0.10"

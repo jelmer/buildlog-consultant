@@ -106,7 +106,8 @@ impl Problem {
 }
 
 #[pyfunction]
-fn match_lines(lines: Vec<&str>, offset: usize) -> PyResult<(Option<Match>, Option<Problem>)> {
+fn match_lines(lines: Vec<String>, offset: usize) -> PyResult<(Option<Match>, Option<Problem>)> {
+    let lines = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
     let ret = buildlog_consultant::common::match_lines(lines.as_slice(), offset)
         .map_err(|e| pyo3::exceptions::PyException::new_err(format!("Error: {}", e)))?;
 
@@ -177,7 +178,7 @@ impl SbuildLog {
 
     #[staticmethod]
     fn parse(f: PyObject) -> PyResult<SbuildLog> {
-        let f = pyo3_file::PyFileLikeObject::with_requirements(f, true, false, false)?;
+        let f = pyo3_filelike::PyBinaryFile::from(f);
         let bufread = BufReader::new(f);
         Ok(SbuildLog(buildlog_consultant::sbuild::SbuildLog(
             buildlog_consultant::sbuild::parse_sbuild_log(bufread).collect(),
