@@ -232,9 +232,7 @@ autopkgtest [22:52:18]: host osuosl167-amd64; command line: /usr/bin/autopkgtest
 <VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory
 '
 autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 32] Broken pipe
-""".splitlines(
-                    False
-                )
+""".splitlines(False)
             ),
         )
 
@@ -352,9 +350,7 @@ TestCase.php on line 31
 autopkgtest [06:59:01]: ERROR: testbed failure: testbed auxverb \
 failed with exit code 255
 Exiting with 16
-""".splitlines(
-                    True
-                )
+""".splitlines(True)
             ),
         )
 
@@ -385,9 +381,7 @@ autopkgtest [01:30:12]: @@@@@@@@@@@@@@@@@@@@ summary
 command1             PASS
 command2             FAIL non-zero exit status 1
 Exiting with 4
-""".splitlines(
-                    True
-                )
+""".splitlines(True)
             ),
         )
 
@@ -424,9 +418,7 @@ autopkgtest [19:19:23]: ERROR: "dpkg --unpack \
 stderr "W: /var/lib/schroot/session/unstable-amd64-sbuild-\
 7fb1b836-14f9-4709-8584-cbbae284db97: Failed to stat file: \
 No such file or directory
-""".splitlines(
-                    True
-                )
+""".splitlines(True)
             ),
         )
 
@@ -458,9 +450,7 @@ unmunge: Error: No credential specified
 autopkgtest [17:38:50]: @@@@@@@@@@@@@@@@@@@@ summary
 unmunge              FAIL non-zero exit status 2
 Exiting with 4
-""".splitlines(
-                    True
-                )
+""".splitlines(True)
             ),
         )
 
@@ -493,8 +483,6 @@ unit-tests-3         FAIL non-zero exit status 1
 autopkgtest [14:58:01]: @@@@@@@@@@@@@@@@@@@@ summary
 unit-tests-3         FAIL non-zero exit status 1
 Exiting with 4
-""".splitlines(
-                    True
-                )
+""".splitlines(True)
             ),
         )

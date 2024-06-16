@@ -1,7 +1,8 @@
 use pyo3::exceptions::PyNotImplementedError;
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
-use std::collections::HashMap;
+
+use std::io::BufReader;
 
 #[pyclass]
 struct Match(Box<dyn buildlog_consultant::Match>);
@@ -10,7 +11,7 @@ struct Match(Box<dyn buildlog_consultant::Match>);
 impl Match {
     #[getter]
     fn line(&self) -> String {
-        self.0.line().to_string()
+        self.0.line()
     }
 
     #[getter]
@@ -32,7 +33,7 @@ impl Match {
         format!(
             "Match({:?}, {}, {})",
             self.0.line(),
-            self.0.lineno(),
+            self.0.offset(),
             self.0.lineno()
         )
     }
@@ -67,7 +68,7 @@ fn json_to_py(py: Python, json: serde_json::Value) -> PyResult<PyObject> {
             Ok(ret.into_py(py))
         }
         serde_json::Value::Object(o) => {
-            let mut ret = pyo3::types::PyDict::new(py);
+            let ret = pyo3::types::PyDict::new(py);
             for (k, v) in o {
                 ret.set_item(k, json_to_py(py, v)?)?;
             }
@@ -105,7 +106,8 @@ impl Problem {
 }
 
 #[pyfunction]
-fn match_lines(lines: Vec<&str>, offset: usize) -> PyResult<(Option<Match>, Option<Problem>)> {
+fn match_lines(lines: Vec<String>, offset: usize) -> PyResult<(Option<Match>, Option<Problem>)> {
+    let lines = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
     let ret = buildlog_consultant::common::match_lines(lines.as_slice(), offset)
         .map_err(|e| pyo3::exceptions::PyException::new_err(format!("Error: {}", e)))?;
 
@@ -116,10 +118,102 @@ fn match_lines(lines: Vec<&str>, offset: usize) -> PyResult<(Option<Match>, Opti
     }
 }
 
+#[pyclass]
+struct SbuildLogSection(buildlog_consultant::sbuild::SbuildLogSection);
+
+#[pymethods]
+impl SbuildLogSection {
+    #[getter]
+    fn title(&self) -> Option<String> {
+        self.0.title.clone()
+    }
+
+    #[getter]
+    fn offsets(&self) -> (usize, usize) {
+        self.0.offsets
+    }
+
+    #[getter]
+    fn lines(&self) -> Vec<String> {
+        self.0.lines.clone()
+    }
+}
+
+#[pyclass]
+struct SbuildLog(buildlog_consultant::sbuild::SbuildLog);
+
+#[pymethods]
+impl SbuildLog {
+    fn get_failed_stage(&self) -> Option<String> {
+        self.0.get_failed_stage()
+    }
+
+    fn get_section_lines(&self, section: Option<&str>) -> Option<Vec<String>> {
+        self.0
+            .get_section_lines(section)
+            .map(|v| v.into_iter().map(|s| s.to_string()).collect())
+    }
+
+    #[getter]
+    fn sections(&self) -> Vec<SbuildLogSection> {
+        self.0
+            .sections()
+            .map(|s| SbuildLogSection(s.clone()))
+            .collect()
+    }
+
+    fn section_titles(&self) -> Vec<String> {
+        self.0
+            .section_titles()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect()
+    }
+
+    fn get_section(&self, section: Option<&str>) -> Option<SbuildLogSection> {
+        self.0
+            .get_section(section)
+            .map(|s| SbuildLogSection(s.clone()))
+    }
+
+    #[staticmethod]
+    fn parse(f: PyObject) -> PyResult<SbuildLog> {
+        let f = pyo3_filelike::PyBinaryFile::from(f);
+        let bufread = BufReader::new(f);
+        Ok(SbuildLog(buildlog_consultant::sbuild::SbuildLog(
+            buildlog_consultant::sbuild::parse_sbuild_log(bufread).collect(),
+        )))
+    }
+}
+
+#[pyfunction]
+fn parse_sbuild_log(lines: Vec<Vec<u8>>) -> PyResult<Vec<SbuildLogSection>> {
+    let text = lines.concat();
+    let cursor = std::io::Cursor::new(text);
+    let mut ret = Vec::new();
+    let sections = buildlog_consultant::sbuild::parse_sbuild_log(cursor);
+    for section in sections {
+        ret.push(SbuildLogSection(section));
+    }
+    Ok(ret)
+}
+
+#[pyfunction]
+fn find_secondary_build_failure(lines: Vec<String>, offset: usize) -> Option<Match> {
+    let lines = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    buildlog_consultant::common::find_secondary_build_failure(lines.as_slice(), offset)
+        .map(|m| Match(Box::new(m)))
+}
+
 #[pymodule]
 fn _buildlog_consultant_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+    pyo3_log::init();
     m.add_class::<Match>()?;
     m.add_class::<Problem>()?;
+    m.add_class::<SbuildLogSection>()?;
+    m.add_class::<SbuildLog>()?;
     m.add_function(wrap_pyfunction!(match_lines, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_sbuild_log, m)?)?;
+    m.add_function(wrap_pyfunction!(find_secondary_build_failure, m)?)?;
     Ok(())
 }

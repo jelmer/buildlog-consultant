@@ -18,11 +18,19 @@
 
 import logging
 import re
-from collections.abc import Iterator
-from dataclasses import dataclass
 from typing import BinaryIO, Optional, Union
 
-from . import Match, Problem, SingleLineMatch, version_string
+from . import (
+    Match,
+    Problem,
+    SingleLineMatch,
+    version_string,
+)
+from ._buildlog_consultant_rs import (
+    SbuildLog,
+    SbuildLogSection,
+    parse_sbuild_log,
+)
 from .apt import (
     find_apt_get_failure,
     find_apt_get_update_failure,
@@ -40,6 +48,7 @@ __all__ = [
     "SbuildFailure",
     "parse_sbuild_log",
     "SbuildLog",
+    "SbuildLogSection",
 ]
 
 logger = logging.getLogger(__name__)
@@ -65,13 +74,7 @@ class SbuildFailure(Exception):
         self.match = match
 
     def __repr__(self) -> str:
-        return "{}({!r}, {!r}, error={!r}, phase={!r})".format(
-            type(self).__name__,
-            self.stage,
-            self.description,
-            self.error,
-            self.phase,
-        )
+        return f"{type(self).__name__}({self.stage!r}, {self.description!r}, error={self.error!r}, phase={self.phase!r})"
 
     def json(self):
         ret = {
@@ -80,7 +83,8 @@ class SbuildFailure(Exception):
             "section": self.section.title if self.section else None,
             "origin": self.match.origin if self.match else None,
             "lineno": (
-                (self.section.offsets[0] if self.section else 0) + self.match.lineno)
+                (self.section.offsets[0] if self.section else 0) + self.match.lineno
+            )
             if self.match
             else None,
         }
@@ -94,7 +98,6 @@ class SbuildFailure(Exception):
 
 
 class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
-
     diff_file: Optional[str] = None
     files: Optional[list[str]] = None
 
@@ -107,7 +110,7 @@ class DpkgSourceLocalChanges(Problem, kind="unexpected-local-upstream-changes"):
 
     def __str__(self) -> str:
         if self.files and len(self.files) < 5:
-            return "Tree has local changes: %r" % self.files
+            return f"Tree has local changes: {self.files!r}"
         elif self.files:
             return "Tree has local changes: %d files" % len(self.files)
         else:
@@ -125,104 +128,91 @@ class DpkgUnwantedBinaryFiles(Problem, kind="unwanted-binary-files"):
 
 
 class DpkgBinaryFileChanged(Problem, kind="changed-binary-files"):
-
     paths: list[str]
 
     def __str__(self) -> str:
-        return "Tree has binary files with changes: %r" % self.paths
+        return f"Tree has binary files with changes: {self.paths!r}"
 
 
 class MissingControlFile(Problem, kind="missing-control-file"):
-
     path: str
 
     def __str__(self) -> str:
-        return "Tree is missing control file %s" % self.path
+        return f"Tree is missing control file {self.path}"
 
 
-class UnableToFindUpstreamTarball(
-        Problem, kind="unable-to-find-upstream-tarball"):
-
+class UnableToFindUpstreamTarball(Problem, kind="unable-to-find-upstream-tarball"):
     package: str
     version: str
 
     def __str__(self) -> str:
         return (
             "Unable to find the needed upstream tarball for "
-            f"{self.package}, version {self.version}.")
+            f"{self.package}, version {self.version}."
+        )
 
 
 class SourceFormatUnbuildable(Problem, kind="source-format-unbuildable"):
-
     source_format: str
     reason: str
 
     def __str__(self) -> str:
-        return "Source format {} unusable: {}".format(
-            self.source_format, self.reason)
+        return f"Source format {self.source_format} unusable: {self.reason}"
 
 
 class SourceFormatUnsupported(Problem, kind="unsupported-source-format"):
-
     source_format: str
 
     def __str__(self) -> str:
-        return "Source format %r unsupported" % self.source_format
+        return f"Source format {self.source_format!r} unsupported"
 
 
 class PatchFileMissing(Problem, kind="patch-file-missing"):
-
     path: str
 
     def __str__(self) -> str:
-        return "Patch file %s missing" % self.path
+        return f"Patch file {self.path} missing"
 
 
-class UnknownMercurialExtraFields(
-        Problem, kind="unknown-mercurial-extra-fields"):
-
+class UnknownMercurialExtraFields(Problem, kind="unknown-mercurial-extra-fields"):
     field: str
 
     def __str__(self) -> str:
-        return "Unknown Mercurial extra fields: %s" % self.field
+        return f"Unknown Mercurial extra fields: {self.field}"
 
 
 class UpstreamPGPSignatureVerificationFailed(
-        Problem, kind="upstream-pgp-signature-verification-failed"):
+    Problem, kind="upstream-pgp-signature-verification-failed"
+):
     def __str__(self) -> str:
         return "Unable to verify the PGP signature on the upstream source"
 
 
-class UScanRequestVersionMissing(
-        Problem, kind="uscan-requested-version-missing"):
-
+class UScanRequestVersionMissing(Problem, kind="uscan-requested-version-missing"):
     version: str
 
     def __str__(self) -> str:
-        return "UScan can not find requested version %s." % self.version
+        return f"UScan can not find requested version {self.version}."
 
 
 class DebcargoFailure(Problem, kind="debcargo-failed"):
-
     reason: str
 
     def __str__(self) -> str:
         if self.reason:
-            return "Debcargo failed: %s" % self.reason
+            return f"Debcargo failed: {self.reason}"
         else:
             return "Debcargo failed"
 
 
 class ChangelogParseError(Problem, kind="changelog-parse-failed"):
-
     reason: str
 
     def __str__(self) -> str:
-        return "Changelog failed to parse: %s" % self.reason
+        return f"Changelog failed to parse: {self.reason}"
 
 
 class UScanFailed(Problem, kind="uscan-failed"):
-
     url: str
     reason: str
 
@@ -231,7 +221,6 @@ class UScanFailed(Problem, kind="uscan-failed"):
 
 
 class InconsistentSourceFormat(Problem, kind="inconsistent-source-format"):
-
     version: Optional[str] = None
     source_format: Optional[str] = None
 
@@ -239,29 +228,25 @@ class InconsistentSourceFormat(Problem, kind="inconsistent-source-format"):
         return "Inconsistent source format between version and source format"
 
 
-class UpstreamMetadataFileParseError(
-        Problem, kind="debian-upstream-metadata-invalid"):
-
+class UpstreamMetadataFileParseError(Problem, kind="debian-upstream-metadata-invalid"):
     path: str
     reason: str
 
     def __str__(self) -> str:
-        return "%s is invalid" % self.path
+        return f"{self.path} is invalid"
 
 
 class DpkgSourcePackFailed(Problem, kind="dpkg-source-pack-failed"):
-
     reason: Optional[str] = None
 
     def __str__(self) -> str:
         if self.reason:
-            return "Packing source directory failed: %s" % self.reason
+            return f"Packing source directory failed: {self.reason}"
         else:
             return "Packing source directory failed."
 
 
 class DpkgBadVersion(Problem, kind="dpkg-bad-version"):
-
     version: str
     reason: Optional[str] = None
 
@@ -269,11 +254,10 @@ class DpkgBadVersion(Problem, kind="dpkg-bad-version"):
         if self.reason:
             return f"Version ({self.version}) is invalid: {self.reason}"
         else:
-            return "Version (%s) is invalid" % self.version
+            return f"Version ({self.version}) is invalid"
 
 
 class MissingDebcargoCrate(Problem, kind="debcargo-missing-crate"):
-
     crate: str
     version: Optional[str] = None
 
@@ -287,9 +271,9 @@ class MissingDebcargoCrate(Problem, kind="debcargo-missing-crate"):
             return cls(text)
 
     def __str__(self) -> str:
-        ret = "debcargo can't find crate %s" % self.crate
+        ret = f"debcargo can't find crate {self.crate}"
         if self.version:
-            ret += " (version: %s)" % self.version
+            ret += f" (version: {self.version})"
         return ret
 
 
@@ -306,7 +290,9 @@ def find_preamble_failure_description(  # noqa: C901
         line = lines[lineno].strip("\n")
         m = re.fullmatch(
             "dpkg-source: error: aborting due to unexpected upstream "
-            "changes, see (.*)", line)
+            "changes, see (.*)",
+            line,
+        )
         if m:
             diff_file = m.group(1)
             j = lineno - 1
@@ -317,7 +303,9 @@ def find_preamble_failure_description(  # noqa: C901
                     "the modified files are:\n"
                 ):
                     err = DpkgSourceLocalChanges(diff_file, files)
-                    return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
+                    return SingleLineMatch.from_lines(
+                        lines, lineno, origin="direct regex"
+                    ), err
                 files.append(lines[j].strip())
                 j -= 1
             err = DpkgSourceLocalChanges(diff_file)
@@ -380,7 +368,9 @@ def find_preamble_failure_description(  # noqa: C901
             )
             if m:
                 err = DpkgBadVersion(m.group(1), m.group(2))
-                return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
+                return SingleLineMatch.from_lines(
+                    lines, lineno, origin="direct regex"
+                ), err
 
         m = re.match("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
         if m:
@@ -431,8 +421,10 @@ def find_preamble_failure_description(  # noqa: C901
             return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
 
         m = re.match(
-            r'fatal: ambiguous argument \'(.*)\': '
-            r'unknown revision or path not in the working tree.', line)
+            r"fatal: ambiguous argument \'(.*)\': "
+            r"unknown revision or path not in the working tree.",
+            line,
+        )
         if m:
             err = PristineTarTreeMissing(m.group(1))
             return SingleLineMatch.from_lines(lines, lineno, origin="direct regex"), err
@@ -446,21 +438,19 @@ def find_preamble_failure_description(  # noqa: C901
 
 
 class DebcargoUnacceptablePredicate(Problem, kind="debcargo-unacceptable-predicate"):
-
     crate: str
     predicate: str
 
     def __str__(self) -> str:
-        return "Cannot represent prerelease part of dependency: %s" % (self.predicate)
+        return f"Cannot represent prerelease part of dependency: {self.predicate}"
 
 
 class DebcargoUnacceptableComparator(Problem, kind="debcargo-unacceptable-comparator"):
-
     crate: str
     comparator: str
 
     def __str__(self) -> str:
-        return "Cannot represent prerelease part of dependency: %s" % (self.comparator)
+        return f"Cannot represent prerelease part of dependency: {self.comparator}"
 
 
 def _parse_debcargo_failure(m, pl):
@@ -507,11 +497,10 @@ def _parse_debcargo_failure(m, pl):
 
 
 class UScanTooManyRequests(Problem, kind="uscan-too-many-requests"):
-
     url: str
 
     def __str__(self) -> str:
-        return "UScan: %s: too many requests" % self.url
+        return f"UScan: {self.url}: too many requests"
 
 
 BRZ_ERRORS = [
@@ -527,7 +516,7 @@ BRZ_ERRORS = [
     (
         r"UScan failed to run: In watchfile (.*), reading webpage "
         r"(.*) failed: 429 too many requests\.",
-        lambda m, pl: UScanTooManyRequests(m.group(2))
+        lambda m, pl: UScanTooManyRequests(m.group(2)),
     ),
     (
         "UScan failed to run: OpenPGP signature did not verify..",
@@ -581,33 +570,31 @@ def parse_brz_error(line: str, prior_lines: list[str]) -> tuple[Optional[Problem
             error = fn(m, prior_lines)
             return (error, str(error))
     if line.startswith("UScan failed to run"):
-        return (UScanFailed(None, line[len("UScan failed to run: "):]), line)
-    if line.startswith('Unable to parse changelog: '):
-        return (ChangelogParseError(line[len("Unable to parse changelog: "):]), line)
+        return (UScanFailed(None, line[len("UScan failed to run: ") :]), line)
+    if line.startswith("Unable to parse changelog: "):
+        return (ChangelogParseError(line[len("Unable to parse changelog: ") :]), line)
     return (None, line.split("\n")[0])
 
 
 class MissingRevision(Problem, kind="missing-revision"):
-
     revision: bytes
 
     def json(self):
-        return {'revision': self.revision.decode('utf-8')}
+        return {"revision": self.revision.decode("utf-8")}
 
     @classmethod
     def from_json(cls, json):
-        return cls(revision=json['revision'].encode('utf-8'))
+        return cls(revision=json["revision"].encode("utf-8"))
 
     def __str__(self) -> str:
-        return "Missing revision: %r" % self.revision
+        return f"Missing revision: {self.revision!r}"
 
 
 class PristineTarTreeMissing(Problem, kind="pristine-tar-missing-tree"):
-
     treeish: str
 
     def __str__(self) -> str:
-        return "pristine-tar can not find tree %r" % self.treeish
+        return f"pristine-tar can not find tree {self.treeish!r}"
 
 
 def find_creation_session_error(lines):
@@ -620,11 +607,13 @@ def find_creation_session_error(lines):
             "E: Chroot for distribution (.*), architecture (.*) not found\n", line
         )
         if m:
-            return SingleLineMatch.from_lines(lines, i, origin="direct regex"), ChrootNotFound(
-                f"{m.group(1)}-{m.group(2)}-sbuild"
-            )
+            return SingleLineMatch.from_lines(
+                lines, i, origin="direct regex"
+            ), ChrootNotFound(f"{m.group(1)}-{m.group(2)}-sbuild")
         if line.endswith(": No space left on device\n"):
-            return SingleLineMatch.from_lines(lines, i, origin="direct regex"), NoSpaceOnDevice()
+            return SingleLineMatch.from_lines(
+                lines, i, origin="direct regex"
+            ), NoSpaceOnDevice()
 
     return ret
 
@@ -639,50 +628,6 @@ def find_brz_build_error(lines):
                     rest.append(n)
             return parse_brz_error("".join(rest), lines[:i])
     return (None, None)
-
-
-@dataclass
-class SbuildLogSection:
-
-    title: Optional[str]
-    offsets: tuple[int, int]
-    lines: list[str]
-
-
-@dataclass
-class SbuildLog:
-
-    sections: list[SbuildLogSection]
-
-    def get_section(self, title):
-        for section in self.sections:
-            if section.title is None and title is None:
-                return section
-            if section.title and title and section.title.lower() == title.lower():
-                return section
-
-    def get_section_lines(self, title):
-        section = self.get_section(title)
-        if section:
-            return section.lines
-        return []
-
-    def section_titles(self):
-        return [section.title for section in self.sections]
-
-    @classmethod
-    def parse(cls, f: BinaryIO):
-        sections = []
-        for section in parse_sbuild_log(f):
-            logging.debug(
-                "Section %s (lines %d-%d)"
-                % (section.title, section.offsets[0], section.offsets[1])
-            )
-            sections.append(section)
-        return cls(sections)
-
-    def get_failed_stage(self) -> Optional[str]:
-        return find_failed_stage(self.get_section_lines("summary"))
 
 
 def find_failure_fetch_src(sbuildlog, failed_stage):
@@ -700,10 +645,9 @@ def find_failure_fetch_src(sbuildlog, failed_stage):
         )
         return SbuildFailure("unpack", str(error), error, section=section, match=match)
     (match, error) = find_apt_get_failure(section.lines)
-    description = "build failed stage %s" % failed_stage
+    description = f"build failed stage {failed_stage}"
     return SbuildFailure(
-        failed_stage, description, error=error, phase=None, section=section,
-        match=match
+        failed_stage, description, error=error, phase=None, section=section, match=match
     )
 
 
@@ -711,7 +655,7 @@ def find_failure_create_session(sbuildlog, failed_stage):
     section = sbuildlog.get_section(None)
     match, error = find_creation_session_error(section.lines)
     phase = ("create-session",)
-    description = "build failed stage %s" % failed_stage
+    description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -729,7 +673,7 @@ def find_failure_unpack(sbuildlog, failed_stage):
         return SbuildFailure(
             failed_stage, str(error), error, section=section, match=match
         )
-    description = "build failed stage %s" % failed_stage
+    description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage, description, error=error, phase=None, section=section, match=match
     )
@@ -745,7 +689,7 @@ def find_failure_build(sbuildlog, failed_stage):
     elif match:
         description = match.line.rstrip("\n")
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -779,7 +723,7 @@ def find_failure_autopkgtest(sbuildlog, failed_stage):
         match = None
         phase = None
     if not description:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -797,7 +741,7 @@ def find_failure_apt_get_update(sbuildlog, failed_stage):
     elif match:
         description = match.line.rstrip("\n")
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage,
         description,
@@ -816,7 +760,7 @@ def find_failure_arch_check(sbuildlog, failed_stage):
     if error:
         description = str(error)
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage, description, error=error, phase=None, section=section, match=match
     )
@@ -828,7 +772,7 @@ def find_failure_check_space(sbuildlog, failed_stage):
     if error:
         description = str(error)
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     return SbuildFailure(
         failed_stage, description, error=error, phase=None, section=section, match=match
     )
@@ -844,7 +788,7 @@ def find_failure_install_deps(sbuildlog, failed_stage):
         else:
             description = match.line.rstrip("\n")
     else:
-        description = "build failed stage %s" % failed_stage
+        description = f"build failed stage {failed_stage}"
     phase = ("build",)
     return SbuildFailure(
         failed_stage,
@@ -899,9 +843,14 @@ def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailu
     except KeyError:
         if failed_stage is not None:
             logging.warning("unknown failed stage: %s", failed_stage)
-            description = "build failed stage %s" % failed_stage
+            description = f"build failed stage {failed_stage}"
             return SbuildFailure(
-                failed_stage, description, error=None, phase=None, section=None, match=None
+                failed_stage,
+                description,
+                error=None,
+                phase=None,
+                section=None,
+                match=None,
             )
     else:
         if overall_failure is not None:
@@ -939,54 +888,6 @@ def worker_failure_from_sbuild_log(f: Union[SbuildLog, BinaryIO]) -> SbuildFailu
     )
 
 
-def parse_sbuild_log(f: BinaryIO) -> Iterator[SbuildLogSection]:
-    begin_offset = 1
-    lines: list[str] = []
-    title = None
-    sep = b"+" + (b"-" * 78) + b"+"
-    lineno = 0
-    line = f.readline()
-    lineno += 1
-    while line:
-        if line.strip() == sep:
-            l1 = f.readline()
-            l2 = f.readline()
-            lineno += 2
-            if l1.startswith(b"|") and l1.strip().endswith(b"|") and l2.strip() == sep:
-                end_offset = lineno - 3
-                # Drop trailing empty lines
-                while lines and lines[-1] == "\n":
-                    lines.pop(-1)
-                    end_offset -= 1
-                if lines:
-                    yield SbuildLogSection(title, (begin_offset, end_offset), lines)
-                title = l1.rstrip()[1:-1].strip().decode(errors="replace")
-                lines = []
-                begin_offset = lineno
-            else:
-                lines.extend(
-                    [
-                        line.decode(errors="replace"),
-                        l1.decode(errors="replace"),
-                        l2.decode(errors="replace"),
-                    ]
-                )
-        else:
-            lines.append(line.decode(errors="replace"))
-        line = f.readline()
-        lineno += 1
-    yield SbuildLogSection(title, (begin_offset, lineno), lines)
-
-
-def find_failed_stage(lines: list[str]) -> Optional[str]:
-    for line in lines:
-        if not line.startswith("Fail-Stage: "):
-            continue
-        (key, value) = line.split(": ", 1)
-        return value.strip()
-    return None
-
-
 DEFAULT_LOOK_BACK = 50
 
 
@@ -1018,7 +919,6 @@ def strip_build_tail(lines, look_back=None):
 
 
 class ArchitectureNotInList(Problem, kind="arch-not-in-list"):
-
     arch: str
     arch_list: list[str]
 
@@ -1037,12 +937,15 @@ def find_arch_check_failure_description(
         )
         if m:
             error = ArchitectureNotInList(m.group(1), m.group(2))
-            return SingleLineMatch.from_lines(lines, offset, origin="direct regex"), error
-    return SingleLineMatch.from_lines(lines, len(lines) - 1, origin="direct regex"), None
+            return SingleLineMatch.from_lines(
+                lines, offset, origin="direct regex"
+            ), error
+    return SingleLineMatch.from_lines(
+        lines, len(lines) - 1, origin="direct regex"
+    ), None
 
 
 class InsufficientDiskSpace(Problem, kind="insufficient-disk-space"):
-
     needed: int
     free: int
 
@@ -1101,17 +1004,17 @@ def main(argv=None):
 
         failed_stage = sbuildlog.get_failed_stage()
         if failed_stage:
-            logging.info("Failed stage: %s" % failed_stage)
+            logging.info("Failed stage: %s", failed_stage)
         failure = worker_failure_from_sbuild_log(sbuildlog)
 
         if args.json:
             json.dump(failure.json(), sys.stdout, indent=4)
 
     if failure.error:
-        logging.info("Error: %s" % failure.error)
+        logging.info("Error: %s", failure.error)
     if failure.match and failure.section:
         logging.info(
-            "Failed line: %d:" % (failure.section.offsets[0] + failure.match.lineno)
+            "Failed line: %d:", (failure.section.offsets[0] + failure.match.lineno)
         )
         for i in range(
             max(0, failure.match.offset - args.context),
