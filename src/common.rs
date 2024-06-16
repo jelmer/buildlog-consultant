@@ -1,11 +1,17 @@
+/// Common code for all environments.
+// TODO(jelmer): Right now this is just a straight port from Python. It needs a massive amount of
+// refactoring, including a split of the file.
 use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
 use crate::{Match, Problem};
 use crate::{MultiLineMatch, Origin, SingleLineMatch};
+use lazy_regex::{regex_captures, regex_is_match};
 use pyo3::prelude::*;
 use regex::Captures;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::cmp::max;
 use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -275,8 +281,7 @@ fn file_not_found(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     Ok(None)
 }
 
-fn file_not_found_maybe_executable(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
-    let p = c.get(1).unwrap().as_str();
+fn file_not_found_maybe_executable(p: &str) -> Result<Option<Box<dyn Problem>>, Error> {
     if p.starts_with('/') && !p.starts_with("/<<PKGBUILDDIR>>") {
         return Ok(Some(Box::new(MissingFile {
             path: std::path::PathBuf::from(p),
@@ -290,6 +295,34 @@ fn file_not_found_maybe_executable(c: &Captures) -> Result<Option<Box<dyn Proble
         })));
     }
     Ok(None)
+}
+
+struct MissingHaskellModule {
+    module: String,
+}
+
+impl MissingHaskellModule {
+    pub fn new(module: String) -> MissingHaskellModule {
+        MissingHaskellModule { module }
+    }
+}
+
+impl Display for MissingHaskellModule {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Haskell module: {}", self.module)
+    }
+}
+
+impl Problem for MissingHaskellModule {
+    fn kind(&self) -> Cow<str> {
+        "missing-haskell-module".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "module": self.module,
+        })
+    }
 }
 
 struct MissingLibrary(String);
@@ -694,6 +727,46 @@ impl Display for DirectoryNonExistant {
     }
 }
 
+struct MissingValaPackage(String);
+
+impl Problem for MissingValaPackage {
+    fn kind(&self) -> Cow<str> {
+        "missing-vala-package".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.0,
+        })
+    }
+}
+
+impl Display for MissingValaPackage {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Vala package: {}", self.0)
+    }
+}
+
+struct UpstartFilePresent(String);
+
+impl Problem for UpstartFilePresent {
+    fn kind(&self) -> Cow<str> {
+        "upstart-file-present".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.0,
+        })
+    }
+}
+
+impl Display for UpstartFilePresent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Upstart file present: {}", self.0)
+    }
+}
+
 fn interpreter_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     if c.get(1).unwrap().as_str().starts_with('/') {
         if c.get(1).unwrap().as_str().contains("PKGBUILDDIR") {
@@ -856,6 +929,161 @@ impl Matcher for MultiLineConfigureErrorMatcher {
         );
 
         Ok(Some((Box::new(m), None)))
+    }
+}
+
+struct MissingHaskellDependencies(Vec<String>);
+
+impl Problem for MissingHaskellDependencies {
+    fn kind(&self) -> Cow<str> {
+        "missing-haskell-dependencies".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "deps": self.0,
+        })
+    }
+}
+
+impl Display for MissingHaskellDependencies {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Haskell dependencies: {:?}", self.0)
+    }
+}
+
+struct HaskellMissingDependencyMatcher;
+
+impl Matcher for HaskellMissingDependencyMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        if !regex_is_match!(
+            r"(.*): Encountered missing or private dependencies:",
+            lines[offset].trim_end_matches('\n')
+        ) {
+            return Ok(None);
+        }
+
+        let mut deps = vec![];
+        let mut offsets = vec![offset];
+
+        for (i, line) in lines[offset + 1..].iter().enumerate() {
+            let offset = offset + 1 + i;
+            if line.trim().is_empty() {
+                break;
+            }
+            if let Some((dep, _)) = line.trim().split_once(',') {
+                deps.push(dep.to_string());
+            }
+            offsets.push(offset);
+        }
+        let m = MultiLineMatch {
+            origin: Origin("haskell dependencies".into()),
+            offsets: offsets.clone(),
+            lines: offsets.iter().map(|i| lines[*i].to_string()).collect(),
+        };
+        let p = MissingHaskellDependencies(deps);
+        Ok(Some((Box::new(m), Some(Box::new(p)))))
+    }
+}
+
+struct MissingSetupPyCommand(String);
+
+impl Problem for MissingSetupPyCommand {
+    fn kind(&self) -> Cow<str> {
+        "missing-setup.py-command".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.0,
+        })
+    }
+}
+
+impl Display for MissingSetupPyCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing setup.py command: {}", self.0)
+    }
+}
+
+struct SetupPyCommandMissingMatcher;
+
+impl Matcher for SetupPyCommandMissingMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        let first_offset = offset;
+        let command =
+            match regex_captures!(r"error: invalid command \'(.*)\'", lines[offset].trim()) {
+                None => return Ok(None),
+                Some((_, command)) => command,
+            };
+
+        for j in 0..20 {
+            let offset = offset - j;
+            let line = lines[offset].trim_end_matches('\n');
+
+            if regex_is_match!(
+                r"usage: setup.py \[global_opts\] cmd1 \[cmd1_opts\] \[cmd2 \[cmd2_opts\] \.\.\.\]",
+                line,
+            ) {
+                let offsets: Vec<usize> = vec![first_offset];
+                let m = MultiLineMatch {
+                    origin: Origin("setup.py".into()),
+                    offsets,
+                    lines: vec![lines[first_offset].to_string()],
+                };
+
+                let p = MissingSetupPyCommand(command.to_string());
+                return Ok(Some((Box::new(m), Some(Box::new(p)))));
+            }
+        }
+
+        log::warn!("Unable to find setup.py usage line");
+        Ok(None)
+    }
+}
+
+struct PythonFileNotFoundErrorMatcher;
+
+impl Matcher for PythonFileNotFoundErrorMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        if let Some((_, name)) = lazy_regex::regex_captures!(
+            r"^(?:E  +)?FileNotFoundError: \[Errno 2\] No such file or directory: \'(.*)\'",
+            lines[offset].trim_end_matches('\n')
+        ) {
+            if offset > 2 && lines[offset - 2].contains("subprocess") {
+                return Ok(Some((
+                    Box::new(SingleLineMatch {
+                        origin: Origin("python".into()),
+                        offset,
+                        line: lines[offset].to_string(),
+                    }),
+                    Some(Box::new(MissingCommand(name.to_string()))),
+                )));
+            } else {
+                return Ok(Some((
+                    Box::new(SingleLineMatch {
+                        origin: Origin("python".into()),
+                        offset,
+                        line: lines[offset].to_string(),
+                    }),
+                    file_not_found_maybe_executable(name)?,
+                )));
+            }
+        }
+
+        Ok(None)
     }
 }
 
@@ -1333,13 +1561,976 @@ impl Display for SetuptoolScmVersionIssue {
     }
 }
 
+struct MissingMavenArtifacts(Vec<String>);
+
+impl Problem for MissingMavenArtifacts {
+    fn kind(&self) -> Cow<str> {
+        "missing-maven-artifacts".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "artifacts": self.0
+        })
+    }
+}
+
+impl Display for MissingMavenArtifacts {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Maven artifacts: {}", self.0.join(", "))
+    }
+}
+
+fn maven_missing_artifact(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let artifacts = m
+        .get(1)
+        .unwrap()
+        .as_str()
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect::<Vec<_>>();
+    Ok(Some(Box::new(MissingMavenArtifacts(artifacts))))
+}
+
+pub struct NotExecutableFile(String);
+
+impl NotExecutableFile {
+    pub fn new(path: String) -> Self {
+        Self(path)
+    }
+}
+
+impl Problem for NotExecutableFile {
+    fn kind(&self) -> Cow<str> {
+        "not-executable-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0
+        })
+    }
+}
+
+impl Display for NotExecutableFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Command not executable: {}", self.0)
+    }
+}
+
+struct DhMissingUninstalled(String);
+
+impl DhMissingUninstalled {
+    pub fn new(missing_file: String) -> Self {
+        Self(missing_file)
+    }
+}
+
+impl Problem for DhMissingUninstalled {
+    fn kind(&self) -> Cow<str> {
+        "dh-missing-uninstalled".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "missing_file": self.0
+        })
+    }
+}
+
+impl Display for DhMissingUninstalled {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh_missing file not installed: {}", self.0)
+    }
+}
+
+struct DhLinkDestinationIsDirectory(String);
+
+impl DhLinkDestinationIsDirectory {
+    pub fn new(path: String) -> Self {
+        Self(path)
+    }
+}
+
+impl Problem for DhLinkDestinationIsDirectory {
+    fn kind(&self) -> Cow<str> {
+        "dh-link-destination-is-directory".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0
+        })
+    }
+}
+
+impl Display for DhLinkDestinationIsDirectory {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Link destination {} is directory", self.0)
+    }
+}
+
+struct MissingXmlEntity {
+    url: String,
+}
+
+impl MissingXmlEntity {
+    pub fn new(url: String) -> Self {
+        Self { url }
+    }
+}
+
+impl Problem for MissingXmlEntity {
+    fn kind(&self) -> Cow<str> {
+        "missing-xml-entity".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "url": self.url
+        })
+    }
+}
+
+impl Display for MissingXmlEntity {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing XML entity: {}", self.url)
+    }
+}
+
+struct CcacheError(String);
+
+impl CcacheError {
+    pub fn new(error: String) -> Self {
+        Self(error)
+    }
+}
+
+impl Problem for CcacheError {
+    fn kind(&self) -> Cow<str> {
+        "ccache-error".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "error": self.0
+        })
+    }
+}
+
+impl Display for CcacheError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "ccache error: {}", self.0)
+    }
+}
+
+struct DebianVersionRejected {
+    version: String,
+}
+
+impl DebianVersionRejected {
+    pub fn new(version: String) -> Self {
+        Self { version }
+    }
+}
+
+impl Problem for DebianVersionRejected {
+    fn kind(&self) -> Cow<str> {
+        "debian-version-rejected".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "version": self.version
+        })
+    }
+}
+
+impl Display for DebianVersionRejected {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Debian Version Rejected; {}", self.version)
+    }
+}
+
+struct PatchApplicationFailed {
+    patchname: String,
+}
+
+impl PatchApplicationFailed {
+    pub fn new(patchname: String) -> Self {
+        Self { patchname }
+    }
+}
+
+impl Problem for PatchApplicationFailed {
+    fn kind(&self) -> Cow<str> {
+        "patch-application-failed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "patchname": self.patchname
+        })
+    }
+}
+
+impl Display for PatchApplicationFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Patch application failed: {}", self.patchname)
+    }
+}
+
+struct NeedPgBuildExtUpdateControl {
+    generated_path: String,
+    template_path: String,
+}
+
+impl NeedPgBuildExtUpdateControl {
+    pub fn new(generated_path: String, template_path: String) -> Self {
+        Self {
+            generated_path,
+            template_path,
+        }
+    }
+}
+
+impl Problem for NeedPgBuildExtUpdateControl {
+    fn kind(&self) -> Cow<str> {
+        "need-pg-buildext-updatecontrol".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "generated_path": self.generated_path,
+            "template_path": self.template_path
+        })
+    }
+}
+
+impl Display for NeedPgBuildExtUpdateControl {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Need to run 'pg_buildext updatecontrol' to update {}",
+            self.generated_path
+        )
+    }
+}
+
+struct DhAddonLoadFailure {
+    name: String,
+    path: String,
+}
+
+impl DhAddonLoadFailure {
+    pub fn new(name: String, path: String) -> Self {
+        Self { name, path }
+    }
+}
+
+impl Problem for DhAddonLoadFailure {
+    fn kind(&self) -> Cow<str> {
+        "dh-addon-load-failure".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "path": self.path
+        })
+    }
+}
+
+impl Display for DhAddonLoadFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh addon loading failed: {}", self.name)
+    }
+}
+
+struct DhUntilUnsupported;
+
+impl DhUntilUnsupported {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for DhUntilUnsupported {
+    fn kind(&self) -> Cow<str> {
+        "dh-until-unsupported".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DhUntilUnsupported {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh --until is no longer supported")
+    }
+}
+
+fn r_missing_package(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let fragment = m.get(1).unwrap().as_str();
+    let deps = fragment
+        .split(",")
+        .map(|dep| {
+            dep.trim_matches('‘')
+                .trim_matches('’')
+                .trim_matches('\'')
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+    Ok(Some(Box::new(MissingRPackage::simple(deps[0].clone()))))
+}
+
+struct DebhelperPatternNotFound {
+    pattern: String,
+    tool: String,
+    directories: Vec<String>,
+}
+
+impl DebhelperPatternNotFound {
+    pub fn new(pattern: String, tool: String, directories: Vec<String>) -> Self {
+        Self {
+            pattern,
+            tool,
+            directories,
+        }
+    }
+}
+
+impl Problem for DebhelperPatternNotFound {
+    fn kind(&self) -> Cow<str> {
+        "debhelper-pattern-not-found".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "pattern": self.pattern,
+            "tool": self.tool,
+            "directories": self.directories
+        })
+    }
+}
+
+impl Display for DebhelperPatternNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "debhelper ({}) expansion failed for {:?} (directories: {:?})",
+            self.tool, self.pattern, self.directories
+        )
+    }
+}
+
+struct MissingPerlManifest;
+
+impl MissingPerlManifest {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingPerlManifest {
+    fn kind(&self) -> Cow<str> {
+        "missing-perl-manifest".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingPerlManifest {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing Perl MANIFEST")
+    }
+}
+
+struct ImageMagickDelegateMissing {
+    delegate: String,
+}
+
+impl ImageMagickDelegateMissing {
+    pub fn new(delegate: String) -> Self {
+        Self { delegate }
+    }
+}
+
+impl Problem for ImageMagickDelegateMissing {
+    fn kind(&self) -> Cow<str> {
+        "imagemagick-delegate-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "delegate": self.delegate
+        })
+    }
+}
+
+impl Display for ImageMagickDelegateMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Imagemagick missing delegate: {}", self.delegate)
+    }
+}
+
+struct Cancelled;
+
+impl Cancelled {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for Cancelled {
+    fn kind(&self) -> Cow<str> {
+        "cancelled".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for Cancelled {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Cancelled by runner or job manager")
+    }
+}
+
+fn webpack_file_missing(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let path = std::path::Path::new(m.get(1).unwrap().as_str());
+    let container = std::path::Path::new(m.get(2).unwrap().as_str());
+    let path = container.join(path);
+    if path.starts_with("/") && !path.as_path().starts_with("/<<PKGBUILDDIR>>") {
+        return Ok(Some(Box::new(MissingFile { path })));
+    }
+    Ok(None)
+}
+
+struct DisappearedSymbols;
+
+impl DisappearedSymbols {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for DisappearedSymbols {
+    fn kind(&self) -> Cow<str> {
+        "disappeared-symbols".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DisappearedSymbols {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Disappeared symbols")
+    }
+}
+
+struct DuplicateDHCompatLevel {
+    command: String,
+}
+
+impl DuplicateDHCompatLevel {
+    pub fn new(command: String) -> Self {
+        Self { command }
+    }
+}
+
+impl Problem for DuplicateDHCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "duplicate-dh-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.command
+        })
+    }
+}
+
+impl Display for DuplicateDHCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "DH Compat Level specified twice (command: {})",
+            self.command
+        )
+    }
+}
+
+struct MissingDHCompatLevel {
+    command: String,
+}
+
+impl MissingDHCompatLevel {
+    pub fn new(command: String) -> Self {
+        Self { command }
+    }
+}
+
+impl Problem for MissingDHCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "missing-dh-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.command
+        })
+    }
+}
+
+impl Display for MissingDHCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing DH Compat Level (command: {})", self.command)
+    }
+}
+
+struct MissingJVM;
+
+impl MissingJVM {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingJVM {
+    fn kind(&self) -> Cow<str> {
+        "missing-jvm".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingJVM {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing JVM")
+    }
+}
+
+struct MissingRubyGem {
+    gem: String,
+    version: Option<String>,
+}
+
+impl MissingRubyGem {
+    pub fn new(gem: String, version: Option<String>) -> Self {
+        Self { gem, version }
+    }
+
+    pub fn simple(gem: String) -> Self {
+        Self::new(gem, None)
+    }
+}
+
+impl Problem for MissingRubyGem {
+    fn kind(&self) -> Cow<str> {
+        "missing-ruby-gem".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "gem": self.gem,
+            "version": self.version
+        })
+    }
+}
+
+impl Display for MissingRubyGem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(version) = &self.version {
+            write!(f, "missing ruby gem: {} (>= {})", self.gem, version)
+        } else {
+            write!(f, "missing ruby gem: {}", self.gem)
+        }
+    }
+}
+
+fn ruby_missing_gem(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    let mut minimum_version = None;
+    for grp in m.get(2).unwrap().as_str().split(",") {
+        if let Some((cond, val)) = grp.trim().split_once(" ") {
+            if cond == ">=" {
+                minimum_version = Some(val.to_string());
+                break;
+            }
+            if cond == "~>" {
+                minimum_version = Some(val.to_string());
+            }
+        }
+    }
+    Ok(Some(Box::new(MissingRubyGem::new(
+        m.get(1).unwrap().as_str().to_string(),
+        minimum_version,
+    ))))
+}
+
+struct MissingLibtool;
+
+impl MissingLibtool {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingLibtool {
+    fn kind(&self) -> Cow<str> {
+        "missing-libtool".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingLibtool {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Libtool is missing")
+    }
+}
+
+struct MissingJavaScriptRuntime;
+
+impl MissingJavaScriptRuntime {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingJavaScriptRuntime {
+    fn kind(&self) -> Cow<str> {
+        "javascript-runtime-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingJavaScriptRuntime {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JavaScript Runtime")
+    }
+}
+
+struct MissingRubyFile {
+    filename: String,
+}
+
+impl MissingRubyFile {
+    pub fn new(filename: String) -> Self {
+        Self { filename }
+    }
+}
+
+impl Problem for MissingRubyFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-ruby-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.filename
+        })
+    }
+}
+
+impl Display for MissingRubyFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing ruby file: {}", self.filename)
+    }
+}
+
+struct MissingPhpClass {
+    php_class: String,
+}
+
+impl MissingPhpClass {
+    pub fn new(php_class: String) -> Self {
+        Self { php_class }
+    }
+
+    pub fn simple(php_class: String) -> Self {
+        Self::new(php_class)
+    }
+}
+
+impl Problem for MissingPhpClass {
+    fn kind(&self) -> Cow<str> {
+        "missing-php-class".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "php_class": self.php_class
+        })
+    }
+}
+
+impl Display for MissingPhpClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing PHP class: {}", self.php_class)
+    }
+}
+
+struct MissingJavaClass {
+    classname: String,
+}
+
+impl MissingJavaClass {
+    pub fn new(classname: String) -> Self {
+        Self { classname }
+    }
+
+    pub fn simple(classname: String) -> Self {
+        Self::new(classname)
+    }
+}
+
+impl Problem for MissingJavaClass {
+    fn kind(&self) -> Cow<str> {
+        "missing-java-class".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "classname": self.classname
+        })
+    }
+}
+
+impl Display for MissingJavaClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing Java class: {}", self.classname)
+    }
+}
+
+struct MissingSprocketsFile {
+    name: String,
+    content_type: String,
+}
+
+impl MissingSprocketsFile {
+    pub fn new(name: String, content_type: String) -> Self {
+        Self { name, content_type }
+    }
+}
+
+impl Problem for MissingSprocketsFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-sprockets-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "content_type": self.content_type
+        })
+    }
+}
+
+impl Display for MissingSprocketsFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "missing sprockets file: {} (type: {})",
+            self.name, self.content_type
+        )
+    }
+}
+
+struct MissingXfceDependency {
+    package: String,
+}
+
+impl MissingXfceDependency {
+    pub fn new(package: String) -> Self {
+        Self { package }
+    }
+}
+
+impl Problem for MissingXfceDependency {
+    fn kind(&self) -> Cow<str> {
+        "missing-xfce-dependency".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package
+        })
+    }
+}
+
+impl Display for MissingXfceDependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing XFCE build dependency: {}", self.package)
+    }
+}
+
+struct GnomeCommonMissing;
+
+impl Problem for GnomeCommonMissing {
+    fn kind(&self) -> Cow<str> {
+        "missing-gnome-common".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for GnomeCommonMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "gnome-common is not installed")
+    }
+}
+
+struct MissingConfigStatusInput {
+    path: String,
+}
+
+impl MissingConfigStatusInput {
+    pub fn new(path: String) -> Self {
+        Self { path }
+    }
+}
+
+impl Problem for MissingConfigStatusInput {
+    fn kind(&self) -> Cow<str> {
+        "missing-config.status-input".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.path
+        })
+    }
+}
+
+impl Display for MissingConfigStatusInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing config.status input {}", self.path)
+    }
+}
+
+struct MissingGnomeCommonDependency {
+    package: String,
+    minimum_version: Option<String>,
+}
+
+impl MissingGnomeCommonDependency {
+    pub fn new(package: String, minimum_version: Option<String>) -> Self {
+        Self {
+            package,
+            minimum_version,
+        }
+    }
+
+    pub fn simple(package: String) -> Self {
+        Self::new(package, None)
+    }
+}
+
+impl Problem for MissingGnomeCommonDependency {
+    fn kind(&self) -> Cow<str> {
+        "missing-gnome-common-dependency".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "minimum_version": self.minimum_version
+        })
+    }
+}
+
+impl Display for MissingGnomeCommonDependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "missing gnome-common dependency: {}: (>= {})",
+            self.package,
+            self.minimum_version.as_deref().unwrap_or("any")
+        )
+    }
+}
+
+struct MissingAutomakeInput {
+    path: String,
+}
+
+impl MissingAutomakeInput {
+    pub fn new(path: String) -> Self {
+        Self { path }
+    }
+}
+
+impl Problem for MissingAutomakeInput {
+    fn kind(&self) -> Cow<str> {
+        "missing-automake-input".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.path
+        })
+    }
+}
+
+impl Display for MissingAutomakeInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "automake input file {} missing", self.path)
+    }
+}
+
+struct ChrootNotFound {
+    chroot: String,
+}
+
+impl ChrootNotFound {
+    pub fn new(chroot: String) -> Self {
+        Self { chroot }
+    }
+}
+
+impl Problem for ChrootNotFound {
+    fn kind(&self) -> Cow<str> {
+        "chroot-not-found".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "chroot": self.chroot
+        })
+    }
+}
+
+impl Display for ChrootNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "chroot not found: {}", self.chroot)
+    }
+}
+
+const MAVEN_ERROR_PREFIX: &str = "(?:\\[ERROR\\]|\\[\x1b\\[1;31mERROR\x1b\\[m\\]) ";
+
 lazy_static::lazy_static! {
     static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(
             r"^make\[[0-9]+\]: \*\*\* No rule to make target '(.*)', needed by '.*'\.  Stop\.$",
             file_not_found
         ),
-        regex_line_matcher!(r"^[^:]+:\d+: (.*): No such file or directory$", file_not_found_maybe_executable),
+        regex_line_matcher!(r"^[^:]+:\d+: (.*): No such file or directory$", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
         regex_line_matcher!(
         r"^(distutils.errors.DistutilsError|error): Could not find suitable distribution for Requirement.parse\('([^']+)'\)$",
         |c| {
@@ -1776,7 +2967,7 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(
         r"configure: error: OpenSSL developer library 'libssl-dev' or 'openssl-devel' not installed; cannot continue.",
-        |m| Ok(Some(Box::new(MissingLibrary("ssl".to_string()))))),
+        |_m| Ok(Some(Box::new(MissingLibrary("ssl".to_string()))))),
     regex_line_matcher!(
         r"configure: error: \*\*\* Cannot find (.*)",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
@@ -1866,8 +3057,8 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(r"\{standard input\}: Error: (.*)"),
     regex_line_matcher!(r"dh: Unknown sequence (.*) \(choose from: .*\)"),
-    regex_line_matcher!(r".*: .*: No space left on device", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
-    regex_line_matcher!(r"^No space left on device.", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(r".*: .*: No space left on device", |_m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(r"^No space left on device.", |_m| Ok(Some(Box::new(NoSpaceOnDevice)))),
     regex_line_matcher!(
         r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC contains: (.*)\) at .* line [0-9]+\.",
         |m| {
@@ -1975,8 +3166,8 @@ lazy_static::lazy_static! {
         file_not_found
     ),
     regex_line_matcher!(
-        r"error: \[Errno 2\] No such file or directory: '(.*)'",
-        file_not_found_maybe_executable
+        r"^error: \[Errno 2\] No such file or directory: '(.*)'",
+        |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())
     ),
     regex_line_matcher!(
         r".*:[0-9]+:[0-9]+: ERROR: <ExternalProgram 'python3' -> \['/usr/bin/python3'\]> is not a valid python or it is missing setuptools",
@@ -1997,7 +3188,7 @@ lazy_static::lazy_static! {
         |_| Ok(Some(Box::new(SetuptoolScmVersionIssue)))
     ),
     regex_line_matcher!(r"^OSError: 'git' was not found", |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
-    regex_line_matcher!(r"^OSError: No such file (.*)", file_not_found_maybe_executable),
+    regex_line_matcher!(r"^OSError: No such file (.*)", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
     regex_line_matcher!(
         r"^Could not open '(.*)': No such file or directory at /usr/share/perl/[0-9.]+/ExtUtils/MM_Unix.pm line [0-9]+.",
         |m| Ok(Some(Box::new(MissingPerlFile::new(m.get(1).unwrap().as_str().to_string(), None))))
@@ -2005,6 +3196,653 @@ lazy_static::lazy_static! {
     regex_line_matcher!(
         r#"^Can't open perl script "(.*)": No such file or directory"#,
         |m| Ok(Some(Box::new(MissingPerlFile::new(m.get(1).unwrap().as_str().to_string(), None))))),
+    // Maven
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Failed to execute goal on project .*: \x1b\[1;31mCould not resolve dependencies for project .*: The following artifacts could not be resolved: (.*): Could not find artifact (.*) in (.*) \((.*)\)\x1b\[m -> \x1b\[1m\[Help 1\]\x1b\[m").as_str(), maven_missing_artifact),
+
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Failed to execute goal on project .*: \x1b\[1;31mCould not resolve dependencies for project .*: Could not find artifact (.*)\x1b\[m .*").as_str(),
+        maven_missing_artifact
+    ),
+
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Failed to execute goal on project .*: Could not resolve dependencies for project .*: The following artifacts could not be resolved: (.*): Cannot access central \(https://repo\.maven\.apache\.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before..*").as_str(), maven_missing_artifact
+    ),
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Unresolveable build extension: Plugin (.*) or one of its dependencies could not be resolved: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before. @").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))),
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Non-resolvable import POM: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact (.*) has not been downloaded from it before. @ line [0-9]+, column [0-9]+").as_str(), maven_missing_artifact),
+    regex_line_matcher!(
+        r"\[FATAL\] Non-resolvable parent POM for .*: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact (.*) has not been downloaded from it before. .*", maven_missing_artifact),
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX,r"Plugin (.*) or one of its dependencies could not be resolved: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before. -> \[Help 1\]").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))),
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Plugin (.+) or one of its dependencies could not be resolved: Failed to read artifact descriptor for (.*): (.*)").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))),
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Failed to execute goal on project .*: Could not resolve dependencies for project .*: Cannot access .* \([^\)]+\) in offline mode and the artifact (.*) has not been downloaded from it before. -> \[Help 1\]").as_str(), maven_missing_artifact),
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Failed to execute goal on project .*: Could not resolve dependencies for project .*: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact (.*) has not been downloaded from it before..*").as_str(), maven_missing_artifact),
+    regex_line_matcher!(format!("{}{}", MAVEN_ERROR_PREFIX, "Failed to execute goal (.*) on project (.*): (.*)").as_str(), |_| Ok(None)),
+    regex_line_matcher!(
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Error resolving version for plugin \'(.*)\' from the repositories \[.*\]: Plugin not found in any plugin repository -> \[Help 1\]").as_str(),
+        |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))
+    ),
+    regex_line_matcher!(
+        r"E: eatmydata: unable to find '(.*)' in PATH",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"'(.*)' not found in PATH at (.*) line ([0-9]+)\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"/usr/bin/eatmydata: [0-9]+: exec: (.*): not found",
+        command_missing
+    ),
+    regex_line_matcher!(
+        r"/usr/bin/eatmydata: [0-9]+: exec: (.*): Permission denied",
+        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"(.*): exec: "(.*)": executable file not found in \$PATH"#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"Can't exec "(.*)": No such file or directory at (.*) line ([0-9]+)\."#,
+        command_missing
+    ),
+    regex_line_matcher!(
+        r"dh_missing: (warning: )?(.*) exists in debian/.* but is not installed to anywhere",
+        |m| Ok(Some(Box::new(DhMissingUninstalled(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"dh_link: link destination (.*) is a directory",
+                        |m| Ok(Some(Box::new(DhLinkDestinationIsDirectory(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"I/O error : Attempt to load network entity (.*)",
+                        |m| Ok(Some(Box::new(MissingXmlEntity::new(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"ccache: error: (.*)",
+    |m| Ok(Some(Box::new(CcacheError(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"dh: The --until option is not supported any longer \(#932537\). Use override targets instead.",
+        |_| Ok(Some(Box::new(DhUntilUnsupported::new())))
+    ),
+    regex_line_matcher!(
+        r"dh: unable to load addon (.*): (.*) did not return a true value at \(eval 11\) line ([0-9]+).",
+        |m| Ok(Some(Box::new(DhAddonLoadFailure::new(m.get(1).unwrap().as_str().to_string(), m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        "ERROR: dependencies (.*) are not available for package [‘'](.*)['’]",
+        r_missing_package
+    ),
+    regex_line_matcher!(
+        "ERROR: dependency [‘'](.*)['’] is not available for package [‘'](.*)[’']",
+        r_missing_package
+    ),
+    regex_line_matcher!(
+        r"Error in library\(.*\) : there is no package called \'(.*)\'",
+        r_missing_package
+    ),
+    regex_line_matcher!(r"Error in .* : there is no package called \'(.*)\'", r_missing_package),
+    regex_line_matcher!(r"there is no package called \'(.*)\'", r_missing_package),
+    regex_line_matcher!(
+        r"  namespace ‘(.*)’ ([^ ]+) is being loaded, but >= ([^ ]+) is required",
+        |m| Ok(Some(Box::new(MissingRPackage{ package: m.get(1).unwrap().as_str().to_string(), minimum_version: Some(m.get(3).unwrap().as_str().to_string())})))
+    ),
+    regex_line_matcher!(
+        r"  namespace ‘(.*)’ ([^ ]+) is already loaded, but >= ([^ ]+) is required",
+        |m| Ok(Some(Box::new(MissingRPackage{package: m.get(1).unwrap().as_str().to_string(), minimum_version: Some(m.get(3).unwrap().as_str().to_string())})))
+    ),
+    regex_line_matcher!(r"b\'convert convert: Unable to read font \((.*)\) \[No such file or directory\]\.\\n\'",
+     file_not_found),
+    regex_line_matcher!(r"mv: cannot stat \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(r"mv: cannot move \'.*\' to \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(
+        r"(/usr/bin/install|mv): will not overwrite just-created \'(.*)\' with \'(.*)\'",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"^IOError: \[Errno 2\] No such file or directory: \'(.*)\'", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
+    regex_line_matcher!(r"^error: \[Errno 2\] No such file or directory: \'(.*)\'", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
+    regex_line_matcher!(r"^E   IOError: \[Errno 2\] No such file or directory: \'(.*)\'", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
+    regex_line_matcher!("FAIL\t(.+\\/.+\\/.+)\t([0-9.]+)s", |_| Ok(None)),
+    regex_line_matcher!(
+        r#"dh_(.*): Cannot find \(any matches for\) "(.*)" \(tried in (.*)\)"#,
+        |m| Ok(Some(Box::new(DebhelperPatternNotFound {
+            pattern: m.get(2).unwrap().as_str().to_string(),
+            tool: m.get(1).unwrap().as_str().to_string(),
+            directories: m.get(3).unwrap().as_str().split(',').map(|s| s.trim().to_string()).collect(),
+        })))
+    ),
+    regex_line_matcher!(
+        r#"Can't exec "(.*)": No such file or directory at /usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line [0-9]+."#,
+        command_missing
+    ),
+    regex_line_matcher!(
+        r#"Can\'t exec "(.*)": Permission denied at (.*) line [0-9]+\."#,
+        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"/usr/bin/fakeroot: [0-9]+: (.*): Permission denied",
+        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r".*: error: (.*) command not found", command_missing),
+    regex_line_matcher!(r"error: command '(.*)' failed: No such file or directory",
+     command_missing),
+    regex_line_matcher!(
+        r"dh_install: Please use dh_missing --list-missing/--fail-missing instead",
+        |_| Ok(None)
+    ),
+
+    regex_line_matcher!(
+        r#"dh([^:]*): Please use the third-party "pybuild" build system instead of python-distutils"#,
+        |_| Ok(None)
+    ),
+    // A Python error, but not likely to be actionable. The previous line will have the actual line that failed.
+    regex_line_matcher!(r"ImportError: cannot import name (.*)", |_| Ok(None)),
+    // Rust ?
+    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"Could not find gem \'([^ ]+) \(([^)]+)\)\', which is required by gem.*",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r"Could not find gem \'([^ \']+)\', which is required by gem.*",
+        |m| Ok(Some(Box::new(MissingRubyGem::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`to_specs\': Could not find \'(.*)\' \(([^)]+)\) among [0-9]+ total gem\(s\) \(Gem::MissingSpecError\)",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`to_specs\': Could not find \'(.*)\' \(([^)]+)\) - .* \(Gem::MissingSpecVersionError\)",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`block in verify_gemfile_dependencies_are_found\!\': Could not find gem \'(.*)\' in any of the gem sources listed in your Gemfile\. \(Bundler::GemNotFound\)",
+        |m| Ok(Some(Box::new(MissingRubyGem::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"Exception: (.*) not in path[!.]*",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"Exception: Building sdist requires that ([^ ]+) be installed\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"[^:]+:[0-9]+:in \`find_spec_for_exe\': can\'t find gem (.*) \(([^)]+)\) with executable (.*) \(Gem::GemNotFoundException\)",
+        ruby_missing_gem
+    ),
+    regex_line_matcher!(
+        r".?PHP Fatal error:  Uncaught Error: Class \'(.*)\' not found in (.*):([0-9]+)",
+        |m| Ok(Some(Box::new(MissingPhpClass::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"Caused by: java.lang.ClassNotFoundException: (.*)", |m| Ok(Some(Box::new(MissingJavaClass::simple(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"\[(.*)\] \t\t:: (.*)\#(.*);\$\{(.*)\}: not found",
+        |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![format!("{}:{}:jar:debian", m.get(2).unwrap().as_str(), m.get(3).unwrap().as_str())]))))
+    ),
+    regex_line_matcher!(
+        r"Caused by: java.lang.IllegalArgumentException: Cannot find JAR \'(.*)\' required by module \'(.*)\' using classpath or distribution directory \'(.*)\'",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r".*\.xml:[0-9]+: Unable to find a javac compiler;",
+        |m| Ok(Some(Box::new(MissingJavaClass::simple("com.sun.tools.javac.Main".to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"checking for (.*)\.\.\. configure: error: "Cannot check for existence of module (.*) without pkgconf""#,
+        |m| Ok(Some(Box::new(MissingCommand("pkgconf".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure: error: Could not find '(.*)' in path\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"autoreconf was not found; .*",
+        |m| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+    ),
+    regex_line_matcher!(r"^g\+\+: error: (.*): No such file or directory", file_not_found),
+    regex_line_matcher!(r"strip: \'(.*)\': No such file", file_not_found),
+    regex_line_matcher!(
+        r"Sprockets::FileNotFound: couldn\'t find file \'(.*)\' with type \'(.*)\'",
+        |m| Ok(Some(Box::new(MissingSprocketsFile{ name: m.get(1).unwrap().as_str().to_string(), content_type: m.get(2).unwrap().as_str().to_string()})))
+    ),
+    regex_line_matcher!(
+        r#"xdt-autogen: You must have "(.*)" installed. You can get if from"#,
+        |m| Ok(Some(Box::new(MissingXfceDependency::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"autogen.sh: You must have GNU autoconf installed.",
+        |m| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\s*You must have (autoconf|automake|aclocal|libtool|libtoolize) installed to compile (.*)\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"It appears that Autotools is not correctly installed on this system.",
+        |m| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\*\*\* No autoreconf found \*\*\*",
+        |m| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+    ),
+    regex_line_matcher!(r"You need to install gnome-common module and make.*", |m| Ok(Some(Box::new(GnomeCommonMissing)))),
+    regex_line_matcher!(r"You need to install the gnome-common module and make.*", |m| Ok(Some(Box::new(GnomeCommonMissing)))),
+    regex_line_matcher!(
+        r"You need to install gnome-common from the GNOME (git|CVS|SVN)",
+        |m| Ok(Some(Box::new(GnomeCommonMissing)))
+    ),
+    regex_line_matcher!(
+        r"automake: error: cannot open < (.*): No such file or directory",
+        |m| Ok(Some(Box::new(MissingAutomakeInput::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure(|\.in|\.ac):[0-9]+: error: possibly undefined macro: (.*)",
+        |m| Ok(Some(Box::new(MissingAutoconfMacro::new(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure.(in|ac):[0-9]+: error: macro (.*) is not defined; is a m4 file missing\?",
+        |m| Ok(Some(Box::new(MissingAutoconfMacro::new(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"config.status: error: cannot find input file: `(.*)\'",
+        |m| Ok(Some(Box::new(MissingConfigStatusInput::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\*\*\*Error\*\*\*: You must have glib-gettext >= (.*) installed.*",
+        |m| Ok(Some(Box::new(MissingGnomeCommonDependency::new("glib-gettext".to_string(), Some(m.get(1).unwrap().as_str().to_string())))))
+    ),
+    regex_line_matcher!(
+        r"ERROR: JAVA_HOME is set to an invalid directory: /usr/lib/jvm/default-java/",
+        |m| Ok(Some(Box::new(MissingJVM)))
+    ),
+    regex_line_matcher!(
+        r#"Error: The file "MANIFEST" is missing from this distribution\. The MANIFEST lists all files included in the distribution\."#,
+        |_| Ok(Some(Box::new(MissingPerlManifest)))
+    ),
+    regex_line_matcher!(
+        r"dh_installdocs: --link-doc not allowed between (.*) and (.*) \(one is arch:all and the other not\)",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"dh: unable to load addon systemd: dh: The systemd-sequence is no longer provided in compat >= 11, please rely on dh_installsystemd instead",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"dh: The --before option is not supported any longer \(#932537\). Use override targets instead.",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"\(.*\): undefined reference to `(.*)'", |_| Ok(None)),
+    regex_line_matcher!("(.*):([0-9]+): undefined reference to `(.*)'", |_| Ok(None)),
+    regex_line_matcher!("(.*):([0-9]+): error: undefined reference to '(.*)'", |_| Ok(None)),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*): first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r".+\.go:[0-9]+: undefined reference to `(.*)'", |_| Ok(None)),
+    regex_line_matcher!(r"ar: libdeps specified more than once", |_| Ok(None)),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"\/usr\/bin\/ld: (.*): undefined reference to `(.*)\'", |_| Ok(None)),
+    regex_line_matcher!(r"\/usr\/bin\/ld: (.*): undefined reference to symbol \'(.*)\'", |_| Ok(None)),
+    regex_line_matcher!(
+        r"\/usr\/bin\/ld: (.*): relocation (.*) against symbol `(.*)\' can not be used when making a shared object; recompile with -fPIC",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        "(.*):([0-9]+): multiple definition of `(.*)'; (.*):([0-9]+): first defined here",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        "(dh.*): debhelper compat level specified both in debian/compat and via build-dependency on debhelper-compat",
+        |m| Ok(Some(Box::new(DuplicateDHCompatLevel::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        "(dh.*): (error: )?Please specify the compatibility level in debian/compat",
+        |m| Ok(Some(Box::new(MissingDHCompatLevel::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        "dh_makeshlibs: The udeb (.*) does not contain any shared libraries but --add-udeb=(.*) was passed!?",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        "dpkg-gensymbols: error: some symbols or patterns disappeared in the symbols file: see diff output below",
+        |m| Ok(Some(Box::new(DisappearedSymbols)))
+    ),
+    regex_line_matcher!(
+        r"Failed to copy \'(.*)\': No such file or directory at /usr/share/dh-exec/dh-exec-install-rename line [0-9]+.*",
+        file_not_found
+    ),
+    regex_line_matcher!(r"Invalid gemspec in \[.*\]: No such file or directory - (.*)", command_missing),
+    regex_line_matcher!(
+        r".*meson.build:[0-9]+:[0-9]+: ERROR: Program\(s\) \[\'(.*)\'\] not found or not executable",
+        command_missing
+    ),
+    regex_line_matcher!(
+        r".*meson.build:[0-9]+:[0-9]: ERROR: Git program not found\.",
+        |m| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"Failed: [pytest] section in setup.cfg files is no longer supported, change to [tool:pytest] instead.",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"cp: cannot stat \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(r"cp: \'(.*)\' and \'(.*)\' are the same file", |_| Ok(None)),
+    regex_line_matcher!(r".?PHP Fatal error: (.*)", |_| Ok(None)),
+    regex_line_matcher!(r"sed: no input files", |_| Ok(None)),
+    regex_line_matcher!(r"sed: can\'t read (.*): No such file or directory", file_not_found),
+    regex_line_matcher!(
+        r"ERROR in Entry module not found: Error: Can\'t resolve \'(.*)\' in \'(.*)\'",
+        webpack_file_missing
+    ),
+    regex_line_matcher!(
+        r".*:([0-9]+): element include: XInclude error : could not load (.*), and no fallback was found",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"E: Child terminated by signal ‘Terminated’",
+     |_| Ok(Some(Box::new(Cancelled)))
+     ),
+    regex_line_matcher!(r"E: Caught signal ‘Terminated’",
+     |_| Ok(Some(Box::new(Cancelled)))
+     ),
+    regex_line_matcher!(r"E: Failed to execute “(.*)”: No such file or directory", command_missing),
+    regex_line_matcher!(r"E ImportError: Bad (.*) executable(\.?)", command_missing),
+    regex_line_matcher!(r"E: The Debian version .* cannot be used as an ELPA version.", |_| Ok(None)),
+    // ImageMagick
+    regex_line_matcher!(
+        r"convert convert: Image pixel limit exceeded \(see -limit Pixels\) \(-1\).",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"convert convert: Improper image header \(.*\).", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: invalid primitive argument \([0-9]+\).", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: Unexpected end-of-file \(\)\.", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: Unrecognized option \((.*)\)\.", |_| Ok(None)),
+    regex_line_matcher!(r"convert convert: Unrecognized channel type \((.*)\)\.", |_| Ok(None)),
+    regex_line_matcher!(
+        r"convert convert: Unable to read font \((.*)\) \[No such file or directory\].",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"convert convert: Unable to open file (.*) \[No such file or directory\]\.",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"convert convert: No encode delegate for this image format \((.*)\) \[No such file or directory\].",
+        |m| Ok(Some(Box::new(ImageMagickDelegateMissing::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"ERROR: Sphinx requires at least Python (.*) to run.", |_| Ok(None)),
+    regex_line_matcher!(r"Can\'t find (.*) directory in (.*)", |_| Ok(None)),
+    regex_line_matcher!(
+        r"/bin/sh: [0-9]: cannot create (.*): Directory nonexistent",
+        |m|  Ok(Some(Box::new(DirectoryNonExistant(std::path::Path::new(m.get(1).unwrap().as_str()).to_path_buf().parent().unwrap().display().to_string()))))
+    ),
+    regex_line_matcher!(r"dh: Unknown sequence (.*) \(choose from: .*\)", |_| Ok(None)),
+    regex_line_matcher!(r".*\.vala:[0-9]+\.[0-9]+-[0-9]+.[0-9]+: error: (.*)", |_| Ok(None)),
+    regex_line_matcher!(
+        r"error: Package `(.*)\' not found in specified Vala API directories or GObject-Introspection GIR directories",
+        |m| Ok(Some(Box::new(MissingValaPackage(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r".*.scala:[0-9]+: error: (.*)", |_| Ok(None)),
+    // JavaScript
+    regex_line_matcher!(r"error TS6053: File \'(.*)\' not found.", file_not_found),
+    // Mocha
+    regex_line_matcher!(r"Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' imported from (.*)", |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"\s*Uncaught Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' imported from (.*)",
+    |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"(.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: (.*)", |_| Ok(None)),
+    regex_line_matcher!(r"(.*.nim)\([0-9]+, [0-9]+\) Error: .*", |_| Ok(None)),
+    regex_line_matcher!(
+        r"dh_installinit: upstart jobs are no longer supported\!  Please remove (.*) and check if you need to add a conffile removal",
+        |m| Ok(Some(Box::new(UpstartFilePresent(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"dh_installinit: --no-restart-on-upgrade has been renamed to --no-stop-on-upgrade",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"find: paths must precede expression: .*", |_| Ok(None)),
+    regex_line_matcher!(r"find: ‘(.*)’: No such file or directory", file_not_found),
+    regex_line_matcher!(r"ninja: fatal: posix_spawn: Argument list too long", |_| Ok(None)),
+    regex_line_matcher!("ninja: fatal: chdir to '(.*)' - No such file or directory", |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
+    // Java
+    regex_line_matcher!(r"error: Source option [0-9] is no longer supported. Use [0-9] or later.", |_| Ok(None)),
+    regex_line_matcher!(
+        r"(dh.*|jh_build): -s/--same-arch has been removed; please use -a/--arch instead",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"dh_systemd_start: dh_systemd_start is no longer used in compat >= 11, please use dh_installsystemd instead",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"Trying patch (.*) at level 1 \.\.\. 0 \.\.\. 2 \.\.\. failure.", |_| Ok(None)),
+    // QMake
+    regex_line_matcher!(r"Project ERROR: (.*) development package not found", pkg_config_missing),
+    regex_line_matcher!(r"Package \'(.*)\', required by \'(.*)\', not found\n", pkg_config_missing),
+    regex_line_matcher!(r"pkg-config cannot find (.*)", pkg_config_missing),
+    regex_line_matcher!(
+        r"configure: error: .* not found: Package dependency requirement \'([^\']+)\' could not be satisfied.",
+        pkg_config_missing
+    ),
+    regex_line_matcher!(
+        r"configure: error: (.*) is required to build documentation",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(r".*:[0-9]+: (.*) does not exist.", file_not_found),
+    // uglifyjs
+    regex_line_matcher!(r"ERROR: can\'t read file: (.*)", file_not_found),
+    regex_line_matcher!(r#"jh_build: Cannot find \(any matches for\) "(.*)" \(tried in .*\)"#, |_| Ok(None)),
+    regex_line_matcher!(
+        r"--   Package \'(.*)\', required by \'(.*)\', not found",
+        |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r".*.rb:[0-9]+:in `require_relative\': cannot load such file -- (.*) \(LoadError\)",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"<internal:.*>:[0-9]+:in `require': cannot load such file -- (.*) \(LoadError\)",
+        |m| Ok(Some(Box::new(MissingRubyFile::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r".*.rb:[0-9]+:in `require\': cannot load such file -- (.*) \(LoadError\)",
+        |m| Ok(Some(Box::new(MissingRubyFile::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"LoadError: cannot load such file -- (.*)", |m| Ok(Some(Box::new(MissingRubyFile::new(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"  cannot load such file -- (.*)", |m| Ok(Some(Box::new(MissingRubyFile::new(m.get(1).unwrap().as_str().to_string()))))),
+    // TODO(jelmer): This is a fairly generic string; perhaps combine with other checks for ruby?
+    regex_line_matcher!(r"File does not exist: ([a-z/]+)$", |m| Ok(Some(Box::new(MissingRubyFile::new(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r".*:[0-9]+:in `do_check_dependencies\': E: dependency resolution check requested but no working gemspec available \(RuntimeError\)",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"rm: cannot remove \'(.*)\': Is a directory", |_| Ok(None)),
+    regex_line_matcher!(r"rm: cannot remove \'(.*)\': No such file or directory", file_not_found),
+    // Invalid option from Python
+    regex_line_matcher!(r"error: option .* not recognized", |_| Ok(None)),
+    // Invalid option from go
+    regex_line_matcher!(r"flag provided but not defined: .*", |_| Ok(None)),
+    regex_line_matcher!(r#"CMake Error: The source directory "(.*)" does not exist."#, |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*: [0-9]+: cd: can\'t cd to (.*)", |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"/bin/sh: 0: Can\'t open (.*)", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
+    regex_line_matcher!(r"/bin/sh: [0-9]+: cannot open (.*): No such file", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
+    regex_line_matcher!(r".*: line [0-9]+: (.*): No such file or directory", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
+    regex_line_matcher!(r"/bin/sh: [0-9]+: Syntax error: .*", |_| Ok(None)),
+    regex_line_matcher!(r"error: No member named \$memberName", |_| Ok(None)),
+    regex_line_matcher!(
+        r"(?:/usr/bin/)?install: cannot create regular file \'(.*)\': Permission denied",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(r"(?:/usr/bin/)?install: cannot create directory .(.*).: File exists", |_| Ok(None)),
+    regex_line_matcher!(r"/usr/bin/install: missing destination file operand after .*", |_| Ok(None)),
+    // Ruby
+    regex_line_matcher!(r"rspec .*\.rb:[0-9]+ # (.*)", |_| Ok(None)),
+    // help2man
+    regex_line_matcher!(r"Addendum (.*) does NOT apply to (.*) \(translation discarded\).", |_| Ok(None)),
+    regex_line_matcher!(
+        r"dh_installchangelogs: copy\((.*), (.*)\): No such file or directory",
+        file_not_found
+    ),
+    regex_line_matcher!(r"dh_installman: mv (.*) (.*): No such file or directory", file_not_found),
+    regex_line_matcher!(r"dh_installman: Could not determine section for (.*)", |_| Ok(None)),
+    regex_line_matcher!(
+        r"failed to initialize build cache at (.*): mkdir (.*): permission denied",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r#"Can't exec "(.*)": No such file or directory at (.*) line ([0-9]+)."#,
+        command_missing
+    ),
+    regex_line_matcher!(
+        r#"E OSError: No command "(.*)" found on host .*"#,
+        command_missing
+    ),
+    // PHPUnit
+    regex_line_matcher!(r#"Cannot open file "(.*)"."#, file_not_found),
+    regex_line_matcher!(
+        r".*Could not find a JavaScript runtime\. See https://github.com/rails/execjs for a list of available runtimes\..*",
+        |m| Ok(Some(Box::new(MissingJavaScriptRuntime)))
+    ),
+    Box::new(PythonFileNotFoundErrorMatcher),
+    // ruby
+    regex_line_matcher!(r"Errno::ENOENT: No such file or directory - (.*)", file_not_found),
+    regex_line_matcher!(r"(.*.rb):[0-9]+:in `.*\': .* \(.*\) ", |_| Ok(None)),
+    // JavaScript
+    regex_line_matcher!(r".*: ENOENT: no such file or directory, open \'(.*)\'", file_not_found),
+    regex_line_matcher!(r"\[Error: ENOENT: no such file or directory, stat \'(.*)\'\] \{", file_not_found),
+    regex_line_matcher!(
+        r"(.*):[0-9]+: error: Libtool library used but \'LIBTOOL\' is undefined",
+        |m| Ok(Some(Box::new(MissingLibtool)))
+    ),
+    // libtoolize
+    regex_line_matcher!(r"libtoolize:   error: \'(.*)\' does not exist.", file_not_found),
+    // Seen in python-cogent
+    regex_line_matcher!(
+        "(OSError|RuntimeError): (.*) required but not found.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(2).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"RuntimeError: The (.*) executable cannot be found\. Please check if it is in the system path\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_lowercase()))))
+    ),
+    regex_line_matcher!(
+        r".*: [0-9]+: cannot open (.*): No such file",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"Cannot find Git. Git is required for .*",
+        |m| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"E ImportError: Bad (.*) executable\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        "RuntimeError: (.*) is missing",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"(OSError|RuntimeError): Could not find (.*) library\..*",
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"(OSError|RuntimeError): We need package (.*), but not importable",
+        |m| Ok(Some(Box::new(MissingPythonDistribution{ distribution: m.get(2).unwrap().as_str().to_string(), minimum_version: None, python_version: None })))
+    ),
+    regex_line_matcher!(
+        r"(OSError|RuntimeError): No (.*) was found: .*",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(2).unwrap().as_str()))))
+    ),
+
+    regex_line_matcher!(
+        r"(.*)meson.build:[0-9]+:[0-9]+: ERROR: Meson version is (.+) but project requires >=\s*(.+)",
+        |m| Ok(Some(Box::new(MissingVagueDependency{
+            name: "meson".to_string(), url: None,
+            minimum_version: Some(m.get(3).unwrap().as_str().trim_end_matches('.').to_string()),
+            current_version: Some(m.get(2).unwrap().as_str().to_string())}
+        )))
+    ),
+
+    // Seen in cpl-plugin-giraf
+    regex_line_matcher!(
+        r"ImportError: Numpy version (.*) or later must be installed to use .*",
+        |m| Ok(Some(Box::new(MissingPythonModule{ module: "numpy".to_string(), python_version: None, minimum_version: Some(m.get(1).unwrap().as_str().to_string())})))
+    ),
+    // Seen in mayavi2
+    regex_line_matcher!(r"\w+Numpy is required to build.*", |m| Ok(Some(Box::new(MissingPythonModule::simple("numpy".to_string()))))),
+    // autoconf
+    regex_line_matcher!(r"configure.ac:[0-9]+: error: required file \'(.*)\' not found", file_not_found),
+    regex_line_matcher!(r"/usr/bin/m4:(.*):([0-9]+): cannot open `(.*)\': No such file or directory", |m| Ok(Some(Box::new(MissingFile{path: std::path::PathBuf::from(m.get(3).unwrap().as_str().to_string())})))),
+    // automake
+    regex_line_matcher!(r"Makefile.am: error: required file \'(.*)\' not found", file_not_found),
+    // sphinx
+    regex_line_matcher!(r"config directory doesn\'t contain a conf.py file \((.*)\)", |_| Ok(None)),
+    // vcversioner
+    regex_line_matcher!(
+        r"vcversioner: no VCS could be detected in \'/<<PKGBUILDDIR>>\' and \'/<<PKGBUILDDIR>>/version.txt\' isn\'t present.",
+        |_| Ok(None)
+    ),
+    // rst2html (and other Python?)
+    regex_line_matcher!(r"  InputError: \[Errno 2\] No such file or directory: \'(.*)\'", file_not_found),
+    // gpg
+    regex_line_matcher!(r"gpg: can\'t connect to the agent: File name too long", |_| Ok(None)),
+    regex_line_matcher!(r"(.*.lua):[0-9]+: assertion failed", |_| Ok(None)),
+    regex_line_matcher!(r"\s+\^\-\-\-\-\^ SC[0-4][0-9][0-9][0-9]: .*", |_| Ok(None)),
+    regex_line_matcher!(
+        r"Error: (.*) needs updating from (.*)\. Run \'pg_buildext updatecontrol\'.",
+        |m| Ok(Some(Box::new(NeedPgBuildExtUpdateControl::new(m.get(1).unwrap().as_str().to_string(), m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"Patch (.*) does not apply \(enforce with -f\)", |m| Ok(Some(Box::new(PatchApplicationFailed::new(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"java.io.FileNotFoundException: ([^ ]+) \(No such file or directory\)",
+        file_not_found
+    ),
+    // Pytest
+    regex_line_matcher!(r"INTERNALERROR> PluginValidationError: (.*)", |_| Ok(None)),
+    regex_line_matcher!(r"[0-9]+ out of [0-9]+ hunks FAILED -- saving rejects to file (.*\.rej)", |_| Ok(None)),
+    regex_line_matcher!(r"pkg_resources.UnknownExtra: (.*) has no such extra feature \'(.*)\'", |_| Ok(None)),
+    regex_line_matcher!(
+        r"dh_auto_configure: invalid or non-existing path to the source directory: .*",
+        |_| Ok(None)
+    ),
+    // Sphinx
+    regex_line_matcher!(
+        r"sphinx_rtd_theme is no longer a hard dependency since version (.*). Please install it manually.\(pip install (.*)\)",
+        |m| Ok(Some(Box::new(MissingPythonModule::simple("sphinx_rtd_theme".to_string()))))
+    ),
+    regex_line_matcher!(r"There is a syntax error in your configuration file: (.*)", |_| Ok(None)),
+    regex_line_matcher!(
+        r"E: The Debian version (.*) cannot be used as an ELPA version.",
+        |m| Ok(Some(Box::new(DebianVersionRejected::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r#""(.*)" is not exported by the ExtUtils::MakeMaker module"#, |_| Ok(None)),
+    regex_line_matcher!(
+        r"E: Please add appropriate interpreter package to Build-Depends, see pybuild\(1\) for details\..*",
+        |m| Ok(Some(Box::new(DhAddonLoadFailure::new("pybuild".to_string(), "Debian/Debhelper/Buildsystem/pybuild.pm".to_string()))))
+    ),
+    regex_line_matcher!(r"dpkg: error: .*: No space left on device", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(
+        r"You need the GNU readline library\(ftp://ftp.gnu.org/gnu/readline/\s+\) to build",
+        |m| Ok(Some(Box::new(MissingLibrary("readline".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure: error: Could not find lib(.*)",
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"    Could not find module ‘(.*)’",
+        |m| Ok(Some(Box::new(MissingHaskellModule::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"E: session: (.*): Chroot not found", |m| Ok(Some(Box::new(ChrootNotFound::new(m.get(1).unwrap().as_str().to_string()))))),
+    Box::new(HaskellMissingDependencyMatcher),
+    Box::new(SetupPyCommandMissingMatcher),
     ]);
 }
 
@@ -2013,4 +3851,391 @@ pub fn match_lines(
     offset: usize,
 ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
     COMMON_MATCHERS.extract_from_lines(lines, offset)
+}
+
+macro_rules! secondary_matcher {
+    ($re:expr) => {
+        fancy_regex::Regex::new($re).unwrap()
+    };
+}
+
+lazy_static::lazy_static! {
+    /// Regexps that hint at an error of some sort, but not the error itself.
+    static ref SECONDARY_MATCHERS: Vec<fancy_regex::Regex> = vec![
+    secondary_matcher!(r"E: pybuild pybuild:[0-9]+: test: plugin [^ ]+ failed with:"),
+    secondary_matcher!(r"[^:]+: error: (.*)"),
+    secondary_matcher!(r"[^:]+:[0-9]+: error: (.*)"),
+    secondary_matcher!(r"[^:]+:[0-9]+:[0-9]+: error: (.*)"),
+    secondary_matcher!(r"error TS[0-9]+: (.*)"),
+
+    secondary_matcher!(r"mount: .*: mount failed: Operation not permitted\."),
+
+    secondary_matcher!(r"  [0-9]+:[0-9]+\s+error\s+.+"),
+
+    secondary_matcher!(r"fontmake: Error: In '(.*)': (.*)"),
+
+    secondary_matcher!(r"#   Failed test at t\/.*\.t line [0-9]+\."),
+
+    secondary_matcher!(r"Gradle build daemon disappeared unexpectedly \(it may have been killed or may have crashed\)"),
+
+    // ocaml
+    secondary_matcher!(r"\*\*\* omake error:"),
+    secondary_matcher!(r".*ocamlc.*: OCam has been configured with -force-safe-string: -unsafe-string is not available\."),
+
+    // latex
+    secondary_matcher!(r"\! LaTeX Error: .*"),
+
+    secondary_matcher!(r"Killed"),
+
+    // Java
+    secondary_matcher!(r#"Exception in thread "(.*)" (.*): (.*);"#),
+    secondary_matcher!(r"error: Unrecognized option: \'.*\'"),
+    secondary_matcher!(r"Segmentation fault"),
+    secondary_matcher!(r"\[ERROR\] (.*\.java):\[[0-9]+,[0-9]+\] (.*)"),
+    secondary_matcher!(r"make: \*\*\* No targets specified and no makefile found\.  Stop\."),
+    secondary_matcher!(r"make\[[0-9]+\]: \*\*\* No targets specified and no makefile found\.  Stop\."),
+    secondary_matcher!(r#"make: \*\*\* No rule to make target \'(.*)\'\.  Stop\."#),
+    secondary_matcher!(r"make\[[0-9]+\]: (.*): No such file or directory"),
+    secondary_matcher!(r"make\[[0-9]+\]: \*\*\* \[.*:[0-9]+: .*\] Segmentation fault"),
+    secondary_matcher!(
+        r"make\[[0-9]+\]: \*\*\* No rule to make target \'(?!maintainer-clean)(?!clean)(.*)\'\.  Stop\."),
+    secondary_matcher!(
+    r".*:[0-9]+: \*\*\* empty variable name.  Stop."),
+    secondary_matcher!(
+    r"error: can't copy '(.*)': doesn't exist or not a regular file"),
+    secondary_matcher!(
+    r"error: ([0-9]+) test executed, ([0-9]+) fatal tests failed, "),
+    secondary_matcher!(
+    r"([0-9]+) nonfatal test failed\."),
+    secondary_matcher!(
+    r".*\.rst:toctree contains ref to nonexisting file \'.*\'"),
+    secondary_matcher!(
+    r".*\.rst:[0-9]+:term not in glossary: .*"),
+    secondary_matcher!(
+    r"Try adding AC_PREREQ\(\[(.*)\]\) to your configure\.ac\."),
+    // Erlang
+    secondary_matcher!(
+    r"  (.*_test): (.+)\.\.\.\*failed\*"),
+    secondary_matcher!(
+    r"(.*\.erl):[0-9]+:[0-9]+: erlang:.*"),
+    // Clojure
+    secondary_matcher!(
+    r"Could not locate (.*) or (.*) on classpath\."),
+    // QMake
+    secondary_matcher!(
+    r"Project ERROR: .*"),
+    // pdflatex
+    secondary_matcher!(
+    r"\!  ==> Fatal error occurred, no output PDF file produced\!"),
+    // latex
+    secondary_matcher!(
+    r"\! Undefined control sequence\."),
+    secondary_matcher!(
+    r"\! Emergency stop\."),
+    secondary_matcher!(r"\!pdfTeX error: pdflatex: fwrite\(\) failed"),
+    // inkscape
+    secondary_matcher!(r"Unknown option (?!.*ignoring.*)"),
+    // CTest
+    secondary_matcher!(
+    r"not ok [0-9]+ .*"),
+    secondary_matcher!(
+    r"Errors while running CTest"),
+    secondary_matcher!(
+    r"dh_auto_install: error: .*"),
+    secondary_matcher!(
+    r"dh_quilt_patch: error: (.*)"),
+    secondary_matcher!(
+    r"dh.*: Aborting due to earlier error"),
+    secondary_matcher!(
+    r"dh.*: unknown option or error during option parsing; aborting"),
+    secondary_matcher!(
+    r"Could not import extension .* \(exception: .*\)"),
+    secondary_matcher!(
+    r"configure.ac:[0-9]+: error: (.*)"),
+    secondary_matcher!(
+    r"Reconfigure the source tree (via './config' or 'perl Configure'), please."),
+    secondary_matcher!(
+    r"dwz: Too few files for multifile optimization"),
+    secondary_matcher!(
+    r"\[CJM/MatchManifest\] Aborted because of MANIFEST mismatch"),
+    secondary_matcher!(
+    r"dh_dwz: dwz -q -- .* returned exit code [0-9]+"),
+    secondary_matcher!(
+    r"help2man: can\'t get `-?-help\' info from .*"),
+    secondary_matcher!(
+    r"[^:]+: line [0-9]+:\s+[0-9]+ Segmentation fault.*"),
+    secondary_matcher!(
+    r"dpkg-gencontrol: error: (.*)"),
+    secondary_matcher!(
+    r".*:[0-9]+:[0-9]+: (error|ERROR): (.*)"),
+    secondary_matcher!(
+    r".*[.]+FAILED .*"),
+    secondary_matcher!(
+    r"FAIL: (.*)"),
+    secondary_matcher!(
+    r"FAIL\!  : (.*)"),
+    secondary_matcher!(
+    r"\s*FAIL (.*) \(.*\)"),
+    secondary_matcher!(
+    r"FAIL\s+(.*) \[.*\] ?"),
+    secondary_matcher!(
+    r"([0-9]+)% tests passed, ([0-9]+) tests failed out of ([0-9]+)"),
+    secondary_matcher!(
+    r"TEST FAILURE"),
+    secondary_matcher!(
+    r"make\[[0-9]+\]: \*\*\* \[.*\] Error [0-9]+"),
+    secondary_matcher!(
+    r"make\[[0-9]+\]: \*\*\* \[.*\] Aborted"),
+    secondary_matcher!(
+    r"exit code=[0-9]+: .*"),
+    secondary_matcher!(
+    r"chmod: cannot access \'.*\': .*"),
+    secondary_matcher!(
+    r"dh_autoreconf: autoreconf .* returned exit code [0-9]+"),
+    secondary_matcher!(
+    r"make: \*\*\* \[.*\] Error [0-9]+"),
+    secondary_matcher!(
+    r".*:[0-9]+: \*\*\* missing separator\.  Stop\."),
+    secondary_matcher!(
+    r"[0-9]+ tests: [0-9]+ ok, [0-9]+ failure\(s\), [0-9]+ test\(s\) skipped"),
+    secondary_matcher!(
+    r"\*\*Error:\*\* (.*)"),
+    secondary_matcher!(
+    r"^Error: (.*)"),
+    secondary_matcher!(
+    r"Failed [0-9]+ tests? out of [0-9]+, [0-9.]+% okay."),
+    secondary_matcher!(
+    r"Failed [0-9]+\/[0-9]+ test programs. [0-9]+/[0-9]+ subtests failed."),
+    secondary_matcher!(
+    r"Original error was: (.*)"),
+    secondary_matcher!(
+    r"-- Error \(.*\.R:[0-9]+:[0-9]+\): \(.*\) [-]*"),
+    secondary_matcher!(
+    r"^Error \[ERR_.*\]: .*"),
+    secondary_matcher!(
+    r"^FAILED \(.*\)"),
+    secondary_matcher!(
+    r"FAILED .*"),
+    // Random Python errors
+    secondary_matcher!(
+    "^(E  +)?(SyntaxError|TypeError|ValueError|AttributeError|NameError|django.core.exceptions..*|RuntimeError|subprocess.CalledProcessError|testtools.matchers._impl.MismatchError|PermissionError|IndexError|TypeError|AssertionError|IOError|ImportError|SerialException|OSError|qtawesome.iconic_font.FontError|redis.exceptions.ConnectionError|builtins.OverflowError|ArgumentError|httptools.parser.errors.HttpParserInvalidURLError|HypothesisException|SSLError|KeyError|Exception|rnc2rng.parser.ParseError|pkg_resources.UnknownExtra|tarfile.ReadError|numpydoc.docscrape.ParseError|distutils.errors.DistutilsOptionError|datalad.support.exceptions.IncompleteResultsError|AssertionError|Cython.Compiler.Errors.CompileError|UnicodeDecodeError|UnicodeEncodeError): .*"),
+    // Rust
+    secondary_matcher!(
+    r"error\[E[0-9]+\]: .*"),
+    secondary_matcher!(
+    "^E   DeprecationWarning: .*"),
+    secondary_matcher!(
+    "^E       fixture '(.*)' not found"),
+    // Rake
+    secondary_matcher!(
+    r"[0-9]+ runs, [0-9]+ assertions, [0-9]+ failures, [0-9]+ errors, [0-9]+ skips"),
+    // Node
+    secondary_matcher!(
+    r"# failed [0-9]+ of [0-9]+ tests"),
+    // Pytest
+    secondary_matcher!(
+    r"(.*).py:[0-9]+: AssertionError"),
+    secondary_matcher!(
+    r"============================ no tests ran in ([0-9.]+)s ============================="),
+    // Perl
+    secondary_matcher!(
+    r"  Failed tests:  [0-9-]+"),
+    secondary_matcher!(
+    r"Failed (.*\.t): output changed"),
+    // Go
+    secondary_matcher!(
+    r"no packages to test"),
+    secondary_matcher!(
+    "FAIL\t(.*)\t[0-9.]+s"),
+    secondary_matcher!(
+    r".*.go:[0-9]+:[0-9]+: (?!note:).*"),
+    secondary_matcher!(
+    r"can\'t load package: package \.: no Go files in /<<PKGBUILDDIR>>/(.*)"),
+    // Ld
+    secondary_matcher!(
+    r"\/usr\/bin\/ld: cannot open output file (.*): No such file or directory"),
+    secondary_matcher!(
+    r"configure: error: (.+)"),
+    secondary_matcher!(
+    r"config.status: error: (.*)"),
+    secondary_matcher!(
+    r"E: Build killed with signal TERM after ([0-9]+) minutes of inactivity"),
+    secondary_matcher!(
+    r"    \[javac\] [^: ]+:[0-9]+: error: (.*)"),
+    secondary_matcher!(
+    r"1\) TestChannelFeature: ([^:]+):([0-9]+): assert failed"),
+    secondary_matcher!(
+    r"cp: target \'(.*)\' is not a directory"),
+    secondary_matcher!(
+    r"cp: cannot create regular file \'(.*)\': No such file or directory"),
+    secondary_matcher!(
+    r"couldn\'t determine home directory at (.*)"),
+    secondary_matcher!(
+    r"ln: failed to create symbolic link \'(.*)\': File exists"),
+    secondary_matcher!(
+    r"ln: failed to create symbolic link \'(.*)\': No such file or directory"),
+    secondary_matcher!(
+    r"ln: failed to create symbolic link \'(.*)\': Permission denied"),
+    secondary_matcher!(
+    r"ln: invalid option -- .*"),
+    secondary_matcher!(
+    r"mkdir: cannot create directory [‘'](.*)['’]: No such file or directory"),
+    secondary_matcher!(
+    r"mkdir: cannot create directory [‘'](.*)['’]: File exists"),
+    secondary_matcher!(
+    r"mkdir: missing operand"),
+    secondary_matcher!(
+    r"rmdir: failed to remove '.*': No such file or directory"),
+    secondary_matcher!(
+    r"Fatal error: .*"),
+    secondary_matcher!(
+    "Fatal Error: (.*)"),
+    secondary_matcher!(
+    r"Alert: (.*)"),
+    secondary_matcher!(
+    r#"ERROR: Test "(.*)" failed. Exiting."#),
+    // scons
+    secondary_matcher!(
+    r"ERROR: test\(s\) failed in (.*)"),
+    secondary_matcher!(
+    r"./configure: line [0-9]+: syntax error near unexpected token `.*\'"),
+    secondary_matcher!(
+    r"scons: \*\*\* \[.*\] ValueError : unsupported pickle protocol: .*"),
+    // yarn
+    secondary_matcher!(
+    r"ERROR: There are no scenarios; must have at least one."),
+    // perl
+    secondary_matcher!(
+    r"Execution of (.*) aborted due to compilation errors."),
+    // Mocha
+    secondary_matcher!(
+    r"     AssertionError \[ERR_ASSERTION\]: Missing expected exception."),
+    // lt (C++)
+    secondary_matcher!(
+    r".*: .*:[0-9]+: .*: Assertion `.*\' failed."),
+    secondary_matcher!(
+    r"(.*).xml: FAILED:"),
+    secondary_matcher!(
+    r" BROKEN .*"),
+    secondary_matcher!(
+    r"failed: [0-9]+-.*"),
+    // ninja
+    secondary_matcher!(
+    r"ninja: build stopped: subcommand failed."),
+    secondary_matcher!(
+    r".*\.s:[0-9]+: Error: .*"),
+    // rollup
+    secondary_matcher!(r"\[\!\] Error: Unexpected token"),
+    // glib
+    secondary_matcher!(r"\(.*:[0-9]+\): [a-zA-Z0-9]+-CRITICAL \*\*: [0-9:.]+: .*"),
+    secondary_matcher!(
+    r"tar: option requires an argument -- \'.\'"),
+    secondary_matcher!(
+    r"tar: .*: Cannot stat: No such file or directory"),
+    secondary_matcher!(
+    r"tar: .*: Cannot open: No such file or directory"),
+    // rsvg-convert
+    secondary_matcher!(
+    r"Could not render file (.*.svg)"),
+    // pybuild tests
+    secondary_matcher!(
+    r"ERROR: file not found: (.*)"),
+    // msgfmt
+    secondary_matcher!(
+    r"/usr/bin/msgfmt: found [0-9]+ fatal errors"),
+    // Docker
+    secondary_matcher!(
+    r"Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running\?"),
+    secondary_matcher!(
+    r"dh_makeshlibs: failing due to earlier errors"),
+    // Ruby
+    secondary_matcher!(
+    r"([^:]+)\.rb:[0-9]+:in `([^\'])+\': (.*) \((.*)\)"),
+    secondary_matcher!(
+    r".*: \*\*\* ERROR: There where errors/warnings in server logs after running test cases."),
+    secondary_matcher!(
+    r"Errno::EEXIST: File exists @ dir_s_mkdir - .*"),
+    secondary_matcher!(
+    r"Test environment was found to be incomplete at configuration time,"),
+    secondary_matcher!(
+    r"libtool:   error: cannot find the library \'(.*)\' or unhandled argument \'(.*)\'"),
+    secondary_matcher!(
+    r"npm ERR\! (.*)"),
+    secondary_matcher!(
+    r"install: failed to access \'(.*)\': (.*)"),
+    secondary_matcher!(
+    r"MSBUILD: error MSBUILD[0-9]+: Project file \'(.*)\' not found."),
+    secondary_matcher!(
+    r"E: (.*)"),
+    secondary_matcher!(
+    r"(.*)\(([0-9]+),([0-9]+)\): Error: .*"),
+    // C #
+    secondary_matcher!(
+    r"(.*)\.cs\([0-9]+,[0-9]+\): error CS[0-9]+: .*"),
+    secondary_matcher!(
+    r".*Segmentation fault.*"),
+    secondary_matcher!(
+    r"a2x: ERROR: (.*) returned non-zero exit status ([0-9]+)"),
+    secondary_matcher!(
+    r"-- Configuring incomplete, errors occurred\!"),
+    secondary_matcher!(
+    r#"Error opening link script "(.*)""#),
+    secondary_matcher!(
+    r"cc: error: (.*)"),
+    secondary_matcher!(
+    r"\[ERROR\] .*"),
+    secondary_matcher!(
+    r"dh_auto_(test|build): error: (.*)"),
+    secondary_matcher!(
+    r"tar: This does not look like a tar archive"),
+    secondary_matcher!(
+    r"\[DZ\] no (name|version) was ever set"),
+    secondary_matcher!(
+    r"\[Runtime\] No -phase or -relationship specified at .* line [0-9]+\."),
+    secondary_matcher!(
+    r"diff: (.*): No such file or directory"),
+    secondary_matcher!(
+    r"gpg: signing failed: .*"),
+    // mh_install
+    secondary_matcher!(
+    r"Cannot find the jar to install: (.*)"),
+    secondary_matcher!(
+    r"ERROR: .*"),
+    secondary_matcher!(
+    r"> error: (.*)"),
+    secondary_matcher!(
+    r"error: (.*)"),
+    secondary_matcher!(
+    r"(.*\.hs):[0-9]+:[0-9]+: error:"),
+    secondary_matcher!(
+    r"go1: internal compiler error: .*"),
+];
+}
+
+pub fn find_secondary_build_failure(
+    lines: &[&str],
+    start_offset: usize,
+) -> Option<SingleLineMatch> {
+    let start = max(0, (lines.len() as isize) - (start_offset as isize)) as usize;
+    for offset in start..lines.len() {
+        let line = lines[offset];
+        let match_line = line.trim_end_matches('\n');
+        for regexp in SECONDARY_MATCHERS.iter() {
+            if regexp.is_match(match_line).unwrap() {
+                let origin = Origin(format!("secondary regex {:?}", regexp));
+                log::debug!(
+                    "Found match against {:?} on {:?} (line {})",
+                    regexp,
+                    line,
+                    offset + 1
+                );
+                return Some(SingleLineMatch {
+                    origin,
+                    offset,
+                    line: line.to_string(),
+                });
+            }
+        }
+    }
+    None
 }
