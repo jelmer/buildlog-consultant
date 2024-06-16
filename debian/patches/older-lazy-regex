@@ -1,0 +1,11 @@
+Index: buildlog-consultant/Cargo.toml
+===================================================================
+--- buildlog-consultant.orig/Cargo.toml
++++ buildlog-consultant/Cargo.toml
+@@ -28,5 +28,5 @@ text-size = "1.1.1"
+ debversion = ">=0.3"
+ chrono = "0.4.31"
+ fancy-regex = ">=0.11"
+-lazy-regex = "3.0.2"
++lazy-regex = "2"
+ textwrap = "0.16.0"
