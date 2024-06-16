@@ -1,4 +1,5 @@
-from typing import BinaryIO, Iterator
+from collections.abc import Iterator
+from typing import BinaryIO
 
 class SbuildLog:
     def get_section_lines(self, section: str | None) -> list[str] | None: ...
