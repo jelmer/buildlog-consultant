@@ -1,8 +1,8 @@
-buildlog-consultant (0.0.37-1) UNRELEASED; urgency=low
+buildlog-consultant (0.0.37-1) unstable; urgency=low
 
   * New upstream release.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 16 Jun 2024 12:40:27 -0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 16 Jun 2024 17:25:56 +0100
 
 buildlog-consultant (0.0.34-1) unstable; urgency=medium
 
