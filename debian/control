@@ -2,6 +2,7 @@ Rules-Requires-Root: no
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13),
                dh-sequence-python3,
+               librust-debversion-dev,
                librust-fancy-regex-dev,
                librust-pyo3-dev,
                librust-pyo3-file-dev,
