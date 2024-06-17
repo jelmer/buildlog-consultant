@@ -33,7 +33,7 @@ Repository = "https://github.com/jelmer/buildlog-consultant.git"
 
 [project.optional-dependencies]
 chatgpt = ["openai"]
-dev = ["ruff==0.4.8"]
+dev = ["ruff==0.4.9"]
 
 [project.scripts]
 analyse-sbuild-log = "buildlog_consultant.sbuild:main"
