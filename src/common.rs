@@ -219,7 +219,7 @@ impl MissingPythonDistribution {
     ) -> PyResult<MissingPythonDistribution> {
         Python::with_gil(|py| {
             let requirement = py
-                .import("requirements.requirement")?
+                .import_bound("requirements.requirement")?
                 .getattr("Requirement")?
                 .call_method1("parse", (text,))?;
             let distribution = requirement.getattr("name")?.extract::<String>()?;
