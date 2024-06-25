@@ -225,7 +225,7 @@ pub fn find_build_failure_description(
     lines: &[&str],
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
     Python::with_gil(|py| {
-        let module = py.import("buildlog_consultant.common").unwrap();
+        let module = py.import_bound("buildlog_consultant.common").unwrap();
         let find_build_failure_description =
             module.getattr("find_build_failure_description").unwrap();
         let result = find_build_failure_description
