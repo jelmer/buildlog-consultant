@@ -68,7 +68,7 @@ fn json_to_py(py: Python, json: serde_json::Value) -> PyResult<PyObject> {
             Ok(ret.into_py(py))
         }
         serde_json::Value::Object(o) => {
-            let ret = pyo3::types::PyDict::new(py);
+            let ret = pyo3::types::PyDict::new_bound(py);
             for (k, v) in o {
                 ret.set_item(k, json_to_py(py, v)?)?;
             }
@@ -206,7 +206,7 @@ fn find_secondary_build_failure(lines: Vec<String>, offset: usize) -> Option<Mat
 }
 
 #[pymodule]
-fn _buildlog_consultant_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _buildlog_consultant_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
     m.add_class::<Match>()?;
     m.add_class::<Problem>()?;

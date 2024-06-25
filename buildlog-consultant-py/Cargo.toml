@@ -18,4 +18,4 @@ buildlog-consultant = { path = ".." }
 pyo3 = { workspace = true }
 serde_json = { workspace = true }
 pyo3-filelike = ">=0.2.0"
-pyo3-log = ">=0.10"
+pyo3-log = { git = "https://github.com/jelmer/pyo3-log", branch = "pyo3-0.22" }
