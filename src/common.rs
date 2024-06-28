@@ -8,7 +8,6 @@ use crate::{MultiLineMatch, Origin, SingleLineMatch};
 use lazy_regex::{regex_captures, regex_is_match};
 use pyo3::prelude::*;
 use regex::Captures;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp::max;
