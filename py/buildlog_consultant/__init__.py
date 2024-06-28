@@ -18,7 +18,7 @@
 
 from typing import Optional
 
-__version__ = (0, 0, 37)
+__version__ = (0, 0, 38)
 version_string = ".".join(map(str, __version__))
 
 
