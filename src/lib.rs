@@ -2,6 +2,9 @@ use pyo3::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+#[cfg(feature = "chatgpt")]
+pub mod chatgpt;
+
 pub trait Match: Send + Sync + std::fmt::Debug {
     fn line(&self) -> String;
 
@@ -17,12 +20,13 @@ pub trait Match: Send + Sync + std::fmt::Debug {
 #[derive(Clone, Debug)]
 pub struct Origin(String);
 
-impl ToString for Origin {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl std::fmt::Display for Origin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct SingleLineMatch {
     pub origin: Origin,
     pub offset: usize,
@@ -43,9 +47,21 @@ impl Match for SingleLineMatch {
     }
 }
 
-impl std::fmt::Debug for SingleLineMatch {
+impl std::fmt::Display for SingleLineMatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:{}: {}", self.origin.0, self.lineno(), self.line)
+    }
+}
+
+impl SingleLineMatch {
+    pub fn from_lines(lines: Vec<&str>, offset: usize, origin: Option<&str>) -> Option<Self> {
+        let line = lines.get(offset)?;
+        let origin = origin.map(|s| Origin(s.to_string())).unwrap_or_else(|| Origin("".to_string()));
+        Some(Self {
+            origin,
+            offset,
+            line: line.to_string(),
+        })
     }
 }
 

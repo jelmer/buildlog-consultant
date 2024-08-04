@@ -15,6 +15,16 @@ members = [ "buildlog-consultant-py",]
 pyo3 = { version = ">=0.21", features = ["py-clone"] }
 serde_json = "1"
 
+[features]
+default = []
+chatgpt = ["dep:chatgpt_rs"]
+cli = ["dep:clap", "dep:env_logger"]
+
+[[bin]]
+name = "chatgpt-analyze-log"
+path = "src/bin/chatgpt-analyze-log.rs"
+required-features = ["chatgpt", "cli", "tokio"]
+
 [dependencies]
 pyo3 = { workspace = true }
 inventory = "0.3"
@@ -30,3 +40,7 @@ chrono = "0.4.31"
 fancy-regex = "0.13.0"
 lazy-regex = "3.0.2"
 textwrap = "0.16.0"
+chatgpt_rs = { version = "1", optional = true }
+env_logger = { version = "0.11", optional = true }
+clap = { version = "4", optional = true, features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
