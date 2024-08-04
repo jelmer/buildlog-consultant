@@ -1372,7 +1372,7 @@ impl Display for DhWithOrderIncorrect {
     }
 }
 
-struct NoSpaceOnDevice;
+pub struct NoSpaceOnDevice;
 
 impl Problem for NoSpaceOnDevice {
     fn kind(&self) -> Cow<str> {
