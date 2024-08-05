@@ -1751,8 +1751,8 @@ impl Display for DebianVersionRejected {
     }
 }
 
-struct PatchApplicationFailed {
-    patchname: String,
+pub struct PatchApplicationFailed {
+    pub patchname: String,
 }
 
 impl PatchApplicationFailed {
