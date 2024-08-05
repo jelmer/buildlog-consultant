@@ -3,15 +3,15 @@
 //! This module provides a parser for Debian sbuild logs. It extracts the different sections of the
 //! log file, and makes them accessible.
 
+use crate::common::{find_build_failure_description, NoSpaceOnDevice, PatchApplicationFailed};
+use crate::{Match, Problem, SingleLineMatch};
 use debversion::Version;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::iter::Iterator;
 use std::str::FromStr;
 use std::time::Duration;
-use crate::{Problem, Match, SingleLineMatch};
-use crate::common::{NoSpaceOnDevice, PatchApplicationFailed};
-use serde::ser::{Serialize, Serializer, SerializeStruct};
 
 pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
     for line in lines {
@@ -268,7 +268,7 @@ pub struct SbuildFailure {
     error: Option<Box<dyn Problem>>,
     phase: Option<Vec<String>>,
     section: Option<SbuildLogSection>,
-    r#match: Option<Box<dyn Match>>
+    r#match: Option<Box<dyn Match>>,
 }
 
 impl Serialize for SbuildFailure {
@@ -279,9 +279,18 @@ impl Serialize for SbuildFailure {
         let mut state = serializer.serialize_struct("SbuildFailure", 6)?;
         state.serialize_field("stage", &self.stage)?;
         state.serialize_field("phase", &self.phase)?;
-        state.serialize_field("section", &self.section.as_ref().map(|s| s.title.as_deref()))?;
+        state.serialize_field(
+            "section",
+            &self.section.as_ref().map(|s| s.title.as_deref()),
+        )?;
         state.serialize_field("origin", &self.r#match.as_ref().map(|m| m.origin().0))?;
-        state.serialize_field("lineno", &self.section.as_ref().map(|s| s.offsets.0 + self.r#match.as_ref().unwrap().lineno()))?;
+        state.serialize_field(
+            "lineno",
+            &self
+                .section
+                .as_ref()
+                .map(|s| s.offsets.0 + self.r#match.as_ref().unwrap().lineno()),
+        )?;
         if let Some(error) = &self.error {
             state.serialize_field("kind", &error.kind())?;
             state.serialize_field("details", &error.json())?;
@@ -418,13 +427,17 @@ impl Problem for UnableToFindUpstreamTarball {
 
 impl std::fmt::Display for UnableToFindUpstreamTarball {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Unable to find upstream tarball for {} {}", self.package, self.version)
+        write!(
+            f,
+            "Unable to find upstream tarball for {} {}",
+            self.package, self.version
+        )
     }
 }
 
 pub struct SourceFormatUnbuildable {
     source_format: String,
-    reason: String
+    reason: String,
 }
 
 impl Problem for SourceFormatUnbuildable {
@@ -442,7 +455,11 @@ impl Problem for SourceFormatUnbuildable {
 
 impl std::fmt::Display for SourceFormatUnbuildable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Source format {} is unbuildable: {}", self.source_format, self.reason)
+        write!(
+            f,
+            "Source format {} is unbuildable: {}",
+            self.source_format, self.reason
+        )
     }
 }
 
@@ -628,7 +645,10 @@ impl Problem for InconsistentSourceFormat {
 
 impl std::fmt::Display for InconsistentSourceFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Inconsistent source format between version and source format")
+        write!(
+            f,
+            "Inconsistent source format between version and source format"
+        )
     }
 }
 
@@ -678,7 +698,7 @@ impl std::fmt::Display for DpkgSourcePackFailed {
 
 pub struct DpkgBadVersion {
     version: String,
-    reason: Option<String>
+    reason: Option<String>,
 }
 
 impl Problem for DpkgBadVersion {
@@ -706,7 +726,7 @@ impl std::fmt::Display for DpkgBadVersion {
 
 pub struct MissingDebcargoCrate {
     cratename: String,
-    version: Option<String>
+    version: Option<String>,
 }
 
 impl Problem for MissingDebcargoCrate {
@@ -789,12 +809,8 @@ impl std::fmt::Display for MissingRevision {
     }
 }
 
-pub fn find_build_failure_description(lines: Vec<&str>) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
-    todo!();
-}
-
 pub fn find_preamble_failure_description(
-    lines: Vec<&str>
+    lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
     let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
     const OFFSET: usize = 100;
@@ -804,109 +820,297 @@ pub fn find_preamble_failure_description(
         }
         let lineno = lines.len() - i;
         let line = lines[lineno].trim_end_matches('\n');
-        if let Some((_, diff_file)) = lazy_regex::regex_captures!("dpkg-source: error: aborting due to unexpected upstream changes, see (.*)", line) {
+        if let Some((_, diff_file)) = lazy_regex::regex_captures!(
+            "dpkg-source: error: aborting due to unexpected upstream changes, see (.*)",
+            line
+        ) {
             let mut j = lineno - 1;
             let mut files = vec![];
             while j > 0 {
-                if lines[j] == (
-                    "dpkg-source: info: local changes detected, the modified files are:\n"
-                ) {
-                    let err = Some(Box::new(DpkgSourceLocalChanges{diff_file: Some(diff_file.to_string()), files: Some(files)}) as Box<dyn Problem>);
-                    return (Some(Box::new(SingleLineMatch::from_lines(
-                        lines, lineno, Some("direct regex")))), err);
+                if lines[j]
+                    == ("dpkg-source: info: local changes detected, the modified files are:\n")
+                {
+                    let err = Some(Box::new(DpkgSourceLocalChanges {
+                        diff_file: Some(diff_file.to_string()),
+                        files: Some(files),
+                    }) as Box<dyn Problem>);
+                    return (
+                        Some(Box::new(SingleLineMatch::from_lines(
+                            lines,
+                            lineno,
+                            Some("direct regex"),
+                        ))),
+                        err,
+                    );
                 }
                 files.push(lines[j].trim().to_string());
                 j -= 1;
             }
-            let err = Some(Box::new(DpkgSourceLocalChanges{diff_file: Some(diff_file.to_string()), files: Some(files)}) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            let err = Some(Box::new(DpkgSourceLocalChanges {
+                diff_file: Some(diff_file.to_string()),
+                files: Some(files),
+            }) as Box<dyn Problem>);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
         if line == "dpkg-source: error: unrepresentable changes to source" {
             let err = Some(Box::new(DpkgSourceUnrepresentableChanges) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct match")))), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct match"),
+                ))),
+                err,
+            );
         }
         if lazy_regex::regex_is_match!(
-            r"dpkg-source: error: detected ([0-9]+) unwanted binary file.*", line
+            r"dpkg-source: error: detected ([0-9]+) unwanted binary file.*",
+            line
         ) {
             let err = Some(Box::new(DpkgUnwantedBinaryFiles) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex")))), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                ))),
+                err,
+            );
         }
         if let Some((_, path)) = lazy_regex::regex_captures!(
             "dpkg-source: error: cannot read (.*/debian/control): No such file or directory",
             line,
         ) {
             let err = Some(Box::new(MissingControlFile(path.into())) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex")))), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                ))),
+                err,
+            );
         }
         if lazy_regex::regex_is_match!("dpkg-source: error: .*: No space left on device", line) {
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
         if lazy_regex::regex_is_match!("tar: .*: Cannot write: No space left on device", line) {
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
-        if let Some((_, path)) = lazy_regex::regex_captures!("dpkg-source: error: cannot represent change to (.*): binary file contents changed", line) {
-            let err = Some(Box::new(DpkgBinaryFileChanged(vec![path.to_string()])) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        if let Some((_, path)) = lazy_regex::regex_captures!(
+            "dpkg-source: error: cannot represent change to (.*): binary file contents changed",
+            line
+        ) {
+            let err =
+                Some(Box::new(DpkgBinaryFileChanged(vec![path.to_string()])) as Box<dyn Problem>);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
 
-        if let Some((_, format, _, _, _)) = lazy_regex::regex_captures!(r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC contains: (.*)\) at \(eval [0-9]+\) line [0-9]+\.", line) {
-            let err = Some(Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        if let Some((_, format, _, _, _)) = lazy_regex::regex_captures!(
+            r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC contains: (.*)\) at \(eval [0-9]+\) line [0-9]+\.",
+            line
+        ) {
+            let err =
+                Some(Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
 
-        if let Some((_, reason)) = lazy_regex::regex_captures!("E: Failed to package source directory (.*)", line) {
+        if let Some((_, reason)) =
+            lazy_regex::regex_captures!("E: Failed to package source directory (.*)", line)
+        {
             let err = Some(Box::new(DpkgSourcePackFailed(reason.to_string())) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
 
-        if let Some((_, path)) = lazy_regex::regex_captures!("E: Bad version unknown in (.*)", line) {
+        if let Some((_, path)) = lazy_regex::regex_captures!("E: Bad version unknown in (.*)", line)
+        {
             if lines[lineno - 1].starts_with("LINE: ") {
-                if let Some((_, version, reason)) = lazy_regex::regex_captures!(r"dpkg-parsechangelog: warning: .*\(l[0-9]+\): version \'(.*)\' is invalid: (.*)", lines[lineno - 2]) {
-                    let err = Some(Box::new(DpkgBadVersion { version: version.to_string(), reason: Some(reason.to_string()) }) as Box<dyn Problem>);
-                    return (Some(Box::new(SingleLineMatch::from_lines(
-                        lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+                if let Some((_, version, reason)) = lazy_regex::regex_captures!(
+                    r"dpkg-parsechangelog: warning: .*\(l[0-9]+\): version \'(.*)\' is invalid: (.*)",
+                    lines[lineno - 2]
+                ) {
+                    let err = Some(Box::new(DpkgBadVersion {
+                        version: version.to_string(),
+                        reason: Some(reason.to_string()),
+                    }) as Box<dyn Problem>);
+                    return (
+                        Some(Box::new(SingleLineMatch::from_lines(
+                            lines,
+                            lineno,
+                            Some("direct regex"),
+                        )) as Box<dyn Match>),
+                        err,
+                    );
                 }
             }
         }
 
-        if let Some((_, patchname)) = lazy_regex::regex_captures!("Patch (.*) does not apply \\(enforce with -f\\)\n", line) {
+        if let Some((_, patchname)) =
+            lazy_regex::regex_captures!("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
+        {
             let patchname = patchname.rsplit_once('/').unwrap().1;
-            let err = Some(Box::new(PatchApplicationFailed{patchname: patchname.to_string()}) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            let err = Some(Box::new(PatchApplicationFailed {
+                patchname: patchname.to_string(),
+            }) as Box<dyn Problem>);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
-        if let Some((_, patchname)) = lazy_regex::regex_captures!(r"dpkg-source: error: LC_ALL=C patch .* --reject-file=- < .*\/debian\/patches\/([^ ]+) subprocess returned exit status 1", line) {
-            let err = Some(Box::new(PatchApplicationFailed{patchname: patchname.to_string()}) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        if let Some((_, patchname)) = lazy_regex::regex_captures!(
+            r"dpkg-source: error: LC_ALL=C patch .* --reject-file=- < .*\/debian\/patches\/([^ ]+) subprocess returned exit status 1",
+            line
+        ) {
+            let err = Some(Box::new(PatchApplicationFailed {
+                patchname: patchname.to_string(),
+            }) as Box<dyn Problem>);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
-        if let Some((_, source_format, reason)) = lazy_regex::regex_captures!("dpkg-source: error: can't build with source format '(.*)': (.*)", line) {
-            let err = Some(Box::new(SourceFormatUnbuildable{source_format: source_format.to_string(), reason: reason.to_string()}) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        if let Some((_, source_format, reason)) = lazy_regex::regex_captures!(
+            "dpkg-source: error: can't build with source format '(.*)': (.*)",
+            line
+        ) {
+            let err = Some(Box::new(SourceFormatUnbuildable {
+                source_format: source_format.to_string(),
+                reason: reason.to_string(),
+            }) as Box<dyn Problem>);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
-        if let Some((_, path)) = lazy_regex::regex_captures!("dpkg-source: error: cannot read (.*): No such file or directory", line) {
+        if let Some((_, path)) = lazy_regex::regex_captures!(
+            "dpkg-source: error: cannot read (.*): No such file or directory",
+            line
+        ) {
             let patchname = path.rsplit_once('/').unwrap().1;
             let err = Some(Box::new(PatchFileMissing(path.into())) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
-        if let Some((_, format, msg)) = lazy_regex::regex_captures!("dpkg-source: error: source package format '(.*)' is not supported: (.*)", line) {
+        if let Some((_, format, msg)) = lazy_regex::regex_captures!(
+            "dpkg-source: error: source package format '(.*)' is not supported: (.*)",
+            line
+        ) {
             let (unused_match, p) = find_build_failure_description(vec![msg]);
-            let p = p.unwrap_or_else(|| Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), Some(p));
+            let p = p.unwrap_or_else(|| {
+                Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>
+            });
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                Some(p),
+            );
         }
-        if let Some((_, _, revid)) = lazy_regex::regex_captures!("breezy.errors.NoSuchRevision: (.*) has no revision b'(.*)'", line) {
-            let err = Some(Box::new(MissingRevision(revid.as_bytes().to_vec())) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex")))), err);
+        if let Some((_, _, revid)) = lazy_regex::regex_captures!(
+            "breezy.errors.NoSuchRevision: (.*) has no revision b'(.*)'",
+            line
+        ) {
+            let err =
+                Some(Box::new(MissingRevision(revid.as_bytes().to_vec())) as Box<dyn Problem>);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                ))),
+                err,
+            );
         }
 
-        if let Some((_, arg)) = lazy_regex::regex_captures!(r"fatal: ambiguous argument \'(.*)\': unknown revision or path not in the working tree.", line) {
+        if let Some((_, arg)) = lazy_regex::regex_captures!(
+            r"fatal: ambiguous argument \'(.*)\': unknown revision or path not in the working tree.",
+            line
+        ) {
             let err = Some(Box::new(PristineTarTreeMissing(arg.to_string())) as Box<dyn Problem>);
-            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines,
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
 
         if let Some((_, msg)) = lazy_regex::regex_captures!("dpkg-source: error: (.*)", line) {
             let err = Some(Box::new(DpkgSourcePackFailed(msg.to_string())) as Box<dyn Problem>);
-            ret = (Some(Box::new(SingleLineMatch::from_lines(lines.clone(), lineno, Some("direct regex"))) as Box<dyn Match>), err);
+            ret = (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    lines.clone(),
+                    lineno,
+                    Some("direct regex"),
+                )) as Box<dyn Match>),
+                err,
+            );
         }
     }
 

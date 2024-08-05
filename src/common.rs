@@ -4238,3 +4238,127 @@ pub fn find_secondary_build_failure(
     }
     None
 }
+
+pub struct CMakeFilesMissing {
+    pub filenames: Vec<String>,
+    pub version: Option<String>,
+}
+
+impl Problem for CMakeFilesMissing {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-cmake-files".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filenames": self.filenames,
+            "version": self.version,
+        })
+    }
+}
+
+impl std::fmt::Display for CMakeFilesMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "CMake files missing: {:?}", self.filenames)
+    }
+}
+
+/// Find the key failure line in build output.
+///
+/// # Returns
+/// A tuple with (match object, error object)
+pub fn find_build_failure_description(
+    lines: Vec<&str>,
+) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+    pub const OFFSET: usize = 250;
+    // Is this cmake-specific, or rather just kf5 / qmake ?
+    let mut cmake = false;
+    // We search backwards for clear errors.
+    for i in 1..OFFSET {
+        if i >= lines.len() {
+            break;
+        }
+        let lineno = lines.len() - i;
+        if lines[lineno].contains("cmake") {
+            cmake = true;
+        }
+        if let Some((mm, merr)) = match_lines(lines.as_slice(), lineno).unwrap() {
+            return (Some(mm), merr);
+        }
+    }
+
+    // TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
+    if cmake {
+        // Urgh, multi-line regexes---
+        for mut lineno in 0..lines.len() {
+            let line = lines[lineno].trim_end_matches('\n');
+            if let Some((_, target)) =
+                lazy_regex::regex_captures!(r"  Could NOT find (.*) \(missing: .*\)", line)
+            {
+                return (
+                    Some(Box::new(SingleLineMatch::from_lines(
+                        lines,
+                        lineno,
+                        Some("direct regex"),
+                    )) as Box<dyn Match>),
+                    Some(Box::new(MissingCommand(target.to_lowercase())) as Box<dyn Problem>),
+                );
+            }
+            if let Some((_, _target)) = lazy_regex::regex_captures!(
+                r#"\s*The imported target "(.*)" references the file"#,
+                line
+            ) {
+                lineno += 1;
+                while lineno < lines.len() && !line.is_empty() {
+                    lineno += 1;
+                }
+                if lines[lineno + 2].starts_with("  but this file does not exist.") {
+                    let filename = if let Some((_, entry)) =
+                        lazy_regex::regex_captures!(r#"\s*"(.*)""#, line)
+                    {
+                        entry
+                    } else {
+                        line
+                    };
+                    return (
+                        Some(Box::new(SingleLineMatch::from_lines(
+                            lines,
+                            lineno,
+                            Some("direct regex"),
+                        )) as Box<dyn Match>),
+                        Some(Box::new(MissingFile {
+                            path: filename.into(),
+                        }) as Box<dyn Problem>),
+                    );
+                }
+                continue;
+            }
+            if lineno + 1 < lines.len() {
+                if let Some((_, _pkg)) = lazy_regex::regex_captures!("^  Could not find a package configuration file provided by \"(.*)\" with any of the following names:", &(line.to_string() + " " + lines[lineno + 1].trim_start_matches(' ').trim_end_matches('\n'))) {
+                    if lines[lineno + 2] == "\n" {
+                        let mut i = 3;
+                        let mut filenames = vec![];
+                        while !lines[lineno + i].trim().is_empty() {
+                            filenames.push(lines[lineno + i].trim().to_string());
+                            i += 1;
+                        }
+                        return (
+                            Some(Box::new(SingleLineMatch::from_lines(
+                                lines, lineno, Some("direct regex (cmake)")
+                            )) as Box<dyn Match>),
+                            Some(Box::new(CMakeFilesMissing{filenames, version: None}) as Box<dyn Problem>),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // And forwards for vague ("secondary") errors.
+    let m = find_secondary_build_failure(lines.as_slice(), OFFSET);
+    if let Some(m) = m {
+        return (Some(Box::new(m)), None);
+    }
+
+    (None, None)
+}
