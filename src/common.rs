@@ -1372,7 +1372,7 @@ impl Display for DhWithOrderIncorrect {
     }
 }
 
-struct NoSpaceOnDevice;
+pub struct NoSpaceOnDevice;
 
 impl Problem for NoSpaceOnDevice {
     fn kind(&self) -> Cow<str> {
@@ -1751,8 +1751,8 @@ impl Display for DebianVersionRejected {
     }
 }
 
-struct PatchApplicationFailed {
-    patchname: String,
+pub struct PatchApplicationFailed {
+    pub patchname: String,
 }
 
 impl PatchApplicationFailed {

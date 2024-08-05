@@ -25,6 +25,11 @@ name = "chatgpt-analyze-log"
 path = "src/bin/chatgpt-analyze-log.rs"
 required-features = ["chatgpt", "cli", "tokio"]
 
+[[bin]]
+name = "analyze-apt-log"
+path = "src/bin/analyze-apt-log.rs"
+required-features = ["cli"]
+
 [dependencies]
 pyo3 = { workspace = true }
 inventory = "0.3"
@@ -44,3 +49,4 @@ chatgpt_rs = { version = "1", optional = true }
 env_logger = { version = "0.11", optional = true }
 clap = { version = "4", optional = true, features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
+serde_yaml = { version = "0.9" }

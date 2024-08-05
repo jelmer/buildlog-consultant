@@ -9,6 +9,9 @@ use std::io::{BufRead, BufReader};
 use std::iter::Iterator;
 use std::str::FromStr;
 use std::time::Duration;
+use crate::{Problem, Match, SingleLineMatch};
+use crate::common::{NoSpaceOnDevice, PatchApplicationFailed};
+use serde::ser::{Serialize, Serializer, SerializeStruct};
 
 pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
     for line in lines {
@@ -257,6 +260,657 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
 
     // Return the sections as an iterator.
     sections.into_iter()
+}
+
+pub struct SbuildFailure {
+    stage: Option<String>,
+    description: Option<String>,
+    error: Option<Box<dyn Problem>>,
+    phase: Option<Vec<String>>,
+    section: Option<SbuildLogSection>,
+    r#match: Option<Box<dyn Match>>
+}
+
+impl Serialize for SbuildFailure {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("SbuildFailure", 6)?;
+        state.serialize_field("stage", &self.stage)?;
+        state.serialize_field("phase", &self.phase)?;
+        state.serialize_field("section", &self.section.as_ref().map(|s| s.title.as_deref()))?;
+        state.serialize_field("origin", &self.r#match.as_ref().map(|m| m.origin().0))?;
+        state.serialize_field("lineno", &self.section.as_ref().map(|s| s.offsets.0 + self.r#match.as_ref().unwrap().lineno()))?;
+        if let Some(error) = &self.error {
+            state.serialize_field("kind", &error.kind())?;
+            state.serialize_field("details", &error.json())?;
+        }
+        state.end()
+    }
+}
+
+pub struct DpkgSourceLocalChanges {
+    diff_file: Option<String>,
+    files: Option<Vec<String>>,
+}
+
+impl Problem for DpkgSourceLocalChanges {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unexpected-local-upstream-changes".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "diff_file": self.diff_file,
+            "files": self.files,
+        })
+    }
+}
+
+impl std::fmt::Display for DpkgSourceLocalChanges {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(files) = self.files.as_ref() {
+            if files.len() < 5 {
+                write!(f, "Tree has local changes: {:?}", files)?;
+                return Ok(());
+            }
+
+            write!(f, "Tree has local changes: {} files", files.len())?;
+        } else {
+            write!(f, "Tree has local changes")?;
+        }
+        Ok(())
+    }
+}
+
+pub struct DpkgSourceUnrepresentableChanges;
+
+impl Problem for DpkgSourceUnrepresentableChanges {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unrepresentable-local-changes".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Tree has unrepresentable changes")
+    }
+}
+
+pub struct DpkgUnwantedBinaryFiles;
+
+impl Problem for DpkgUnwantedBinaryFiles {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unwanted-binary-files".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+impl std::fmt::Display for DpkgUnwantedBinaryFiles {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Tree has unwanted binary files")
+    }
+}
+
+pub struct DpkgBinaryFileChanged(Vec<String>);
+
+impl Problem for DpkgBinaryFileChanged {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "binary-file-changed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "files": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for DpkgBinaryFileChanged {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Binary file changed")
+    }
+}
+
+struct MissingControlFile(std::path::PathBuf);
+
+impl Problem for MissingControlFile {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-control-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+impl std::fmt::Display for MissingControlFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Missing control file: {}", self.0.display())
+    }
+}
+
+struct UnableToFindUpstreamTarball {
+    package: String,
+    version: Version,
+}
+
+impl Problem for UnableToFindUpstreamTarball {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unable-to-find-upstream-tarball".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "version": self.version.to_string(),
+        })
+    }
+}
+
+impl std::fmt::Display for UnableToFindUpstreamTarball {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unable to find upstream tarball for {} {}", self.package, self.version)
+    }
+}
+
+pub struct SourceFormatUnbuildable {
+    source_format: String,
+    reason: String
+}
+
+impl Problem for SourceFormatUnbuildable {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "source-format-unbuildable".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "source_format": self.source_format,
+            "reason": self.reason,
+        })
+    }
+}
+
+impl std::fmt::Display for SourceFormatUnbuildable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Source format {} is unbuildable: {}", self.source_format, self.reason)
+    }
+}
+
+pub struct SourceFormatUnsupported(String);
+
+impl Problem for SourceFormatUnsupported {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "source-format-unsupported".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "source_format": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for SourceFormatUnsupported {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Source format {} is unsupported", self.0)
+    }
+}
+
+pub struct PatchFileMissing(std::path::PathBuf);
+
+impl Problem for PatchFileMissing {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "patch-file-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0.display().to_string(),
+        })
+    }
+}
+
+impl std::fmt::Display for PatchFileMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Patch file missing: {}", self.0.display())
+    }
+}
+
+struct UnknownMercurialExtraFields(String);
+
+impl Problem for UnknownMercurialExtraFields {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unknown-mercurial-extra-fields".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "field": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for UnknownMercurialExtraFields {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown Mercurial extra field: {}", self.0)
+    }
+}
+
+pub struct UpstreamPGPSignatureVerificationFailed;
+
+impl Problem for UpstreamPGPSignatureVerificationFailed {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "upstream-pgp-signature-verification-failed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+impl std::fmt::Display for UpstreamPGPSignatureVerificationFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Upstream PGP signature verification failed")
+    }
+}
+
+pub struct UScanRequestVersionMissing(String);
+
+impl Problem for UScanRequestVersionMissing {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "uscan-request-version-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "version": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for UScanRequestVersionMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UScan request version missing: {}", self.0)
+    }
+}
+
+pub struct DebcargoFailure(String);
+
+impl Problem for DebcargoFailure {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "debcargo-failure".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "reason": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for DebcargoFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Debcargo failure: {}", self.0)
+    }
+}
+
+pub struct ChangelogParseError(String);
+
+impl Problem for ChangelogParseError {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "changelog-parse-error".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "reason": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for ChangelogParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Changelog parse error: {}", self.0)
+    }
+}
+
+pub struct UScanFailed {
+    url: String,
+    reason: String,
+}
+
+impl Problem for UScanFailed {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "uscan-failed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "url": self.url,
+            "reason": self.reason,
+        })
+    }
+}
+
+impl std::fmt::Display for UScanFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UScan failed: {}", self.reason)
+    }
+}
+
+pub struct InconsistentSourceFormat {
+    version: Option<String>,
+    source_format: Option<String>,
+}
+
+impl Problem for InconsistentSourceFormat {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "inconsistent-source-format".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "version": self.version.as_ref().map(|v| v.to_string()),
+            "source_format": self.source_format,
+        })
+    }
+}
+
+impl std::fmt::Display for InconsistentSourceFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Inconsistent source format between version and source format")
+    }
+}
+
+pub struct UpstreamMetadataFileParseError {
+    path: std::path::PathBuf,
+    reason: String,
+}
+
+impl Problem for UpstreamMetadataFileParseError {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "debian-upstream-metadata-invalid".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.path.display().to_string(),
+            "reason": self.reason,
+        })
+    }
+}
+
+impl std::fmt::Display for UpstreamMetadataFileParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Upstream metadata file parse error: {}", self.reason)
+    }
+}
+
+pub struct DpkgSourcePackFailed(String);
+
+impl Problem for DpkgSourcePackFailed {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "dpkg-source-pack-failed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "reason": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for DpkgSourcePackFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Dpkg source pack failed: {}", self.0)
+    }
+}
+
+pub struct DpkgBadVersion {
+    version: String,
+    reason: Option<String>
+}
+
+impl Problem for DpkgBadVersion {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "dpkg-bad-version".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "version": self.version,
+            "reason": self.reason,
+        })
+    }
+}
+
+impl std::fmt::Display for DpkgBadVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(reason) = &self.reason {
+            write!(f, "Version {} is invalid: {}", self.version, reason)
+        } else {
+            write!(f, "Version {} is invalid", self.version)
+        }
+    }
+}
+
+pub struct MissingDebcargoCrate {
+    cratename: String,
+    version: Option<String>
+}
+
+impl Problem for MissingDebcargoCrate {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "debcargo-missing-crate".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "crate": self.cratename,
+            "version": self.version,
+        })
+    }
+}
+
+impl std::fmt::Display for MissingDebcargoCrate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(version) = &self.version {
+            write!(f, "Missing debcargo crate: {}={}", self.cratename, version)
+        } else {
+            write!(f, "Missing debcargo crate: {}", self.cratename)
+        }
+    }
+}
+
+impl MissingDebcargoCrate {
+    pub fn from_string(text: &str) -> Self {
+        let text = text.trim();
+        if let Some((cratename, version)) = text.split_once('=') {
+            Self {
+                cratename: cratename.trim().to_string(),
+                version: Some(version.trim().to_string()),
+            }
+        } else {
+            Self {
+                cratename: text.to_string(),
+                version: None,
+            }
+        }
+    }
+}
+
+pub struct PristineTarTreeMissing(String);
+
+impl Problem for PristineTarTreeMissing {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "pristine-tar-missing-tree".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "treeish": self.0,
+        })
+    }
+}
+
+impl std::fmt::Display for PristineTarTreeMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Pristine-tar tree missing: {}", self.0)
+    }
+}
+
+pub struct MissingRevision(Vec<u8>);
+
+impl Problem for MissingRevision {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-revision".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "revision": String::from_utf8_lossy(&self.0),
+        })
+    }
+}
+
+impl std::fmt::Display for MissingRevision {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Missing revision: {}", String::from_utf8_lossy(&self.0))
+    }
+}
+
+pub fn find_build_failure_description(lines: Vec<&str>) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+    todo!();
+}
+
+pub fn find_preamble_failure_description(
+    lines: Vec<&str>
+) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+    let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
+    const OFFSET: usize = 100;
+    for i in 1..OFFSET {
+        if i >= lines.len() {
+            break;
+        }
+        let lineno = lines.len() - i;
+        let line = lines[lineno].trim_end_matches('\n');
+        if let Some((_, diff_file)) = lazy_regex::regex_captures!("dpkg-source: error: aborting due to unexpected upstream changes, see (.*)", line) {
+            let mut j = lineno - 1;
+            let mut files = vec![];
+            while j > 0 {
+                if lines[j] == (
+                    "dpkg-source: info: local changes detected, the modified files are:\n"
+                ) {
+                    let err = Some(Box::new(DpkgSourceLocalChanges{diff_file: Some(diff_file.to_string()), files: Some(files)}) as Box<dyn Problem>);
+                    return (Some(Box::new(SingleLineMatch::from_lines(
+                        lines, lineno, Some("direct regex")))), err);
+                }
+                files.push(lines[j].trim().to_string());
+                j -= 1;
+            }
+            let err = Some(Box::new(DpkgSourceLocalChanges{diff_file: Some(diff_file.to_string()), files: Some(files)}) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+        if line == "dpkg-source: error: unrepresentable changes to source" {
+            let err = Some(Box::new(DpkgSourceUnrepresentableChanges) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct match")))), err);
+        }
+        if lazy_regex::regex_is_match!(
+            r"dpkg-source: error: detected ([0-9]+) unwanted binary file.*", line
+        ) {
+            let err = Some(Box::new(DpkgUnwantedBinaryFiles) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex")))), err);
+        }
+        if let Some((_, path)) = lazy_regex::regex_captures!(
+            "dpkg-source: error: cannot read (.*/debian/control): No such file or directory",
+            line,
+        ) {
+            let err = Some(Box::new(MissingControlFile(path.into())) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex")))), err);
+        }
+        if lazy_regex::regex_is_match!("dpkg-source: error: .*: No space left on device", line) {
+            let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+        if lazy_regex::regex_is_match!("tar: .*: Cannot write: No space left on device", line) {
+            let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+        if let Some((_, path)) = lazy_regex::regex_captures!("dpkg-source: error: cannot represent change to (.*): binary file contents changed", line) {
+            let err = Some(Box::new(DpkgBinaryFileChanged(vec![path.to_string()])) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+
+        if let Some((_, format, _, _, _)) = lazy_regex::regex_captures!(r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC contains: (.*)\) at \(eval [0-9]+\) line [0-9]+\.", line) {
+            let err = Some(Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+
+        if let Some((_, reason)) = lazy_regex::regex_captures!("E: Failed to package source directory (.*)", line) {
+            let err = Some(Box::new(DpkgSourcePackFailed(reason.to_string())) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+
+        if let Some((_, path)) = lazy_regex::regex_captures!("E: Bad version unknown in (.*)", line) {
+            if lines[lineno - 1].starts_with("LINE: ") {
+                if let Some((_, version, reason)) = lazy_regex::regex_captures!(r"dpkg-parsechangelog: warning: .*\(l[0-9]+\): version \'(.*)\' is invalid: (.*)", lines[lineno - 2]) {
+                    let err = Some(Box::new(DpkgBadVersion { version: version.to_string(), reason: Some(reason.to_string()) }) as Box<dyn Problem>);
+                    return (Some(Box::new(SingleLineMatch::from_lines(
+                        lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+                }
+            }
+        }
+
+        if let Some((_, patchname)) = lazy_regex::regex_captures!("Patch (.*) does not apply \\(enforce with -f\\)\n", line) {
+            let patchname = patchname.rsplit_once('/').unwrap().1;
+            let err = Some(Box::new(PatchApplicationFailed{patchname: patchname.to_string()}) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+        if let Some((_, patchname)) = lazy_regex::regex_captures!(r"dpkg-source: error: LC_ALL=C patch .* --reject-file=- < .*\/debian\/patches\/([^ ]+) subprocess returned exit status 1", line) {
+            let err = Some(Box::new(PatchApplicationFailed{patchname: patchname.to_string()}) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+        if let Some((_, source_format, reason)) = lazy_regex::regex_captures!("dpkg-source: error: can't build with source format '(.*)': (.*)", line) {
+            let err = Some(Box::new(SourceFormatUnbuildable{source_format: source_format.to_string(), reason: reason.to_string()}) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+        if let Some((_, path)) = lazy_regex::regex_captures!("dpkg-source: error: cannot read (.*): No such file or directory", line) {
+            let patchname = path.rsplit_once('/').unwrap().1;
+            let err = Some(Box::new(PatchFileMissing(path.into())) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+        if let Some((_, format, msg)) = lazy_regex::regex_captures!("dpkg-source: error: source package format '(.*)' is not supported: (.*)", line) {
+            let (unused_match, p) = find_build_failure_description(vec![msg]);
+            let p = p.unwrap_or_else(|| Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), Some(p));
+        }
+        if let Some((_, _, revid)) = lazy_regex::regex_captures!("breezy.errors.NoSuchRevision: (.*) has no revision b'(.*)'", line) {
+            let err = Some(Box::new(MissingRevision(revid.as_bytes().to_vec())) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex")))), err);
+        }
+
+        if let Some((_, arg)) = lazy_regex::regex_captures!(r"fatal: ambiguous argument \'(.*)\': unknown revision or path not in the working tree.", line) {
+            let err = Some(Box::new(PristineTarTreeMissing(arg.to_string())) as Box<dyn Problem>);
+            return (Some(Box::new(SingleLineMatch::from_lines(lines, lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+
+        if let Some((_, msg)) = lazy_regex::regex_captures!("dpkg-source: error: (.*)", line) {
+            let err = Some(Box::new(DpkgSourcePackFailed(msg.to_string())) as Box<dyn Problem>);
+            ret = (Some(Box::new(SingleLineMatch::from_lines(lines.clone(), lineno, Some("direct regex"))) as Box<dyn Match>), err);
+        }
+    }
+
+    ret
 }
 
 #[cfg(test)]
