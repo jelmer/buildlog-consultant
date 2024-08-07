@@ -3707,7 +3707,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r#"Cannot open file "(.*)"."#, file_not_found),
     regex_line_matcher!(
         r".*Could not find a JavaScript runtime\. See https://github.com/rails/execjs for a list of available runtimes\..*",
-        |m| Ok(Some(Box::new(MissingJavaScriptRuntime)))
+        |_| Ok(Some(Box::new(MissingJavaScriptRuntime)))
     ),
     Box::new(PythonFileNotFoundErrorMatcher),
     // ruby
@@ -4297,7 +4297,7 @@ pub fn find_build_failure_description(
             {
                 return (
                     Some(Box::new(SingleLineMatch::from_lines(
-                        lines,
+                        &lines,
                         lineno,
                         Some("direct regex"),
                     )) as Box<dyn Match>),
@@ -4322,7 +4322,7 @@ pub fn find_build_failure_description(
                     };
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
-                            lines,
+                            &lines,
                             lineno,
                             Some("direct regex"),
                         )) as Box<dyn Match>),
@@ -4344,7 +4344,7 @@ pub fn find_build_failure_description(
                         }
                         return (
                             Some(Box::new(SingleLineMatch::from_lines(
-                                lines, lineno, Some("direct regex (cmake)")
+                                &lines, lineno, Some("direct regex (cmake)")
                             )) as Box<dyn Match>),
                             Some(Box::new(CMakeFilesMissing{filenames, version: None}) as Box<dyn Problem>),
                         )

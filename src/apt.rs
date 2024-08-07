@@ -157,7 +157,7 @@ pub fn find_apt_get_failure(
                 };
                 return (
                     Some(Box::new(SingleLineMatch::from_lines(
-                        lines,
+                        &lines,
                         lineno,
                         Some("direct regex"),
                     )) as Box<dyn Match>),
@@ -166,7 +166,7 @@ pub fn find_apt_get_failure(
             }
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -180,7 +180,7 @@ pub fn find_apt_get_failure(
             }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno - 1,
                     Some("direct match"),
                 )) as Box<dyn Match>),
@@ -215,7 +215,7 @@ pub fn find_apt_get_failure(
             }) as Box<dyn Problem>);
             offsets.push(lineno);
             let r#match = Some(Box::new(MultiLineMatch::from_lines(
-                lines,
+                &lines,
                 offsets,
                 Some("direct match"),
             )) as Box<dyn Match>);
@@ -227,7 +227,7 @@ pub fn find_apt_get_failure(
         ) {
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -240,7 +240,7 @@ pub fn find_apt_get_failure(
         ) {
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -252,7 +252,7 @@ pub fn find_apt_get_failure(
         {
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -262,7 +262,7 @@ pub fn find_apt_get_failure(
         if line.starts_with("E: ") && ret.0.is_none() {
             ret = (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines.clone(),
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -274,7 +274,7 @@ pub fn find_apt_get_failure(
         {
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -284,7 +284,7 @@ pub fn find_apt_get_failure(
         if line == "E: Write error - write (28: No space left on device)" {
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -295,7 +295,7 @@ pub fn find_apt_get_failure(
             if msg.ends_with(": No space left on device") {
                 return (
                     Some(Box::new(SingleLineMatch::from_lines(
-                        lines,
+                        &lines,
                         lineno,
                         Some("direct regex"),
                     )) as Box<dyn Match>),
@@ -304,7 +304,7 @@ pub fn find_apt_get_failure(
             }
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -316,7 +316,7 @@ pub fn find_apt_get_failure(
         {
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno + 1,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -335,7 +335,7 @@ pub fn find_apt_get_failure(
         ) {
             return (
                 Some(
-                    Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                    Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                         as Box<dyn Match>,
                 ),
                 Some(Box::new(NoSpaceOnDevice)),
@@ -344,7 +344,7 @@ pub fn find_apt_get_failure(
         if lazy_regex::regex_is_match!(r" .*: No space left on device", line) {
             return (
                 Some(
-                    Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                    Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                         as Box<dyn Match>,
                 ),
                 Some(Box::new(NoSpaceOnDevice)),

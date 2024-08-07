@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::ops::Index;
 
 pub mod apt;
 pub mod autopkgtest;
@@ -57,8 +58,12 @@ impl std::fmt::Display for SingleLineMatch {
 }
 
 impl SingleLineMatch {
-    pub fn from_lines(lines: Vec<&str>, offset: usize, origin: Option<&str>) -> Self {
-        let line = lines.get(offset).unwrap();
+    pub fn from_lines<'a>(
+        lines: &impl Index<usize, Output = &'a str>,
+        offset: usize,
+        origin: Option<&str>,
+    ) -> Self {
+        let line = &lines[offset];
         let origin = origin
             .map(|s| Origin(s.to_string()))
             .unwrap_or_else(|| Origin("".to_string()));
@@ -87,7 +92,11 @@ impl MultiLineMatch {
         }
     }
 
-    pub fn from_lines(lines: Vec<&str>, offsets: Vec<usize>, origin: Option<&str>) -> Self {
+    pub fn from_lines<'a>(
+        lines: &impl Index<usize, Output = &'a str>,
+        offsets: Vec<usize>,
+        origin: Option<&str>,
+    ) -> Self {
         let lines = offsets
             .iter()
             .map(|&offset| lines[offset].to_string())

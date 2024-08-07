@@ -836,7 +836,7 @@ pub fn find_preamble_failure_description(
                     }) as Box<dyn Problem>);
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
-                            lines,
+                            &lines,
                             lineno,
                             Some("direct regex"),
                         ))),
@@ -852,7 +852,7 @@ pub fn find_preamble_failure_description(
             }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -863,7 +863,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(DpkgSourceUnrepresentableChanges) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct match"),
                 ))),
@@ -877,7 +877,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(DpkgUnwantedBinaryFiles) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 ))),
@@ -891,7 +891,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(MissingControlFile(path.into())) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 ))),
@@ -902,7 +902,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -913,7 +913,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -928,7 +928,7 @@ pub fn find_preamble_failure_description(
                 Some(Box::new(DpkgBinaryFileChanged(vec![path.to_string()])) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -944,7 +944,7 @@ pub fn find_preamble_failure_description(
                 Some(Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -958,7 +958,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(DpkgSourcePackFailed(reason.to_string())) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -966,7 +966,8 @@ pub fn find_preamble_failure_description(
             );
         }
 
-        if let Some((_, path)) = lazy_regex::regex_captures!("E: Bad version unknown in (.*)", line)
+        if let Some((_, _path)) =
+            lazy_regex::regex_captures!("E: Bad version unknown in (.*)", line)
         {
             if lines[lineno - 1].starts_with("LINE: ") {
                 if let Some((_, version, reason)) = lazy_regex::regex_captures!(
@@ -979,7 +980,7 @@ pub fn find_preamble_failure_description(
                     }) as Box<dyn Problem>);
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
-                            lines,
+                            &lines,
                             lineno,
                             Some("direct regex"),
                         )) as Box<dyn Match>),
@@ -998,7 +999,7 @@ pub fn find_preamble_failure_description(
             }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -1014,7 +1015,7 @@ pub fn find_preamble_failure_description(
             }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -1031,7 +1032,7 @@ pub fn find_preamble_failure_description(
             }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -1046,7 +1047,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(PatchFileMissing(path.into())) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -1063,7 +1064,7 @@ pub fn find_preamble_failure_description(
             });
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -1078,7 +1079,7 @@ pub fn find_preamble_failure_description(
                 Some(Box::new(MissingRevision(revid.as_bytes().to_vec())) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 ))),
@@ -1093,7 +1094,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(PristineTarTreeMissing(arg.to_string())) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -1105,7 +1106,7 @@ pub fn find_preamble_failure_description(
             let err = Some(Box::new(DpkgSourcePackFailed(msg.to_string())) as Box<dyn Problem>);
             ret = (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines.clone(),
+                    &lines,
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
