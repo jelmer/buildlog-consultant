@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 pub mod apt;
+pub mod autopkgtest;
 
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;
@@ -58,7 +59,9 @@ impl std::fmt::Display for SingleLineMatch {
 impl SingleLineMatch {
     pub fn from_lines(lines: Vec<&str>, offset: usize, origin: Option<&str>) -> Self {
         let line = lines.get(offset).unwrap();
-        let origin = origin.map(|s| Origin(s.to_string())).unwrap_or_else(|| Origin("".to_string()));
+        let origin = origin
+            .map(|s| Origin(s.to_string()))
+            .unwrap_or_else(|| Origin("".to_string()));
         Self {
             origin,
             offset,
@@ -85,8 +88,13 @@ impl MultiLineMatch {
     }
 
     pub fn from_lines(lines: Vec<&str>, offsets: Vec<usize>, origin: Option<&str>) -> Self {
-        let lines = offsets.iter().map(|&offset| lines[offset].to_string()).collect();
-        let origin = origin.map(|s| Origin(s.to_string())).unwrap_or_else(|| Origin("".to_string()));
+        let lines = offsets
+            .iter()
+            .map(|&offset| lines[offset].to_string())
+            .collect();
+        let origin = origin
+            .map(|s| Origin(s.to_string()))
+            .unwrap_or_else(|| Origin("".to_string()));
         Self::new(origin, offsets, lines)
     }
 }

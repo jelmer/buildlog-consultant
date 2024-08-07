@@ -30,6 +30,11 @@ name = "analyze-apt-log"
 path = "src/bin/analyze-apt-log.rs"
 required-features = ["cli"]
 
+[[bin]]
+name = "analyze-autopkgtest-log"
+path = "src/bin/analyze-autopkgtest-log.rs"
+required-features = ["cli"]
+
 [dependencies]
 pyo3 = { workspace = true }
 inventory = "0.3"
