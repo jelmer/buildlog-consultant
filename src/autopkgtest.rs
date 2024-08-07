@@ -407,7 +407,7 @@ pub fn find_autopkgtest_failure_description(
                             Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>);
                         return (
                             Some(Box::new(SingleLineMatch::from_lines(
-                                lines,
+                                &lines,
                                 i,
                                 Some("direct regex"),
                             )) as Box<dyn Match>),
@@ -441,7 +441,7 @@ pub fn find_autopkgtest_failure_description(
                             let description = r#match.as_ref().unwrap().line();
                             return (
                                 Some(Box::new(SingleLineMatch::from_lines(
-                                    lines,
+                                    &lines,
                                     test_output.get(&field).unwrap().1 + r#match.unwrap().offset(),
                                     Some("direct regex"),
                                 )) as Box<dyn Match>),
@@ -478,7 +478,7 @@ pub fn find_autopkgtest_failure_description(
                         }
                         return (
                             Some(Box::new(SingleLineMatch::from_lines(
-                                lines,
+                                &lines,
                                 i,
                                 Some("direct regex"),
                             )) as Box<dyn Match>),
@@ -492,7 +492,7 @@ pub fn find_autopkgtest_failure_description(
                     }
                     return (
                         Some(
-                            Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                            Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                                 as Box<dyn Match>,
                         ),
                         last_test.map(|x| x.to_owned()),
@@ -519,7 +519,7 @@ pub fn find_autopkgtest_failure_description(
                     }
                     return (
                         Some(
-                            Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                            Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                                 as Box<dyn Match>,
                         ),
                         last_test.map(|x| x.to_owned()),
@@ -558,7 +558,7 @@ pub fn find_autopkgtest_failure_description(
                         let description = r#match.as_ref().unwrap().line();
                         return (
                             Some(Box::new(SingleLineMatch::from_lines(
-                                lines,
+                                &lines,
                                 test_output.get(&current_field).unwrap().1
                                     + r#match.unwrap().offset(),
                                 Some("direct regex"),
@@ -573,7 +573,7 @@ pub fn find_autopkgtest_failure_description(
                     let description = lines[i - 1].trim_end().to_owned();
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
-                            lines,
+                            &lines,
                             test_output.get(&current_field.as_ref().unwrap()).unwrap().1,
                             Some("direct regex"),
                         )) as Box<dyn Match>),
@@ -584,7 +584,7 @@ pub fn find_autopkgtest_failure_description(
                 }
                 return (
                     Some(
-                        Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                        Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                             as Box<dyn Match>,
                     ),
                     last_test.map(|x| x.to_owned()),
@@ -683,7 +683,7 @@ pub fn find_autopkgtest_failure_description(
             let last_line = lines.last().map(|x| x.to_string());
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     offset,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -702,7 +702,7 @@ pub fn find_autopkgtest_failure_description(
             let error = Some(Box::new(AutopkgtestTimedOut) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     summary_offset + packet.lineno(),
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -768,7 +768,7 @@ pub fn find_autopkgtest_failure_description(
             });
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     offset,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -787,7 +787,7 @@ pub fn find_autopkgtest_failure_description(
                 if error.is_some() && r#match.is_some() {
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
-                            lines,
+                            &lines,
                             r#match.unwrap().offset() + output_offset.unwrap(),
                             Some("direct regex"),
                         )) as Box<dyn Match>),
@@ -828,7 +828,7 @@ pub fn find_autopkgtest_failure_description(
             };
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     summary_offset + packet.lineno() + blame_offset.unwrap(),
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -857,7 +857,7 @@ pub fn find_autopkgtest_failure_description(
             };
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
-                    lines,
+                    &lines,
                     offset,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
@@ -885,7 +885,7 @@ pub fn find_testbed_setup_failure(
             {
                 return (
                     Some(
-                        Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                        Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                             as Box<dyn Match>,
                     ),
                     Some(Box::new(crate::common::ChrootNotFound {
@@ -895,7 +895,7 @@ pub fn find_testbed_setup_failure(
             }
             return (
                 Some(
-                    Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                    Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                         as Box<dyn Match>,
                 ),
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
@@ -915,7 +915,7 @@ pub fn find_testbed_setup_failure(
             ) {
                 return (
                     Some(
-                        Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                        Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                             as Box<dyn Match>,
                     ),
                     Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>),
@@ -923,7 +923,7 @@ pub fn find_testbed_setup_failure(
             }
             return (
                 Some(
-                    Box::new(SingleLineMatch::from_lines(lines, i, Some("direct regex")))
+                    Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                         as Box<dyn Match>,
                 ),
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
