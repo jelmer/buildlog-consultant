@@ -2493,8 +2493,8 @@ impl Display for MissingAutomakeInput {
     }
 }
 
-struct ChrootNotFound {
-    chroot: String,
+pub struct ChrootNotFound {
+    pub chroot: String,
 }
 
 impl ChrootNotFound {
@@ -3388,11 +3388,11 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r".*\.xml:[0-9]+: Unable to find a javac compiler;",
-        |m| Ok(Some(Box::new(MissingJavaClass::simple("com.sun.tools.javac.Main".to_string()))))
+        |_| Ok(Some(Box::new(MissingJavaClass::simple("com.sun.tools.javac.Main".to_string()))))
     ),
     regex_line_matcher!(
         r#"checking for (.*)\.\.\. configure: error: "Cannot check for existence of module (.*) without pkgconf""#,
-        |m| Ok(Some(Box::new(MissingCommand("pkgconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand("pkgconf".to_string()))))
     ),
     regex_line_matcher!(
         r"configure: error: Could not find '(.*)' in path\.",
@@ -3400,7 +3400,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"autoreconf was not found; .*",
-        |m| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
     ),
     regex_line_matcher!(r"^g\+\+: error: (.*): No such file or directory", file_not_found),
     regex_line_matcher!(r"strip: \'(.*)\': No such file", file_not_found),
@@ -3414,7 +3414,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"autogen.sh: You must have GNU autoconf installed.",
-        |m| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
     ),
     regex_line_matcher!(
         r"\s*You must have (autoconf|automake|aclocal|libtool|libtoolize) installed to compile (.*)\.",
@@ -3422,17 +3422,17 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"It appears that Autotools is not correctly installed on this system.",
-        |m| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
     ),
     regex_line_matcher!(
         r"\*\*\* No autoreconf found \*\*\*",
-        |m| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
     ),
-    regex_line_matcher!(r"You need to install gnome-common module and make.*", |m| Ok(Some(Box::new(GnomeCommonMissing)))),
-    regex_line_matcher!(r"You need to install the gnome-common module and make.*", |m| Ok(Some(Box::new(GnomeCommonMissing)))),
+    regex_line_matcher!(r"You need to install gnome-common module and make.*", |_| Ok(Some(Box::new(GnomeCommonMissing)))),
+    regex_line_matcher!(r"You need to install the gnome-common module and make.*", |_| Ok(Some(Box::new(GnomeCommonMissing)))),
     regex_line_matcher!(
         r"You need to install gnome-common from the GNOME (git|CVS|SVN)",
-        |m| Ok(Some(Box::new(GnomeCommonMissing)))
+        |_| Ok(Some(Box::new(GnomeCommonMissing)))
     ),
     regex_line_matcher!(
         r"automake: error: cannot open < (.*): No such file or directory",
@@ -3456,7 +3456,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"ERROR: JAVA_HOME is set to an invalid directory: /usr/lib/jvm/default-java/",
-        |m| Ok(Some(Box::new(MissingJVM)))
+        |_| Ok(Some(Box::new(MissingJVM)))
     ),
     regex_line_matcher!(
         r#"Error: The file "MANIFEST" is missing from this distribution\. The MANIFEST lists all files included in the distribution\."#,
@@ -3515,7 +3515,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         "dpkg-gensymbols: error: some symbols or patterns disappeared in the symbols file: see diff output below",
-        |m| Ok(Some(Box::new(DisappearedSymbols)))
+        |_| Ok(Some(Box::new(DisappearedSymbols)))
     ),
     regex_line_matcher!(
         r"Failed to copy \'(.*)\': No such file or directory at /usr/share/dh-exec/dh-exec-install-rename line [0-9]+.*",
@@ -3528,7 +3528,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r".*meson.build:[0-9]+:[0-9]: ERROR: Git program not found\.",
-        |m| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
     ),
     regex_line_matcher!(
         r"Failed: [pytest] section in setup.cfg files is no longer supported, change to [tool:pytest] instead.",
@@ -3718,7 +3718,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"\[Error: ENOENT: no such file or directory, stat \'(.*)\'\] \{", file_not_found),
     regex_line_matcher!(
         r"(.*):[0-9]+: error: Libtool library used but \'LIBTOOL\' is undefined",
-        |m| Ok(Some(Box::new(MissingLibtool)))
+        |_| Ok(Some(Box::new(MissingLibtool)))
     ),
     // libtoolize
     regex_line_matcher!(r"libtoolize:   error: \'(.*)\' does not exist.", file_not_found),
@@ -3737,7 +3737,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"Cannot find Git. Git is required for .*",
-        |m| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
     ),
     regex_line_matcher!(
         r"E ImportError: Bad (.*) executable\.",
@@ -3775,7 +3775,7 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingPythonModule{ module: "numpy".to_string(), python_version: None, minimum_version: Some(m.get(1).unwrap().as_str().to_string())})))
     ),
     // Seen in mayavi2
-    regex_line_matcher!(r"\w+Numpy is required to build.*", |m| Ok(Some(Box::new(MissingPythonModule::simple("numpy".to_string()))))),
+    regex_line_matcher!(r"\w+Numpy is required to build.*", |_| Ok(Some(Box::new(MissingPythonModule::simple("numpy".to_string()))))),
     // autoconf
     regex_line_matcher!(r"configure.ac:[0-9]+: error: required file \'(.*)\' not found", file_not_found),
     regex_line_matcher!(r"/usr/bin/m4:(.*):([0-9]+): cannot open `(.*)\': No such file or directory", |m| Ok(Some(Box::new(MissingFile{path: std::path::PathBuf::from(m.get(3).unwrap().as_str().to_string())})))),
@@ -3813,8 +3813,8 @@ lazy_static::lazy_static! {
     ),
     // Sphinx
     regex_line_matcher!(
-        r"sphinx_rtd_theme is no longer a hard dependency since version (.*). Please install it manually.\(pip install (.*)\)",
-        |m| Ok(Some(Box::new(MissingPythonModule::simple("sphinx_rtd_theme".to_string()))))
+        r"(.*) is no longer a hard dependency since version (.*). Please install it manually.\(pip install (.*)\)",
+        |m| Ok(Some(Box::new(MissingPythonModule::simple(m.get(1).unwrap().as_str().to_string()))))
     ),
     regex_line_matcher!(r"There is a syntax error in your configuration file: (.*)", |_| Ok(None)),
     regex_line_matcher!(
@@ -3824,12 +3824,12 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r#""(.*)" is not exported by the ExtUtils::MakeMaker module"#, |_| Ok(None)),
     regex_line_matcher!(
         r"E: Please add appropriate interpreter package to Build-Depends, see pybuild\(1\) for details\..*",
-        |m| Ok(Some(Box::new(DhAddonLoadFailure::new("pybuild".to_string(), "Debian/Debhelper/Buildsystem/pybuild.pm".to_string()))))
+        |_| Ok(Some(Box::new(DhAddonLoadFailure::new("pybuild".to_string(), "Debian/Debhelper/Buildsystem/pybuild.pm".to_string()))))
     ),
-    regex_line_matcher!(r"dpkg: error: .*: No space left on device", |m| Ok(Some(Box::new(NoSpaceOnDevice)))),
+    regex_line_matcher!(r"dpkg: error: .*: No space left on device", |_| Ok(Some(Box::new(NoSpaceOnDevice)))),
     regex_line_matcher!(
         r"You need the GNU readline library\(ftp://ftp.gnu.org/gnu/readline/\s+\) to build",
-        |m| Ok(Some(Box::new(MissingLibrary("readline".to_string()))))
+        |_| Ok(Some(Box::new(MissingLibrary("readline".to_string()))))
     ),
     regex_line_matcher!(
         r"configure: error: Could not find lib(.*)",

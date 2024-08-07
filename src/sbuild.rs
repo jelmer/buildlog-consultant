@@ -1057,7 +1057,7 @@ pub fn find_preamble_failure_description(
             "dpkg-source: error: source package format '(.*)' is not supported: (.*)",
             line
         ) {
-            let (unused_match, p) = find_build_failure_description(vec![msg]);
+            let (_, p) = find_build_failure_description(vec![msg]);
             let p = p.unwrap_or_else(|| {
                 Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>
             });
