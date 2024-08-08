@@ -916,15 +916,10 @@ impl Matcher for MultiLineConfigureErrorMatcher {
             }
         }
 
-        let m = MultiLineMatch::new(
-            Origin("configure".into()),
-            relevant_linenos.clone(),
-            lines
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| relevant_linenos.contains(i))
-                .map(|(_, l)| l.to_string())
-                .collect(),
+        let m = MultiLineMatch::from_lines(
+            &lines.to_vec(),
+            relevant_linenos[0]..relevant_linenos[relevant_linenos.len() - 1],
+            Some("configure"),
         );
 
         Ok(Some((Box::new(m), None)))
@@ -980,7 +975,7 @@ impl Matcher for HaskellMissingDependencyMatcher {
         }
         let m = MultiLineMatch {
             origin: Origin("haskell dependencies".into()),
-            offsets: offsets.clone(),
+            offsets: offsets[0]..offsets[offsets.len() - 1],
             lines: offsets.iter().map(|i| lines[*i].to_string()).collect(),
         };
         let p = MissingHaskellDependencies(deps);
@@ -1031,10 +1026,9 @@ impl Matcher for SetupPyCommandMissingMatcher {
                 r"usage: setup.py \[global_opts\] cmd1 \[cmd1_opts\] \[cmd2 \[cmd2_opts\] \.\.\.\]",
                 line,
             ) {
-                let offsets: Vec<usize> = vec![first_offset];
                 let m = MultiLineMatch {
                     origin: Origin("setup.py".into()),
-                    offsets,
+                    offsets: first_offset..first_offset + 1,
                     lines: vec![lines[first_offset].to_string()],
                 };
 
@@ -1157,17 +1151,10 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
             return Ok(None);
         }
 
-        let relevant_linenos = vec![offset, offset + 1, offset + 2];
-
-        let m = MultiLineMatch::new(
-            Origin("perl line match".into()),
-            relevant_linenos.clone(),
-            lines
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| relevant_linenos.contains(i))
-                .map(|(_, l)| l.to_string())
-                .collect(),
+        let m = MultiLineMatch::from_lines(
+            &lines.to_vec(),
+            offset..offset+2,
+            Some("perl line match")
         );
 
         let problem: Option<Box<dyn Problem>> = Some(Box::new(MissingPerlModule::simple(
@@ -1298,7 +1285,7 @@ impl Matcher for AutoconfUnexpectedMacroMatcher {
 
         let m = MultiLineMatch::new(
             Origin("autoconf unexpected macro".into()),
-            vec![offset + 1, offset],
+            offset + 1.. offset,
             vec![lines[offset + 1].to_string(), lines[offset].to_string()],
         );
 

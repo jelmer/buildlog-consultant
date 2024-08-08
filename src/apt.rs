@@ -212,7 +212,7 @@ pub fn find_apt_get_failure(
             offsets.push(lineno);
             let r#match = Some(Box::new(MultiLineMatch::from_lines(
                 &lines,
-                offsets,
+                *offsets.first().unwrap()..*offsets.last().unwrap(),
                 Some("direct match"),
             )) as Box<dyn Match>);
             return (r#match, error);
