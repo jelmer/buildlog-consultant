@@ -5,6 +5,7 @@
 
 use crate::common::{find_build_failure_description, NoSpaceOnDevice, PatchApplicationFailed};
 use crate::{Match, Problem, SingleLineMatch};
+use crate::lines::Lines;
 use debversion::Version;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use std::fs::File;
@@ -813,13 +814,8 @@ pub fn find_preamble_failure_description(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
     let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
-    const OFFSET: usize = 100;
-    for i in 1..OFFSET {
-        if i >= lines.len() {
-            break;
-        }
-        let lineno = lines.len() - i;
-        let line = lines[lineno].trim_end_matches('\n');
+    for (lineno, line) in lines.enumerate_backward(Some(100)) {
+        let line = line.trim_end_matches('\n');
         if let Some((_, diff_file)) = lazy_regex::regex_captures!(
             "dpkg-source: error: aborting due to unexpected upstream changes, see (.*)",
             line

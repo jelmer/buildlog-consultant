@@ -5,12 +5,12 @@ use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
 use crate::{Match, Problem};
 use crate::{MultiLineMatch, Origin, SingleLineMatch};
+use crate::lines::Lines;
 use lazy_regex::{regex_captures, regex_is_match};
 use pyo3::prelude::*;
 use regex::Captures;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use std::cmp::max;
 use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -905,7 +905,7 @@ impl Matcher for MultiLineConfigureErrorMatcher {
         }
 
         let mut relevant_linenos = vec![];
-        for (j, line) in lines.iter().enumerate().skip(offset + 1) {
+        for (j, line) in lines.enumerate_forward(None).skip(offset + 1) {
             if line.trim().is_empty() {
                 continue;
             }
@@ -969,8 +969,7 @@ impl Matcher for HaskellMissingDependencyMatcher {
         let mut deps = vec![];
         let mut offsets = vec![offset];
 
-        for (i, line) in lines[offset + 1..].iter().enumerate() {
-            let offset = offset + 1 + i;
+        for (offset, line) in lines.enumerate_forward(None).skip(offset + 1) {
             if line.trim().is_empty() {
                 break;
             }
@@ -4215,9 +4214,7 @@ pub fn find_secondary_build_failure(
     lines: &[&str],
     start_offset: usize,
 ) -> Option<SingleLineMatch> {
-    let start = max(0, (lines.len() as isize) - (start_offset as isize)) as usize;
-    for offset in start..lines.len() {
-        let line = lines[offset];
+    for (offset, line) in lines.iter_tail_forward(start_offset) {
         let match_line = line.trim_end_matches('\n');
         for regexp in SECONDARY_MATCHERS.iter() {
             if regexp.is_match(match_line).unwrap() {
@@ -4274,12 +4271,8 @@ pub fn find_build_failure_description(
     // Is this cmake-specific, or rather just kf5 / qmake ?
     let mut cmake = false;
     // We search backwards for clear errors.
-    for i in 1..OFFSET {
-        if i >= lines.len() {
-            break;
-        }
-        let lineno = lines.len() - i;
-        if lines[lineno].contains("cmake") {
+    for (lineno, line) in lines.enumerate_backward(Some(250)) {
+        if line.contains("cmake") {
             cmake = true;
         }
         if let Some((mm, merr)) = match_lines(lines.as_slice(), lineno).unwrap() {
@@ -4290,8 +4283,8 @@ pub fn find_build_failure_description(
     // TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
     if cmake {
         // Urgh, multi-line regexes---
-        for mut lineno in 0..lines.len() {
-            let line = lines[lineno].trim_end_matches('\n');
+        for (mut lineno, line) in lines.enumerate_forward(None) {
+            let line = line.trim_end_matches('\n');
             if let Some((_, target)) =
                 lazy_regex::regex_captures!(r"  Could NOT find (.*) \(missing: .*\)", line)
             {
