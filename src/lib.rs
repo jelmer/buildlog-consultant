@@ -78,12 +78,13 @@ impl SingleLineMatch {
 
 pub struct MultiLineMatch {
     pub origin: Origin,
-    pub offsets: Vec<usize>,
+    pub offsets: std::ops::Range<usize>,
     pub lines: Vec<String>,
 }
 
 impl MultiLineMatch {
-    pub fn new(origin: Origin, offsets: Vec<usize>, lines: Vec<String>) -> Self {
+    // Offsets is a range
+    pub fn new(origin: Origin, offsets: std::ops::Range<usize>, lines: Vec<String>) -> Self {
         assert!(!offsets.is_empty());
         assert!(offsets.len() == lines.len());
         Self {
@@ -95,12 +96,11 @@ impl MultiLineMatch {
 
     pub fn from_lines<'a>(
         lines: &impl Index<usize, Output = &'a str>,
-        offsets: Vec<usize>,
+        offsets: std::ops::Range<usize>,
         origin: Option<&str>,
     ) -> Self {
-        let lines = offsets
-            .iter()
-            .map(|&offset| lines[offset].to_string())
+        let lines = offsets.clone()
+            .map(|offset| lines[offset].to_string())
             .collect();
         let origin = origin
             .map(|s| Origin(s.to_string()))
@@ -119,7 +119,7 @@ impl Match for MultiLineMatch {
     }
 
     fn offset(&self) -> usize {
-        self.offsets[0]
+        self.offsets.start
     }
 
     fn lineno(&self) -> usize {
