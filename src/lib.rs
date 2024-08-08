@@ -5,6 +5,7 @@ use std::ops::Index;
 
 pub mod apt;
 pub mod autopkgtest;
+pub mod lines;
 
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;

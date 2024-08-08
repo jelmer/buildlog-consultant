@@ -1,5 +1,6 @@
 use crate::common::NoSpaceOnDevice;
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
+use crate::lines::Lines;
 
 #[derive(Debug)]
 pub struct DpkgError(pub String);
@@ -136,13 +137,8 @@ pub fn find_apt_get_failure(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
     let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
-    const OFFSET: usize = 50;
-    for i in 1..OFFSET {
-        if i >= lines.len() {
-            break;
-        }
-        let lineno = lines.len() - i;
-        let line = lines[lineno].trim_end_matches('\n');
+    for (lineno, line) in lines.enumerate_backward(Some(50)) {
+        let line = line.trim_end_matches('\n');
         if line.starts_with("E: Failed to fetch ") {
             if let Some((_, pkg, msg)) =
                 lazy_regex::regex_captures!("^E: Failed to fetch ([^ ]+)  (.*)", line)
@@ -328,7 +324,7 @@ pub fn find_apt_get_failure(
         }
     }
 
-    for (i, line) in lines.iter().enumerate() {
+    for (i, line) in lines.enumerate_forward(None) {
         if lazy_regex::regex_is_match!(
             r" cannot copy extracted data for '(.*)' to '(.*)': failed to write \(No space left on device\)",
             line,
@@ -369,8 +365,8 @@ pub fn find_apt_get_update_failure(
 
 pub fn find_cudf_output(lines: Vec<&str>) -> Option<serde_yaml::Value> {
     let mut offset = None;
-    for i in (0..(lines.len() - 1)).rev() {
-        if lines[i].starts_with("cudf output:") {
+    for (i, line) in lines.enumerate_backward(None) {
+        if line.starts_with("cudf output:") {
             offset = Some(i);
         }
     }

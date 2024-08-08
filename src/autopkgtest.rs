@@ -1,4 +1,5 @@
 use crate::{Match, Problem, SingleLineMatch};
+use crate::lines::Lines;
 use std::collections::HashMap;
 
 pub struct AutopkgtestDepsUnsatisfiable(pub Vec<(Option<String>, String)>);
@@ -874,8 +875,7 @@ pub fn find_autopkgtest_failure_description(
 pub fn find_testbed_setup_failure(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
-    for i in (0..(lines.len() - 1)).rev() {
-        let line = lines[i];
+    for (i, line) in lines.enumerate_backward(None) {
         if let Some((_, command, status_code, stderr)) = lazy_regex::regex_captures!(
             r"\[(.*)\] failed \(exit status ([0-9]+), stderr \'(.*)\'\)\n",
             line
