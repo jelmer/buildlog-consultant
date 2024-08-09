@@ -4246,7 +4246,7 @@ pub fn find_secondary_build_failure(
     lines: &[&str],
     start_offset: usize,
 ) -> Option<SingleLineMatch> {
-    for (offset, line) in lines.iter_tail_forward(start_offset) {
+    for (offset, line) in lines.enumerate_tail_forward(start_offset) {
         let match_line = line.trim_end_matches('\n');
         for regexp in SECONDARY_MATCHERS.iter() {
             if regexp.is_match(match_line).unwrap() {
