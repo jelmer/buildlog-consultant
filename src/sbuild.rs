@@ -4,8 +4,8 @@
 //! log file, and makes them accessible.
 
 use crate::common::{find_build_failure_description, NoSpaceOnDevice, PatchApplicationFailed};
-use crate::{Match, Problem, SingleLineMatch};
 use crate::lines::Lines;
+use crate::{Match, Problem, SingleLineMatch};
 use debversion::Version;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use std::fs::File;
@@ -300,6 +300,7 @@ impl Serialize for SbuildFailure {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DpkgSourceLocalChanges {
     diff_file: Option<String>,
     files: Option<Vec<String>>,
@@ -334,6 +335,7 @@ impl std::fmt::Display for DpkgSourceLocalChanges {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DpkgSourceUnrepresentableChanges;
 
 impl Problem for DpkgSourceUnrepresentableChanges {
@@ -352,6 +354,7 @@ impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DpkgUnwantedBinaryFiles;
 
 impl Problem for DpkgUnwantedBinaryFiles {
@@ -370,6 +373,7 @@ impl std::fmt::Display for DpkgUnwantedBinaryFiles {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DpkgBinaryFileChanged(Vec<String>);
 
 impl Problem for DpkgBinaryFileChanged {
@@ -390,6 +394,7 @@ impl std::fmt::Display for DpkgBinaryFileChanged {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingControlFile(std::path::PathBuf);
 
 impl Problem for MissingControlFile {
@@ -408,6 +413,7 @@ impl std::fmt::Display for MissingControlFile {
     }
 }
 
+#[derive(Debug, Clone)]
 struct UnableToFindUpstreamTarball {
     package: String,
     version: Version,
@@ -436,6 +442,7 @@ impl std::fmt::Display for UnableToFindUpstreamTarball {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct SourceFormatUnbuildable {
     source_format: String,
     reason: String,
@@ -464,6 +471,7 @@ impl std::fmt::Display for SourceFormatUnbuildable {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct SourceFormatUnsupported(String);
 
 impl Problem for SourceFormatUnsupported {
@@ -484,6 +492,7 @@ impl std::fmt::Display for SourceFormatUnsupported {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PatchFileMissing(std::path::PathBuf);
 
 impl Problem for PatchFileMissing {
@@ -504,6 +513,7 @@ impl std::fmt::Display for PatchFileMissing {
     }
 }
 
+#[derive(Debug, Clone)]
 struct UnknownMercurialExtraFields(String);
 
 impl Problem for UnknownMercurialExtraFields {
@@ -524,6 +534,7 @@ impl std::fmt::Display for UnknownMercurialExtraFields {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct UpstreamPGPSignatureVerificationFailed;
 
 impl Problem for UpstreamPGPSignatureVerificationFailed {
@@ -542,6 +553,7 @@ impl std::fmt::Display for UpstreamPGPSignatureVerificationFailed {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct UScanRequestVersionMissing(String);
 
 impl Problem for UScanRequestVersionMissing {
@@ -562,6 +574,7 @@ impl std::fmt::Display for UScanRequestVersionMissing {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DebcargoFailure(String);
 
 impl Problem for DebcargoFailure {
@@ -582,6 +595,7 @@ impl std::fmt::Display for DebcargoFailure {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ChangelogParseError(String);
 
 impl Problem for ChangelogParseError {
@@ -602,6 +616,7 @@ impl std::fmt::Display for ChangelogParseError {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct UScanFailed {
     url: String,
     reason: String,
@@ -626,6 +641,7 @@ impl std::fmt::Display for UScanFailed {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct InconsistentSourceFormat {
     version: Option<String>,
     source_format: Option<String>,
@@ -653,6 +669,7 @@ impl std::fmt::Display for InconsistentSourceFormat {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct UpstreamMetadataFileParseError {
     path: std::path::PathBuf,
     reason: String,
@@ -677,6 +694,7 @@ impl std::fmt::Display for UpstreamMetadataFileParseError {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DpkgSourcePackFailed(String);
 
 impl Problem for DpkgSourcePackFailed {
@@ -697,6 +715,7 @@ impl std::fmt::Display for DpkgSourcePackFailed {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DpkgBadVersion {
     version: String,
     reason: Option<String>,
@@ -725,6 +744,7 @@ impl std::fmt::Display for DpkgBadVersion {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct MissingDebcargoCrate {
     cratename: String,
     version: Option<String>,
@@ -770,6 +790,7 @@ impl MissingDebcargoCrate {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PristineTarTreeMissing(String);
 
 impl Problem for PristineTarTreeMissing {
@@ -790,6 +811,7 @@ impl std::fmt::Display for PristineTarTreeMissing {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct MissingRevision(Vec<u8>);
 
 impl Problem for MissingRevision {
