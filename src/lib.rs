@@ -6,6 +6,7 @@ use std::ops::Index;
 pub mod apt;
 pub mod autopkgtest;
 pub mod lines;
+pub mod problems;
 
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;
@@ -133,7 +134,7 @@ impl std::fmt::Debug for MultiLineMatch {
     }
 }
 
-pub trait Problem: std::fmt::Display + Send + Sync {
+pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
     fn kind(&self) -> Cow<str>;
 
     fn json(&self) -> serde_json::Value;

@@ -1,3 +1,5 @@
+use crate::lines::Lines;
+use crate::problems::common::{MissingBuildFile, MissingFile};
 /// Common code for all environments.
 // TODO(jelmer): Right now this is just a straight port from Python. It needs a massive amount of
 // refactoring, including a split of the file.
@@ -5,63 +7,15 @@ use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
 use crate::{Match, Problem};
 use crate::{MultiLineMatch, Origin, SingleLineMatch};
-use crate::lines::Lines;
 use lazy_regex::{regex_captures, regex_is_match};
 use pyo3::prelude::*;
 use regex::Captures;
-use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::Display;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct MissingFile {
-    path: std::path::PathBuf,
-}
-
-impl Problem for MissingFile {
-    fn kind(&self) -> Cow<str> {
-        "missing-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "path": self.path.to_string_lossy(),
-        })
-    }
-}
-
-impl Display for MissingFile {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Missing file: {}", self.path.display())
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-struct MissingBuildFile {
-    filename: String,
-}
-
-impl Problem for MissingBuildFile {
-    fn kind(&self) -> Cow<str> {
-        "missing-build-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "filename": self.filename,
-        })
-    }
-}
-
-impl Display for MissingBuildFile {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Missing build file: {}", self.filename)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct MissingCommandOrBuildFile {
-    filename: String,
+pub struct MissingCommandOrBuildFile {
+    pub filename: String,
 }
 
 impl Problem for MissingCommandOrBuildFile {
@@ -90,7 +44,7 @@ impl MissingCommandOrBuildFile {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct VcsControlDirectoryNeeded {
-    vcs: Vec<String>,
+    pub vcs: Vec<String>,
 }
 
 impl Problem for VcsControlDirectoryNeeded {
@@ -105,6 +59,7 @@ impl Problem for VcsControlDirectoryNeeded {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPythonModule {
     module: String,
     python_version: Option<i32>,
@@ -153,6 +108,7 @@ impl Problem for MissingPythonModule {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingCommand(String);
 
 impl Display for MissingCommand {
@@ -173,6 +129,7 @@ impl Problem for MissingCommand {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPythonDistribution {
     distribution: String,
     python_version: Option<i32>,
@@ -296,6 +253,7 @@ fn file_not_found_maybe_executable(p: &str) -> Result<Option<Box<dyn Problem>>, 
     Ok(None)
 }
 
+#[derive(Debug, Clone)]
 struct MissingHaskellModule {
     module: String,
 }
@@ -324,6 +282,7 @@ impl Problem for MissingHaskellModule {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingLibrary(String);
 
 impl Display for MissingLibrary {
@@ -344,6 +303,7 @@ impl Problem for MissingLibrary {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingIntrospectionTypelib(String);
 
 impl Display for MissingIntrospectionTypelib {
@@ -364,6 +324,7 @@ impl Problem for MissingIntrospectionTypelib {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPytestFixture(String);
 
 impl Display for MissingPytestFixture {
@@ -384,6 +345,7 @@ impl Problem for MissingPytestFixture {
     }
 }
 
+#[derive(Debug, Clone)]
 struct UnsupportedPytestConfigOption(String);
 
 impl Display for UnsupportedPytestConfigOption {
@@ -404,6 +366,7 @@ impl Problem for UnsupportedPytestConfigOption {
     }
 }
 
+#[derive(Debug, Clone)]
 struct UnsupportedPytestArguments(Vec<String>);
 
 impl Display for UnsupportedPytestArguments {
@@ -424,6 +387,7 @@ impl Problem for UnsupportedPytestArguments {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingRPackage {
     package: String,
     minimum_version: Option<String>,
@@ -461,6 +425,7 @@ impl Problem for MissingRPackage {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingGoPackage {
     package: String,
 }
@@ -483,6 +448,7 @@ impl Display for MissingGoPackage {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingCHeader {
     header: String,
 }
@@ -511,6 +477,7 @@ impl MissingCHeader {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingNodeModule(String);
 
 impl Problem for MissingNodeModule {
@@ -531,6 +498,7 @@ impl Display for MissingNodeModule {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingNodePackage(String);
 
 impl Problem for MissingNodePackage {
@@ -563,6 +531,7 @@ fn node_module_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     ))))
 }
 
+#[derive(Debug, Clone)]
 struct MissingConfigure;
 
 impl Problem for MissingConfigure {
@@ -598,6 +567,7 @@ fn command_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     Ok(Some(Box::new(MissingCommand(command.to_string()))))
 }
 
+#[derive(Debug, Clone)]
 struct MissingVagueDependency {
     name: String,
     url: Option<String>,
@@ -637,6 +607,7 @@ impl Display for MissingVagueDependency {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingQt;
 
 impl Problem for MissingQt {
@@ -655,6 +626,7 @@ impl Display for MissingQt {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingX11;
 
 impl Problem for MissingX11 {
@@ -673,6 +645,7 @@ impl Display for MissingX11 {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingAutoconfMacro {
     r#macro: String,
     need_rebuild: bool,
@@ -706,6 +679,7 @@ impl Display for MissingAutoconfMacro {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DirectoryNonExistant(String);
 
 impl Problem for DirectoryNonExistant {
@@ -726,6 +700,7 @@ impl Display for DirectoryNonExistant {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingValaPackage(String);
 
 impl Problem for MissingValaPackage {
@@ -746,6 +721,7 @@ impl Display for MissingValaPackage {
     }
 }
 
+#[derive(Debug, Clone)]
 struct UpstartFilePresent(String);
 
 impl Problem for UpstartFilePresent {
@@ -783,6 +759,7 @@ fn interpreter_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     ))));
 }
 
+#[derive(Debug, Clone)]
 struct MissingPostgresExtension(String);
 
 impl Problem for MissingPostgresExtension {
@@ -803,6 +780,7 @@ impl Display for MissingPostgresExtension {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPkgConfig {
     module: String,
     minimum_version: Option<String>,
@@ -892,6 +870,7 @@ lazy_static::lazy_static! {
     ]);
 }
 
+#[derive(Debug, Clone)]
 struct MultiLineConfigureErrorMatcher;
 
 impl Matcher for MultiLineConfigureErrorMatcher {
@@ -931,6 +910,7 @@ impl Matcher for MultiLineConfigureErrorMatcher {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingHaskellDependencies(Vec<String>);
 
 impl Problem for MissingHaskellDependencies {
@@ -951,6 +931,7 @@ impl Display for MissingHaskellDependencies {
     }
 }
 
+#[derive(Debug, Clone)]
 struct HaskellMissingDependencyMatcher;
 
 impl Matcher for HaskellMissingDependencyMatcher {
@@ -988,6 +969,7 @@ impl Matcher for HaskellMissingDependencyMatcher {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingSetupPyCommand(String);
 
 impl Problem for MissingSetupPyCommand {
@@ -1008,6 +990,7 @@ impl Display for MissingSetupPyCommand {
     }
 }
 
+#[derive(Debug, Clone)]
 struct SetupPyCommandMissingMatcher;
 
 impl Matcher for SetupPyCommandMissingMatcher {
@@ -1048,6 +1031,7 @@ impl Matcher for SetupPyCommandMissingMatcher {
     }
 }
 
+#[derive(Debug, Clone)]
 struct PythonFileNotFoundErrorMatcher;
 
 impl Matcher for PythonFileNotFoundErrorMatcher {
@@ -1085,6 +1069,7 @@ impl Matcher for PythonFileNotFoundErrorMatcher {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPerlModule {
     filename: Option<String>,
     module: String,
@@ -1139,6 +1124,7 @@ impl MissingPerlModule {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MultiLinePerlMissingModulesErrorMatcher;
 
 impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
@@ -1187,6 +1173,7 @@ lazy_static::lazy_static! {
     ]);
 }
 
+#[derive(Debug, Clone)]
 struct MultiLineVignetteErrorMatcher;
 
 impl Matcher for MultiLineVignetteErrorMatcher {
@@ -1218,6 +1205,7 @@ impl Matcher for MultiLineVignetteErrorMatcher {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingCSharpCompiler;
 
 impl Problem for MissingCSharpCompiler {
@@ -1236,6 +1224,7 @@ impl Display for MissingCSharpCompiler {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingRustCompiler;
 
 impl Problem for MissingRustCompiler {
@@ -1254,6 +1243,7 @@ impl Display for MissingRustCompiler {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingAssembler;
 
 impl Problem for MissingAssembler {
@@ -1272,6 +1262,7 @@ impl Display for MissingAssembler {
     }
 }
 
+#[derive(Debug, Clone)]
 struct AutoconfUnexpectedMacroMatcher;
 
 impl Matcher for AutoconfUnexpectedMacroMatcher {
@@ -1312,6 +1303,7 @@ impl Matcher for AutoconfUnexpectedMacroMatcher {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingCargoCrate {
     crate_name: String,
     requirement: Option<String>,
@@ -1353,6 +1345,7 @@ impl Display for MissingCargoCrate {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DhWithOrderIncorrect;
 
 impl Problem for DhWithOrderIncorrect {
@@ -1371,6 +1364,7 @@ impl Display for DhWithOrderIncorrect {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct NoSpaceOnDevice;
 
 impl Problem for NoSpaceOnDevice {
@@ -1389,6 +1383,7 @@ impl Display for NoSpaceOnDevice {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingJRE;
 
 impl Problem for MissingJRE {
@@ -1407,6 +1402,7 @@ impl Display for MissingJRE {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingJDK {
     jdk_path: String,
 }
@@ -1435,6 +1431,7 @@ impl Display for MissingJDK {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingJDKFile {
     jdk_path: String,
     filename: String,
@@ -1465,6 +1462,7 @@ impl Display for MissingJDKFile {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPerlFile {
     filename: String,
     inc: Option<Vec<String>>,
@@ -1504,6 +1502,7 @@ impl Display for MissingPerlFile {
     }
 }
 
+#[derive(Debug, Clone)]
 struct UnsupportedDebhelperCompatLevel {
     oldest_supported: u32,
     requested: u32,
@@ -1541,6 +1540,7 @@ impl Display for UnsupportedDebhelperCompatLevel {
     }
 }
 
+#[derive(Debug, Clone)]
 struct SetuptoolScmVersionIssue;
 
 impl Problem for SetuptoolScmVersionIssue {
@@ -1559,6 +1559,7 @@ impl Display for SetuptoolScmVersionIssue {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingMavenArtifacts(Vec<String>);
 
 impl Problem for MissingMavenArtifacts {
@@ -1590,6 +1591,7 @@ fn maven_missing_artifact(m: &regex::Captures) -> Result<Option<Box<dyn Problem>
     Ok(Some(Box::new(MissingMavenArtifacts(artifacts))))
 }
 
+#[derive(Debug, Clone)]
 pub struct NotExecutableFile(String);
 
 impl NotExecutableFile {
@@ -1616,6 +1618,7 @@ impl Display for NotExecutableFile {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DhMissingUninstalled(String);
 
 impl DhMissingUninstalled {
@@ -1642,6 +1645,7 @@ impl Display for DhMissingUninstalled {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DhLinkDestinationIsDirectory(String);
 
 impl DhLinkDestinationIsDirectory {
@@ -1668,6 +1672,7 @@ impl Display for DhLinkDestinationIsDirectory {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingXmlEntity {
     url: String,
 }
@@ -1696,6 +1701,7 @@ impl Display for MissingXmlEntity {
     }
 }
 
+#[derive(Debug, Clone)]
 struct CcacheError(String);
 
 impl CcacheError {
@@ -1722,6 +1728,7 @@ impl Display for CcacheError {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DebianVersionRejected {
     version: String,
 }
@@ -1750,6 +1757,7 @@ impl Display for DebianVersionRejected {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PatchApplicationFailed {
     pub patchname: String,
 }
@@ -1778,6 +1786,7 @@ impl Display for PatchApplicationFailed {
     }
 }
 
+#[derive(Debug, Clone)]
 struct NeedPgBuildExtUpdateControl {
     generated_path: String,
     template_path: String,
@@ -1815,6 +1824,7 @@ impl Display for NeedPgBuildExtUpdateControl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DhAddonLoadFailure {
     name: String,
     path: String,
@@ -1845,6 +1855,7 @@ impl Display for DhAddonLoadFailure {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DhUntilUnsupported;
 
 impl DhUntilUnsupported {
@@ -1883,6 +1894,7 @@ fn r_missing_package(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Er
     Ok(Some(Box::new(MissingRPackage::simple(deps[0].clone()))))
 }
 
+#[derive(Debug, Clone)]
 struct DebhelperPatternNotFound {
     pattern: String,
     tool: String,
@@ -1923,6 +1935,7 @@ impl Display for DebhelperPatternNotFound {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPerlManifest;
 
 impl MissingPerlManifest {
@@ -1947,6 +1960,7 @@ impl Display for MissingPerlManifest {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ImageMagickDelegateMissing {
     delegate: String,
 }
@@ -1975,6 +1989,7 @@ impl Display for ImageMagickDelegateMissing {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Cancelled;
 
 impl Cancelled {
@@ -2009,6 +2024,7 @@ fn webpack_file_missing(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>,
     Ok(None)
 }
 
+#[derive(Debug, Clone)]
 struct DisappearedSymbols;
 
 impl DisappearedSymbols {
@@ -2033,6 +2049,7 @@ impl Display for DisappearedSymbols {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DuplicateDHCompatLevel {
     command: String,
 }
@@ -2065,6 +2082,7 @@ impl Display for DuplicateDHCompatLevel {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingDHCompatLevel {
     command: String,
 }
@@ -2093,6 +2111,7 @@ impl Display for MissingDHCompatLevel {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingJVM;
 
 impl MissingJVM {
@@ -2117,6 +2136,7 @@ impl Display for MissingJVM {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingRubyGem {
     gem: String,
     version: Option<String>,
@@ -2174,6 +2194,7 @@ fn ruby_missing_gem(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Err
     ))))
 }
 
+#[derive(Debug, Clone)]
 struct MissingLibtool;
 
 impl MissingLibtool {
@@ -2198,6 +2219,7 @@ impl Display for MissingLibtool {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingJavaScriptRuntime;
 
 impl MissingJavaScriptRuntime {
@@ -2222,6 +2244,7 @@ impl Display for MissingJavaScriptRuntime {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingRubyFile {
     filename: String,
 }
@@ -2250,6 +2273,7 @@ impl Display for MissingRubyFile {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingPhpClass {
     php_class: String,
 }
@@ -2282,6 +2306,7 @@ impl Display for MissingPhpClass {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingJavaClass {
     classname: String,
 }
@@ -2314,6 +2339,7 @@ impl Display for MissingJavaClass {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingSprocketsFile {
     name: String,
     content_type: String,
@@ -2348,6 +2374,7 @@ impl Display for MissingSprocketsFile {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingXfceDependency {
     package: String,
 }
@@ -2376,6 +2403,7 @@ impl Display for MissingXfceDependency {
     }
 }
 
+#[derive(Debug, Clone)]
 struct GnomeCommonMissing;
 
 impl Problem for GnomeCommonMissing {
@@ -2394,6 +2422,7 @@ impl Display for GnomeCommonMissing {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingConfigStatusInput {
     path: String,
 }
@@ -2422,6 +2451,7 @@ impl Display for MissingConfigStatusInput {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingGnomeCommonDependency {
     package: String,
     minimum_version: Option<String>,
@@ -2464,6 +2494,7 @@ impl Display for MissingGnomeCommonDependency {
     }
 }
 
+#[derive(Debug, Clone)]
 struct MissingAutomakeInput {
     path: String,
 }
@@ -2492,6 +2523,7 @@ impl Display for MissingAutomakeInput {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ChrootNotFound {
     pub chroot: String,
 }
@@ -4236,6 +4268,7 @@ pub fn find_secondary_build_failure(
     None
 }
 
+#[derive(Debug, Clone)]
 pub struct CMakeFilesMissing {
     pub filenames: Vec<String>,
     pub version: Option<String>,

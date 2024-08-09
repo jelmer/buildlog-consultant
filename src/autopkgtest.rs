@@ -1,7 +1,8 @@
-use crate::{Match, Problem, SingleLineMatch};
 use crate::lines::Lines;
+use crate::{Match, Problem, SingleLineMatch};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
 pub struct AutopkgtestDepsUnsatisfiable(pub Vec<(Option<String>, String)>);
 
 impl Problem for AutopkgtestDepsUnsatisfiable {
@@ -42,6 +43,7 @@ impl std::fmt::Display for AutopkgtestDepsUnsatisfiable {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct AutopkgtestTimedOut;
 
 impl Problem for AutopkgtestTimedOut {
@@ -60,6 +62,7 @@ impl std::fmt::Display for AutopkgtestTimedOut {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct XDGRunTimeNotSet;
 
 impl Problem for XDGRunTimeNotSet {
@@ -78,6 +81,7 @@ impl std::fmt::Display for XDGRunTimeNotSet {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct AutopkgtestTestbedFailure(String);
 
 impl Problem for AutopkgtestTestbedFailure {
@@ -98,6 +102,7 @@ impl std::fmt::Display for AutopkgtestTestbedFailure {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct AutopkgtestDepChrootDisappeared;
 
 impl Problem for AutopkgtestDepChrootDisappeared {
@@ -116,6 +121,7 @@ impl std::fmt::Display for AutopkgtestDepChrootDisappeared {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct AutopkgtestErroneousPackage(String);
 
 impl Problem for AutopkgtestErroneousPackage {
@@ -136,6 +142,7 @@ impl std::fmt::Display for AutopkgtestErroneousPackage {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct AutopkgtestStderrFailure(String);
 
 impl Problem for AutopkgtestStderrFailure {
@@ -156,6 +163,7 @@ impl std::fmt::Display for AutopkgtestStderrFailure {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct AutopkgtestTestbedSetupFailure {
     command: String,
     exit_status: i32,
@@ -484,7 +492,7 @@ pub fn find_autopkgtest_failure_description(
                                 Some("direct regex"),
                             )) as Box<dyn Match>),
                             last_test,
-                            Some(Box::new(crate::apt::AptFetchFailure {
+                            Some(Box::new(crate::problems::apt::AptFetchFailure {
                                 url: None,
                                 error: testbed_failure_reason.to_owned(),
                             }) as Box<dyn Problem>),
