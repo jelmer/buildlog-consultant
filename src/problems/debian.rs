@@ -779,9 +779,10 @@ impl Problem for UnsatisfiedAptConflicts {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({
-            "relations": self.0
+            "relations": self.0,
         })
     }
+
 }
 
 impl std::fmt::Display for UnsatisfiedAptConflicts {
@@ -791,6 +792,30 @@ impl std::fmt::Display for UnsatisfiedAptConflicts {
 }
 
 impl std::error::Error for UnsatisfiedAptConflicts {}
+
+pub struct ArchitectureNotInList {
+    pub arch: String,
+    pub arch_list: Vec<String>,
+}
+
+impl Problem for ArchitectureNotInList {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "arch-not-in-list".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "arch": self.arch,
+            "arch_list": self.arch_list,
+        })
+    }
+}
+
+impl std::fmt::Display for ArchitectureNotInList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Architecture {} not a build arch", self.arch)
+    }
+}
 
 #[derive(Debug)]
 pub struct UnsatisfiedAptDependencies(pub String);
@@ -807,8 +832,34 @@ impl Problem for UnsatisfiedAptDependencies {
     }
 }
 
+
 impl std::fmt::Display for UnsatisfiedAptDependencies {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "unsatisfied apt dependencies: {}", self.0)
+    }
+}
+
+#[derive(Debug)]
+pub struct InsufficientDiskSpace {
+    pub needed: i64,
+    pub free: i64,
+}
+
+impl Problem for InsufficientDiskSpace {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "insufficient-disk-space".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "needed": self.needed,
+            "free": self.free,
+        })
+    }
+}
+
+impl std::fmt::Display for InsufficientDiskSpace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Insufficient disk space for build. Need: {} KiB, free: {} KiB", self.needed, self.free)
     }
 }
