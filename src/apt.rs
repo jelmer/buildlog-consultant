@@ -4,6 +4,8 @@ use crate::problems::apt::{
     AptBrokenPackages, AptFetchFailure, AptMissingReleaseFile, AptPackageUnknown, DpkgError,
 };
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
+use debian_control::relations::Relations;
+use serde::{Deserialize, Serialize};
 
 pub fn find_apt_get_failure(
     lines: Vec<&str>,
@@ -242,11 +244,7 @@ pub fn find_cudf_output(lines: Vec<&str>) -> Option<serde_yaml::Value> {
             offset = Some(i);
         }
     }
-    let mut offset = if let Some(offset) = offset {
-        offset
-    } else {
-        return None;
-    };
+    let mut offset = offset?;
     let mut output = vec![];
     while !lines[offset].trim().is_empty() {
         output.push(lines[offset]);
@@ -254,4 +252,114 @@ pub fn find_cudf_output(lines: Vec<&str>) -> Option<serde_yaml::Value> {
     }
 
     serde_yaml::from_str(&output.join("\n")).ok()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Dose3Report {
+    pub package: String,
+    pub status: String,
+    pub reasons: Vec<Dose3Reason>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Dose3Reason {
+    pub missing: Option<Dose3Missing>,
+    pub conflict: Option<Dose3Conflict>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Dose3Pkg {
+    pub name: String,
+    pub version: String,
+    #[serde(rename = "unsat-dependency")]
+    pub unsat_dependency: Option<String>,
+    #[serde(rename = "unsat-conflict")]
+    pub unsat_conflict: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Dose3Missing {
+    pub pkg: Dose3Pkg,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Dose3Conflict {
+    pub pkg1: Dose3Pkg,
+    pub pkg2: Dose3Pkg,
+}
+
+#[derive(Debug)]
+pub struct UnsatisfiedAptConflicts(Relations);
+
+impl Problem for UnsatisfiedAptConflicts {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unsatisfied-apt-conflicts".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "relations": self.0.entries(),
+        })
+    }
+}
+
+impl std::fmt::Display for UnsatisfiedAptConflicts {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "unsatisfied apt conflicts: {}", self.0)
+    }
+}
+
+impl std::error::Error for UnsatisfiedAptConflicts {}
+
+#[derive(Debug)]
+pub struct UnsatisfiedAptDependencies(Relations);
+
+impl Problem for UnsatisfiedAptDependencies {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unsatisfied-apt-dependencies".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "relations": self.0.entries(),
+        })
+    }
+}
+
+impl std::fmt::Display for UnsatisfiedAptDependencies {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "unsatisfied apt dependencies: {}", self.0)
+    }
+}
+
+pub fn error_from_dose3_report(report: serde_json::Value) -> Option<Box<dyn Problem>> {
+    let entries: Vec<Dose3Report> = serde_json::from_value(report).ok()?;
+    let packages = entries
+        .iter()
+        .map(|entry| &entry.package)
+        .collect::<Vec<_>>();
+    assert_eq!(packages, ["sbuild-build-depends-main-dummy"]);
+    if entries[0].status != "broken" {
+        return None;
+    }
+    let missing = vec![];
+    let conflict = vec![];
+    for reason in entries[0].reasons {
+        if let Some(this_missing) = reason.missing {
+            let relation: Relations = this_missing.pkg.unsat_dependency.unwrap().parse().unwrap();
+            missing.extend(relation.entries());
+        }
+        if let Some(this_conflict) = reason.conflict {
+            let relation: Relations = this_conflict.pkg1.unsat_conflict.unwrap().parse().unwrap();
+            conflict.extend(relation.entries());
+        }
+    }
+    if !missing.is_empty() {
+        let e = missing[0];
+        return Some(Box::new(UnsatisfiedAptDependencies(missing)) as Box<dyn Problem>);
+    }
+    if !conflict.is_empty() {
+        return Some(Box::new(UnsatisfiedAptConflicts(conflict)) as Box<dyn Problem>);
+    }
+    None
 }
