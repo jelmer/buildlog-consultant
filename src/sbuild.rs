@@ -13,6 +13,7 @@ use std::io::{BufRead, BufReader};
 use std::iter::Iterator;
 use std::str::FromStr;
 use std::time::Duration;
+use std::collections::HashMap;
 
 pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
     for line in lines {
@@ -1136,6 +1137,58 @@ pub fn find_preamble_failure_description(
     ret
 }
 
+pub const DEFAULT_LOOK_BACK: usize = 50;
+
+pub fn strip_build_tail<'a>(lines: &'a [&'a str], look_back: Option<usize>) -> (&'a [&'a str], HashMap<&'a str, &'a [&'a str]>) {
+    let look_back = look_back.unwrap_or(DEFAULT_LOOK_BACK);
+
+    let mut interesting_lines: &'a [&'a str] = lines;
+
+    // Strip off unuseful tail
+    for (i, line) in lines.enumerate_tail_forward(look_back) {
+        if line.starts_with("Build finished at ") {
+            interesting_lines = &lines[..i];
+            if let Some(last_line) = interesting_lines.last() {
+                    if last_line == &("-".repeat(80)) {
+                        interesting_lines = &interesting_lines[..interesting_lines.len() - 1];
+                    }
+            }
+            break;
+        }
+    }
+
+    let mut files: HashMap<&'a str, &'a [&'a str]> = std::collections::HashMap::new();
+    let mut body = interesting_lines;
+    let mut current_file = None;
+    let mut current_contents: &[&str] = &[];
+    let mut start = 0;
+
+    for (i, line) in interesting_lines.iter().enumerate() {
+        if let Some((_, header)) = lazy_regex::regex_captures!(r"==> (.*) <==", line) {
+            if let Some(current_file) = current_file {
+                files.insert(current_file, current_contents);
+            } else {
+                body = current_contents;
+            }
+            current_file = Some(header);
+            current_contents = &[];
+            start = i+1;
+            continue;
+        } else {
+            current_contents = &interesting_lines[start..i+1];
+        }
+    }
+    if let Some(current_file) = current_file {
+        files.insert(current_file, current_contents);
+    } else {
+        body = current_contents;
+    }
+
+    (body, files)
+}
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1265,5 +1318,89 @@ Build needed 00:01:12, 41428k disk space
                 status: Some("successful".to_string()),
             }
         );
+    }
+
+    #[test]
+    fn test_strip_build_tail() {
+         assert_eq!(
+            strip_build_tail(
+                &[
+                    "Build finished at 2023-09-16T16:47:58Z",
+                    "--------------------------------------------------------------------------------",
+                    "Finished at 2023-09-16T16:47:58Z",
+                    "Build needed 00:01:12, 41428k disk space",
+                ],
+                None
+            ),
+            (
+                &[
+                ][..],
+                HashMap::new()
+            )
+        );
+        let meson_log_lines = r#"Build started at 2022-07-21T04:21:47.088879
+Main binary: /usr/bin/python3
+Build Options: -Dprefix=/usr -Dlibdir=lib/x86_64-linux-gnu -Dlocalstatedir=/var -Dsysconfdir=/etc -Dbuildtype=plain -Dwrap_mode=nodownload
+Python system: Linux
+The Meson build system
+Version: 0.56.2
+Source dir: /<<PKGBUILDDIR>>
+Build dir: /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu
+Build type: native build
+
+../meson.build:1:0: ERROR: Meson version is 0.56.2 but project requires >= 0.57.0
+dh_auto_configure: error: cd obj-x86_64-linux-gnu && LC_ALL=C.UTF-8 meson .. --wrap-mode=nodownload --buildtype=plain --prefix=/usr --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu returned exit code 1
+make: *** [debian/rules:13: binary] Error 25
+dpkg-buildpackage: error: debian/rules binary subprocess returned exit status 2
+"#.lines().collect::<Vec<_>>();
+        assert_eq!(
+             strip_build_tail(r#" --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu
+The Meson build system
+Version: 0.56.2
+Source dir: /<<PKGBUILDDIR>>
+Build dir: /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu
+Build type: native build
+
+../meson.build:1:0: ERROR: Meson version is 0.56.2 but project requires >= 0.57.0
+
+A full log can be found at /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu/meson-logs/meson-log.txt
+cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
+==> meson-logs/meson-log.txt <==
+Build started at 2022-07-21T04:21:47.088879
+Main binary: /usr/bin/python3
+Build Options: -Dprefix=/usr -Dlibdir=lib/x86_64-linux-gnu -Dlocalstatedir=/var -Dsysconfdir=/etc -Dbuildtype=plain -Dwrap_mode=nodownload
+Python system: Linux
+The Meson build system
+Version: 0.56.2
+Source dir: /<<PKGBUILDDIR>>
+Build dir: /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu
+Build type: native build
+
+../meson.build:1:0: ERROR: Meson version is 0.56.2 but project requires >= 0.57.0
+dh_auto_configure: error: cd obj-x86_64-linux-gnu && LC_ALL=C.UTF-8 meson .. --wrap-mode=nodownload --buildtype=plain --prefix=/usr --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu returned exit code 1
+make: *** [debian/rules:13: binary] Error 25
+dpkg-buildpackage: error: debian/rules binary subprocess returned exit status 2
+--------------------------------------------------------------------------------
+Build finished at 2022-07-21T04:21:47Z
+"#
+            .lines()
+            .collect::<Vec<_>>()
+            .as_slice(),
+            None
+        ),
+        (r#" --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu
+The Meson build system
+Version: 0.56.2
+Source dir: /<<PKGBUILDDIR>>
+Build dir: /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu
+Build type: native build
+
+../meson.build:1:0: ERROR: Meson version is 0.56.2 but project requires >= 0.57.0
+
+A full log can be found at /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu/meson-logs/meson-log.txt
+cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
+"#.lines().collect::<Vec<_>>().as_slice(), maplit::hashmap!{
+        "meson-logs/meson-log.txt" => meson_log_lines.as_slice(),
+}));
     }
 }
