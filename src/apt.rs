@@ -1,6 +1,6 @@
-use crate::common::NoSpaceOnDevice;
+use crate::problems::common::NoSpaceOnDevice;
 use crate::lines::Lines;
-use crate::problems::apt::{
+use crate::problems::debian::{
     AptBrokenPackages, AptFetchFailure, AptMissingReleaseFile, AptPackageUnknown, DpkgError,
 };
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};

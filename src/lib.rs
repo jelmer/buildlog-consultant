@@ -7,6 +7,7 @@ pub mod apt;
 pub mod autopkgtest;
 pub mod lines;
 pub mod problems;
+pub mod brz;
 
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;
