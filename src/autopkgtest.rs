@@ -301,7 +301,7 @@ pub fn find_autopkgtest_failure_description(
                                 Some("direct regex"),
                             )) as Box<dyn Match>),
                             last_test,
-                            Some(Box::new(crate::problems::apt::AptFetchFailure {
+                            Some(Box::new(crate::problems::debian::AptFetchFailure {
                                 url: None,
                                 error: testbed_failure_reason.to_owned(),
                             }) as Box<dyn Problem>),

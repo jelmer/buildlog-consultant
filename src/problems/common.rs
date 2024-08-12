@@ -796,3 +796,142 @@ impl Display for MissingHaskellDependencies {
 }
 
 
+#[derive(Debug, Clone)]
+pub struct NoSpaceOnDevice;
+
+impl Problem for NoSpaceOnDevice {
+    fn kind(&self) -> Cow<str> {
+        "no-space-on-device".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for NoSpaceOnDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "No space left on device")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingJRE;
+
+impl Problem for MissingJRE {
+    fn kind(&self) -> Cow<str> {
+        "missing-jre".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingJRE {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JRE")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingJDK {
+    pub jdk_path: String,
+}
+
+impl MissingJDK {
+    pub fn new(jdk_path: String) -> Self {
+        Self { jdk_path }
+    }
+}
+
+impl Problem for MissingJDK {
+    fn kind(&self) -> Cow<str> {
+        "missing-jdk".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "jdk_path": self.jdk_path
+        })
+    }
+}
+
+impl Display for MissingJDK {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JDK at {}", self.jdk_path)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingJDKFile {
+    pub jdk_path: String,
+    pub filename: String,
+}
+
+impl MissingJDKFile {
+    pub fn new(jdk_path: String, filename: String) -> Self {
+        Self { jdk_path, filename }
+    }
+}
+
+impl Problem for MissingJDKFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-jdk-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "jdk_path": self.jdk_path,
+            "filename": self.filename
+        })
+    }
+}
+
+impl Display for MissingJDKFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JDK file {} at {}", self.filename, self.jdk_path)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingPerlFile {
+    pub filename: String,
+    pub inc: Option<Vec<String>>,
+}
+
+impl MissingPerlFile {
+    pub fn new(filename: String, inc: Option<Vec<String>>) -> Self {
+        Self { filename, inc }
+    }
+}
+
+impl Problem for MissingPerlFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-perl-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.filename,
+            "inc": self.inc
+        })
+    }
+}
+
+impl Display for MissingPerlFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(inc) = self.inc.as_ref() {
+            write!(
+                f,
+                "Missing Perl file {} (INC: {})",
+                self.filename,
+                inc.join(":")
+            )
+        } else {
+            write!(f, "Missing Perl file {}", self.filename)
+        }
+    }
+}
+
+
