@@ -1,0 +1,28 @@
+ --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu
+The Meson build system
+Version: 0.56.2
+Source dir: /<<PKGBUILDDIR>>
+Build dir: /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu
+Build type: native build
+
+../meson.build:1:0: ERROR: Meson version is 0.56.2 but project requires >= 0.57.0
+
+A full log can be found at /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu/meson-logs/meson-log.txt
+cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
+==> meson-logs/meson-log.txt <==
+Build started at 2022-07-21T04:21:47.088879
+Main binary: /usr/bin/python3
+Build Options: -Dprefix=/usr -Dlibdir=lib/x86_64-linux-gnu -Dlocalstatedir=/var -Dsysconfdir=/etc -Dbuildtype=plain -Dwrap_mode=nodownload
+Python system: Linux
+The Meson build system
+Version: 0.56.2
+Source dir: /<<PKGBUILDDIR>>
+Build dir: /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu
+Build type: native build
+
+../meson.build:1:0: ERROR: Meson version is 0.56.2 but project requires >= 0.57.0
+dh_auto_configure: error: cd obj-x86_64-linux-gnu && LC_ALL=C.UTF-8 meson .. --wrap-mode=nodownload --buildtype=plain --prefix=/usr --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu returned exit code 1
+make: *** [debian/rules:13: binary] Error 25
+dpkg-buildpackage: error: debian/rules binary subprocess returned exit status 2
+--------------------------------------------------------------------------------
+Build finished at 2022-07-21T04:21:47Z
