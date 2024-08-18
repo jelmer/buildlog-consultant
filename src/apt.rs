@@ -289,7 +289,7 @@ pub struct Dose3Conflict {
 }
 
 #[derive(Debug)]
-pub struct UnsatisfiedAptConflicts(Relations);
+pub struct UnsatisfiedAptConflicts(String);
 
 impl Problem for UnsatisfiedAptConflicts {
     fn kind(&self) -> std::borrow::Cow<str> {
@@ -298,7 +298,7 @@ impl Problem for UnsatisfiedAptConflicts {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({
-            "relations": self.0.entries(),
+            "relations": self.0
         })
     }
 }
@@ -312,7 +312,7 @@ impl std::fmt::Display for UnsatisfiedAptConflicts {
 impl std::error::Error for UnsatisfiedAptConflicts {}
 
 #[derive(Debug)]
-pub struct UnsatisfiedAptDependencies(Relations);
+pub struct UnsatisfiedAptDependencies(String);
 
 impl Problem for UnsatisfiedAptDependencies {
     fn kind(&self) -> std::borrow::Cow<str> {
@@ -321,7 +321,7 @@ impl Problem for UnsatisfiedAptDependencies {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({
-            "relations": self.0.entries(),
+            "relations": self.0
         })
     }
 }
@@ -342,24 +342,37 @@ pub fn error_from_dose3_report(report: serde_json::Value) -> Option<Box<dyn Prob
     if entries[0].status != "broken" {
         return None;
     }
-    let missing = vec![];
-    let conflict = vec![];
-    for reason in entries[0].reasons {
-        if let Some(this_missing) = reason.missing {
-            let relation: Relations = this_missing.pkg.unsat_dependency.unwrap().parse().unwrap();
+    let mut missing = vec![];
+    let mut conflict = vec![];
+    for reason in &entries[0].reasons {
+        if let Some(this_missing) = &reason.missing {
+            let relation: Relations = this_missing
+                .pkg
+                .unsat_dependency
+                .clone()
+                .unwrap()
+                .parse()
+                .unwrap();
             missing.extend(relation.entries());
         }
-        if let Some(this_conflict) = reason.conflict {
-            let relation: Relations = this_conflict.pkg1.unsat_conflict.unwrap().parse().unwrap();
+        if let Some(this_conflict) = &reason.conflict {
+            let relation: Relations = this_conflict
+                .pkg1
+                .unsat_conflict
+                .clone()
+                .unwrap()
+                .parse()
+                .unwrap();
             conflict.extend(relation.entries());
         }
     }
     if !missing.is_empty() {
-        let e = missing[0];
-        return Some(Box::new(UnsatisfiedAptDependencies(missing)) as Box<dyn Problem>);
+        let missing: Relations = missing.into();
+        return Some(Box::new(UnsatisfiedAptDependencies(missing.to_string())) as Box<dyn Problem>);
     }
     if !conflict.is_empty() {
-        return Some(Box::new(UnsatisfiedAptConflicts(conflict)) as Box<dyn Problem>);
+        let conflict: Relations = conflict.into();
+        return Some(Box::new(UnsatisfiedAptConflicts(conflict.to_string())) as Box<dyn Problem>);
     }
     None
 }
