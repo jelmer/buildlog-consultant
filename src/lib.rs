@@ -141,6 +141,21 @@ pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
     fn json(&self) -> serde_json::Value;
 }
 
+impl PartialEq for dyn Problem {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind() == other.kind() && self.json() == other.json()
+    }
+}
+
+impl Eq for dyn Problem {}
+
+impl std::hash::Hash for dyn Problem {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind().hash(state);
+        self.json().hash(state);
+    }
+}
+
 pub struct PyMatch(PyObject);
 
 impl Match for PyMatch {
