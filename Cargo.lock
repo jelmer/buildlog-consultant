@@ -146,7 +146,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "buildlog-consultant"
-version = "0.0.38"
+version = "0.0.39"
 dependencies = [
  "chatgpt_rs",
  "chrono",
@@ -343,9 +343,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.21"
+version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5558bfd2d6f1344651e7121a11d1f939cf35c15a2e4a788b2f4033b55ed5ddb4"
+checksum = "286f48b96d8b0b1430db71c92b8a641f5edf0d926d44f51bf2159aabcf526a2a"
 dependencies = [
  "regex",
  "rowan",
@@ -354,9 +354,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.21"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88e5e4c5fd4ccbba8d350aff558543f2245b5f344870d95e38f82984d0477830"
+checksum = "cdefd28dd8634f61fd45702506e4b25f8191fd9825e4104c38916a691a632f39"
 dependencies = [
  "deb822-lossless",
  "debversion",
@@ -759,9 +759,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.157"
+version = "0.2.158"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "374af5f94e54fa97cf75e945cce8a6b201e88a1a07e688b47dfd2a59c66dbd86"
+checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
 
 [[package]]
 name = "log"
