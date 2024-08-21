@@ -532,7 +532,7 @@ pub fn find_preamble_failure_description(
             "dpkg-source: error: cannot read (.*): No such file or directory",
             line
         ) {
-            let patchname = path.rsplit_once('/').unwrap().1;
+            let _patchname = path.rsplit_once('/').unwrap().1;
             let err = Some(Box::new(PatchFileMissing(path.into())) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(

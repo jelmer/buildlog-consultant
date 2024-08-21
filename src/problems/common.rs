@@ -2,7 +2,7 @@ use crate::Problem;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use std::fmt::{self, Debug, Display, Formatter, Write};
+use std::fmt::{self, Debug, Display};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1494,6 +1494,12 @@ impl Display for DhAddonLoadFailure {
 #[derive(Debug, Clone)]
 pub struct DhUntilUnsupported;
 
+impl Default for DhUntilUnsupported {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DhUntilUnsupported {
     pub fn new() -> Self {
         Self
@@ -1560,6 +1566,12 @@ impl Display for DebhelperPatternNotFound {
 #[derive(Debug, Clone)]
 pub struct MissingPerlManifest;
 
+impl Default for MissingPerlManifest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MissingPerlManifest {
     pub fn new() -> Self {
         Self
@@ -1614,6 +1626,12 @@ impl Display for ImageMagickDelegateMissing {
 #[derive(Debug, Clone)]
 pub struct Cancelled;
 
+impl Default for Cancelled {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Cancelled {
     pub fn new() -> Self {
         Self
@@ -1638,6 +1656,12 @@ impl Display for Cancelled {
 
 #[derive(Debug, Clone)]
 pub struct DisappearedSymbols;
+
+impl Default for DisappearedSymbols {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DisappearedSymbols {
     pub fn new() -> Self {
@@ -1726,6 +1750,12 @@ impl Display for MissingDHCompatLevel {
 #[derive(Debug, Clone)]
 pub struct MissingJVM;
 
+impl Default for MissingJVM {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MissingJVM {
     pub fn new() -> Self {
         Self
@@ -1789,6 +1819,12 @@ impl Display for MissingRubyGem {
 
 #[derive(Debug, Clone)]
 pub struct MissingJavaScriptRuntime;
+
+impl Default for MissingJavaScriptRuntime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl MissingJavaScriptRuntime {
     pub fn new() -> Self {
@@ -2122,6 +2158,12 @@ impl Display for ChrootNotFound {
 
 #[derive(Debug, Clone)]
 pub struct MissingLibtool;
+
+impl Default for MissingLibtool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl MissingLibtool {
     pub fn new() -> Self {
@@ -2844,5 +2886,26 @@ impl Problem for MissingQtModules {
 impl std::fmt::Display for MissingQtModules {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing QT modules: {:?}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingOCamlPackage(pub String);
+
+impl Problem for MissingOCamlPackage {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-ocaml-package".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingOCamlPackage {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing OCaml package: {}", self.0)
     }
 }
