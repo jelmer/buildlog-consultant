@@ -250,6 +250,14 @@ impl MissingPythonDistribution {
             })
         })
     }
+
+    pub fn simple(distribution: &str) -> MissingPythonDistribution {
+        MissingPythonDistribution {
+            distribution: distribution.to_string(),
+            python_version: None,
+            minimum_version: None,
+        }
+    }
 }
 
 impl Display for VcsControlDirectoryNeeded {
@@ -2595,5 +2603,246 @@ impl Problem for MissingLuaModule {
 impl std::fmt::Display for MissingLuaModule {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Lua Module: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingGoModFile;
+
+impl Problem for MissingGoModFile {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-go.mod-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for MissingGoModFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "go.mod file is missing")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct OutdatedGoModFile;
+
+impl Problem for OutdatedGoModFile {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "outdated-go.mod-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for OutdatedGoModFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "go.mod file is outdated")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CodeCoverageTooLow {
+    pub actual: f64,
+    pub required: f64,
+}
+
+impl Problem for CodeCoverageTooLow {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "code-coverage-too-low".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "actual": self.actual,
+            "required": self.required
+        })
+    }
+}
+
+impl std::fmt::Display for CodeCoverageTooLow {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Code coverage too low: {:.2} < {:.2}",
+            self.actual, self.required
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ESModuleMustUseImport(pub String);
+
+impl Problem for ESModuleMustUseImport {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "esmodule-must-use-import".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for ESModuleMustUseImport {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "ESM-only module {} must use import()", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingPHPExtension(pub String);
+
+impl Problem for MissingPHPExtension {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-php-extension".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "extension": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingPHPExtension {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing PHP Extension: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MinimumAutoconfTooOld(pub String);
+
+impl Problem for MinimumAutoconfTooOld {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "minimum-autoconf-too-old".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "minimum_version": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MinimumAutoconfTooOld {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "configure.{{ac,in}} should require newer autoconf {}",
+            self.0
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingPerlDistributionFile(pub String);
+
+impl Problem for MissingPerlDistributionFile {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-perl-distribution-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingPerlDistributionFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing perl distribution file: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingGoSumEntry {
+    pub package: String,
+    pub version: String,
+}
+
+impl Problem for MissingGoSumEntry {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-go.sum-entry".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "version": self.version
+        })
+    }
+}
+
+impl std::fmt::Display for MissingGoSumEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing go.sum entry: {}@{}", self.package, self.version)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ValaCompilerCannotCompile;
+
+impl Problem for ValaCompilerCannotCompile {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "valac-cannot-compile".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for ValaCompilerCannotCompile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "valac can not compile")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingDebianBuildDep(pub String);
+
+impl Problem for MissingDebianBuildDep {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-debian-build-dep".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "dep": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingDebianBuildDep {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Debian Build-Depends: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingQtModules(pub Vec<String>);
+
+impl Problem for MissingQtModules {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-qt-modules".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "modules": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingQtModules {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing QT modules: {:?}", self.0)
     }
 }

@@ -2083,6 +2083,168 @@ lazy_static::lazy_static! {
     regex_line_matcher!(
         r"E: pybuild pybuild:[0-9]+: cannot detect build system, please use --system option or set PYBUILD_SYSTEM env\. variable"
     ),
+    regex_line_matcher!(
+        r"--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)",
+        |m| Ok(Some(Box::new(MissingPkgConfig{
+            module: m.get(1).unwrap().as_str().to_string(),
+            minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+        })))
+    ),
+    regex_line_matcher!(
+        r".*Could not find (.*) lib/headers, please set .* or ensure (.*).pc is in PKG_CONFIG_PATH\.",
+        |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"go: go.mod file not found in current directory or any parent directory; see \'go help modules\'",
+        |m| Ok(Some(Box::new(MissingGoModFile)))
+    ),
+    regex_line_matcher!(
+        r"go: cannot find main module, but found Gopkg.lock in (.*)",
+        |m| Ok(Some(Box::new(MissingGoModFile)))
+    ),
+    regex_line_matcher!(r"go: updates to go.mod needed; to update it:", |m| Ok(Some(Box::new(OutdatedGoModFile)))),
+    regex_line_matcher!(r"(c\+\+|collect2|cc1|g\+\+): fatal error: .*"),
+    regex_line_matcher!(r"fatal: making (.*): failed to create tests\/decode.trs"),
+    // ocaml
+    regex_line_matcher!(r"Please specify at most one of .*"),
+    // Python lint
+    regex_line_matcher!(r".*\.py:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9] .*"),
+    regex_line_matcher!(
+        r#"PHPUnit requires the "(.*)" extension\."#,
+        |m| Ok(Some(Box::new(MissingPHPExtension(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"     \[exec\] PHPUnit requires the "(.*)" extension\."#,
+        |m| Ok(Some(Box::new(MissingPHPExtension(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. ",
+        |m| Ok(Some(Box::new(MinimumAutoconfTooOld(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"configure.(ac|in):[0-9]+: error: Autoconf version (.*) or higher is required",
+        |m| Ok(Some(Box::new(MissingVagueDependency {
+            name: "autoconf".to_string(),
+            url: None,
+            minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+            current_version: None,
+        })))
+    ),
+    regex_line_matcher!(
+        r#"# Error: The file "(MANIFEST|META.yml)" is missing from this distribution\\. .*"#,
+        |m| Ok(Some(Box::new(MissingPerlDistributionFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"^  ([^ ]+) does not exist$", file_not_found),
+    regex_line_matcher!(
+        r"\s*> Cannot find \'\.git\' directory",
+        |_m| Ok(Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))))
+    ),
+    regex_line_matcher!(
+        r"Unable to find the \'(.*)\' executable\. .*",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\[@RSRCHBOY\/CopyrightYearFromGit\]  -  412 No \.git subdirectory found",
+        |_m| Ok(Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))))
+    ),
+    regex_line_matcher!(
+        r"Couldn\'t find version control data \(git/hg/bzr/svn supported\)",
+        |_m| Ok(Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git", "hg", "bzr", "svn"]))))
+    ),
+    regex_line_matcher!(
+        r"RuntimeError: Unable to determine package version. No local Git clone detected, and no version file found at .*",
+        |_m| Ok(Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))))
+    ),
+    regex_line_matcher!(
+        r#""(.*)" failed to start: "No such file or directory" at .*.pm line [0-9]+\."#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"Can\'t find ([^ ]+)\.", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"Error: spawn (.*) ENOENT", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"E ImportError: Failed to initialize: Bad (.*) executable\.",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"ESLint couldn\'t find the config "(.*)" to extend from\. Please check that the name of the config is correct\."#
+    ),
+    regex_line_matcher!(
+        r#"E OSError: no library called "cairo-2" was found"#,
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"ERROR: \[Errno 2\] No such file or directory: '(.*)'",
+ |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())
+    ),
+    regex_line_matcher!(
+        r"error: \[Errno 2\] No such file or directory: '(.*)'",
+ |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())
+    ),
+    regex_line_matcher!(
+        r"We need the Python library (.+) to be installed\. .*",
+        |m| Ok(Some(Box::new(MissingPythonDistribution::simple(m.get(1).unwrap().as_str()))))
+    ),
+    // Waf
+    regex_line_matcher!(
+        r"Checking for header (.+\.h|.+\.hpp)\s+: not found ",
+        |m| Ok(Some(Box::new(MissingCHeader::new(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"000: File does not exist (.*)",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"ERROR: Coverage for lines \(([0-9.]+)%\) does not meet global threshold \(([0-9]+)%\)",
+        |m| Ok(Some(Box::new(CodeCoverageTooLow{
+            actual: m.get(1).unwrap().as_str().parse().unwrap(),
+            required: m.get(2).unwrap().as_str().parse().unwrap()})))
+    ),
+    regex_line_matcher!(
+        r"Error \[ERR_REQUIRE_ESM\]: Must use import to load ES Module: (.*)",
+        |m| Ok(Some(Box::new(ESModuleMustUseImport(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r".* (/<<BUILDDIR>>/.*): No such file or directory", file_not_found),
+    regex_line_matcher!(
+        r"Cannot open file `(.*)' in mode `(.*)' \(No such file or directory\)",
+        file_not_found
+    ),
+    regex_line_matcher!(r"[^:]+: cannot stat \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(r"cat: (.*): No such file or directory", file_not_found),
+    regex_line_matcher!(r"ls: cannot access \'(.*)\': No such file or directory", file_not_found),
+    regex_line_matcher!(
+        r"Problem opening (.*): No such file or directory at (.*) line ([0-9]+)\.",
+        file_not_found
+    ),
+    regex_line_matcher!(r"/bin/bash: (.*): No such file or directory", file_not_found),
+    regex_line_matcher!(
+        r#"\(The package "(.*)" was not found when loaded as a Node module from the directory ".*"\.\)"#,
+        |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"\+\-\- UNMET DEPENDENCY (.*)", |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"Project ERROR: Unknown module\(s\) in QT: (.*)",
+        |m| Ok(Some(Box::new(MissingQtModules(m.get(1).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect()))))
+    ),
+    regex_line_matcher!(
+        r"(.*):(\d+):(\d+): ERROR: Vala compiler \'.*\' can not compile programs",
+        |m| Ok(Some(Box::new(ValaCompilerCannotCompile)))
+    ),
+    regex_line_matcher!(
+        r"(.*):(\d+):(\d+): ERROR: Problem encountered: Cannot load ([^ ]+) library\. (.*)",
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(4).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"go: (.*)@(.*): missing go.sum entry; to add it:",
+        |m| Ok(Some(Box::new(MissingGoSumEntry {
+            package: m.get(1).unwrap().as_str().to_string(),
+            version: m.get(2).unwrap().as_str().to_string(),
+        })))
+    ),
+    regex_line_matcher!(
+        r"E: pybuild pybuild:(.*): configure: plugin (.*) failed with: PEP517 plugin dependencies are not available\. Please Build-Depend on (.*)\.",
+        |m| Ok(Some(Box::new(MissingDebianBuildDep(m.get(1).unwrap().as_str().to_string()))))
+    ),
+
     ]);
 }
 
