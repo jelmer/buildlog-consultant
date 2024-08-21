@@ -5,9 +5,9 @@ use std::ops::Index;
 
 pub mod apt;
 pub mod autopkgtest;
+pub mod brz;
 pub mod lines;
 pub mod problems;
-pub mod brz;
 
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;
@@ -22,6 +22,8 @@ pub trait Match: Send + Sync + std::fmt::Debug {
     fn lineno(&self) -> usize {
         self.offset() + 1
     }
+
+    fn add_offset(&self, offset: usize) -> Box<dyn Match>;
 }
 
 #[derive(Clone, Debug)]
@@ -51,6 +53,14 @@ impl Match for SingleLineMatch {
 
     fn offset(&self) -> usize {
         self.offset
+    }
+
+    fn add_offset(&self, offset: usize) -> Box<dyn Match> {
+        Box::new(Self {
+            origin: self.origin.clone(),
+            offset: self.offset + offset,
+            line: self.line.clone(),
+        })
     }
 }
 
@@ -113,7 +123,7 @@ impl MultiLineMatch {
 
 impl Match for MultiLineMatch {
     fn line(&self) -> String {
-        self.lines[0].clone()
+        self.lines.last().unwrap().clone()
     }
 
     fn origin(&self) -> Origin {
@@ -121,11 +131,20 @@ impl Match for MultiLineMatch {
     }
 
     fn offset(&self) -> usize {
-        self.offsets[0]
+        *self.offsets.last().unwrap()
     }
 
     fn lineno(&self) -> usize {
         self.offset() + 1
+    }
+
+    fn add_offset(&self, extra: usize) -> Box<dyn Match> {
+        let offsets = self.offsets.iter().map(|&offset| offset + extra).collect();
+        Box::new(Self {
+            origin: self.origin.clone(),
+            offsets,
+            lines: self.lines.clone(),
+        })
     }
 }
 
@@ -178,6 +197,13 @@ impl Match for PyMatch {
         Python::with_gil(|py| {
             let offset = self.0.getattr(py, "offset").unwrap();
             offset.extract::<usize>(py).unwrap()
+        })
+    }
+
+    fn add_offset(&self, offset: usize) -> Box<dyn Match> {
+        Python::with_gil(|py| {
+            let new = self.0.call_method1(py, "add_offset", (offset,)).unwrap();
+            Box::new(PyMatch(new))
         })
     }
 }

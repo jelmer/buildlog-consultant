@@ -89,6 +89,22 @@ macro_rules! regex_line_matcher {
     };
 }
 
+#[macro_export]
+macro_rules! regex_para_matcher {
+    ($regex:expr, $callback:expr) => {{
+        Box::new(RegexLineMatcher::new(
+            regex::Regex::new(concat!("(?s)", $regex)).unwrap(),
+            Box::new($callback),
+        ))
+    }};
+    ($regex: expr) => {{
+        Box::new(RegexLineMatcher::new(
+            regex::Regex::new(concat!("(?s)", $regex)).unwrap(),
+            Box::new(|_| Ok(None)),
+        ))
+    }};
+}
+
 pub struct MatcherGroup(Vec<Box<dyn Matcher>>);
 
 impl MatcherGroup {

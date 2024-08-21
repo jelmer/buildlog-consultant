@@ -1,8 +1,6 @@
-use crate::problems::common::NoSpaceOnDevice;
 use crate::lines::Lines;
-use crate::problems::debian::{
-    AptBrokenPackages, AptFetchFailure, AptMissingReleaseFile, AptPackageUnknown, DpkgError,
-};
+use crate::problems::common::NoSpaceOnDevice;
+use crate::problems::debian::*;
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::relations::Relations;
 use serde::{Deserialize, Serialize};
@@ -286,50 +284,6 @@ pub struct Dose3Missing {
 pub struct Dose3Conflict {
     pub pkg1: Dose3Pkg,
     pub pkg2: Dose3Pkg,
-}
-
-#[derive(Debug)]
-pub struct UnsatisfiedAptConflicts(String);
-
-impl Problem for UnsatisfiedAptConflicts {
-    fn kind(&self) -> std::borrow::Cow<str> {
-        "unsatisfied-apt-conflicts".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "relations": self.0
-        })
-    }
-}
-
-impl std::fmt::Display for UnsatisfiedAptConflicts {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unsatisfied apt conflicts: {}", self.0)
-    }
-}
-
-impl std::error::Error for UnsatisfiedAptConflicts {}
-
-#[derive(Debug)]
-pub struct UnsatisfiedAptDependencies(String);
-
-impl Problem for UnsatisfiedAptDependencies {
-    fn kind(&self) -> std::borrow::Cow<str> {
-        "unsatisfied-apt-dependencies".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "relations": self.0
-        })
-    }
-}
-
-impl std::fmt::Display for UnsatisfiedAptDependencies {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unsatisfied apt dependencies: {}", self.0)
-    }
 }
 
 pub fn error_from_dose3_report(report: serde_json::Value) -> Option<Box<dyn Problem>> {

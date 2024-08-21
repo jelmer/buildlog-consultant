@@ -1,7 +1,7 @@
 use crate::lines::Lines;
+use crate::problems::autopkgtest::*;
 use crate::{Match, Problem, SingleLineMatch};
 use std::collections::HashMap;
-use crate::problems::autopkgtest::*;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Packet<'a> {
@@ -362,7 +362,7 @@ pub fn find_autopkgtest_failure_description(
                 if let Some(current_field) = current_field.as_ref() {
                     let (r#match, error) = crate::apt::find_apt_get_failure(
                         test_output
-                            .get(&current_field)
+                            .get(current_field)
                             .unwrap()
                             .0
                             .iter()
@@ -371,13 +371,13 @@ pub fn find_autopkgtest_failure_description(
                     );
                     if error.is_some()
                         && r#match.is_some()
-                        && test_output.contains_key(&current_field)
+                        && test_output.contains_key(current_field)
                     {
                         let description = r#match.as_ref().unwrap().line();
                         return (
                             Some(Box::new(SingleLineMatch::from_lines(
                                 &lines,
-                                test_output.get(&current_field).unwrap().1
+                                test_output.get(current_field).unwrap().1
                                     + r#match.unwrap().offset(),
                                 Some("direct regex"),
                             )) as Box<dyn Match>),
@@ -392,7 +392,7 @@ pub fn find_autopkgtest_failure_description(
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
                             &lines,
-                            test_output.get(&current_field.as_ref().unwrap()).unwrap().1,
+                            test_output.get(current_field.as_ref().unwrap()).unwrap().1,
                             Some("direct regex"),
                         )) as Box<dyn Match>),
                         last_test.map(|x| x.to_owned()),
@@ -556,10 +556,10 @@ pub fn find_autopkgtest_failure_description(
                 {
                     error = Some(Box::new(XDGRunTimeNotSet) as Box<dyn Problem>);
                     description = Some(stderr_lines[0].to_owned());
-                    offset = stderr_offset.clone();
+                    offset = stderr_offset;
                 } else {
                     if let Some(stderr_offset) = stderr_offset {
-                        offset = Some(stderr_offset.clone());
+                        offset = Some(stderr_offset);
                     }
                     description = None;
                 }
@@ -636,14 +636,9 @@ pub fn find_autopkgtest_failure_description(
                 format!("Test {} failed", packet.name)
             };
 
-            let error = if let Some(blame) = blame {
-                Some(
-                    Box::new(AutopkgtestDepsUnsatisfiable::from_blame_line(blame))
-                        as Box<dyn Problem>,
-                )
-            } else {
-                None
-            };
+            let error = blame.map(|blame| {
+                Box::new(AutopkgtestDepsUnsatisfiable::from_blame_line(blame)) as Box<dyn Problem>
+            });
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -686,7 +681,7 @@ pub fn find_autopkgtest_failure_description(
         }
     }
 
-    return (None, None, None, None);
+    (None, None, None, None)
 }
 
 pub fn find_testbed_setup_failure(
@@ -705,7 +700,7 @@ pub fn find_testbed_setup_failure(
                         Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                             as Box<dyn Match>,
                     ),
-                    Some(Box::new(crate::common::ChrootNotFound {
+                    Some(Box::new(crate::problems::common::ChrootNotFound {
                         chroot: chroot.to_owned(),
                     }) as Box<dyn Problem>),
                 );
