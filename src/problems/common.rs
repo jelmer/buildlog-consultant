@@ -2269,3 +2269,170 @@ impl std::fmt::Display for MissingStaticLibrary {
         write!(f, "missing static library: {}", self.library)
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct MissingGoRuntime;
+
+impl Problem for MissingGoRuntime {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-go-runtime".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for MissingGoRuntime {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "go runtime is missing")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UnknownCertificateAuthority(pub String);
+
+impl Problem for UnknownCertificateAuthority {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unknown-certificate-authority".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "url": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for UnknownCertificateAuthority {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Unknown Certificate Authority for {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingPerlPredeclared(pub String);
+
+impl Problem for MissingPerlPredeclared {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-perl-predeclared".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingPerlPredeclared {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing predeclared function: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingGitIdentity;
+
+impl Problem for MissingGitIdentity {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-git-identity".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for MissingGitIdentity {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Git Identity")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingSecretGpgKey;
+
+impl Problem for MissingSecretGpgKey {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "no-secret-gpg-key".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for MissingSecretGpgKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "No secret GPG key is present")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingVcVersionerVersion;
+
+impl Problem for MissingVcVersionerVersion {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "no-vcversioner-version".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for MissingVcVersionerVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "vcversion could not find a git directory or version.txt file"
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingLatexFile(pub String);
+
+impl MissingLatexFile {
+    pub fn new(filename: String) -> Self {
+        Self(filename)
+    }
+}
+
+impl Problem for MissingLatexFile {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-latex-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingLatexFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing LaTeX file: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingXDisplay;
+
+impl Problem for MissingXDisplay {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-x-display".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for MissingXDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "No X Display")
+    }
+}

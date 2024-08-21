@@ -1797,6 +1797,170 @@ lazy_static::lazy_static! {
     Box::new(HaskellMissingDependencyMatcher),
     Box::new(SetupPyCommandMissingMatcher),
     Box::new(CMakeErrorMatcher),
+    regex_line_matcher!
+    (
+        r"error: failed to select a version for the requirement `(.*)`",
+        |m| {
+                let (crate_name, requirement) = match m.get(1).unwrap().as_str().split_once(" ") {
+                    Some((cratename, requirement)) => (cratename.to_string(), Some(requirement.to_string())),
+                    None => (m.get(1).unwrap().as_str().to_string(), None),
+                };
+                Ok(Some(Box::new(MissingCargoCrate {
+                    crate_name,
+                    requirement,
+                }))
+            )
+        }
+    ),
+    regex_line_matcher!(r"^Environment variable \$SOURCE_DATE_EPOCH: No digits were found: $"),
+    regex_line_matcher!(
+        r"\[ERROR\] LazyFont - Failed to read font file (.*) \<java.io.FileNotFoundException: (.*) \(No such file or directory\)\>java.io.FileNotFoundException: (.*) \(No such file or directory\)",
+        |m| Ok(Some(Box::new(MissingFile::new(m.get(1).unwrap().as_str().into()))))
+    ),
+    regex_line_matcher!(r"qt.qpa.xcb: could not connect to display", |_m| Ok(Some(Box::new(MissingXDisplay)))),
+    regex_line_matcher!(
+        r"\(.*:[0-9]+\): Gtk-WARNING \*\*: [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}: cannot open display: ",
+        |_m| Ok(Some(Box::new(MissingXDisplay)))
+    ),
+    regex_line_matcher!(
+        r"\s*Package (.*) was not found in the pkg-config search path.",
+        |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"Can't open display",
+        |_m| Ok(Some(Box::new(MissingXDisplay)))
+    ),
+    regex_line_matcher!(
+        r"Can't open (.+): No such file or directory.*",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"pkg-config does not know (.*) at .*\.",
+        |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\*\*\* Please install (.*) \(atleast version (.*)\) or adjust",
+        |m| Ok(Some(Box::new(MissingPkgConfig{
+            module: m.get(1).unwrap().as_str().to_string(),
+            minimum_version: Some(m.get(2).unwrap().as_str().to_string())
+        })))
+    ),
+    regex_line_matcher!(
+        r"go runtime is required: https://golang.org/doc/install",
+        |_m| Ok(Some(Box::new(MissingGoRuntime)))
+    ),
+    regex_line_matcher!(
+        r"\%Error: '(.*)' must be installed to build",
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"configure: error: "Could not find (.*) in PATH"#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"Could not find executable (.*)", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r#"go: .*: Get \"(.*)\": x509: certificate signed by unknown authority"#,
+        |m| Ok(Some(Box::new(UnknownCertificateAuthority(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#".*.go:[0-9]+:[0-9]+: .*: Get \"(.*)\": x509: certificate signed by unknown authority"#,
+        |m| Ok(Some(Box::new(UnknownCertificateAuthority(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
+        |m| Ok(Some(Box::new(UnknownCertificateAuthority(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"curl: \(77\) error setting certificate verify locations:  CAfile: (.*) CApath: (.*)",
+        |m| Ok(Some(Box::new(MissingFile::new(m.get(1).unwrap().as_str().to_string().into()))))
+    ),
+    regex_line_matcher!(
+        r"\t\(Do you need to predeclare (.*)\?\)",
+        |m| Ok(Some(Box::new(MissingPerlPredeclared(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"Bareword \"(.*)\" not allowed while \"strict subs\" in use at Makefile.PL line ([0-9]+)."#,
+        |m| Ok(Some(Box::new(MissingPerlPredeclared(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r#"String found where operator expected at Makefile.PL line ([0-9]+), near "([a-z0-9_]+).*""#,
+        |m| Ok(Some(Box::new(MissingPerlPredeclared(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"  vignette builder 'knitr' not found", |_| Ok(Some(Box::new(MissingRPackage::simple("knitr".to_string()))))),
+    regex_line_matcher!(
+        r"fatal: unable to auto-detect email address \(got \'.*\'\)",
+        |_m| Ok(Some(Box::new(MissingGitIdentity)))
+    ),
+    regex_line_matcher!(
+        r"E       fatal: unable to auto-detect email address \(got \'.*\'\)",
+        |_m| Ok(Some(Box::new(MissingGitIdentity)))
+    ),
+    regex_line_matcher!(r"gpg: no default secret key: No secret key", |_m| Ok(Some(Box::new(MissingSecretGpgKey)))),
+    regex_line_matcher!(
+        r"ERROR: FAILED--Further testing stopped: Test requires module \'(.*)\' but it\'s not found",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r#"(subprocess.CalledProcessError|error): Command \'\[\'/usr/bin/python([0-9.]*)\', \'-m\', \'pip\', \'--disable-pip-version-check\', \'wheel\', \'--no-deps\', \'-w\', .*, \'([^-][^\']+)\'\]\' returned non-zero exit status 1."#,
+        |m| {
+            let python_version = m.get(2).filter(|x| !x.is_empty()).map(|pv| pv.as_str().split_once('.').map_or(pv.as_str(), |x| x.0).parse().unwrap());
+            Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(
+                m.get(3).unwrap().as_str(), python_version
+            ).unwrap())))
+        }
+    ),
+    regex_line_matcher!(
+        r"vcversioner: \[\'git\', .*, \'describe\', \'--tags\', \'--long\'\] failed and \'(.*)/version.txt\' isn\'t present\.",
+        |_m| Ok(Some(Box::new(MissingVcVersionerVersion)))
+    ),
+    regex_line_matcher!(
+        r"vcversioner: no VCS could be detected in '(.*)' and '(.*)/version.txt' isn't present\.",
+        |_m| Ok(Some(Box::new(MissingVcVersionerVersion)))
+    ),
+    regex_line_matcher!(
+        r"You don't have a working TeX binary \(tex\) installed anywhere in",
+        |_m| Ok(Some(Box::new(MissingCommand("tex".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"# Module \'(.*)\' is not installed",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r#"Base class package "(.*)" is empty."#,
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"    \!  (.*::.*) is not installed",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"Cannot find (.*) in @INC at (.*) line ([0-9]+)\.",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"(.*::.*) (.*) is required to configure our .* dependency, please install it manually or upgrade your CPAN/CPANPLUS",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"configure: error: Missing lib(.*)\.",
+        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"OSError: (.*): cannot open shared object file: No such file or directory",
+        |m| Ok(Some(Box::new(MissingFile::new(m.get(1).unwrap().as_str().into()))))
+    ),
+    regex_line_matcher!(
+        r#"The "(.*)" executable has not been found\."#,
+        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"  '\! LaTeX Error: File `(.*)' not found.'",
+        |m| Ok(Some(Box::new(MissingLatexFile(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"\! LaTeX Error: File `(.*)\' not found\.",
+        |m| Ok(Some(Box::new(MissingLatexFile(m.get(1).unwrap().as_str().to_string()))))
+    )
     ]);
 }
 
@@ -2133,7 +2297,7 @@ impl Matcher for CMakeErrorMatcher {
             return Ok(None);
         };
 
-        let (mut linenos, error_string) = extract_cmake_error_lines(lines, offset);
+        let (linenos, error_string) = extract_cmake_error_lines(lines, offset);
 
         let mut actual_lines: Vec<_> = vec![];
         for lineno in &linenos {
