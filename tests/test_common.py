@@ -96,8 +96,8 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
         else:
             self.assertIsNone(match)
         if err:
-            assert match
-            self.assertEqual(actual_err, err, f"origin was: {match.origin!r}")
+            assert match, f"err ({err}) provided but match missing"
+            self.assertEqual(actual_err, err)
         else:
             self.assertIs(None, actual_err)
 

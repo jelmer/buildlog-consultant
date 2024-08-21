@@ -108,6 +108,11 @@ impl Problem {
 #[pyfunction]
 fn match_lines(lines: Vec<String>, offset: usize) -> PyResult<(Option<Match>, Option<Problem>)> {
     let lines = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    if offset >= lines.len() {
+        return Err(pyo3::exceptions::PyIndexError::new_err(
+            "Offset out of range",
+        ));
+    }
     let ret = buildlog_consultant::common::match_lines(lines.as_slice(), offset)
         .map_err(|e| pyo3::exceptions::PyException::new_err(format!("Error: {}", e)))?;
 
@@ -148,6 +153,7 @@ impl SbuildLog {
         self.0.get_failed_stage()
     }
 
+    #[pyo3(signature = (section=None))]
     fn get_section_lines(&self, section: Option<&str>) -> Option<Vec<String>> {
         self.0
             .get_section_lines(section)
@@ -170,6 +176,7 @@ impl SbuildLog {
             .collect()
     }
 
+    #[pyo3(signature = (section=None))]
     fn get_section(&self, section: Option<&str>) -> Option<SbuildLogSection> {
         self.0
             .get_section(section)

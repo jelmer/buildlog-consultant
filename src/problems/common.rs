@@ -10,6 +10,12 @@ pub struct MissingFile {
     pub path: PathBuf,
 }
 
+impl MissingFile {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
 impl Problem for MissingFile {
     fn kind(&self) -> Cow<str> {
         "missing-file".into()
@@ -2145,5 +2151,121 @@ impl Problem for CMakeFilesMissing {
 impl std::fmt::Display for CMakeFilesMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "CMake files missing: {:?}", self.filenames)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingCMakeComponents {
+    pub name: String,
+    pub components: Vec<String>,
+}
+
+impl Problem for MissingCMakeComponents {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-cmake-components".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "components": self.components,
+        })
+    }
+}
+
+impl std::fmt::Display for MissingCMakeComponents {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing CMake components: {:?}", self.components)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingCMakeConfig {
+    pub name: String,
+    pub version: Option<String>,
+}
+
+impl Problem for MissingCMakeConfig {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-cmake-config".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "version": self.version,
+        })
+    }
+}
+
+impl std::fmt::Display for MissingCMakeConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(version) = &self.version {
+            write!(
+                f,
+                "Missing CMake package configuration for {} (version {})",
+                self.name, version
+            )
+        } else {
+            write!(f, "Missing CMake package configuration for {}", self.name)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CMakeNeedExactVersion {
+    pub package: String,
+    pub version_found: String,
+    pub exact_version_needed: String,
+    pub path: PathBuf,
+}
+
+impl Problem for CMakeNeedExactVersion {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "cmake-exact-version-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "version_found": self.version_found,
+            "exact_version_needed": self.exact_version_needed,
+            "path": self.path,
+        })
+    }
+}
+
+impl std::fmt::Display for CMakeNeedExactVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "CMake needs exact package {}, version {}",
+            self.package, self.exact_version_needed
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingStaticLibrary {
+    pub library: String,
+    pub filename: String,
+}
+
+impl Problem for MissingStaticLibrary {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-static-library".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "library": self.library,
+            "filename": self.filename,
+        })
+    }
+}
+
+impl std::fmt::Display for MissingStaticLibrary {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing static library: {}", self.library)
     }
 }

@@ -5,12 +5,11 @@ use crate::problems::common::*;
 // refactoring, including a split of the file.
 use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
+use crate::regex_para_matcher;
 use crate::{Match, Problem};
 use crate::{MultiLineMatch, Origin, SingleLineMatch};
 use lazy_regex::{regex_captures, regex_is_match};
 use regex::Captures;
-use std::borrow::Cow;
-use std::fmt::Display;
 
 fn node_module_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     if c.get(1).unwrap().as_str().starts_with("/<<PKGBUILDDIR>>/") {
@@ -393,35 +392,32 @@ impl Matcher for AutoconfUnexpectedMacroMatcher {
         lines: &[&str],
         offset: usize,
     ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
-        let regexp1 = regex::Regex::new(
+        if !regex_is_match!(
             r"\./configure: line [0-9]+: syntax error near unexpected token `.+'",
-        )
-        .unwrap();
-        if !regexp1.is_match(lines[offset]) {
-            return Ok(None);
-        }
-
-        let regexp2 =
-            regex::Regex::new(r"^\./configure: line [0-9]+: `[\s\t]*([A-Z0-9_]+)\(.*").unwrap();
-
-        let c = regexp2.captures(lines[offset + 1]).unwrap();
-        if c.len() != 2 {
+            lines[offset]
+        ) {
             return Ok(None);
         }
 
         let m = MultiLineMatch::new(
             Origin("autoconf unexpected macro".into()),
-            vec![offset + 1, offset],
-            vec![lines[offset + 1].to_string(), lines[offset].to_string()],
+            vec![offset, offset + 1],
+            vec![lines[offset].to_string(), lines[offset + 1].to_string()],
         );
 
-        Ok(Some((
-            Box::new(m),
+        let problem = if let Some((_, r#macro)) = regex_captures!(
+            r"^\./configure: line [0-9]+: `[\s\t]*([A-Z0-9_]+)\(.*",
+            lines[offset + 1]
+        ) {
             Some(Box::new(MissingAutoconfMacro {
-                r#macro: c.get(1).unwrap().as_str().to_string(),
+                r#macro: r#macro.to_string(),
                 need_rebuild: true,
-            })),
-        )))
+            }) as Box<dyn Problem>)
+        } else {
+            None
+        };
+
+        Ok(Some((Box::new(m), problem)))
     }
 }
 
@@ -1800,7 +1796,364 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"E: session: (.*): Chroot not found", |m| Ok(Some(Box::new(ChrootNotFound::new(m.get(1).unwrap().as_str().to_string()))))),
     Box::new(HaskellMissingDependencyMatcher),
     Box::new(SetupPyCommandMissingMatcher),
+    Box::new(CMakeErrorMatcher),
     ]);
+}
+
+lazy_static::lazy_static! {
+    static ref CMAKE_ERROR_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
+        regex_para_matcher!(r"Could NOT find (.*) \(missing:\s(.*)\)\s\(found\ssuitable\sversion\s.*",
+            |m| Ok(Some(Box::new(MissingCMakeComponents{
+                name: m.get(1).unwrap().as_str().to_string(),
+                components: m.get(2).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect()})))
+        ),
+        regex_para_matcher!(r"\s*--\s+Package \'(.*)\', required by \'(.*)\', not found",
+            |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(1).unwrap().as_str().to_string()))))
+        ),
+        regex_para_matcher!(r#"Could not find a package configuration file provided by\s"(.*)" \(requested\sversion\s(.*)\)\swith\sany\s+of\s+the\s+following\snames:\n\n(  .*\n)+\n.*$"#,
+            |m| {
+                let package = m.get(1).unwrap().as_str().to_string();
+                let version = m.get(2).unwrap().as_str().to_string();
+                let _names = m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect::<Vec<_>>();
+                Ok(Some(Box::new(MissingCMakeConfig{
+                    name: package,
+                    version: Some(version),
+                })))
+            }
+        ),
+        regex_para_matcher!(
+            r"Could NOT find (.*) \(missing: (.*)\)",
+            |m| {
+                let name = m.get(1).unwrap().as_str().to_string();
+                let components = m.get(2).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect();
+                Ok(Some(Box::new(MissingCMakeComponents {
+                    name,
+                    components,
+                })))
+            }
+        ),
+        regex_para_matcher!(
+            r#"The (.+) compiler\n\n  "(.*)"\n\nis not able to compile a simple test program\.\n\nIt fails with the following output:\n\n(.*)\n\nCMake will not be able to correctly generate this project.\n$"#,
+            |m| {
+                let compiler_output = textwrap::dedent(m.get(3).unwrap().as_str());
+                let (_match, error) = find_build_failure_description(compiler_output.split_inclusive('\n').collect());
+                Ok(error)
+            }
+        ),
+        regex_para_matcher!(
+            r#"Could NOT find (.*): Found unsuitable version \"(.*)\",\sbut\srequired\sis\sexact version \"(.*)\" \(found\s(.*)\)"#,
+            |m| {
+                let package = m.get(1).unwrap().as_str().to_string();
+                let version_found = m.get(2).unwrap().as_str().to_string();
+                let exact_version_needed = m.get(3).unwrap().as_str().to_string();
+                let path = m.get(4).unwrap().as_str().to_string();
+
+                Ok(Some(Box::new(CMakeNeedExactVersion {
+                    package,
+                    version_found,
+                    exact_version_needed,
+                    path: std::path::PathBuf::from(path),
+                })))
+            }
+        ),
+        regex_para_matcher!(
+            r"(.*) couldn't be found \(missing: .*_LIBRARIES .*_INCLUDE_DIR\)",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r#"Could NOT find (.*): Found unsuitable version \"(.*)\",\sbut\srequired\sis\sat\sleast\s\"(.*)\" \(found\s(.*)\)"#,
+            |m| Ok(Some(Box::new(MissingPkgConfig{
+                module: m.get(1).unwrap().as_str().to_string(),
+                minimum_version: Some(m.get(3).unwrap().as_str().to_string())})))
+        ),
+        regex_para_matcher!(
+            r#"The imported target \"(.*)\" references the file\n\n\s*"(.*)"\n\nbut this file does not exist\.(.*)"#,
+            |m| Ok(Some(Box::new(MissingFile::new(m.get(2).unwrap().as_str().to_string().into()))))
+        ),
+        regex_para_matcher!(
+            r#"Could not find a configuration file for package "(.*)"\sthat\sis\scompatible\swith\srequested\sversion\s"(.*)"\."#,
+            |m| Ok(Some(Box::new(MissingCMakeConfig {
+                name: m.get(1).unwrap().as_str().to_string(),
+                version: Some(m.get(2).unwrap().as_str().to_string())})))
+        ),
+        regex_para_matcher!(
+            r#".*Could not find a package configuration file provided by "(.*)"\s+with\s+any\s+of\s+the\s+following\s+names:\n\n(  .*\n)+\n.*$"#,
+            |m| Ok(Some(Box::new(CMakeFilesMissing{ filenames: m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect(), version: Some(m.get(2).unwrap().as_str().to_string()) })))
+        ),
+        regex_para_matcher!(
+            r#".*Could not find a package configuration file provided by "(.*)"\s\(requested\sversion\s(.+\))\swith\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$"#, |m| {
+                let package = m.get(1).unwrap().as_str().to_string();
+                let versions = m.get(2).unwrap().as_str().to_string();
+                let _names = m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect::<Vec<_>>();
+                Ok(Some(Box::new(MissingCMakeConfig {
+                    name: package,
+                    version: Some(versions),
+                })))
+            }
+        ),
+        regex_para_matcher!(
+            r#"No CMAKE_(.*)_COMPILER could be found.\n\nTell CMake where to find the compiler by setting either\sthe\senvironment\svariable\s"(.*)"\sor\sthe\sCMake\scache\sentry\sCMAKE_(.*)_COMPILER\sto\sthe\sfull\spath\sto\sthe\scompiler,\sor\sto\sthe\scompiler\sname\sif\sit\sis\sin\sthe\sPATH.\n"#,
+            |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_lowercase()))))
+        ),
+        regex_para_matcher!(r#"file INSTALL cannot find\s"(.*)".\n"#, |m| Ok(Some(Box::new(MissingFile::new(m.get(1).unwrap().as_str().into()))))),
+        regex_para_matcher!(
+            r#"file INSTALL cannot copy file\n"(.*)"\sto\s"(.*)":\sNo space left on device.\n"#,
+            |_m| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+        regex_para_matcher!(
+            r"patch: \*\*\*\* write error : No space left on device", |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+        regex_para_matcher!(
+            r".*\(No space left on device\)", |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+        regex_para_matcher!(r#"file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n"#),
+        regex_para_matcher!(
+            r#"Missing (.*)\.  Either your\nlib(.*) version is too old, or lib(.*) wasn\'t found in the place you\nsaid."#,
+            |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+        ),
+        regex_para_matcher!(
+            r"need (.*) of version (.*)",
+            |m| Ok(Some(Box::new(MissingVagueDependency{
+                name: m.get(1).unwrap().as_str().to_string(),
+                minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+                url: None,
+                current_version: None
+            })))
+        ),
+        regex_para_matcher!(
+            r"\*\*\* (.*) is required to build (.*)\n",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(r"\[([^ ]+)\] not found", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(r"([^ ]+) not found", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(r"error: could not find git .*", |_m| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+        regex_para_matcher!(
+            r"Could not find \'(.*)\' executable[\!,].*",
+            |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        ),
+        regex_para_matcher!(
+            r"Could not find (.*)_STATIC_LIBRARIES using the following names: ([a-zA-z0-9_.]+)",
+            |m| Ok(Some(Box::new(MissingStaticLibrary{
+                library: m.get(1).unwrap().as_str().to_string(),
+                filename: m.get(2).unwrap().as_str().to_string()})))
+        ),
+        regex_para_matcher!(
+            "include could not find (requested|load) file:\n\n  (.*)\n",
+            |m| {
+                let mut path = m.get(2).unwrap().as_str().to_string();
+                if !path.ends_with(".cmake") {
+                    path += ".cmake";
+                }
+                Ok(Some(Box::new(CMakeFilesMissing{filenames:vec![path], version: None })))
+            }
+        ),
+        regex_para_matcher!(r"(.*) and (.*) are required", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(
+            r"Please check your (.*) installation",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(r"Python module (.*) not found\!", |m| Ok(Some(Box::new(MissingPythonModule::simple(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(r"\s*could not find ([^\s]+)$", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(
+            r"Please install (.*) before installing (.*)\.",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"Please get (.*) from (www\..*)",
+            |m| Ok(Some(Box::new(MissingVagueDependency {
+                name: m.get(1).unwrap().as_str().to_string(),
+                url: Some(m.get(2).unwrap().as_str().to_string()),
+                minimum_version: None,
+                current_version: None
+            })))
+        ),
+        regex_para_matcher!(
+            r#"Found unsuitable Qt version "" from NOTFOUND, this code requires Qt 4.x"#,
+            |_| Ok(Some(Box::new(MissingQt)))
+        ),
+        regex_para_matcher!(
+            r"(.*) executable not found\! Please install (.*)\.",
+            |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        ),
+        regex_para_matcher!(r"(.*) tool not found", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(
+            r"--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)",
+            |m| Ok(Some(Box::new(MissingPkgConfig{
+                module: m.get(1).unwrap().as_str().to_string(),
+                minimum_version: Some(m.get(2).unwrap().as_str().to_string())
+            })))
+        ),
+        regex_para_matcher!(r"--   No package \'(.*)\' found", |m| Ok(Some(Box::new(MissingPkgConfig{minimum_version: None, module: m.get(1).unwrap().as_str().to_string()})))),
+        regex_para_matcher!(r"([^ ]+) library not found\.", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(
+            r"Please install (.*) so that it is on the PATH and try again\.",
+            command_missing
+        ),
+        regex_para_matcher!(
+            r"-- Unable to find git\.  Setting git revision to \'unknown\'\.",
+            |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+        ),
+        regex_para_matcher!(
+            r"(.*) must be installed before configuration \& building can proceed",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"(.*) development files not found\.",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r".* but no (.*) dev libraries found",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"Failed to find (.*) \(missing: .*\)",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"Couldn\'t find ([^ ]+) development files\..*",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"Could not find required (.*) package\!",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"Cannot find (.*), giving up\. .*",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"Cannot find (.*)\. (.*) is required for (.*)",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"The development\sfiles\sfor\s(.*)\sare\srequired\sto\sbuild (.*)\.",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"Required library (.*) not found\.",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"(.*) required to compile (.*)",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"(.*) requires (.*) ([0-9].*) or newer. See (https://.*)\s*",
+            |m| Ok(Some(Box::new(MissingVagueDependency {
+                name: m.get(2).unwrap().as_str().to_string(),
+                minimum_version: Some(m.get(3).unwrap().as_str().to_string()),
+                url: Some(m.get(4).unwrap().as_str().to_string()),
+                current_version: None
+            })))
+        ),
+        regex_para_matcher!(
+            r"(.*) requires (.*) ([0-9].*) or newer.\s*",
+            |m| Ok(Some(Box::new(MissingVagueDependency{
+                name: m.get(2).unwrap().as_str().to_string(),
+                minimum_version: Some(m.get(3).unwrap().as_str().to_string()),
+                url: None,
+                current_version: None
+            })))
+        ),
+        regex_para_matcher!(r"(.*) requires (.*) to build", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(2).unwrap().as_str()))))),
+        regex_para_matcher!(r"(.*) library missing", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(r"(.*) requires (.*)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(2).unwrap().as_str()))))),
+        regex_para_matcher!(r"Could not find ([A-Za-z-]+)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(r"(.+) is required for (.*)\.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(
+            r"No (.+) version could be found in your system\.",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(
+            r"([^ ]+) >= (.*) is required",
+            |m| Ok(Some(Box::new(MissingVagueDependency {
+                name: m.get(1).unwrap().as_str().to_string(),
+                minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+                current_version: None,
+                url: None
+            })))
+        ),
+        regex_para_matcher!(r"\s*([^ ]+) is required", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(r"([^ ]+) binary not found\!", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(r"error: could not find git for clone of .*", |_m| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+        regex_para_matcher!(r"Did not find ([^\s]+)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+        regex_para_matcher!(
+            r"Could not find the ([^ ]+) external dependency\.",
+            |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+        ),
+        regex_para_matcher!(r"Couldn\'t find (.*)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    ]);
+}
+
+#[derive(Debug, Clone)]
+struct CMakeErrorMatcher;
+
+// Function to extract error lines and corresponding line numbers
+fn extract_cmake_error_lines<'a>(lines: &'a [&'a str], i: usize) -> (Vec<usize>, String) {
+    let mut linenos = vec![i];
+    let mut error_lines = vec![];
+
+    // Iterate over the lines starting from index i + 1
+    for (j, line) in lines.iter().enumerate().skip(i + 1) {
+        let trimmed = line.trim_end_matches('\n');
+        if !trimmed.is_empty() && !line.starts_with(' ') {
+            break;
+        }
+        error_lines.push(*line);
+        linenos.push(j);
+    }
+
+    // Remove trailing empty lines from error_lines and linenos
+    while let Some(last_line) = error_lines.last() {
+        if last_line.trim_end_matches('\n').is_empty() {
+            error_lines.pop();
+            linenos.pop();
+        } else {
+            break;
+        }
+    }
+
+    // Dedent the error_lines using textwrap::dedent
+    let dedented_string = textwrap::dedent(&error_lines.join(""));
+    (linenos, dedented_string)
+}
+
+impl Matcher for CMakeErrorMatcher {
+    fn extract_from_lines(
+        &self,
+        lines: &[&str],
+        offset: usize,
+    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+        let (_path, _start_linenos) = if let Some((_, _, path, start_lineno, _)) = lazy_regex::regex_captures!(
+            r"CMake (Error|Warning) at (.+):([0-9]+) \((.*)\):",
+            lines[offset].trim_end_matches('\n')
+        ) {
+            (path, start_lineno.parse::<usize>().unwrap())
+        } else {
+            return Ok(None);
+        };
+
+        let (mut linenos, error_string) = extract_cmake_error_lines(lines, offset);
+
+        let mut actual_lines: Vec<_> = vec![];
+        for lineno in &linenos {
+            actual_lines.push(lines[*lineno].to_string());
+        }
+
+        let r#match = Box::new(MultiLineMatch::new(
+            Origin("CMake".to_string()),
+            linenos,
+            actual_lines,
+        ));
+
+        if let Some((_match, problem)) =
+            CMAKE_ERROR_MATCHERS.extract_from_lines(&[&error_string], 0)?
+        {
+            Ok(Some((r#match, problem)))
+        } else {
+            Ok(Some((r#match, None)))
+        }
+    }
 }
 
 pub fn match_lines(
