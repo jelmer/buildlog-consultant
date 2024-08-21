@@ -103,6 +103,14 @@ impl Problem for VcsControlDirectoryNeeded {
     }
 }
 
+impl VcsControlDirectoryNeeded {
+    pub fn new(vcs: Vec<&str>) -> Self {
+        Self {
+            vcs: vcs.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MissingPythonModule {
     pub module: String,
@@ -391,9 +399,9 @@ pub struct MissingRPackage {
 }
 
 impl MissingRPackage {
-    pub fn simple(package: String) -> Self {
+    pub fn simple(package: &str) -> Self {
         Self {
-            package,
+            package: package.to_string(),
             minimum_version: None,
         }
     }
@@ -2434,5 +2442,158 @@ impl Problem for MissingXDisplay {
 impl std::fmt::Display for MissingXDisplay {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "No X Display")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingFontspec(pub String);
+
+impl Problem for MissingFontspec {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-fontspec".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "fontspec": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingFontspec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing font spec: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct InactiveKilled(pub i64);
+
+impl Problem for InactiveKilled {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "inactive-killed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "minutes": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for InactiveKilled {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Killed due to inactivity after {} minutes", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingPauseCredentials;
+
+impl Problem for MissingPauseCredentials {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-pause-credentials".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl std::fmt::Display for MissingPauseCredentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing credentials for PAUSE")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MismatchGettextVersions {
+    pub makefile_version: String,
+    pub autoconf_version: String,
+}
+
+impl Problem for MismatchGettextVersions {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "mismatch-gettext-versions".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "makefile_version": self.makefile_version,
+            "autoconf_version": self.autoconf_version
+        })
+    }
+}
+
+impl std::fmt::Display for MismatchGettextVersions {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Mismatch versions ({}, {})",
+            self.makefile_version, self.autoconf_version
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct InvalidCurrentUser(pub String);
+
+impl Problem for InvalidCurrentUser {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "invalid-current-user".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "user": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for InvalidCurrentUser {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Can not run as {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingGnulibDirectory(pub PathBuf);
+
+impl Problem for MissingGnulibDirectory {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-gnulib-directory".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "directory": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingGnulibDirectory {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing gnulib directory: {}", self.0.display())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingLuaModule(pub String);
+
+impl Problem for MissingLuaModule {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-lua-module".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "module": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for MissingLuaModule {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Lua Module: {}", self.0)
     }
 }

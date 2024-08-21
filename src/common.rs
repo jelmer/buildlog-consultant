@@ -345,9 +345,9 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
 lazy_static::lazy_static! {
     static ref VIGNETTE_LINE_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
         regex_line_matcher!(r"^([^ ]+) is not available", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
-        regex_line_matcher!(r"^The package `(.*)` is required\.", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str().to_string()))))),
-        regex_line_matcher!(r"^Package '(.*)' required.*", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str().to_string()))))),
-        regex_line_matcher!(r"^The '(.*)' package must be installed.*", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(r"^The package `(.*)` is required\.", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str()))))),
+        regex_line_matcher!(r"^Package '(.*)' required.*", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str()))))),
+        regex_line_matcher!(r"^The '(.*)' package must be installed.*", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str()))))),
     ]);
 }
 
@@ -443,7 +443,7 @@ fn r_missing_package(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Er
                 .to_string()
         })
         .collect::<Vec<_>>();
-    Ok(Some(Box::new(MissingRPackage::simple(deps[0].clone()))))
+    Ok(Some(Box::new(MissingRPackage::simple(&deps[0]))))
 }
 
 fn webpack_file_missing(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
@@ -1886,7 +1886,7 @@ lazy_static::lazy_static! {
         r#"String found where operator expected at Makefile.PL line ([0-9]+), near "([a-z0-9_]+).*""#,
         |m| Ok(Some(Box::new(MissingPerlPredeclared(m.get(2).unwrap().as_str().to_string()))))
     ),
-    regex_line_matcher!(r"  vignette builder 'knitr' not found", |_| Ok(Some(Box::new(MissingRPackage::simple("knitr".to_string()))))),
+    regex_line_matcher!(r"  vignette builder 'knitr' not found", |_| Ok(Some(Box::new(MissingRPackage::simple("knitr"))))),
     regex_line_matcher!(
         r"fatal: unable to auto-detect email address \(got \'.*\'\)",
         |_m| Ok(Some(Box::new(MissingGitIdentity)))
@@ -1960,7 +1960,129 @@ lazy_static::lazy_static! {
     regex_line_matcher!(
         r"\! LaTeX Error: File `(.*)\' not found\.",
         |m| Ok(Some(Box::new(MissingLatexFile(m.get(1).unwrap().as_str().to_string()))))
-    )
+    ),
+    regex_line_matcher!(
+        r#"(\!|.*:[0-9]+:) Package fontspec Error: The font \"(.*)\" cannot be found\."#,
+        |m| Ok(Some(Box::new(MissingFontspec(m.get(2).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"  vignette builder \'(.*)\' not found", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(
+        r"Error: package [‘'](.*)[’'] (.*) was found, but >= (.*) is required by [‘'](.*)[’']",
+        |m| Ok(Some(Box::new(MissingRPackage {
+            package: m.get(1).unwrap().as_str().to_string(),
+            minimum_version: Some(m.get(3).unwrap().as_str().to_string()),
+        })))
+    ),
+    regex_line_matcher!(r"\s*there is no package called \'(.*)\'", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(
+        r"Error in .*: there is no package called ‘(.*)’",
+        |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"Exception: cannot execute command due to missing interpreter: (.*)",
+        command_missing
+    ),
+    regex_line_matcher!(
+        r"E: Build killed with signal TERM after ([0-9]+) minutes of inactivity",
+        |m| Ok(Some(Box::new(InactiveKilled(m.get(1).unwrap().as_str().parse().unwrap()))))
+    ),
+    regex_line_matcher!(
+        r#"\[.*Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! Please set it or specify an authority for this plugin. at inline delegation in Dist::Zilla::Plugin::Authority for logger->log_fatal \(attribute declared in /usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\."#, |_m| Ok(Some(Box::new(MissingPauseCredentials)))
+    ),
+    regex_line_matcher!(
+        r"npm ERR\! ERROR: \[Errno 2\] No such file or directory: \'(.*)\'",
+        file_not_found
+    ),
+    regex_line_matcher!(
+        r"\*\*\* error: gettext infrastructure mismatch: using a Makefile\.in\.in from gettext version ([0-9.]+) but the autoconf macros are from gettext version ([0-9.]+)",
+        |m| Ok(Some(Box::new(MismatchGettextVersions{
+            makefile_version: m.get(1).unwrap().as_str().to_string(),
+            autoconf_version: m.get(2).unwrap().as_str().to_string(),
+        })))
+    ),
+    regex_line_matcher!(
+        r"You need to install the (.*) package to use this program\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(r"You need to install (.*)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(
+        r"configure: error: You don't seem to have the (.*) library installed\..*",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"configure: error: You need (.*) installed",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"open3: exec of cme (.*) failed: No such file or directory at .*/Dist/Zilla/Plugin/Run/Role/Runner.pm line [0-9]+\.",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(&format!("App::Cme::Command::{}", m.get(1).unwrap().as_str())))))
+    ),
+    regex_line_matcher!(
+        r"pg_ctl: cannot be run as (.*)",
+        |m| Ok(Some(Box::new(InvalidCurrentUser(m.get(1).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(
+        r"([^ ]+) \(for section ([^ ]+)\) does not appear to be installed",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"(.*) version (.*) required--this is only version (.*) at .*\.pm line [0-9]+\.",
+        |m| Ok(Some(Box::new(MissingPerlModule {
+            module: m.get(1).unwrap().as_str().to_string(),
+            minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+            inc: None,
+            filename: None,
+        })))
+    ),
+    regex_line_matcher!(
+        r"Bailout called\.  Further testing stopped:  YOU ARE MISSING REQUIRED MODULES: \[ ([^,]+)(.*) \]:",
+        |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r#"CMake Error: CMake was unable to find a build program corresponding to "(.*)".  CMAKE_MAKE_PROGRAM is not set\.  You probably need to select a different build tool\."#,
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"Dist currently only works with Git or Mercurial repos",
+        |m| Ok(Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git", "hg"]))))
+    ),
+    regex_line_matcher!(
+        r"GitHubMeta: need a .git\/config file, and you don\'t have one",
+        |m| Ok(Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))))
+    ),
+    regex_line_matcher!(
+        r"Exception: Versioning for this project requires either an sdist tarball, or access to an upstream git repository\. It's also possible that there is a mismatch between the package name in setup.cfg and the argument given to pbr\.version\.VersionInfo\. Project name .* was given, but was not able to be found\.",
+        |m| Ok(Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))))
+    ),
+    regex_line_matcher!(
+        r"configure: error: no suitable Python interpreter found",
+        |m| Ok(Some(Box::new(MissingCommand("python".to_string()))))
+    ),
+    regex_line_matcher!(r#"Could not find external command "(.*)""#, |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(
+        r"  Failed to find (.*) development headers\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
+    ),
+    regex_line_matcher!(
+        r"\*\*\* \Subdirectory \'(.*)\' does not yet exist. Use \'./gitsub.sh pull\' to create it, or set the environment variable GNULIB_SRCDIR\.",
+        |m| Ok(Some(Box::new(MissingGnulibDirectory(m.get(1).unwrap().as_str().into()))))
+    ),
+    regex_line_matcher!(
+        r"configure: error: Cap\'n Proto compiler \(capnp\) not found.",
+        |m| Ok(Some(Box::new(MissingCommand("capnp".to_string()))))
+    ),
+    regex_line_matcher!(
+        r"lua: (.*):(\d+): module \'(.*)\' not found:",
+        |m| Ok(Some(Box::new(MissingLuaModule(m.get(3).unwrap().as_str().to_string()))))
+    ),
+    regex_line_matcher!(r"Unknown key\(s\) in sphinx_gallery_conf:"),
+    regex_line_matcher!(r"(.+\.gir):In (.*): error: (.*)"),
+    regex_line_matcher!(r"(.+\.gir):[0-9]+\.[0-9]+-[0-9]+\.[0-9]+: error: (.*)"),
+    regex_line_matcher!(r"psql:.*\.sql:[0-9]+: ERROR:  (.*)"),
+    regex_line_matcher!(r"intltoolize: \'(.*)\' is out of date: use \'--force\' to overwrite"),
+    regex_line_matcher!(
+        r"E: pybuild pybuild:[0-9]+: cannot detect build system, please use --system option or set PYBUILD_SYSTEM env\. variable"
+    ),
     ]);
 }
 
