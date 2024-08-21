@@ -17,9 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import logging
-import posixpath
 import re
-import textwrap
 from typing import Optional, cast
 
 from . import (
@@ -171,38 +169,6 @@ class MissingBuildFile(Problem, kind="missing-build-file"):
     def __str__(self) -> str:
         return f"Missing build file: {self.filename}"
 
-
-def file_not_found(m):
-    if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
-        return MissingFile(m.group(1))
-    elif m.group(1).startswith("/<<PKGBUILDDIR>>/"):
-        return MissingBuildFile(m.group(1)[len("/<<PKGBUILDDIR>>/") :])
-    if m.group(1) == ".git/HEAD":
-        return VcsControlDirectoryNeeded(["git"])
-    if m.group(1) == "CVS/Root":
-        return VcsControlDirectoryNeeded(["cvs"])
-    if "/" not in m.group(1):
-        # Maybe a missing command?
-        return MissingBuildFile(m.group(1))
-    return None
-
-
-def file_not_found_maybe_executable(m):
-    if m.group(1).startswith("/") and not m.group(1).startswith("/<<PKGBUILDDIR>>"):
-        return MissingFile(m.group(1))
-    if "/" not in m.group(1):
-        # Maybe a missing command?
-        return MissingCommandOrBuildFile(m.group(1))
-    return None
-
-
-def webpack_file_missing(m):
-    path = posixpath.join(m.group(2), m.group(1))
-    if path.startswith("/") and not path.startswith("/<<PKGBUILDDIR>>"):
-        return MissingFile(path)
-    return None
-
-
 class MissingJDKFile(Problem, kind="missing-jdk-file"):
     jdk_path: str
     filename: str
@@ -221,16 +187,6 @@ class MissingJDK(Problem, kind="missing-jdk"):
 class MissingJRE(Problem, kind="missing-jre"):
     def __str__(self) -> str:
         return "Missing JRE"
-
-
-def interpreter_missing(m):
-    if m.group(1).startswith("/"):
-        if m.group(1).startswith("/<<PKGBUILDDIR>>"):
-            return None
-        return MissingFile(m.group(1))
-    if "/" in m.group(1):
-        return None
-    return MissingCommand(m.group(1))
 
 
 class ChrootNotFound(Problem, kind="chroot-not-found"):
@@ -276,14 +232,6 @@ class MissingNodePackage(Problem, kind="missing-node-package"):
         return f"Missing Node Package: {self.package}"
 
 
-def node_module_missing(m):
-    if m.group(1).startswith("/<<PKGBUILDDIR>>/"):
-        return None
-    if m.group(1).startswith("./"):
-        return None
-    return MissingNodeModule(m.group(1))
-
-
 class MissingCommand(Problem, kind="command-missing"):
     command: str
 
@@ -314,19 +262,6 @@ class MissingVcVersionerVersion(Problem, kind="no-vcversioner-version"):
 class MissingConfigure(Problem, kind="missing-configure"):
     def __str__(self) -> str:
         return "Missing configure script"
-
-
-def command_missing(m):
-    command = m.group(1)
-    if "PKGBUILDDIR" in command:
-        return None
-    if command == "./configure":
-        return MissingConfigure()
-    if command.startswith("./") or command.startswith("../"):
-        return None
-    if command == "debian/rules":
-        return None
-    return MissingCommand(command)
 
 
 class MissingJavaScriptRuntime(Problem, kind="javascript-runtime-missing"):
@@ -367,17 +302,6 @@ class MissingPkgConfig(Problem, kind="missing-pkg-config-package"):
 class MissingGoRuntime(Problem, kind="missing-go-runtime"):
     def __str__(self) -> str:
         return "go runtime is missing"
-
-
-def pkg_config_missing(m):
-    expr = m.group(1).strip().split("\t")[0]
-    if ">=" in expr:
-        pkg, minimum = expr.split(">=", 1)
-        return MissingPkgConfig(pkg.strip(), minimum.strip())
-    if " " not in expr:
-        return MissingPkgConfig(expr)
-    # Hmm
-    return None
 
 
 class MissingCMakeComponents(Problem, kind="missing-cmake-components"):
@@ -597,12 +521,6 @@ class MissingRPackage(Problem, kind="missing-r-package"):
             return f"missing R package: {self.package}"
 
 
-def r_missing_package(m):
-    fragment = m.group(1)
-    deps = [dep.strip("‘’' ") for dep in fragment.split(",")]
-    return MissingRPackage(deps[0])
-
-
 class DebhelperPatternNotFound(Problem, kind="debhelper-pattern-not-found"):
     pattern: str
     tool: str
@@ -774,35 +692,6 @@ class MissingSetupPyCommand(Problem, kind="missing-setup.py-command"):
         return f"missing setup.py subcommand: {self.command}"
 
 
-class PythonFileNotFoundErrorMatcher(Matcher):
-    final_line_re = re.compile(
-        r"^(?:E  +)?FileNotFoundError: \[Errno 2\] "
-        r"No such file or directory: \'(.*)\'"
-    )
-
-    def match(self, lines, i):
-        m = self.final_line_re.fullmatch(lines[i].rstrip("\n"))
-        if not m:
-            return [], None, None
-        if i - 2 >= 0 and "subprocess" in lines[i - 2]:
-            return [i], MissingCommand(
-                m.group(1)
-            ), f"direct regex ({self.final_line_re.pattern})"
-        return [i], file_not_found_maybe_executable(m), None
-
-
-def cmake_compiler_failure(m):
-    compiler_output = textwrap.dedent(m.group(3))
-    match, error = find_build_failure_description(compiler_output.splitlines(True))
-    return error
-
-
-def cmake_compiler_missing(m):
-    if m.group(1) == "Fortran":
-        return MissingFortranCompiler()
-    return None
-
-
 class CMakeNeedExactVersion(Problem, kind="cmake-exact-version-missing"):
     package: str
     version_found: str
@@ -877,15 +766,6 @@ class MissingCargoCrate(Problem, kind="missing-cargo-crate"):
             return f"Missing crate: {self.crate} ({self.requirement})"
         else:
             return f"Missing crate: {self.crate}"
-
-
-def cargo_missing_requirement(m):
-    try:
-        crate, requirement = m.group(1).split(" ", 1)
-    except ValueError:
-        crate = m.group(1)
-        requirement = None
-    return MissingCargoCrate(crate, requirement)
 
 
 class MissingLatexFile(Problem, kind="missing-latex-file"):
