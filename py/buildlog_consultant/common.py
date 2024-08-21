@@ -25,8 +25,7 @@ from . import (
     Problem,
     SingleLineMatch,
     _buildlog_consultant_rs,  # type: ignore
-    version_string,
-)
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -979,76 +978,3 @@ def find_build_failure_description(  # noqa: C901
         return cast(Match, match), None
 
     return None, None
-
-
-def as_json(m, problem):
-    ret = {}
-    if m:
-        ret["lineno"] = m.lineno
-        ret["line"] = m.line
-        ret["origin"] = m.origin
-    if problem:
-        ret["problem"] = problem.kind
-        try:
-            ret["details"] = problem.json()
-        except NotImplementedError:
-            ret["details"] = None
-    return ret
-
-
-def main(argv=None):
-    import argparse
-    import json
-
-    parser = argparse.ArgumentParser("analyse-build-log")
-    parser.add_argument("path", type=str, default="-", nargs="?")
-    parser.add_argument("--context", "-c", type=int, default=5)
-    parser.add_argument("--json", action="store_true", help="Output JSON.")
-    parser.add_argument("--debug", action="store_true")
-    parser.add_argument(
-        "--version", action="version", version="%(prog)s " + version_string
-    )
-    args = parser.parse_args(argv)
-
-    if args.debug:
-        loglevel = logging.DEBUG
-    else:
-        loglevel = logging.INFO
-
-    logging.basicConfig(level=loglevel, format="%(message)s")
-
-    if args.path == "-":
-        args.path = "/dev/stdin"
-
-    with open(args.path) as f:
-        lines = list(f.readlines())
-
-    m, problem = find_build_failure_description(lines)
-
-    if args.json:
-        ret = as_json(m, problem)
-        json.dump(ret, sys.stdout, indent=4)
-    else:
-        if not m:
-            logging.info("No issues found")
-        else:
-            if len(m.linenos) == 1:
-                logging.info("Issue found at line %d:", m.lineno)
-            else:
-                logging.info("Issue found at lines %d-%d:", m.linenos[0], m.linenos[-1])
-            for i in range(
-                max(0, m.offsets[0] - args.context),
-                min(len(lines), m.offsets[-1] + args.context + 1),
-            ):
-                logging.info(
-                    " %s  %s", ">" if i in m.offsets else " ", lines[i].rstrip("\n")
-                )
-
-        if problem:
-            logging.info("Identified issue: %s: %s", problem.kind, problem)
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.exit(main(sys.argv[1:]))

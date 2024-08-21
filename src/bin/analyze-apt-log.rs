@@ -23,21 +23,21 @@ fn main() {
 
     let log = std::fs::read_to_string(&args.path).expect("Failed to read log file");
 
-    let lines = log.split('\n').collect::<Vec<_>>();
+    let lines = log.split_inclusive('\n').collect::<Vec<_>>();
 
-    let (r#match, error) = buildlog_consultant::apt::find_apt_get_failure(lines);
+    let (r#match, error) = buildlog_consultant::apt::find_apt_get_failure(lines.clone());
 
     if let Some(error) = error.as_ref() {
         log::info!("Error: {}", error);
     }
 
     if let Some(r#match) = r#match {
-        log::info!("Failed line: {}", r#match.lineno);
+        log::info!("Failed line: {}", r#match.lineno());
 
-        for i in max(0, r#match.offset - args.context)..min(lines.len(), r#match.offset + args.context + 1) {
+        for i in max(0, r#match.offset() - args.context)..min(lines.len(), r#match.offset() + args.context + 1) {
             log::info!(
                 "{} {}",
-                if r#match.offset == i { ">" } else { " " },
+                if r#match.offset() == i { ">" } else { " " },
                 lines[i].trim_end_matches('\n')
             );
         }

@@ -23,6 +23,14 @@ pub trait Match: Send + Sync + std::fmt::Debug {
         self.offset() + 1
     }
 
+    fn linenos(&self) -> Vec<usize> {
+        self.offsets().iter().map(|&x| x + 1).collect()
+    }
+
+    fn offsets(&self) -> Vec<usize>;
+
+    fn lines(&self) -> Vec<String>;
+
     fn add_offset(&self, offset: usize) -> Box<dyn Match>;
 }
 
@@ -53,6 +61,14 @@ impl Match for SingleLineMatch {
 
     fn offset(&self) -> usize {
         self.offset
+    }
+
+    fn offsets(&self) -> Vec<usize> {
+        vec![self.offset]
+    }
+
+    fn lines(&self) -> Vec<String> {
+        vec![self.line.clone()]
     }
 
     fn add_offset(&self, offset: usize) -> Box<dyn Match> {
@@ -138,6 +154,14 @@ impl Match for MultiLineMatch {
         self.offset() + 1
     }
 
+    fn offsets(&self) -> Vec<usize> {
+        self.offsets.clone()
+    }
+
+    fn lines(&self) -> Vec<String> {
+        self.lines.clone()
+    }
+
     fn add_offset(&self, extra: usize) -> Box<dyn Match> {
         let offsets = self.offsets.iter().map(|&offset| offset + extra).collect();
         Box::new(Self {
@@ -168,6 +192,15 @@ impl PartialEq for dyn Problem {
 
 impl Eq for dyn Problem {}
 
+impl serde::Serialize for dyn Problem {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serde_json::Map::new();
+        map.insert("kind".to_string(), serde_json::Value::String(self.kind().to_string()));
+        map.insert("details".to_string(), self.json());
+        map.serialize(serializer)
+    }
+}
+
 impl std::hash::Hash for dyn Problem {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.kind().hash(state);
@@ -197,6 +230,20 @@ impl Match for PyMatch {
         Python::with_gil(|py| {
             let offset = self.0.getattr(py, "offset").unwrap();
             offset.extract::<usize>(py).unwrap()
+        })
+    }
+
+    fn offsets(&self) -> Vec<usize> {
+        Python::with_gil(|py| {
+            let offsets = self.0.getattr(py, "offsets").unwrap();
+            offsets.extract::<Vec<usize>>(py).unwrap()
+        })
+    }
+
+    fn lines(&self) -> Vec<String> {
+        Python::with_gil(|py| {
+            let lines = self.0.getattr(py, "lines").unwrap();
+            lines.extract::<Vec<String>>(py).unwrap()
         })
     }
 
