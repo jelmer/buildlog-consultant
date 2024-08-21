@@ -1,9 +1,9 @@
 use crate::Problem;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::path::PathBuf;
-use pyo3::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingFile {
@@ -795,7 +795,6 @@ impl Display for MissingHaskellDependencies {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct NoSpaceOnDevice;
 
@@ -934,4 +933,1217 @@ impl Display for MissingPerlFile {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct MissingPerlModule {
+    pub filename: Option<String>,
+    pub module: String,
+    pub inc: Option<Vec<String>>,
+    pub minimum_version: Option<String>,
+}
 
+impl Problem for MissingPerlModule {
+    fn kind(&self) -> Cow<str> {
+        "missing-perl-module".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.filename,
+            "module": self.module,
+            "inc": self.inc,
+            "minimum_version": self.minimum_version,
+        })
+    }
+}
+
+impl Display for MissingPerlModule {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(filename) = &self.filename {
+            write!(
+                f,
+                "Missing Perl module: {} (from {})",
+                self.module, filename
+            )?;
+        } else {
+            write!(f, "Missing Perl module: {}", self.module)?;
+        }
+        if let Some(minimum_version) = &self.minimum_version {
+            write!(f, " >= {}", minimum_version)?;
+        }
+        if let Some(inc) = &self.inc {
+            write!(f, " (INC: {})", inc.join(", "))?;
+        }
+        Ok(())
+    }
+}
+
+impl MissingPerlModule {
+    pub fn simple(module: &str) -> Self {
+        Self {
+            filename: None,
+            module: module.to_string(),
+            inc: None,
+            minimum_version: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingSetupPyCommand(pub String);
+
+impl Problem for MissingSetupPyCommand {
+    fn kind(&self) -> Cow<str> {
+        "missing-setup.py-command".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.0,
+        })
+    }
+}
+
+impl Display for MissingSetupPyCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing setup.py command: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingCSharpCompiler;
+
+impl Problem for MissingCSharpCompiler {
+    fn kind(&self) -> Cow<str> {
+        "missing-c#-compiler".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingCSharpCompiler {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing C# compiler")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingRustCompiler;
+
+impl Problem for MissingRustCompiler {
+    fn kind(&self) -> Cow<str> {
+        "missing-rust-compiler".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingRustCompiler {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Rust compiler")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingAssembler;
+
+impl Problem for MissingAssembler {
+    fn kind(&self) -> Cow<str> {
+        "missing-assembler".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingAssembler {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing assembler")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingCargoCrate {
+    pub crate_name: String,
+    pub requirement: Option<String>,
+}
+
+impl Problem for MissingCargoCrate {
+    fn kind(&self) -> Cow<str> {
+        "missing-cargo-crate".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "crate": self.crate_name,
+            "requirement": self.requirement
+        })
+    }
+}
+
+impl MissingCargoCrate {
+    pub fn simple(crate_name: String) -> Self {
+        Self {
+            crate_name,
+            requirement: None,
+        }
+    }
+}
+
+impl Display for MissingCargoCrate {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(requirement) = self.requirement.as_ref() {
+            write!(
+                f,
+                "Missing Cargo crate {} (required by {})",
+                self.crate_name, requirement
+            )
+        } else {
+            write!(f, "Missing Cargo crate {}", self.crate_name)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DhWithOrderIncorrect;
+
+impl Problem for DhWithOrderIncorrect {
+    fn kind(&self) -> Cow<str> {
+        "debhelper-argument-order".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DhWithOrderIncorrect {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh argument order is incorrect")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UnsupportedDebhelperCompatLevel {
+    pub oldest_supported: u32,
+    pub requested: u32,
+}
+
+impl UnsupportedDebhelperCompatLevel {
+    pub fn new(oldest_supported: u32, requested: u32) -> Self {
+        Self {
+            oldest_supported,
+            requested,
+        }
+    }
+}
+
+impl Problem for UnsupportedDebhelperCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "unsupported-debhelper-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "oldest_supported": self.oldest_supported,
+            "requested": self.requested
+        })
+    }
+}
+
+impl Display for UnsupportedDebhelperCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Request debhlper compat level {} lower than supported {}",
+            self.requested, self.oldest_supported
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SetuptoolScmVersionIssue;
+
+impl Problem for SetuptoolScmVersionIssue {
+    fn kind(&self) -> Cow<str> {
+        "setuptools-scm-version-issue".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for SetuptoolScmVersionIssue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "setuptools_scm was unable to find version")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingMavenArtifacts(pub Vec<String>);
+
+impl Problem for MissingMavenArtifacts {
+    fn kind(&self) -> Cow<str> {
+        "missing-maven-artifacts".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "artifacts": self.0
+        })
+    }
+}
+
+impl Display for MissingMavenArtifacts {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing Maven artifacts: {}", self.0.join(", "))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NotExecutableFile(pub String);
+
+impl NotExecutableFile {
+    pub fn new(path: String) -> Self {
+        Self(path)
+    }
+}
+
+impl Problem for NotExecutableFile {
+    fn kind(&self) -> Cow<str> {
+        "not-executable-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0
+        })
+    }
+}
+
+impl Display for NotExecutableFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Command not executable: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DhMissingUninstalled(pub String);
+
+impl DhMissingUninstalled {
+    pub fn new(missing_file: String) -> Self {
+        Self(missing_file)
+    }
+}
+
+impl Problem for DhMissingUninstalled {
+    fn kind(&self) -> Cow<str> {
+        "dh-missing-uninstalled".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "missing_file": self.0
+        })
+    }
+}
+
+impl Display for DhMissingUninstalled {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh_missing file not installed: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DhLinkDestinationIsDirectory(pub String);
+
+impl DhLinkDestinationIsDirectory {
+    pub fn new(path: String) -> Self {
+        Self(path)
+    }
+}
+
+impl Problem for DhLinkDestinationIsDirectory {
+    fn kind(&self) -> Cow<str> {
+        "dh-link-destination-is-directory".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.0
+        })
+    }
+}
+
+impl Display for DhLinkDestinationIsDirectory {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Link destination {} is directory", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingXmlEntity {
+    pub url: String,
+}
+
+impl MissingXmlEntity {
+    pub fn new(url: String) -> Self {
+        Self { url }
+    }
+}
+
+impl Problem for MissingXmlEntity {
+    fn kind(&self) -> Cow<str> {
+        "missing-xml-entity".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "url": self.url
+        })
+    }
+}
+
+impl Display for MissingXmlEntity {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing XML entity: {}", self.url)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CcacheError(pub String);
+
+impl CcacheError {
+    pub fn new(error: String) -> Self {
+        Self(error)
+    }
+}
+
+impl Problem for CcacheError {
+    fn kind(&self) -> Cow<str> {
+        "ccache-error".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "error": self.0
+        })
+    }
+}
+
+impl Display for CcacheError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "ccache error: {}", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DebianVersionRejected {
+    pub version: String,
+}
+
+impl DebianVersionRejected {
+    pub fn new(version: String) -> Self {
+        Self { version }
+    }
+}
+
+impl Problem for DebianVersionRejected {
+    fn kind(&self) -> Cow<str> {
+        "debian-version-rejected".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "version": self.version
+        })
+    }
+}
+
+impl Display for DebianVersionRejected {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Debian Version Rejected; {}", self.version)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PatchApplicationFailed {
+    pub patchname: String,
+}
+
+impl PatchApplicationFailed {
+    pub fn new(patchname: String) -> Self {
+        Self { patchname }
+    }
+}
+
+impl Problem for PatchApplicationFailed {
+    fn kind(&self) -> Cow<str> {
+        "patch-application-failed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "patchname": self.patchname
+        })
+    }
+}
+
+impl Display for PatchApplicationFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Patch application failed: {}", self.patchname)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NeedPgBuildExtUpdateControl {
+    pub generated_path: String,
+    pub template_path: String,
+}
+
+impl NeedPgBuildExtUpdateControl {
+    pub fn new(generated_path: String, template_path: String) -> Self {
+        Self {
+            generated_path,
+            template_path,
+        }
+    }
+}
+
+impl Problem for NeedPgBuildExtUpdateControl {
+    fn kind(&self) -> Cow<str> {
+        "need-pg-buildext-updatecontrol".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "generated_path": self.generated_path,
+            "template_path": self.template_path
+        })
+    }
+}
+
+impl Display for NeedPgBuildExtUpdateControl {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Need to run 'pg_buildext updatecontrol' to update {}",
+            self.generated_path
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DhAddonLoadFailure {
+    pub name: String,
+    pub path: String,
+}
+
+impl DhAddonLoadFailure {
+    pub fn new(name: String, path: String) -> Self {
+        Self { name, path }
+    }
+}
+
+impl Problem for DhAddonLoadFailure {
+    fn kind(&self) -> Cow<str> {
+        "dh-addon-load-failure".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "path": self.path
+        })
+    }
+}
+
+impl Display for DhAddonLoadFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh addon loading failed: {}", self.name)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DhUntilUnsupported;
+
+impl DhUntilUnsupported {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for DhUntilUnsupported {
+    fn kind(&self) -> Cow<str> {
+        "dh-until-unsupported".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DhUntilUnsupported {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "dh --until is no longer supported")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DebhelperPatternNotFound {
+    pub pattern: String,
+    pub tool: String,
+    pub directories: Vec<String>,
+}
+
+impl DebhelperPatternNotFound {
+    pub fn new(pattern: String, tool: String, directories: Vec<String>) -> Self {
+        Self {
+            pattern,
+            tool,
+            directories,
+        }
+    }
+}
+
+impl Problem for DebhelperPatternNotFound {
+    fn kind(&self) -> Cow<str> {
+        "debhelper-pattern-not-found".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "pattern": self.pattern,
+            "tool": self.tool,
+            "directories": self.directories
+        })
+    }
+}
+
+impl Display for DebhelperPatternNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "debhelper ({}) expansion failed for {:?} (directories: {:?})",
+            self.tool, self.pattern, self.directories
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingPerlManifest;
+
+impl MissingPerlManifest {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingPerlManifest {
+    fn kind(&self) -> Cow<str> {
+        "missing-perl-manifest".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingPerlManifest {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing Perl MANIFEST")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ImageMagickDelegateMissing {
+    pub delegate: String,
+}
+
+impl ImageMagickDelegateMissing {
+    pub fn new(delegate: String) -> Self {
+        Self { delegate }
+    }
+}
+
+impl Problem for ImageMagickDelegateMissing {
+    fn kind(&self) -> Cow<str> {
+        "imagemagick-delegate-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "delegate": self.delegate
+        })
+    }
+}
+
+impl Display for ImageMagickDelegateMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Imagemagick missing delegate: {}", self.delegate)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Cancelled;
+
+impl Cancelled {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for Cancelled {
+    fn kind(&self) -> Cow<str> {
+        "cancelled".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for Cancelled {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Cancelled by runner or job manager")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DisappearedSymbols;
+
+impl DisappearedSymbols {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for DisappearedSymbols {
+    fn kind(&self) -> Cow<str> {
+        "disappeared-symbols".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for DisappearedSymbols {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Disappeared symbols")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DuplicateDHCompatLevel {
+    pub command: String,
+}
+
+impl DuplicateDHCompatLevel {
+    pub fn new(command: String) -> Self {
+        Self { command }
+    }
+}
+
+impl Problem for DuplicateDHCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "duplicate-dh-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.command
+        })
+    }
+}
+
+impl Display for DuplicateDHCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "DH Compat Level specified twice (command: {})",
+            self.command
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingDHCompatLevel {
+    pub command: String,
+}
+
+impl MissingDHCompatLevel {
+    pub fn new(command: String) -> Self {
+        Self { command }
+    }
+}
+
+impl Problem for MissingDHCompatLevel {
+    fn kind(&self) -> Cow<str> {
+        "missing-dh-compat-level".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "command": self.command
+        })
+    }
+}
+
+impl Display for MissingDHCompatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing DH Compat Level (command: {})", self.command)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingJVM;
+
+impl MissingJVM {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingJVM {
+    fn kind(&self) -> Cow<str> {
+        "missing-jvm".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingJVM {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing JVM")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingRubyGem {
+    gem: String,
+    version: Option<String>,
+}
+
+impl MissingRubyGem {
+    pub fn new(gem: String, version: Option<String>) -> Self {
+        Self { gem, version }
+    }
+
+    pub fn simple(gem: String) -> Self {
+        Self::new(gem, None)
+    }
+}
+
+impl Problem for MissingRubyGem {
+    fn kind(&self) -> Cow<str> {
+        "missing-ruby-gem".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "gem": self.gem,
+            "version": self.version
+        })
+    }
+}
+
+impl Display for MissingRubyGem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(version) = &self.version {
+            write!(f, "missing ruby gem: {} (>= {})", self.gem, version)
+        } else {
+            write!(f, "missing ruby gem: {}", self.gem)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingJavaScriptRuntime;
+
+impl MissingJavaScriptRuntime {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingJavaScriptRuntime {
+    fn kind(&self) -> Cow<str> {
+        "javascript-runtime-missing".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingJavaScriptRuntime {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Missing JavaScript Runtime")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingRubyFile {
+    pub filename: String,
+}
+
+impl MissingRubyFile {
+    pub fn new(filename: String) -> Self {
+        Self { filename }
+    }
+}
+
+impl Problem for MissingRubyFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-ruby-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filename": self.filename
+        })
+    }
+}
+
+impl Display for MissingRubyFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing ruby file: {}", self.filename)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingPhpClass {
+    pub php_class: String,
+}
+
+impl MissingPhpClass {
+    pub fn new(php_class: String) -> Self {
+        Self { php_class }
+    }
+
+    pub fn simple(php_class: String) -> Self {
+        Self::new(php_class)
+    }
+}
+
+impl Problem for MissingPhpClass {
+    fn kind(&self) -> Cow<str> {
+        "missing-php-class".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "php_class": self.php_class
+        })
+    }
+}
+
+impl Display for MissingPhpClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing PHP class: {}", self.php_class)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingJavaClass {
+    pub classname: String,
+}
+
+impl MissingJavaClass {
+    pub fn new(classname: String) -> Self {
+        Self { classname }
+    }
+
+    pub fn simple(classname: String) -> Self {
+        Self::new(classname)
+    }
+}
+
+impl Problem for MissingJavaClass {
+    fn kind(&self) -> Cow<str> {
+        "missing-java-class".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "classname": self.classname
+        })
+    }
+}
+
+impl Display for MissingJavaClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing Java class: {}", self.classname)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingSprocketsFile {
+    pub name: String,
+    pub content_type: String,
+}
+
+impl MissingSprocketsFile {
+    pub fn new(name: String, content_type: String) -> Self {
+        Self { name, content_type }
+    }
+}
+
+impl Problem for MissingSprocketsFile {
+    fn kind(&self) -> Cow<str> {
+        "missing-sprockets-file".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "content_type": self.content_type
+        })
+    }
+}
+
+impl Display for MissingSprocketsFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "missing sprockets file: {} (type: {})",
+            self.name, self.content_type
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingXfceDependency {
+    pub package: String,
+}
+
+impl MissingXfceDependency {
+    pub fn new(package: String) -> Self {
+        Self { package }
+    }
+}
+
+impl Problem for MissingXfceDependency {
+    fn kind(&self) -> Cow<str> {
+        "missing-xfce-dependency".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package
+        })
+    }
+}
+
+impl Display for MissingXfceDependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing XFCE build dependency: {}", self.package)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GnomeCommonMissing;
+
+impl Problem for GnomeCommonMissing {
+    fn kind(&self) -> Cow<str> {
+        "missing-gnome-common".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for GnomeCommonMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "gnome-common is not installed")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingConfigStatusInput {
+    pub path: String,
+}
+
+impl MissingConfigStatusInput {
+    pub fn new(path: String) -> Self {
+        Self { path }
+    }
+}
+
+impl Problem for MissingConfigStatusInput {
+    fn kind(&self) -> Cow<str> {
+        "missing-config.status-input".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.path
+        })
+    }
+}
+
+impl Display for MissingConfigStatusInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "missing config.status input {}", self.path)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingGnomeCommonDependency {
+    pub package: String,
+    pub minimum_version: Option<String>,
+}
+
+impl MissingGnomeCommonDependency {
+    pub fn new(package: String, minimum_version: Option<String>) -> Self {
+        Self {
+            package,
+            minimum_version,
+        }
+    }
+
+    pub fn simple(package: String) -> Self {
+        Self::new(package, None)
+    }
+}
+
+impl Problem for MissingGnomeCommonDependency {
+    fn kind(&self) -> Cow<str> {
+        "missing-gnome-common-dependency".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "minimum_version": self.minimum_version
+        })
+    }
+}
+
+impl Display for MissingGnomeCommonDependency {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "missing gnome-common dependency: {}: (>= {})",
+            self.package,
+            self.minimum_version.as_deref().unwrap_or("any")
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingAutomakeInput {
+    pub path: String,
+}
+
+impl MissingAutomakeInput {
+    pub fn new(path: String) -> Self {
+        Self { path }
+    }
+}
+
+impl Problem for MissingAutomakeInput {
+    fn kind(&self) -> Cow<str> {
+        "missing-automake-input".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "path": self.path
+        })
+    }
+}
+
+impl Display for MissingAutomakeInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "automake input file {} missing", self.path)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ChrootNotFound {
+    pub chroot: String,
+}
+
+impl ChrootNotFound {
+    pub fn new(chroot: String) -> Self {
+        Self { chroot }
+    }
+}
+
+impl Problem for ChrootNotFound {
+    fn kind(&self) -> Cow<str> {
+        "chroot-not-found".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "chroot": self.chroot
+        })
+    }
+}
+
+impl Display for ChrootNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "chroot not found: {}", self.chroot)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MissingLibtool;
+
+impl MissingLibtool {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Problem for MissingLibtool {
+    fn kind(&self) -> Cow<str> {
+        "missing-libtool".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl Display for MissingLibtool {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Libtool is missing")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CMakeFilesMissing {
+    pub filenames: Vec<String>,
+    pub version: Option<String>,
+}
+
+impl Problem for CMakeFilesMissing {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-cmake-files".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "filenames": self.filenames,
+            "version": self.version,
+        })
+    }
+}
+
+impl std::fmt::Display for CMakeFilesMissing {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "CMake files missing: {:?}", self.filenames)
+    }
+}

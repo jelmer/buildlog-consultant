@@ -3,19 +3,19 @@
 //! This module provides a parser for Debian sbuild logs. It extracts the different sections of the
 //! log file, and makes them accessible.
 
-use crate::common::{find_build_failure_description, PatchApplicationFailed};
-use crate::problems::common::NoSpaceOnDevice;
-use crate::problems::debian::*;
+use crate::common::find_build_failure_description;
 use crate::lines::Lines;
+use crate::problems::common::{NoSpaceOnDevice, PatchApplicationFailed};
+use crate::problems::debian::*;
 use crate::{Match, Problem, SingleLineMatch};
 use debversion::Version;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::iter::Iterator;
 use std::str::FromStr;
 use std::time::Duration;
-use std::collections::HashMap;
 
 pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
     for line in lines {
@@ -609,7 +609,10 @@ pub fn find_preamble_failure_description(
 
 pub const DEFAULT_LOOK_BACK: usize = 50;
 
-pub fn strip_build_tail<'a>(lines: &'a [&'a str], look_back: Option<usize>) -> (&'a [&'a str], HashMap<&'a str, &'a [&'a str]>) {
+pub fn strip_build_tail<'a>(
+    lines: &'a [&'a str],
+    look_back: Option<usize>,
+) -> (&'a [&'a str], HashMap<&'a str, &'a [&'a str]>) {
     let look_back = look_back.unwrap_or(DEFAULT_LOOK_BACK);
 
     let mut interesting_lines: &'a [&'a str] = lines;
@@ -619,9 +622,9 @@ pub fn strip_build_tail<'a>(lines: &'a [&'a str], look_back: Option<usize>) -> (
         if line.starts_with("Build finished at ") {
             interesting_lines = &lines[..i];
             if let Some(last_line) = interesting_lines.last() {
-                    if last_line == &("-".repeat(80)) {
-                        interesting_lines = &interesting_lines[..interesting_lines.len() - 1];
-                    }
+                if last_line == &("-".repeat(80)) {
+                    interesting_lines = &interesting_lines[..interesting_lines.len() - 1];
+                }
             }
             break;
         }
@@ -642,10 +645,10 @@ pub fn strip_build_tail<'a>(lines: &'a [&'a str], look_back: Option<usize>) -> (
             }
             current_file = Some(header);
             current_contents = &[];
-            start = i+1;
+            start = i + 1;
             continue;
         } else {
-            current_contents = &interesting_lines[start..i+1];
+            current_contents = &interesting_lines[start..i + 1];
         }
     }
     if let Some(current_file) = current_file {
@@ -656,8 +659,6 @@ pub fn strip_build_tail<'a>(lines: &'a [&'a str], look_back: Option<usize>) -> (
 
     (body, files)
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -708,7 +709,7 @@ mod tests {
 
     #[test]
     fn test_strip_build_tail() {
-         assert_eq!(
+        assert_eq!(
             strip_build_tail(
                 &[
                     "Build finished at 2023-09-16T16:47:58Z",
@@ -740,13 +741,15 @@ make: *** [debian/rules:13: binary] Error 25
 dpkg-buildpackage: error: debian/rules binary subprocess returned exit status 2
 "#.lines().collect::<Vec<_>>();
         assert_eq!(
-             strip_build_tail(include_str!("testdata/sbuild.meson.log")
-            .lines()
-            .collect::<Vec<_>>()
-            .as_slice(),
-            None
-        ),
-        (r#" --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu
+            strip_build_tail(
+                include_str!("testdata/sbuild.meson.log")
+                    .lines()
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+                None
+            ),
+            (
+                r#" --sysconfdir=/etc --localstatedir=/var --libdir=lib/x86_64-linux-gnu
 The Meson build system
 Version: 0.56.2
 Source dir: /<<PKGBUILDDIR>>
@@ -757,8 +760,14 @@ Build type: native build
 
 A full log can be found at /<<PKGBUILDDIR>>/obj-x86_64-linux-gnu/meson-logs/meson-log.txt
 cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
-"#.lines().collect::<Vec<_>>().as_slice(), maplit::hashmap!{
-        "meson-logs/meson-log.txt" => meson_log_lines.as_slice(),
-}));
+"#
+                .lines()
+                .collect::<Vec<_>>()
+                .as_slice(),
+                maplit::hashmap! {
+                        "meson-logs/meson-log.txt" => meson_log_lines.as_slice(),
+                }
+            )
+        );
     }
 }

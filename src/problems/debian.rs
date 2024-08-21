@@ -693,7 +693,7 @@ impl std::fmt::Display for MissingRevision {
 #[derive(Debug)]
 pub struct DebcargoUnacceptablePredicate {
     pub cratename: String,
-    pub predicate: String
+    pub predicate: String,
 }
 
 impl Problem for DebcargoUnacceptablePredicate {
@@ -711,14 +711,18 @@ impl Problem for DebcargoUnacceptablePredicate {
 
 impl std::fmt::Display for DebcargoUnacceptablePredicate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cannot represent prerelease part of dependency: {}", self.predicate)
+        write!(
+            f,
+            "Cannot represent prerelease part of dependency: {}",
+            self.predicate
+        )
     }
 }
 
 #[derive(Debug)]
 pub struct DebcargoUnacceptableComparator {
     pub cratename: String,
-    pub comparator: String
+    pub comparator: String,
 }
 
 impl Problem for DebcargoUnacceptableComparator {
@@ -736,7 +740,11 @@ impl Problem for DebcargoUnacceptableComparator {
 
 impl std::fmt::Display for DebcargoUnacceptableComparator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cannot represent prerelease part of dependency: {}", self.comparator)
+        write!(
+            f,
+            "Cannot represent prerelease part of dependency: {}",
+            self.comparator
+        )
     }
 }
 
@@ -758,5 +766,49 @@ impl Problem for UScanTooManyRequests {
 impl std::fmt::Display for UScanTooManyRequests {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "UScan too many requests: {}", self.0)
+    }
+}
+
+#[derive(Debug)]
+pub struct UnsatisfiedAptConflicts(pub String);
+
+impl Problem for UnsatisfiedAptConflicts {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unsatisfied-apt-conflicts".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "relations": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for UnsatisfiedAptConflicts {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "unsatisfied apt conflicts: {}", self.0)
+    }
+}
+
+impl std::error::Error for UnsatisfiedAptConflicts {}
+
+#[derive(Debug)]
+pub struct UnsatisfiedAptDependencies(pub String);
+
+impl Problem for UnsatisfiedAptDependencies {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "unsatisfied-apt-dependencies".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "relations": self.0
+        })
+    }
+}
+
+impl std::fmt::Display for UnsatisfiedAptDependencies {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "unsatisfied apt dependencies: {}", self.0)
     }
 }

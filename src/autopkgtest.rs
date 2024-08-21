@@ -1,7 +1,7 @@
 use crate::lines::Lines;
+use crate::problems::autopkgtest::*;
 use crate::{Match, Problem, SingleLineMatch};
 use std::collections::HashMap;
-use crate::problems::autopkgtest::*;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Packet<'a> {
@@ -705,7 +705,7 @@ pub fn find_testbed_setup_failure(
                         Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
                             as Box<dyn Match>,
                     ),
-                    Some(Box::new(crate::common::ChrootNotFound {
+                    Some(Box::new(crate::problems::common::ChrootNotFound {
                         chroot: chroot.to_owned(),
                     }) as Box<dyn Problem>),
                 );
