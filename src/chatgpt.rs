@@ -27,7 +27,7 @@ pub async fn analyze(chatgpt_key: String, lines: Vec<&str>) -> Option<SingleLine
 
     for (i, line) in lines.iter().enumerate().rev() {
         if line.starts_with(text) {
-            return SingleLineMatch::from_lines(lines, i, Some("chatgpt"));
+            return Some(SingleLineMatch::from_lines(&lines, i, Some("chatgpt")));
         }
     }
 

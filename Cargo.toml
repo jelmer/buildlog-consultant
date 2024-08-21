@@ -16,7 +16,7 @@ pyo3 = { version = ">=0.21", features = ["py-clone"] }
 serde_json = "1"
 
 [features]
-default = []
+default = ["cli"]
 chatgpt = ["dep:chatgpt_rs"]
 cli = ["dep:clap", "dep:env_logger"]
 
@@ -33,6 +33,11 @@ required-features = ["cli"]
 [[bin]]
 name = "analyze-autopkgtest-log"
 path = "src/bin/analyze-autopkgtest-log.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "analyze-build-log"
+path = "src/bin/analyze-build-log.rs"
 required-features = ["cli"]
 
 [dependencies]

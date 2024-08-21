@@ -1,4 +1,6 @@
 use clap::Parser;
+use std::io::Write;
+use std::cmp::{min, max};
 
 #[derive(Parser)]
 struct Args {
@@ -9,7 +11,7 @@ struct Args {
     json: bool,
 
     #[clap(short, long, default_value = "5")]
-    context: i32,
+    context: usize,
 
     path: std::path::PathBuf,
 }
@@ -33,36 +35,35 @@ fn main() {
     let lines = log.split('\n').collect::<Vec<_>>();
 
     let (r#match, testname, error, description) =
-        buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(&lines);
+        buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(lines.clone());
 
     if args.json {
-        let ret = serde_json::json!({
+        let mut ret = serde_json::json!({
             "testname": testname,
             "error": error,
             "description": description
         });
-        if let Some(r#match) = r#match {
-            ret["offset"] = r#match.offset;
+        if let Some(ref r#match) = r#match {
+            ret["offset"] = serde_json::value::Value::Number(r#match.offset().into());
         }
         std::io::stdout()
             .write_all(serde_json::to_string_pretty(&ret).unwrap().as_bytes())
             .unwrap();
     }
 
-    if testname {
+    if let Some(testname) = testname {
         log::info!("Test name: {}", testname);
     }
     if let Some(error) = error {
         log::info!("Error: {}", error);
     }
     if let Some(r#match) = r#match {
-        log::info!("Failed line: {}:", r#match.lineno);
-        for i in max(0, r#match.offset - args.context)
-            ..min(lines.len(), r#match.offset + args.context + 1)
-        {
+        log::info!("Failed line: {}:", r#match.lineno());
+        for i in max(0, r#match.offset() - args.context)
+            ..min(lines.len(), r#match.offset() + args.context + 1) {
             log::info!(
                 " {}  {}",
-                if r#match.offset == i { ">" } else { " " },
+                if r#match.offset() == i { ">" } else { " " },
                 lines[i].trim_end_matches('\n')
             );
         }
