@@ -5,7 +5,7 @@
 
 use crate::common::find_build_failure_description;
 use crate::lines::Lines;
-use crate::problems::common::{NoSpaceOnDevice, PatchApplicationFailed};
+use crate::problems::common::{ChrootNotFound, NoSpaceOnDevice, PatchApplicationFailed};
 use crate::problems::debian::*;
 use crate::{Match, Problem, SingleLineMatch};
 use debversion::Version;
@@ -31,7 +31,7 @@ pub struct Summary {
     build_architecture: Option<String>,
     build_type: Option<String>,
     build_time: Option<Duration>,
-    build_space: Option<u64>,
+    build_space: Option<Space>,
     host_architecture: Option<String>,
     install_time: Option<Duration>,
     lintian: Option<String>,
@@ -44,7 +44,26 @@ pub struct Summary {
     source_version: Option<Version>,
     machine_architecture: Option<String>,
     status: Option<String>,
-    space: Option<u64>,
+    space: Option<Space>,
+    version: Option<Version>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Space {
+    NotAvailable,
+    Bytes(u64),
+}
+
+impl std::str::FromStr for Space {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "n/a" {
+            Ok(Space::NotAvailable)
+        } else {
+            Ok(Space::Bytes(s.parse()?))
+        }
+    }
 }
 
 pub fn parse_summary(lines: &[&str]) -> Summary {
@@ -65,6 +84,7 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
     let mut machine_architecture = None;
     let mut fail_stage = None;
     let mut space = None;
+    let mut version = None;
     for line in lines {
         if line.trim() == "" {
             continue;
@@ -89,6 +109,7 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
                 "Autopkgtest" => autopkgtest = Some(value.to_string()),
                 "Status" => status = Some(value.to_string()),
                 "Space" => space = Some(value.parse().unwrap()),
+                "Version" => version = Some(value.parse().unwrap()),
                 n => {
                     log::warn!("Unknown key in summary: {}", n);
                 }
@@ -115,6 +136,7 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
         machine_architecture,
         status,
         space,
+        version,
     }
 }
 
@@ -129,8 +151,7 @@ impl SbuildLog {
 
     /// Get the lines of a section, if it exists.
     pub fn get_section_lines(&self, title: Option<&str>) -> Option<Vec<&str>> {
-        self.get_section(title)
-            .map(|s| s.lines.iter().map(|l| l.as_str()).collect::<Vec<_>>())
+        self.get_section(title).map(|s| s.lines())
     }
 
     /// Get the titles of sections
@@ -158,13 +179,21 @@ impl SbuildLog {
     }
 }
 
+impl<F: std::io::Read> TryFrom<BufReader<F>> for SbuildLog {
+    type Error = std::io::Error;
+
+    fn try_from(reader: BufReader<F>) -> Result<Self, Self::Error> {
+        let sections = parse_sbuild_log(reader);
+        Ok(SbuildLog(sections.collect()))
+    }
+}
+
 impl TryFrom<File> for SbuildLog {
     type Error = std::io::Error;
 
     fn try_from(f: File) -> Result<Self, Self::Error> {
         let reader = BufReader::new(f);
-        let sections = parse_sbuild_log(reader);
-        Ok(SbuildLog(sections.collect()))
+        reader.try_into()
     }
 }
 
@@ -183,6 +212,12 @@ pub struct SbuildLogSection {
     pub title: Option<String>,
     pub offsets: (usize, usize),
     pub lines: Vec<String>,
+}
+
+impl SbuildLogSection {
+    pub fn lines(&self) -> Vec<&str> {
+        self.lines.iter().map(|x| x.as_str()).collect()
+    }
 }
 
 pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = SbuildLogSection> {
@@ -267,12 +302,12 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
 }
 
 pub struct SbuildFailure {
-    stage: Option<String>,
-    description: Option<String>,
-    error: Option<Box<dyn Problem>>,
-    phase: Option<Vec<String>>,
-    section: Option<SbuildLogSection>,
-    r#match: Option<Box<dyn Match>>,
+    pub stage: Option<String>,
+    pub description: Option<String>,
+    pub error: Option<Box<dyn Problem>>,
+    pub phase: Option<Phase>,
+    pub section: Option<SbuildLogSection>,
+    pub r#match: Option<Box<dyn Match>>,
 }
 
 impl Serialize for SbuildFailure {
@@ -300,6 +335,18 @@ impl Serialize for SbuildFailure {
             state.serialize_field("details", &error.json())?;
         }
         state.end()
+    }
+}
+
+impl std::fmt::Display for SbuildFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(stage) = &self.stage {
+            write!(f, "Failed at stage: {}", stage)?;
+        }
+        if let Some(description) = &self.description {
+            write!(f, " ({})", description)?;
+        }
+        Ok(())
     }
 }
 
@@ -607,15 +654,27 @@ pub fn find_preamble_failure_description(
     ret
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum Phase {
+    #[serde(rename = "autopkgtest")]
+    AutoPkgTest(String),
+    #[serde(rename = "build")]
+    Build,
+    #[serde(rename = "build-env")]
+    BuildEnv,
+    #[serde(rename = "create-session")]
+    CreateSession,
+}
+
 pub const DEFAULT_LOOK_BACK: usize = 50;
 
 pub fn strip_build_tail<'a>(
     lines: &'a [&'a str],
     look_back: Option<usize>,
-) -> (&'a [&'a str], HashMap<&'a str, &'a [&'a str]>) {
+) -> (&'a [&'a str], HashMap<&'a str, &'_ [&'a str]>) {
     let look_back = look_back.unwrap_or(DEFAULT_LOOK_BACK);
 
-    let mut interesting_lines: &'a [&'a str] = lines;
+    let mut interesting_lines: &'_ [&'a str] = lines;
 
     // Strip off unuseful tail
     for (i, line) in lines.enumerate_tail_forward(look_back) {
@@ -631,7 +690,7 @@ pub fn strip_build_tail<'a>(
     }
 
     let mut files: HashMap<&'a str, &'a [&'a str]> = std::collections::HashMap::new();
-    let mut body = interesting_lines;
+    let mut body: &'a [&'a str] = interesting_lines;
     let mut current_file = None;
     let mut current_contents: &[&str] = &[];
     let mut start = 0;
@@ -660,6 +719,500 @@ pub fn strip_build_tail<'a>(
     (body, files)
 }
 
+pub fn find_failure_fetch_src(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
+    let section = if let Some(section) = sbuildlog.get_section(Some("fetch source files")) {
+        section
+    } else {
+        log::warn!("expected section: fetch source files");
+        return None;
+    };
+    let section_lines = section.lines();
+    let section_lines = if section_lines[0].trim().is_empty() {
+        section_lines[1..].to_vec()
+    } else {
+        section_lines.to_vec()
+    };
+    if section_lines.len() == 1 && section_lines[0].starts_with("E: Could not find ") {
+        let (r#match, error) =
+            find_preamble_failure_description(sbuildlog.get_section_lines(None)?);
+        return Some(SbuildFailure {
+            stage: Some("unpack".to_string()),
+            description: error.as_ref().map(|x| x.to_string()),
+            error,
+            section: Some(section.clone()),
+            r#match,
+            phase: None,
+        });
+    }
+    let (r#match, error) = crate::apt::find_apt_get_failure(section.lines());
+    let description = format!("build failed stage {}", failed_stage);
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description),
+        error,
+        phase: None,
+        section: Some(section.clone()),
+        r#match,
+    })
+}
+
+pub fn find_failure_create_session(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Option<SbuildFailure> {
+    let section = sbuildlog.get_section(None)?;
+    let (r#match, error) = find_creation_session_error(section.lines());
+    let phase = Phase::CreateSession;
+    let description = format!("build failed stage {}", failed_stage);
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_owned()),
+        description: Some(description),
+        error,
+        phase: Some(phase),
+        section: Some(section.clone()),
+        r#match,
+    })
+}
+
+pub fn find_creation_session_error(
+    lines: Vec<&str>,
+) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+    let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
+    for (i, line) in lines.enumerate_backward(None) {
+        if line.starts_with("E: ") {
+            ret = (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    &lines,
+                    i,
+                    Some("direct regex"),
+                ))),
+                None,
+            );
+        }
+        if let Some((_, distribution, architecture)) = lazy_regex::regex_captures!(
+            "E: Chroot for distribution (.*), architecture (.*) not found\n",
+            line
+        ) {
+            let err = Some(Box::new(ChrootNotFound {
+                chroot: format!("{}-{}-sbuild", distribution, architecture),
+            }) as Box<dyn Problem>);
+            ret = (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    &lines,
+                    i,
+                    Some("direct regex"),
+                ))),
+                err,
+            );
+        }
+        if line.ends_with(": No space left on device\n") {
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    &lines,
+                    i,
+                    Some("direct regex"),
+                ))),
+                Some(Box::new(NoSpaceOnDevice)),
+            );
+        }
+    }
+
+    ret
+}
+
+pub fn find_failure_unpack(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
+    let section = sbuildlog.get_section(Some("build"));
+    if let Some(section) = section {
+        let (r#match, error) = find_preamble_failure_description(section.lines());
+        if let Some(error) = error {
+            return Some(SbuildFailure {
+                stage: Some(failed_stage.to_string()),
+                description: Some(error.to_string()),
+                error: Some(error),
+                section: Some(section.clone()),
+                r#match,
+                phase: None,
+            });
+        }
+    }
+    let description = format!("build failed stage {}", failed_stage);
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description),
+        error: None,
+        phase: None,
+        section: section.cloned(),
+        r#match: None,
+    })
+}
+
+pub fn find_failure_build(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
+    let phase = Phase::Build;
+    let (section, r#match, error) = if let Some(section) = sbuildlog.get_section(Some("build")) {
+        let lines_ref = section.lines();
+        let (section_lines, _files) = strip_build_tail(&lines_ref, None);
+        let (r#match, error) = find_build_failure_description(section_lines.to_vec());
+        (Some(section), r#match, error)
+    } else {
+        (None, None, None)
+    };
+    let description = if let Some(error) = error.as_ref() {
+        error.to_string()
+    } else if let Some(r#match) = r#match.as_ref() {
+        r#match.line().trim_end_matches('\n').to_string()
+    } else {
+        format!("build failed stage {}", failed_stage)
+    };
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description),
+        error,
+        phase: Some(phase),
+        section: section.cloned(),
+        r#match,
+    })
+}
+
+pub fn find_failure_apt_get_update(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Option<SbuildFailure> {
+    let (focus_section, r#match, error) = crate::apt::find_apt_get_update_failure(sbuildlog);
+    let description = if let Some(error) = error.as_ref() {
+        error.to_string()
+    } else if let Some(r#match) = r#match.as_ref() {
+        r#match.line().trim_end_matches('\n').to_string()
+    } else {
+        format!("build failed stage {}", failed_stage)
+    };
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description),
+        error,
+        phase: None,
+        section: sbuildlog.get_section(focus_section.as_deref()).cloned(),
+        r#match,
+    })
+}
+
+fn find_arch_check_failure_description(
+    lines: Vec<&str>,
+) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+    for (offset, line) in lines.enumerate_forward(None) {
+        if let Some((_, arch, arch_list)) = lazy_regex::regex_captures!(
+            "E: dsc: (.*) not in arch list or does not match any arch wildcards: (.*) -- skipping",
+            line
+        ) {
+            let error = ArchitectureNotInList {
+                arch: arch.to_string(),
+                arch_list: arch_list
+                    .split_whitespace()
+                    .map(|x| x.to_string())
+                    .collect(),
+            };
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    &lines,
+                    offset,
+                    Some("direct regex"),
+                ))),
+                Some(Box::new(error)),
+            );
+        }
+    }
+    (
+        Some(Box::new(SingleLineMatch::from_lines(
+            &lines,
+            lines.len() - 1,
+            Some("direct regex"),
+        ))),
+        None,
+    )
+}
+
+pub fn find_failure_arch_check(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
+    let section = sbuildlog.get_section(Some("check architectures"));
+    let (r#match, error) = section.map_or((None, None), |s| {
+        find_arch_check_failure_description(s.lines())
+    });
+    let description = if let Some(error) = error.as_ref() {
+        error.to_string()
+    } else {
+        format!("build failed stage {}", failed_stage)
+    };
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description),
+        error,
+        phase: None,
+        section: section.cloned(),
+        r#match,
+    })
+}
+
+pub fn find_failure_check_space(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Option<SbuildFailure> {
+    let section = sbuildlog.get_section(Some("cleanup"))?;
+    let (r#match, error) = find_check_space_failure_description(section.lines());
+    let description = if let Some(ref error) = error {
+        error.to_string()
+    } else {
+        format!("build failed stage {}", failed_stage)
+    };
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description),
+        error,
+        phase: None,
+        section: Some(section.clone()),
+        r#match,
+    })
+}
+
+pub const DOSE3_SECTION: &str = "install dose3 build dependencies (aspcud-based resolver)";
+
+pub fn find_install_deps_failure_description(
+    sbuildlog: &SbuildLog,
+) -> (
+    Option<&str>,
+    Option<Box<dyn Match>>,
+    Option<Box<dyn Problem>>,
+) {
+    let dose3_lines = sbuildlog.get_section_lines(Some(DOSE3_SECTION));
+    if let Some(dose3_lines) = dose3_lines {
+        let dose3 = crate::apt::find_cudf_output(dose3_lines.clone());
+        if let Some((dose3_offsets, dose3_output)) = dose3 {
+            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
+            let r#match = crate::MultiLineMatch::from_lines(&dose3_lines, dose3_offsets, None);
+            return (Some(DOSE3_SECTION), Some(Box::new(r#match)), error);
+        }
+    }
+
+    const SECTION: &str = "Install package build dependencies";
+    let build_dependencies_lines = sbuildlog.get_section_lines(Some(SECTION));
+    if let Some(build_dependencies_lines) = build_dependencies_lines {
+        let dose3 = crate::apt::find_cudf_output(build_dependencies_lines.clone());
+        if let Some((dose3_offsets, dose3_output)) = dose3 {
+            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
+            let r#match =
+                crate::MultiLineMatch::from_lines(&build_dependencies_lines, dose3_offsets, None);
+            return (Some(SECTION), Some(Box::new(r#match)), error);
+        }
+        let (r#match, error) = crate::apt::find_apt_get_failure(build_dependencies_lines);
+        return (Some(SECTION), r#match, error);
+    }
+
+    for section in sbuildlog.sections() {
+        if section.title.is_none() {
+            continue;
+        }
+        if lazy_regex::regex_is_match!(
+            "install (.*) build dependencies.*",
+            &section.title.as_ref().unwrap().to_lowercase()
+        ) {
+            let (r#match, error) = crate::apt::find_apt_get_failure(section.lines());
+            if r#match.is_some() {
+                return (section.title.as_deref(), r#match, error);
+            }
+        }
+    }
+
+    (None, None, None)
+}
+
+pub fn find_failure_install_deps(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Option<SbuildFailure> {
+    let (focus_section, r#match, error) = find_install_deps_failure_description(sbuildlog);
+    let description = if let Some(error) = error.as_ref() {
+        error.to_string()
+    } else if let Some(r#match) = r#match.as_ref() {
+        if let Some(rest) = r#match.line().strip_prefix("E: ") {
+            rest.trim_end_matches('\n').to_string()
+        } else {
+            r#match.line().trim_end_matches('\n').to_string()
+        }
+    } else {
+        format!("build failed stage {}", failed_stage)
+    };
+    let phase = Phase::Build;
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description.to_string()),
+        error,
+        phase: Some(phase),
+        section: sbuildlog.get_section(focus_section).cloned(),
+        r#match,
+    })
+}
+
+pub fn find_failure_autopkgtest(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Option<SbuildFailure> {
+    let focus_section = match failed_stage {
+        "run-post-build-commands" => "post build commands",
+        "post-build" => "post build",
+        "autopkgtest" => "autopkgtest",
+        _ => {
+            unreachable!();
+        }
+    };
+    let section = sbuildlog.get_section(Some(focus_section));
+    let (description, error, r#match, phase) = if let Some(section) = section {
+        let (r#match, testname, error, description) =
+            crate::autopkgtest::find_autopkgtest_failure_description(section.lines());
+        let description = description.or_else(|| error.as_ref().map(|x| x.to_string()));
+        let phase = testname.map(Phase::AutoPkgTest);
+        (description, error, r#match, phase)
+    } else {
+        (None, None, None, None)
+    };
+    let description = description.unwrap_or_else(|| format!("build failed stage {}", failed_stage));
+    Some(SbuildFailure {
+        stage: Some(failed_stage.to_string()),
+        description: Some(description),
+        error,
+        phase,
+        section: section.cloned(),
+        r#match,
+    })
+}
+
+pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
+    // TODO(jelmer): Doesn't this do the same thing as the tail?
+    if sbuildlog
+        .sections()
+        .map(|x| x.title.as_deref())
+        .collect::<Vec<_>>()
+        == vec![None]
+    {
+        let section = sbuildlog.sections().next().unwrap();
+        let (r#match, error) = find_preamble_failure_description(section.lines());
+        if let Some(error) = error {
+            return SbuildFailure {
+                stage: Some("unpack".to_string()),
+                description: Some(error.to_string()),
+                error: Some(error),
+                section: Some(section.clone()),
+                r#match,
+                phase: None,
+            };
+        }
+    }
+
+    let failed_stage = sbuildlog.get_failed_stage();
+
+    let overall_failure = failed_stage.as_ref().and_then(|failed_stage| {
+        match failed_stage.as_str() {
+            "fetch-src" => find_failure_fetch_src(sbuildlog, failed_stage),
+            "create-session" => find_failure_create_session(sbuildlog, failed_stage),
+            "unpack" => find_failure_unpack(sbuildlog, failed_stage),
+            "build" => find_failure_build(sbuildlog, failed_stage),
+            "apt-get-update" => find_failure_apt_get_update(sbuildlog, failed_stage),
+            "arch-check" => find_failure_arch_check(sbuildlog, failed_stage),
+            "check-space" => find_failure_check_space(sbuildlog, failed_stage),
+            "install-deps" => find_failure_install_deps(sbuildlog, failed_stage),
+            "explain-bd-uninstallable" => find_failure_install_deps(sbuildlog, failed_stage),
+            "autopkgtest" => find_failure_autopkgtest(sbuildlog, failed_stage),
+            // We run autopkgtest as only post-build step at the moment.
+            "run-post-build-commands" => find_failure_autopkgtest(sbuildlog, failed_stage),
+            "post-build" => find_failure_autopkgtest(sbuildlog, failed_stage),
+            _ => {
+                log::warn!("unknown failed stage: {}", &failed_stage);
+                None
+            }
+        }
+    });
+
+    if let Some(overall_failure) = overall_failure {
+        return overall_failure;
+    } else if let Some(failed_stage) = failed_stage {
+        log::warn!("unknown failed stage: {}", failed_stage);
+        let description = format!("build failed stage {}", failed_stage);
+        return SbuildFailure {
+            stage: Some(failed_stage),
+            description: Some(description),
+            error: None,
+            phase: None,
+            section: None,
+            r#match: None,
+        };
+    }
+
+    let mut description = Some("build failed".to_string());
+    let mut r#match = None;
+    let mut error = None;
+    let mut section = None;
+    let phase = Phase::BuildEnv;
+    if sbuildlog
+        .sections()
+        .map(|s| s.title.as_deref())
+        .collect::<Vec<_>>()
+        == vec![None]
+    {
+        let s = sbuildlog.sections().next().unwrap();
+        (r#match, error) = find_preamble_failure_description(s.lines());
+        if let Some(error) = error.as_ref() {
+            description = Some(error.to_string());
+        } else {
+            (r#match, error) = find_build_failure_description(s.lines());
+            if let Some(r#match) = r#match.as_ref() {
+                description = Some(r#match.line().trim_end_matches('\n').to_string());
+            } else if let Some((e, d)) = crate::brz::find_brz_build_error(s.lines()) {
+                description = Some(d.to_string());
+                error = e;
+            }
+        }
+        section = Some(s);
+    }
+    SbuildFailure {
+        stage: failed_stage,
+        description,
+        error,
+        phase: Some(phase),
+        section: section.cloned(),
+        r#match,
+    }
+}
+
+fn find_check_space_failure_description(
+    lines: Vec<&str>,
+) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+    for (offset, line) in lines.enumerate_forward(None) {
+        if line == "E: Disk space is probably not sufficient for building.\n" {
+            if let Some((_, needed, free)) = lazy_regex::regex_captures!(
+                "I: Source needs ([0-9]+) KiB, while ([0-9]+) KiB is free.\n",
+                lines[offset + 1]
+            ) {
+                return (
+                    Some(Box::new(SingleLineMatch::from_lines(
+                        &lines,
+                        offset,
+                        Some("direct regex"),
+                    )) as Box<dyn Match>),
+                    Some(Box::new(InsufficientDiskSpace {
+                        needed: needed.parse().unwrap(),
+                        free: free.parse().unwrap(),
+                    }) as Box<dyn Problem>),
+                );
+            }
+            return (
+                Some(Box::new(SingleLineMatch::from_lines(
+                    &lines,
+                    offset,
+                    Some("direct match"),
+                ))),
+                None,
+            );
+        }
+    }
+    (None, None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -683,11 +1236,12 @@ mod tests {
         assert_eq!(
             sbuild_log.summary().unwrap(),
             Summary {
+                version: Some("0.1.3-1".parse().unwrap()),
                 fail_stage: None,
                 autopkgtest: Some("pass".to_string()),
                 build_architecture: Some("amd64".to_string()),
                 build_type: Some("binary".to_string()),
-                build_space: Some(41428),
+                build_space: Some(Space::Bytes(41428)),
                 build_time: Some(Duration::from_secs(3)),
                 distribution: Some("unstable".to_string()),
                 host_architecture: Some("amd64".to_string()),
@@ -701,7 +1255,7 @@ mod tests {
                 package: Some("rust-always-assert".to_string()),
                 package_time: Some(Duration::from_secs(72)),
                 source_version: Some("0.1.3-1".parse().unwrap()),
-                space: Some(41428),
+                space: Some(Space::Bytes(41428)),
                 status: Some("successful".to_string()),
             }
         );

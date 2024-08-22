@@ -1,6 +1,5 @@
 use clap::Parser;
 use std::io::Write;
-use std::cmp::{min, max};
 
 #[derive(Parser)]
 struct Args {
@@ -58,14 +57,6 @@ fn main() {
         log::info!("Error: {}", error);
     }
     if let Some(r#match) = r#match {
-        log::info!("Failed line: {}:", r#match.lineno());
-        for i in max(0, r#match.offset() - args.context)
-            ..min(lines.len(), r#match.offset() + args.context + 1) {
-            log::info!(
-                " {}  {}",
-                if r#match.offset() == i { ">" } else { " " },
-                lines[i].trim_end_matches('\n')
-            );
-        }
+        buildlog_consultant::highlight_lines(&lines, r#match.as_ref(), args.context);
     }
 }

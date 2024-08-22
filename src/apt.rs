@@ -3,7 +3,6 @@ use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::relations::Relations;
-use serde::{Deserialize, Serialize};
 
 pub fn find_apt_get_failure(
     lines: Vec<&str>,
@@ -235,85 +234,52 @@ pub fn find_apt_get_update_failure(
     (Some(focus_section.to_string()), match_, problem)
 }
 
-pub fn find_cudf_output(lines: Vec<&str>) -> Option<serde_yaml::Value> {
+pub(crate) fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
     let mut offset = None;
     for (i, line) in lines.enumerate_backward(None) {
-        if line.starts_with("cudf output:") {
+        if line.starts_with("output-version:") {
             offset = Some(i);
         }
     }
     let mut offset = offset?;
     let mut output = vec![];
+    let mut offsets = vec![];
     while !lines[offset].trim().is_empty() {
+        offsets.push(offset);
         output.push(lines[offset]);
         offset += 1;
     }
 
-    serde_yaml::from_str(&output.join("\n")).ok()
+    Some((offsets, serde_yaml::from_str(&output.join("\n")).unwrap()))
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Dose3Report {
-    pub package: String,
-    pub status: String,
-    pub reasons: Vec<Dose3Reason>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Dose3Reason {
-    pub missing: Option<Dose3Missing>,
-    pub conflict: Option<Dose3Conflict>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Dose3Pkg {
-    pub name: String,
-    pub version: String,
-    #[serde(rename = "unsat-dependency")]
-    pub unsat_dependency: Option<String>,
-    #[serde(rename = "unsat-conflict")]
-    pub unsat_conflict: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Dose3Missing {
-    pub pkg: Dose3Pkg,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Dose3Conflict {
-    pub pkg1: Dose3Pkg,
-    pub pkg2: Dose3Pkg,
-}
-
-pub fn error_from_dose3_report(report: serde_json::Value) -> Option<Box<dyn Problem>> {
-    let entries: Vec<Dose3Report> = serde_json::from_value(report).ok()?;
-    let packages = entries
+pub(crate) fn error_from_dose3_reports(reports: &[crate::cudf::Report]) -> Option<Box<dyn Problem>> {
+    let packages = reports
         .iter()
-        .map(|entry| &entry.package)
+        .map(|report| &report.package)
         .collect::<Vec<_>>();
     assert_eq!(packages, ["sbuild-build-depends-main-dummy"]);
-    if entries[0].status != "broken" {
+    if reports[0].status != crate::cudf::Status::Broken {
         return None;
     }
     let mut missing = vec![];
     let mut conflict = vec![];
-    for reason in &entries[0].reasons {
+    for reason in &reports[0].reasons {
         if let Some(this_missing) = &reason.missing {
-            let relation: Relations = this_missing
+            let relation: debian_control::relations::Entry = this_missing
                 .pkg
                 .unsat_dependency
-                .clone()
+                .as_ref()
                 .unwrap()
                 .parse()
                 .unwrap();
-            missing.extend(relation.entries());
+            missing.push(relation);
         }
         if let Some(this_conflict) = &reason.conflict {
             let relation: Relations = this_conflict
                 .pkg1
                 .unsat_conflict
-                .clone()
+                .as_ref()
                 .unwrap()
                 .parse()
                 .unwrap();
@@ -397,5 +363,42 @@ mod tests {
     #[test]
     fn test_vague() {
         assert_just_match(vec!["E: Stuff is broken"], 1);
+    }
+
+    #[test]
+    fn test_find_cudf_output() {
+        use crate::cudf::*;
+        let lines = include_str!("testdata/sbuild-cudf.log")
+            .split_inclusive('\n')
+            .collect::<Vec<_>>();
+        let (offsets, report) = find_cudf_output(lines).unwrap();
+        assert_eq!(offsets, (104..=119).collect::<Vec<_>>());
+        let expected = Cudf {
+            output_version: (1, 2),
+            native_architecture: "amd64".to_string(),
+            report: vec![Report {
+                package: "sbuild-build-depends-main-dummy".to_string(),
+                version: "0.invalid.0".parse().unwrap(),
+                architecture: "amd64".to_string(),
+                status: Status::Broken,
+                reasons: vec![Reason {
+                    missing: Some(Missing {
+                        pkg: Pkg {
+                            package: "sbuild-build-depends-main-dummy".to_string(),
+                            version: "0.invalid.0".parse().unwrap(),
+                            architecture: "amd64".to_string(),
+                            unsat_conflict: None,
+                            unsat_dependency: Some(
+                                "librust-breezyshim+dirty-tracker-dev:amd64 (>= 0.1.138-~~)"
+                                    .to_string(),
+                            ),
+                        },
+                    }),
+                    conflict: None,
+                }],
+            }],
+        };
+
+        assert_eq!(report, expected);
     }
 }

@@ -16,15 +16,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import re  # noqa: I001
 from typing import Optional, TypedDict
-
-import yaml
 
 from debian.changelog import Version
 from debian.deb822 import PkgRelation
 
-from . import Match, Problem, _buildlog_consultant_rs
+from . import Problem, _buildlog_consultant_rs
 
 
 class DpkgError(Problem, kind="dpkg-error"):
@@ -110,27 +107,6 @@ class AptBrokenPackages(Problem, kind="apt-broken-packages"):
         )
 
 
-def find_apt_get_update_failure(sbuildlog):
-    focus_section = "update chroot"
-    lines = sbuildlog.get_section_lines(focus_section)
-    match, error = find_apt_get_failure(lines)
-    return focus_section, match, error
-
-
-def find_cudf_output(lines):
-    for i in range(len(lines) - 1, 0, -1):
-        if lines[i].startswith("output-version: "):
-            break
-    else:
-        return None
-    output = []
-    while lines[i].strip():
-        output.append(lines[i])
-        i += 1
-
-    return yaml.safe_load("\n".join(output))
-
-
 class ParsedRelation(TypedDict):
     name: str
     archqual: Optional[str]
@@ -185,77 +161,6 @@ class UnsatisfiedAptConflicts(Problem, kind="unsatisfied-apt-conflicts"):
 
     def __str__(self) -> str:
         return f"Unsatisfied APT conflicts: {PkgRelation.str(self.relations)}"  # type: ignore
-
-
-def error_from_dose3_report(report):
-    def fixup_relation(rel):
-        for o in rel:
-            for d in o:
-                if d["version"]:
-                    try:
-                        newoperator = {"<": "<<", ">": ">>"}[d["version"][0]]
-                    except KeyError:
-                        pass
-                    else:
-                        d["version"] = (newoperator, d["version"][1])
-
-    packages = [entry["package"] for entry in report]
-    assert packages == ["sbuild-build-depends-main-dummy"]
-    if report[0]["status"] != "broken":
-        return None
-    missing = []
-    conflict = []
-    for reason in report[0]["reasons"]:
-        if "missing" in reason:
-            relation = PkgRelation.parse_relations(
-                reason["missing"]["pkg"]["unsat-dependency"]
-            )
-            fixup_relation(relation)
-            missing.extend(relation)
-        if "conflict" in reason:
-            relation = PkgRelation.parse_relations(
-                reason["conflict"]["pkg1"]["unsat-conflict"]
-            )
-            fixup_relation(relation)
-            conflict.extend(relation)
-    if missing:
-        return UnsatisfiedAptDependencies(missing)
-    if conflict:
-        return UnsatisfiedAptConflicts(conflict)
-
-
-def find_install_deps_failure_description(
-    sbuildlog
-) -> tuple[Optional[str], Optional[Match], Optional[Problem]]:
-    error = None
-
-    DOSE3_SECTION = "install dose3 build dependencies (aspcud-based resolver)"
-    dose3_lines = sbuildlog.get_section_lines(DOSE3_SECTION)
-    if dose3_lines:
-        dose3_output = find_cudf_output(dose3_lines)
-        if dose3_output:
-            error = error_from_dose3_report(dose3_output["report"])
-        return DOSE3_SECTION, None, error
-
-    SECTION = "install package build dependencies"
-    build_dependencies_lines = sbuildlog.get_section_lines(SECTION)
-    if build_dependencies_lines:
-        dose3_output = find_cudf_output(build_dependencies_lines)
-        if dose3_output:
-            error = error_from_dose3_report(dose3_output["report"])
-            return SECTION, None, error
-        match, error = find_apt_get_failure(build_dependencies_lines)
-        return SECTION, match, error
-
-    for section in sbuildlog.sections:
-        if section.title is None:
-            continue
-        if re.match("install (.*) build dependencies.*", section.title.lower()):
-            match, error = find_apt_get_failure(section.lines)
-            if match is not None:
-                return section.title, match, error
-
-    return section.title, None, error
 
 
 find_apt_get_failure = _buildlog_consultant_rs.find_apt_get_failure

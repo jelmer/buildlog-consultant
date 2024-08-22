@@ -12,31 +12,31 @@ pub fn find_brz_build_error(lines: Vec<&str>) -> Option<(Option<Box<dyn Problem>
                     rest.push(n.to_string());
                 }
             }
-            return Some(parse_brz_error(&rest.join("\n"), lines[..i].to_vec()))
-                .map(|(p, l)| (p, l.to_string()));
+            let reflowed = rest.join("\n");
+            let (err, line) = parse_brz_error(&reflowed, lines[..i].to_vec());
+            return Some((err, line.to_string()));
         }
     }
     None
 }
 
 fn parse_debcargo_failure(_: &regex::Captures, prior_lines: Vec<&str>) -> Option<Box<dyn Problem>> {
-    const MORE_TAIL: &[u8] = b"\x1b[0m\n";
-    const MORE_HEAD1: &[u8] = b"\x1b[1;31mSomething failed: ";
-    const MORE_HEAD2: &[u8] = b"\x1b[1;31mdebcargo failed: ";
+    const MORE_TAIL: &str = "\x1b[0m\n";
+    const MORE_HEAD1: &str = "\x1b[1;31mSomething failed: ";
+    const MORE_HEAD2: &str = "\x1b[1;31mdebcargo failed: ";
     if let Some(extra) = prior_lines
         .last()
         .unwrap()
-        .as_bytes()
         .strip_suffix(MORE_TAIL)
     {
-        let mut extra = vec![std::str::from_utf8(extra).unwrap()];
+        let mut extra = vec![extra];
         for line in prior_lines[..prior_lines.len() - 1].iter().rev() {
-            if let Some(middle) = extra[0].as_bytes().strip_prefix(MORE_HEAD1) {
-                extra[0] = std::str::from_utf8(middle).unwrap();
+            if let Some(middle) = extra[0].strip_prefix(MORE_HEAD1) {
+                extra[0] = middle;
                 break;
             }
-            if let Some(middle) = extra[0].as_bytes().strip_prefix(MORE_HEAD2) {
-                extra[0] = std::str::from_utf8(middle).unwrap();
+            if let Some(middle) = extra[0].strip_prefix(MORE_HEAD2) {
+                extra[0] = middle;
                 break;
             }
             extra.insert(0, line);
@@ -50,8 +50,8 @@ fn parse_debcargo_failure(_: &regex::Captures, prior_lines: Vec<&str>) -> Option
             .is_some()
         {
             if let Some((_, n)) = lazy_regex::regex_captures!(
-                r"Couldn\'t find any crate matching (.*)",
-                extra[extra.len() - 2]
+                r"Couldn't find any crate matching (.*)",
+                extra[extra.len() - 2].trim_end()
             ) {
                 return Some(Box::new(MissingDebcargoCrate::from_string(n)));
             } else {
@@ -100,7 +100,7 @@ lazy_static::lazy_static! {
         regex_line_matcher!("Unknown mercurial extra fields in (.*): b'(.*)'.", |m, _| Some(Box::new(UnknownMercurialExtraFields(m.get(2).unwrap().as_str().to_string())))),
         regex_line_matcher!("UScan failed to run: In watchfile (.*), reading webpage (.*) failed: 429 too many requests\\.", |m, _| Some(Box::new(UScanTooManyRequests(m.get(2).unwrap().as_str().to_string())))),
         regex_line_matcher!("UScan failed to run: OpenPGP signature did not verify..", |_, _| Some(Box::new(UpstreamPGPSignatureVerificationFailed))),
-        regex_line_matcher!(r"Inconsistency between source format and version: version is( not)? native, format is( not)? native\.", |m, _| Some(Box::new(InconsistentSourceFormat{version: m.get(1).unwrap().as_str() != " not", source_format: m.get(2).unwrap().as_str() != " not"}))),
+        regex_line_matcher!(r"Inconsistency between source format and version: version is( not)? native, format is( not)? native\.", |m, _| Some(Box::new(InconsistentSourceFormat{version: m.get(1).is_some(), source_format: m.get(2).is_some()}))),
         regex_line_matcher!(r"UScan failed to run: In (.*) no matching hrefs for version (.*) in watch line", |m, _| Some(Box::new(UScanRequestVersionMissing(m.get(2).unwrap().as_str().to_string())))),
         regex_line_matcher!(r"UScan failed to run: In directory ., downloading (.*) failed: (.*)", |m, _| Some(Box::new(UScanFailed{url: m.get(1).unwrap().as_str().to_string(), reason: m.get(2).unwrap().as_str().to_string()}))),
         regex_line_matcher!(r"UScan failed to run: In watchfile debian/watch, reading webpage\n  (.*) failed: (.*)", |m, _| Some(Box::new(UScanFailed{url: m.get(1).unwrap().as_str().to_string(), reason: m.get(2).unwrap().as_str().to_string()}))),
@@ -113,23 +113,87 @@ lazy_static::lazy_static! {
 pub fn parse_brz_error<'a>(
     line: &'a str,
     prior_lines: Vec<&'a str>,
-) -> (Option<Box<dyn Problem>>, &'a str) {
+) -> (Option<Box<dyn Problem>>, String) {
     let line = line.trim();
     for (re, f) in BRZ_ERRORS.iter() {
         if let Some(m) = re.captures(line) {
-            return (f(&m, prior_lines), line);
+            let err = f(&m, prior_lines);
+            let description= err.as_ref().unwrap().to_string();
+            return (err, description);
         }
     }
     if let Some(suffix) = line.strip_prefix("UScan failed to run: ") {
-        return (Some(Box::new(UScanError(suffix.to_owned()))), line);
+        return (Some(Box::new(UScanError(suffix.to_owned()))), line.to_string());
     }
     if let Some(suffix) = line.strip_prefix("Unable to parse changelog: ") {
         return (
             Some(Box::new(ChangelogParseError(
                 suffix.to_string().to_string(),
             ))),
-            line,
+            line.to_string(),
         );
     }
-    return (None, line.split_once('\n').unwrap().0);
+    return (None, line.split_once('\n').unwrap().0.to_string());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_inconsistent_source_format() {
+        let (err, line) = 
+            parse_brz_error(
+                "Inconsistency between source format and version: version is not native, format is native.",
+                vec![]);
+        assert_eq!(
+            line,
+                "Inconsistent source format between version and source format",
+        );
+        assert_eq!(
+            Some(Box::new(InconsistentSourceFormat { version: true, source_format: false }) as Box<dyn Problem>),
+            err
+        );
+    }
+
+    #[test]
+    fn test_missing_debcargo_crate() {
+        let lines = vec![
+            "Using crate name: version-check, version 0.9.2   Updating crates.io index\n",
+            "\x1b[1;31mSomething failed: Couldn't find any crate matching version-check = 0.9.2\n",
+            "Try `debcargo update` to update the crates.io index.\x1b[0m\n",
+            "brz: ERROR: Debcargo failed to run.\n",
+        ];
+        let (err, line) = find_brz_build_error(lines).unwrap();
+        assert_eq!(
+            line,
+            "debcargo can't find crate version-check (version: 0.9.2)"
+        );
+        assert_eq!(
+            err,
+            Some(Box::new(MissingDebcargoCrate {
+                cratename: "version-check".to_string(),
+                version: Some("0.9.2".to_string())
+            }) as Box<dyn Problem>)
+        );
+    }
+
+    #[test]
+    fn test_missing_debcargo_crate2() {
+        let lines = vec!["Running 'sbuild -A -s -v'\n",
+        "Building using working tree\n",
+        "Building package in merge mode\n",
+        "Using crate name: utf8parse, version 0.10.1+git20220116.1.dfac57e\n",
+"    Updating crates.io index\n",
+"    Updating crates.io index\n",
+"\x1b[1;31mdebcargo failed: Couldn't find any crate matching utf8parse =0.10.1\n",
+"Try `debcargo update` to update the crates.io index.\x1b[0m\n",
+"brz: ERROR: Debcargo failed to run.\n"
+        ];
+        let (err, line) = find_brz_build_error(lines).unwrap();
+        assert_eq!(
+            line,
+            "debcargo can't find crate utf8parse (version: 0.10.1)"
+        );
+        assert_eq!(err, Some(Box::new(MissingDebcargoCrate{cratename: "utf8parse".to_owned(), version: Some("0.10.1".to_owned())}) as Box<dyn Problem>));
+    }
 }

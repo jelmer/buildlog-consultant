@@ -14,5 +14,6 @@ setup(
         RustBin("analyze-apt-log", "Cargo.toml", features=["cli"]),
         RustBin("analyze-autopkgtest-log", "Cargo.toml", features=["cli"]),
         RustBin("chatgpt-analyze-log", "Cargo.toml", features=["cli", "chatgpt", "tokio"]),
+        RustBin("analyze-sbuild-log", "Cargo.toml", features=["cli"]),
     ],
 )

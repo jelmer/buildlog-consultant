@@ -7,9 +7,6 @@ build-inplace:
 
 check:: testsuite
 
-testsuite: build-inplace
-	PYTHONPATH=$(shell pwd)/py $(PYTHON) -m unittest tests.test_suite
-
 check:: cargo-test
 
 cargo-test:

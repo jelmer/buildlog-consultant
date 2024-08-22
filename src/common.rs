@@ -2677,7 +2677,7 @@ lazy_static::lazy_static! {
         ),
         regex_para_matcher!(
             r#".*Could not find a package configuration file provided by "(.*)"\s+with\s+any\s+of\s+the\s+following\s+names:\n\n(  .*\n)+\n.*$"#,
-            |m| Ok(Some(Box::new(CMakeFilesMissing{ filenames: m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect(), version: Some(m.get(2).unwrap().as_str().to_string()) })))
+            |m| Ok(Some(Box::new(CMakeFilesMissing{ filenames: m.get(2).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect(), version: None })))
         ),
         regex_para_matcher!(
             r#".*Could not find a package configuration file provided by "(.*)"\s\(requested\sversion\s(.+\))\swith\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$"#, |m| {
@@ -4620,6 +4620,1028 @@ arch:all and the other not)"#
             vec!["dh: Unknown sequence --with (options should not come before the sequence)"],
             1,
             Some(DhWithOrderIncorrect),
+        );
+    }
+
+    #[test]
+    fn test_fpic() {
+        assert_just_match(
+            vec![
+                "/usr/bin/ld: pcap-linux.o: relocation R_X86_64_PC32 against symbol `stderr@@GLIBC_2.2.5' can not be used when making a shared object; recompile with -fPIC"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_rspec() {
+        assert_just_match(
+            vec![
+                "rspec ./spec/acceptance/cookbook_resource_spec.rb:20 # Client API operations downloading a cookbook when the cookbook of the name/version is found downloads the cookbook to the destination"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_multiple_definition() {
+        assert_just_match(
+            vec![
+                "./dconf-paths.c:249: multiple definition of `dconf_is_rel_dir'; client/libdconf-client.a(dconf-paths.c.o):./obj-x86_64-linux-gnu/../common/dconf-paths.c:249: first defined here"
+            ],
+            1,
+        );
+        assert_just_match(
+            vec![
+                "/usr/bin/ld: ../lib/libaxe.a(stream.c.o):(.bss+0x10): multiple definition of `gsl_message_mask'; ../lib/libaxe.a(error.c.o):(.bss+0x8): first defined here"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_missing_ruby_gem() {
+        assert_match(
+            vec![
+                "Could not find gem 'childprocess (~> 0.5)', which is required by gem 'selenium-webdriver', in any of the sources."
+            ],
+            1,
+            Some(MissingRubyGem::new("childprocess".to_owned(), Some("0.5".to_owned()))),
+        );
+        assert_match(
+            vec![
+                "Could not find gem 'rexml', which is required by gem 'rubocop', in any of the sources."
+            ],
+            1,
+            Some(MissingRubyGem::simple("rexml".to_owned())),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:310:in `to_specs': Could not find 'http-parser' (~> 1.2.0) among 59 total gem(s) (Gem::MissingSpecError)"
+            ],
+            1,
+            Some(MissingRubyGem::new("http-parser".to_owned(), Some("1.2.0".to_string()))),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:312:in `to_specs': Could not find 'celluloid' (~> 0.17.3) - did find: [celluloid-0.16.0] (Gem::MissingSpecVersionError)"
+            ],
+            1,
+            Some(MissingRubyGem{gem:"celluloid".to_owned(), version:Some("0.17.3".to_owned())}),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:312:in `to_specs': Could not find 'i18n' (~> 0.7) - did find: [i18n-1.5.3] (Gem::MissingSpecVersionError)"
+            ],
+            1,
+            Some(MissingRubyGem{gem:"i18n".to_owned(), version: Some("0.7".to_owned())}),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:310:in `to_specs': Could not find 'sassc' (>= 2.0.0) among 34 total gem(s) (Gem::MissingSpecError)"
+            ],
+            1,
+            Some(MissingRubyGem{gem:"sassc".to_string(), version: Some("2.0.0".to_string())}),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.7.0/bundler/resolver.rb:290:in `block in verify_gemfile_dependencies_are_found!': Could not find gem 'rake-compiler' in any of the gem sources listed in your Gemfile. (Bundler::GemNotFound)"
+            ],
+            1,
+            Some(MissingRubyGem::simple("rake-compiler".to_owned())),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.7.0/rubygems.rb:275:in `find_spec_for_exe': can't find gem rdoc (>= 0.a) with executable rdoc (Gem::GemNotFoundException)"
+            ],
+            1,
+            Some(MissingRubyGem::new("rdoc".to_owned(), Some("0.a".to_owned()))),
+        );
+    }
+
+    #[test]
+    fn test_missing_maven_artifacts() {
+        assert_match(
+            vec![
+                "[ERROR] Failed to execute goal on project byteman-bmunit5: Could not resolve dependencies for project org.jboss.byteman:byteman-bmunit5:jar:4.0.7: The following artifacts could not be resolved: org.junit.jupiter:junit-jupiter-api:jar:5.4.0, org.junit.jupiter:junit-jupiter-params:jar:5.4.0, org.junit.jupiter:junit-jupiter-engine:jar:5.4.0: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.junit.jupiter:junit-jupiter-api:jar:5.4.0 has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(
+                vec![
+                    "org.junit.jupiter:junit-jupiter-api:jar:5.4.0".to_string(),
+                    "org.junit.jupiter:junit-jupiter-params:jar:5.4.0".to_string(),
+                    "org.junit.jupiter:junit-jupiter-engine:jar:5.4.0".to_string(),
+                ]
+            )),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Failed to execute goal on project opennlp-uima: Could not resolve dependencies for project org.apache.opennlp:opennlp-uima:jar:1.9.2-SNAPSHOT: Cannot access ApacheIncubatorRepository (http://people.apache.org/repo/m2-incubating-repository/) in offline mode and the artifact org.apache.opennlp:opennlp-tools:jar:debian has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.apache.opennlp:opennlp-tools:jar:debian".to_string()])),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Failed to execute goal on project bookkeeper-server: Could not resolve dependencies for project org.apache.bookkeeper:bookkeeper-server:jar:4.4.0: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact io.netty:netty:jar:debian has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["io.netty:netty:jar:debian".to_string()])),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Unresolveable build extension: Plugin org.apache.felix:maven-bundle-plugin:2.3.7 or one of its dependencies could not be resolved: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.felix:maven-bundle-plugin:jar:2.3.7 has not been downloaded from it before. @"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.apache.felix:maven-bundle-plugin:2.3.7".to_string()])),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Plugin org.apache.maven.plugins:maven-jar-plugin:2.6 or one of its dependencies could not be resolved: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.plugins:maven-jar-plugin:jar:2.6 has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.apache.maven.plugins:maven-jar-plugin:2.6".to_string()])),
+        );
+
+        assert_match(
+            vec![
+                "[FATAL] Non-resolvable parent POM for org.joda:joda-convert:2.2.1: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.joda:joda-parent:pom:1.4.0 has not been downloaded from it before. and 'parent.relativePath' points at wrong local POM @ line 8, column 10"],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.joda:joda-parent:pom:1.4.0".to_string()])),
+        );
+
+        assert_match(
+            vec![
+                "[ivy:retrieve] \t\t:: com.carrotsearch.randomizedtesting#junit4-ant;${/com.carrotsearch.randomizedtesting/junit4-ant}: not found"
+            ],
+            1,
+            Some(MissingMavenArtifacts(
+                vec!["com.carrotsearch.randomizedtesting:junit4-ant:jar:debian".to_string()]
+            )),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Plugin org.apache.maven.plugins:maven-compiler-plugin:3.10.1 or one of its dependencies could not be resolved: Failed to read artifact descriptor for org.apache.maven.plugins:maven-compiler-plugin:jar:3.10.1: 1 problem was encountered while building the effective model for org.apache.maven.plugins:maven-compiler-plugin:3.10.1"
+            ],
+            1,
+            Some(MissingMavenArtifacts(
+                vec!["org.apache.maven.plugins:maven-compiler-plugin:3.10.1".to_string()]
+            )),
+        );
+    }
+
+    #[test]
+    fn test_maven_errors() {
+        assert_just_match(
+            vec![
+                "[ERROR] Failed to execute goal org.apache.maven.plugins:maven-jar-plugin:3.1.2:jar (default-jar) on project xslthl: Execution default-jar of goal org.apache.maven.plugins:maven-jar-plugin:3.1.2:jar failed: An API incompatibility was encountered while executing org.apache.maven.plugins:maven-jar-plugin:3.1.2:jar: java.lang.NoSuchMethodError: 'void org.codehaus.plexus.util.DirectoryScanner.setFilenameComparator(java.util.Comparator)'"],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_dh_missing_uninstalled() {
+        assert_match(
+            vec![
+                "dh_missing --fail-missing", "dh_missing: usr/share/man/man1/florence_applet.1 exists in debian/tmp but is not installed to anywhere", "dh_missing: usr/lib/x86_64-linux-gnu/libflorence-1.0.la exists in debian/tmp but is not installed to anywhere", "dh_missing: missing files, aborting",
+            ],
+            3,
+            Some(DhMissingUninstalled("usr/lib/x86_64-linux-gnu/libflorence-1.0.la".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_module() {
+        assert_match(
+            vec![
+                "Converting tags.ledger... Can't locate String/Interpolate.pm in @INC (you may need to install the String::Interpolate module) (@INC contains: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.28.1 /usr/local/share/perl/5.28.1 /usr/lib/x86_64-linux-gnu/perl5/5.28 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.28 /usr/share/perl/5.28 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base) at ../bin/ledger2beancount line 23."
+            ],
+            1,
+            Some(MissingPerlModule {
+                filename: Some("String/Interpolate.pm".to_owned()),
+                module: "String::Interpolate".to_owned(),
+                inc: Some(vec![
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.28.1".to_owned(),
+                    "/usr/local/share/perl/5.28.1".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.28".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.28".to_owned(),
+                    "/usr/share/perl/5.28".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                ]),
+                minimum_version: None
+            }),
+        );
+        assert_match(
+            vec![
+                "Can't locate Test/Needs.pm in @INC (you may need to install the Test::Needs module) (@INC contains: t/lib /<<PKGBUILDDIR>>/blib/lib /<<PKGBUILDDIR>>/blib/arch /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.30.0 /usr/local/share/perl/5.30.0 /usr/lib/x86_64-linux-gnu/perl5/5.30 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.30 /usr/share/perl/5.30 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base .) at t/anon-basic.t line 7."
+            ],
+            1,
+            Some(MissingPerlModule{
+                filename: Some("Test/Needs.pm".to_owned()),
+                module: "Test::Needs".to_owned(),
+                inc: Some(vec![
+                    "t/lib".to_owned(),
+                    "/<<PKGBUILDDIR>>/blib/lib".to_owned(),
+                    "/<<PKGBUILDDIR>>/blib/arch".to_owned(),
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.30.0".to_owned(),
+                    "/usr/local/share/perl/5.30.0".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.30".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.30".to_owned(),
+                    "/usr/share/perl/5.30".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                    ".".to_owned(),
+                ]),
+                minimum_version: None
+            }),
+        );
+        assert_match(
+            vec!["- ExtUtils::Depends         ...missing. (would need 0.302)"],
+            1,
+            Some(MissingPerlModule {
+                filename: None,
+                module: "ExtUtils::Depends".to_owned(),
+                inc: None,
+                minimum_version: Some("0.302".to_owned()),
+            }),
+        );
+        assert_match(
+            vec![
+                r#"Can't locate object method "new" via package "Dist::Inkt::Profile::TOBYINK" (perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at /usr/share/perl5/Dist/Inkt.pm line 208."#,
+            ],
+            1,
+            Some(MissingPerlModule::simple("Dist::Inkt::Profile::TOBYINK")),
+        );
+        assert_match(
+            vec![
+                "Can't locate ExtUtils/Depends.pm in @INC (you may need to install the ExtUtils::Depends module) (@INC contains: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.32.1 /usr/local/share/perl/5.32.1 /usr/lib/x86_64-linux-gnu/perl5/5.32 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.32 /usr/share/perl/5.32 /usr/local/lib/site_perl) at (eval 11) line 1."
+            ],
+            1,
+            Some(MissingPerlModule{
+                filename: Some("ExtUtils/Depends.pm".to_owned()),
+                module: "ExtUtils::Depends".to_owned(),
+                inc: Some(vec![
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.32.1".to_owned(),
+                    "/usr/local/share/perl/5.32.1".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.32".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.32".to_owned(),
+                    "/usr/share/perl/5.32".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                ]),
+                minimum_version: None
+            }),
+        );
+        assert_match(
+            vec![
+                "Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) does not appear to be installed"
+            ],
+            1,
+            Some(MissingPerlModule::simple("Pod::Weaver::Plugin::WikiDoc")),
+        );
+        assert_match(
+            vec![
+                "List::Util version 1.56 required--this is only version 1.55 at /build/tmpttq5hhpt/package/blib/lib/List/AllUtils.pm line 8."
+            ],
+            1,
+            Some(MissingPerlModule {
+                filename: None,
+                inc: None,
+                module: "List::Util".to_owned(), minimum_version: Some("1.56".to_owned())}),
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_file() {
+        assert_match(
+            vec![
+                "Can't locate debian/perldl.conf in @INC (@INC contains: /<<PKGBUILDDIR>>/inc /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.28.1 /usr/local/share/perl/5.28.1 /usr/lib/x86_64-linux-gnu/perl5/5.28 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.28 /usr/share/perl/5.28 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base) at Makefile.PL line 131."
+            ],
+            1,
+            Some(MissingPerlFile {
+                filename: "debian/perldl.conf".to_owned(),
+                inc: Some(vec![
+                    "/<<PKGBUILDDIR>>/inc".to_owned(),
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.28.1".to_owned(),
+                    "/usr/local/share/perl/5.28.1".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.28".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.28".to_owned(),
+                    "/usr/share/perl/5.28".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                ]),
+            }),
+        );
+        assert_match(
+            vec![r#"Can't open perl script "Makefile.PL": No such file or directory"#],
+            1,
+            Some(MissingPerlFile {
+                filename: "Makefile.PL".to_owned(),
+                inc: None,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_perl_expand() {
+        assert_match(
+            vec![">(error): Could not expand [ 'Dist::Inkt::Profile::TOBYINK'"],
+            1,
+            Some(MissingPerlModule::simple("Dist::Inkt::Profile::TOBYINK")),
+        );
+    }
+
+    #[test]
+    fn test_perl_missing_predeclared() {
+        assert_match(
+            vec![
+                "String found where operator expected at Makefile.PL line 13, near \"author_tests 'xt'\"", "\t(Do you need to predeclare author_tests?)",
+                "syntax error at Makefile.PL line 13, near \"author_tests 'xt'\"", r#""strict subs" in use at Makefile.PL line 13."#,
+            ],
+            2,
+            Some(MissingPerlPredeclared("author_tests".to_owned())),
+        );
+        assert_match(
+            vec![
+                "String found where operator expected at Makefile.PL line 8, near \"readme_from    'lib/URL/Encode.pod'\""
+            ],
+            1,
+            Some(MissingPerlPredeclared("readme_from".to_owned())),
+        );
+
+        assert_match(
+            vec![
+                r#"Bareword "use_test_base" not allowed while "strict subs" in use at Makefile.PL line 12."#,
+            ],
+            1,
+            Some(MissingPerlPredeclared("use_test_base".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_unknown_cert_authority() {
+        assert_match(
+            vec![
+                r#"go: github.com/golangci/golangci-lint@v1.24.0: Get "https://proxy.golang.org/github.com/golangci/golangci-lint/@v/v1.24.0.mod": x509: certificate signed by unknown authority"#,
+            ],
+            1,
+            Some(UnknownCertificateAuthority(
+                "https://proxy.golang.org/github.com/golangci/golangci-lint/@v/v1.24.0.mod"
+                    .to_owned(),
+            )),
+        );
+    }
+
+    #[test]
+    fn test_no_disk_space() {
+        assert_match(
+            vec![
+                "/usr/bin/install: error writing '/<<PKGBUILDDIR>>/debian/tmp/usr/lib/gcc/x86_64-linux-gnu/8/cc1objplus': No space left on device"
+            ],
+            1,
+            Some(NoSpaceOnDevice)
+        );
+
+        assert_match(
+            ["OSError: [Errno 28] No space left on device"].to_vec(),
+            1,
+            Some(NoSpaceOnDevice),
+        );
+    }
+
+    #[test]
+    fn test_segmentation_fault() {
+        assert_just_match(
+            vec![
+                r#"/bin/bash: line 3:  7392 Segmentation fault      itstool -m "${mo}" ${d}/C/index.docbook ${d}/C/legal.xml"#,
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_plugin() {
+        assert_match(
+            vec!["Required plugin bundle Dist::Zilla::PluginBundle::Git isn't installed."],
+            1,
+            Some(MissingPerlModule::simple("Dist::Zilla::PluginBundle::Git")),
+        );
+        assert_match(
+            vec!["Required plugin Dist::Zilla::Plugin::PPPort isn't installed."],
+            1,
+            Some(MissingPerlModule::simple("Dist::Zilla::Plugin::PPPort")),
+        );
+    }
+
+    #[test]
+    fn test_nim_error() {
+        assert_just_match(
+            vec![
+                "/<<PKGBUILDDIR>>/msgpack4nim.nim(470, 6) Error: usage of 'isNil' is a user-defined error",
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_scala_error() {
+        assert_just_match(
+            vec![
+                "core/src/main/scala/org/json4s/JsonFormat.scala:131: error: No JSON deserializer found for type List[T]. Try to implement an implicit Reader or JsonFormat for this type."
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_vala_error() {
+        assert_just_match(
+vec![
+                "../src/Backend/FeedServer.vala:60.98-60.148: error: The name `COLLECTION_CREATE_NONE' does not exist in the context of `Secret.CollectionCreateFlags'"
+            ],
+            1,
+        );
+        assert_match(
+            vec![
+                "error: Package `glib-2.0' not found in specified Vala API directories or GObject-Introspection GIR directories"
+            ],
+            1,
+            Some(MissingValaPackage("glib-2.0".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_gir() {
+        assert_match(
+            vec!["ValueError: Namespace GnomeDesktop not available"],
+            1,
+            Some(MissingIntrospectionTypelib("GnomeDesktop".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_missing_boost_components() {
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
+  Could NOT find Boost (missing: program_options filesystem system graph
+  serialization iostreams) (found suitable version "1.74.0", minimum required
+  is "1.55.0")
+Call Stack (most recent call first):
+  /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
+  /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
+  src/CMakeLists.txt:4 (find_package)
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            4,
+            Some(MissingCMakeComponents{
+                name: "Boost".to_owned(),
+                components: vec![
+                    "program_options".to_owned(),
+                    "filesystem".to_owned(),
+                    "system".to_owned(),
+                    "graph".to_owned(),
+                    "serialization".to_owned(),
+                    "iostreams".to_owned(),
+                ],
+            }),
+        );
+    }
+
+    #[test]
+    fn test_pkg_config_too_old() {
+        assert_match(
+            vec![
+                "checking for pkg-config... no",
+                "",
+                "*** Your version of pkg-config is too old. You need atleast",
+                "*** pkg-config 0.9.0 or newer. You can download pkg-config",
+                "*** from the freedesktop.org software repository at",
+                "***",
+                "***    https://www.freedesktop.org/wiki/Software/pkg-config/",
+                "***",
+            ],
+            4,
+            Some(MissingVagueDependency {
+                name: "pkg-config".to_owned(),
+                minimum_version: Some("0.9.0".to_owned()),
+                url: None,
+                current_version: None,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_missing_jdk() {
+        assert_match(
+            vec![
+                "> Kotlin could not find the required JDK tools in the Java installation '/usr/lib/jvm/java-8-openjdk-amd64/jre' used by Gradle. Make sure Gradle is running on a JDK, not JRE.",
+            ],
+            1,
+            Some(MissingJDK::new("/usr/lib/jvm/java-8-openjdk-amd64/jre".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_missing_jre() {
+        assert_match(
+            vec!["ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."],
+            1,
+            Some(MissingJRE),
+        );
+    }
+
+    #[test]
+    fn test_node_module_missing() {
+        assert_match(
+            vec!["Error: Cannot find module 'tape'"],
+            1,
+            Some(MissingNodeModule("tape".to_owned())),
+        );
+        assert_just_match(
+            vec!["✖ [31mERROR:[39m Cannot find module '/<<PKGBUILDDIR>>/test'"],
+            1,
+        );
+        assert_match(
+            vec!["npm ERR! [!] Error: Cannot find module '@rollup/plugin-buble'"],
+            1,
+            Some(MissingNodeModule("@rollup/plugin-buble".to_owned())),
+        );
+        assert_match(
+            vec!["npm ERR! Error: Cannot find module 'fs-extra'"],
+            1,
+            Some(MissingNodeModule("fs-extra".to_owned())),
+        );
+        assert_match(
+            vec!["\x1b[1m\x1b[31m[!] \x1b[1mError: Cannot find module '@rollup/plugin-buble'"],
+            1,
+            Some(MissingNodeModule("@rollup/plugin-buble".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_setup_py_command() {
+        assert_match(
+            r#"""/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'long_description_content_type'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'test_suite'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'python_requires'
+  warnings.warn(msg)
+usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+   or: setup.py --help [cmd1 cmd2 ...]
+   or: setup.py --help-commands
+   or: setup.py cmd --help
+
+error: invalid command 'test'
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            12,
+            Some(MissingSetupPyCommand("test".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_c_header_missing() {
+        assert_match(
+            vec!["cdhit-common.h:39:9: fatal error: zlib.h: No such file or directory"],
+            1,
+            Some(MissingCHeader {
+                header: "zlib.h".to_owned(),
+            }),
+        );
+        assert_match(
+            vec![
+                "/<<PKGBUILDDIR>>/Kernel/Operation_Vector.cpp:15:10: fatal error: petscvec.h: No such file or directory"
+            ],
+            1,
+            Some(MissingCHeader{header: "petscvec.h".to_owned()}),
+        );
+        assert_match(
+            vec!["src/bubble.h:27:10: fatal error: DBlurEffectWidget: No such file or directory"],
+            1,
+            Some(MissingCHeader {
+                header: "DBlurEffectWidget".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_missing_jdk_file() {
+        assert_match(
+            vec![
+                "> Could not find tools.jar. Please check that /usr/lib/jvm/java-8-openjdk-amd64 contains a valid JDK installation.",
+            ],
+            1,
+            Some(MissingJDKFile{jdk_path: "/usr/lib/jvm/java-8-openjdk-amd64".to_owned(), filename: "tools.jar".to_owned()}),
+        );
+    }
+
+    #[test]
+    fn test_python2_import() {
+        assert_match(
+            vec!["ImportError: No module named pytz"],
+            1,
+            Some(MissingPythonModule::simple("pytz".to_owned())),
+        );
+        assert_just_match(vec!["ImportError: cannot import name SubfieldBase"], 1);
+    }
+
+    #[test]
+    fn test_python3_import() {
+        assert_match(
+            ["ModuleNotFoundError: No module named 'django_crispy_forms'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "django_crispy_forms".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            [" ModuleNotFoundError: No module named 'Cython'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "Cython".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            ["ModuleNotFoundError: No module named 'distro'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "distro".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            ["E   ModuleNotFoundError: No module named 'twisted'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "twisted".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            vec![
+                "E   ImportError: cannot import name 'async_poller' from 'msrest.polling' (/usr/lib/python3/dist-packages/msrest/polling/__init__.py)"
+            ],
+            1,
+            Some(MissingPythonModule::simple("msrest.polling.async_poller".to_owned())),
+        );
+        assert_match(
+            vec!["/usr/bin/python3: No module named sphinx"],
+            1,
+            Some(MissingPythonModule {
+                module: "sphinx".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            vec![
+                "Could not import extension sphinx.ext.pngmath (exception: No module named pngmath)"
+            ],
+            1,
+            Some(MissingPythonModule::simple("pngmath".to_owned())),
+        );
+        assert_match(
+            vec![
+                "/usr/bin/python3: Error while finding module specification for 'pep517.build' (ModuleNotFoundError: No module named 'pep517')"
+            ],
+            1,
+            Some(MissingPythonModule{module: "pep517".to_owned(), python_version:Some(3), minimum_version: None}),
+        );
+    }
+
+    #[test]
+    fn test_sphinx() {
+        assert_just_match(
+            vec!["There is a syntax error in your configuration file: Unknown syntax: Constant"],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_go_missing() {
+        assert_match(
+            vec![
+                r#"src/github.com/vuls/config/config.go:30:2: cannot find package "golang.org/x/xerrors" in any of:"#,
+            ],
+            1,
+            Some(MissingGoPackage {
+                package: "golang.org/x/xerrors".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_lazy_font() {
+        assert_match(
+            vec![
+                "[ERROR] LazyFont - Failed to read font file /usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf <java.io.FileNotFoundException: /usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf (No such file or directory)>java.io.FileNotFoundException: /usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf (No such file or directory)"],
+            1,
+            Some(MissingFile::new(
+                "/usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf".into()
+            )),
+        );
+    }
+
+    #[test]
+    fn test_missing_latex_files() {
+        assert_match(
+            vec!["! LaTeX Error: File `fancyvrb.sty' not found."],
+            1,
+            Some(MissingLatexFile("fancyvrb.sty".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_pytest_import() {
+        assert_match(
+            vec!["E   ImportError: cannot import name cmod"],
+            1,
+            Some(MissingPythonModule::simple("cmod".to_owned())),
+        );
+        assert_match(
+            vec!["E   ImportError: No module named mock"],
+            1,
+            Some(MissingPythonModule::simple("mock".to_owned())),
+        );
+        assert_match(
+            vec![
+                "pluggy.manager.PluginValidationError: Plugin 'xdist.looponfail' could not be loaded: (pytest 3.10.1 (/usr/lib/python2.7/dist-packages), Requirement.parse('pytest>=4.4.0'))!"
+            ],
+            1,
+            Some(MissingPythonModule{
+                module: "pytest".to_owned(), python_version: Some(2), minimum_version: Some("4.4.0".to_owned())
+            }),
+        );
+        assert_match(
+            vec![
+                r#"ImportError: Error importing plugin "tests.plugins.mock_libudev": No module named mock"#,
+            ],
+            1,
+            Some(MissingPythonModule::simple("mock".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_sed() {
+        assert_match(
+            vec!["sed: can't read /etc/locale.gen: No such file or directory"],
+            1,
+            Some(MissingFile::new("/etc/locale.gen".into())),
+        );
+    }
+
+    #[test]
+    fn test_pytest_args() {
+        assert_match(
+            vec![
+                "pytest: error: unrecognized arguments: --cov=janitor --cov-report=html --cov-report=term-missing:skip-covered"
+            ],
+            1,
+            Some(UnsupportedPytestArguments(
+                vec![
+                    "--cov=janitor".to_owned(),
+                    "--cov-report=html".to_owned(),
+                    "--cov-report=term-missing:skip-covered".to_owned(),
+                ]
+            )),
+        );
+    }
+
+    #[test]
+    fn test_pytest_config() {
+        assert_match(
+            vec!["INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: asyncio_mode"],
+            1,
+            Some(UnsupportedPytestConfigOption("asyncio_mode".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_distutils_missing() {
+        assert_match(
+            vec![
+                "distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('pytest-runner')"
+            ],
+            1,
+            Some(MissingPythonDistribution::simple("pytest-runner")),
+        );
+        assert_match(
+            vec![
+                "distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('certifi>=2019.3.9')"
+            ],
+            1,
+            Some(MissingPythonDistribution{distribution: "certifi".to_owned(), minimum_version: Some("2019.3.9".to_owned()), python_version: None }),
+        );
+        assert_match(
+            vec![
+                r#"distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('cffi; platform_python_implementation == "CPython"\')"#,
+            ],
+            1,
+            Some(MissingPythonDistribution::simple("cffi")),
+        );
+        assert_match(
+            vec!["error: Could not find suitable distribution for Requirement.parse('gitlab')"],
+            1,
+            Some(MissingPythonDistribution::simple("gitlab")),
+        );
+        assert_match(
+            vec![
+                "pkg_resources.DistributionNotFound: The 'configparser>=3.5' distribution was not found and is required by importlib-metadata"
+            ],
+            1,
+            Some(MissingPythonDistribution{distribution:"configparser".to_owned(), minimum_version: Some("3.5".to_owned()), python_version: None}),
+        );
+        assert_match(
+            vec![
+                "error: Command '['/usr/bin/python3.9', '-m', 'pip', '--disable-pip-version-check', 'wheel', '--no-deps', '-w', '/tmp/tmp973_8lhm', '--quiet', 'asynctest']' returned non-zero exit status 1."
+            ],
+            1,
+            Some(MissingPythonDistribution{distribution: "asynctest".to_owned(), python_version:Some(3), minimum_version: None}),
+        );
+        assert_match(
+            vec![
+                "subprocess.CalledProcessError: Command '['/usr/bin/python', '-m', 'pip', '--disable-pip-version-check', 'wheel', '--no-deps', '-w', '/tmp/tmpm2l3kcgv', '--quiet', 'setuptools_scm']' returned non-zero exit status 1."
+            ],
+            1,
+            Some(MissingPythonDistribution::simple("setuptools_scm")),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_file() {
+        assert_match(
+            r#"""CMake Error at /usr/lib/x86_64-/cmake/Qt5Gui/Qt5GuiConfig.cmake:27 (message):
+  The imported target "Qt5::Gui" references the file
+
+     "/usr/lib/x86_64-linux-gnu/libEGL.so"
+
+  but this file does not exist.  Possible reasons include:
+
+  * The file was deleted, renamed, or moved to another location.
+
+  * An install or uninstall procedure did not complete successfully.
+
+  * The installation package was faulty and contained
+
+     "/usr/lib/x86_64-linux-gnu/cmake/Qt5Gui/Qt5GuiConfigExtras.cmake"
+
+  but not all the files it references.
+
+Call Stack (most recent call first):
+  /usr/lib/x86_64-linux-gnu/QtGui/Qt5Gui.cmake:63 (_qt5_Gui_check_file_exists)
+  /usr/lib/x86_64-linux-gnu/QtGui/Qt5Gui.cmake:85 (_qt5gui_find_extra_libs)
+  /usr/lib/x86_64-linux-gnu/QtGui/Qt5Gui.cmake:186 (include)
+  /usr/lib/x86_64-linux-gnu/QtWidgets/Qt5Widgets.cmake:101 (find_package)
+  /usr/lib/x86_64-linux-gnu/Qt/Qt5Config.cmake:28 (find_package)
+  CMakeLists.txt:34 (find_package)
+dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
+"""#
+            .split_inclusive('\n')
+            .collect::<Vec<&str>>(),
+            16,
+            Some(MissingFile::new(
+                "/usr/lib/x86_64-linux-gnu/libEGL.so".into(),
+            )),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_include() {
+        assert_match(
+            r#"""-- Performing Test _OFFT_IS_64BIT
+-- Performing Test _OFFT_IS_64BIT - Success
+-- Performing Test HAVE_DATE_TIME
+-- Performing Test HAVE_DATE_TIME - Success
+CMake Error at CMakeLists.txt:43 (include):
+  include could not find load file:
+
+    KDEGitCommitHooks
+
+
+-- Found KF5Activities: /usr/lib/x86_64-linux-gnu/cmake/KF5Activities/KF5ActivitiesConfig.cmake (found version "5.78.0") 
+-- Found KF5Config: /usr/lib/x86_64-linux-gnu/cmake/KF5Config/KF5ConfigConfig.cmake (found version "5.78.0") 
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            8,
+            Some(CMakeFilesMissing{filenames:vec!["KDEGitCommitHooks.cmake".to_string()], version :None}),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_cmake_files() {
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:230 (message):
+  Could not find a package configuration file provided by "sensor_msgs" with
+  any of the following names:
+
+    sensor_msgsConfig.cmake
+    sensor_msgs-config.cmake
+
+  Add the installation prefix of "sensor_msgs" to CMAKE_PREFIX_PATH or set
+  "sensor_msgs_DIR" to a directory containing one of the above files.  If
+  "sensor_msgs" provides a separate development package or SDK, be sure it
+  has been installed.
+dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
+"""#
+            .split_inclusive('\n')
+            .collect::<Vec<&str>>(),
+            11,
+            Some(CMakeFilesMissing {
+                filenames: vec![
+                    "sensor_msgsConfig.cmake".to_string(),
+                    "sensor_msgs-config.cmake".to_string(),
+                ],
+                version: None,
+            }),
+        );
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:230 (message):
+  Could NOT find KF5 (missing: Plasma PlasmaQuick Wayland ModemManagerQt
+  NetworkManagerQt) (found suitable version "5.92.0", minimum required is
+  "5.86")
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            4,
+            Some(MissingCMakeComponents{
+                name: "KF5".into(),
+                components: vec![
+                    "Plasma".into(),
+                    "PlasmaQuick".into(),
+                    "Wayland".into(),
+                    "ModemManagerQt".into(),
+                    "NetworkManagerQt".into(),
+                ],
+            }),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_exact_version() {
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
+  Could NOT find SignalProtocol: Found unsuitable version "2.3.3", but
+  required is exact version "2.3.2" (found
+  /usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so)
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            4,
+            Some(CMakeNeedExactVersion{
+                package: "SignalProtocol".to_owned(),
+                version_found: "2.3.3".to_owned(),
+                exact_version_needed: "2.3.2".to_owned(),
+                path: "/usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so".into(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_vague() {
+        assert_match(
+            vec![
+                "CMake Error at CMakeLists.txt:84 (MESSAGE):",
+                "  alut not found",
+            ],
+            2,
+            Some(MissingVagueDependency::simple("alut")),
+        );
+        assert_match(
+            vec![
+                "CMake Error at CMakeLists.txt:213 (message):",
+                "  could not find zlib",
+            ],
+            2,
+            Some(MissingVagueDependency::simple("zlib")),
+        );
+        assert_match(
+            r#"""-- Found LibSolv_ext: /usr/lib/x86_64-linux-gnu/libsolvext.so  
+-- Found LibSolv: /usr/include /usr/lib/x86_64-linux-gnu/libsolv.so;/usr/lib/x86_64-linux-gnu/libsolvext.so
+-- No usable gpgme flavours found.
+CMake Error at cmake/modules/FindGpgme.cmake:398 (message):
+  Did not find GPGME
+Call Stack (most recent call first):
+  CMakeLists.txt:223 (FIND_PACKAGE)
+  """#.split_inclusive('\n').collect::<Vec<&str>>(),
+            5,
+            Some(MissingVagueDependency::simple("GPGME")),
+        );
+    }
+
+    #[test]
+    fn test_secondary() {
+        assert!(super::find_secondary_build_failure(&["Unknown option --foo"], 10).is_some());
+        assert!(
+            super::find_secondary_build_failure(&["Unknown option --foo, ignoring."], 10).is_none()
         );
     }
 }

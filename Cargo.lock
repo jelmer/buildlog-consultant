@@ -354,9 +354,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.24"
+version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdefd28dd8634f61fd45702506e4b25f8191fd9825e4104c38916a691a632f39"
+checksum = "69baa2965850b069e029aba7c420bc7c2b2c632cf87aae1e6427ca9247e714ec"
 dependencies = [
  "deb822-lossless",
  "debversion",
@@ -372,6 +372,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b6c96844ac16a110ee3ea355b7e511ffe0221242caebb2cc5e1bbfd285744cf"
 dependencies = [
  "lazy-regex",
+ "serde",
 ]
 
 [[package]]

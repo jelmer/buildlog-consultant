@@ -35,11 +35,6 @@ Repository = "https://github.com/jelmer/buildlog-consultant.git"
 chatgpt = ["openai"]
 dev = ["ruff==0.6.1"]
 
-[project.scripts]
-analyse-sbuild-log = "buildlog_consultant.sbuild:main"
-analyse-build-log = "buildlog_consultant.common:main"
-analyse-autopkgtest-log = "buildlog_consultant.autopkgtest:main"
-
 [tool.setuptools]
 include-package-data = false
 
