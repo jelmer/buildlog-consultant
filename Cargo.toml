@@ -19,7 +19,7 @@ serde_json = "1"
 default = ["cli", "python"]
 chatgpt = ["dep:chatgpt_rs"]
 cli = ["dep:clap", "dep:env_logger"]
-python = ["dep:pyo3"]
+python = ["dep:pep508_rs", "dep:pep440_rs"]
 
 [[bin]]
 name = "chatgpt-analyze-log"
@@ -47,7 +47,6 @@ path = "src/bin/analyze-sbuild-log.rs"
 required-features = ["cli"]
 
 [dependencies]
-pyo3 = { workspace = true, optional = true }
 inventory = "0.3"
 regex = "1"
 lazy_static = "1"
@@ -68,6 +67,8 @@ tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 serde_yaml = { version = "0.9" }
 debian-control = "0.1.18"
 maplit = "1.0.2"
+pep508_rs = { version = "0.6", optional = true }
+pep440_rs = { version = "0.6", optional = true }
 
 [dev-dependencies]
 maplit = "1.0.2"

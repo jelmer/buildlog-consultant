@@ -488,17 +488,17 @@ lazy_static::lazy_static! {
         r"^(distutils.errors.DistutilsError|error): Could not find suitable distribution for Requirement.parse\('([^']+)'\)$",
         |c| {
             let req = c.get(2).unwrap().as_str().split(';').next().unwrap();
-            Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(req, None).unwrap())))
+            Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(req, None))))
         }),
         regex_line_matcher!(
             r"^We need the Python library (.*) to be installed. Try runnning: python -m ensurepip$",
             |c| Ok(Some(Box::new(MissingPythonDistribution { distribution: c.get(1).unwrap().as_str().to_string(), python_version: None, minimum_version: None })))),
         regex_line_matcher!(
             r"^pkg_resources.DistributionNotFound: The '([^']+)' distribution was not found and is required by the application$",
-            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None).unwrap())))),
+            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None))))),
         regex_line_matcher!(
             r"^pkg_resources.DistributionNotFound: The '([^']+)' distribution was not found and is required by (.*)$",
-            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None).unwrap())))),
+            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None))))),
         regex_line_matcher!(
             r"^Please install cmake version >= (.*) and re-run setup$",
             |_| Ok(Some(Box::new(MissingCommand("cmake".to_string()))))),
@@ -1906,7 +1906,7 @@ lazy_static::lazy_static! {
             let python_version = m.get(2).filter(|x| !x.is_empty()).map(|pv| pv.as_str().split_once('.').map_or(pv.as_str(), |x| x.0).parse().unwrap());
             Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(
                 m.get(3).unwrap().as_str(), python_version
-            ).unwrap())))
+            ))))
         }
     ),
     regex_line_matcher!(
@@ -5477,7 +5477,7 @@ error: invalid command 'test'
                 "subprocess.CalledProcessError: Command '['/usr/bin/python', '-m', 'pip', '--disable-pip-version-check', 'wheel', '--no-deps', '-w', '/tmp/tmpm2l3kcgv', '--quiet', 'setuptools_scm']' returned non-zero exit status 1."
             ],
             1,
-            Some(MissingPythonDistribution::simple("setuptools_scm")),
+            Some(MissingPythonDistribution::simple("setuptools-scm")),
         );
     }
 
