@@ -286,8 +286,8 @@ pub struct Dose3Conflict {
     pub pkg2: Dose3Pkg,
 }
 
-pub fn error_from_dose3_report(report: serde_json::Value) -> Option<Box<dyn Problem>> {
-    let entries: Vec<Dose3Report> = serde_json::from_value(report).ok()?;
+pub fn error_from_dose3_report(report: serde_yaml::Value) -> Option<Box<dyn Problem>> {
+    let entries: Vec<Dose3Report> = serde_yaml::from_value(report).ok()?;
     let packages = entries
         .iter()
         .map(|entry| &entry.package)

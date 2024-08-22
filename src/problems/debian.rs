@@ -624,9 +624,13 @@ impl Problem for MissingDebcargoCrate {
 impl std::fmt::Display for MissingDebcargoCrate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(version) = &self.version {
-            write!(f, "Missing debcargo crate: {}={}", self.cratename, version)
+            write!(
+                f,
+                "debcargo can't find crate {} (version: {})",
+                self.cratename, version
+            )
         } else {
-            write!(f, "Missing debcargo crate: {}", self.cratename)
+            write!(f, "debcargo can't find crate {}", self.cratename)
         }
     }
 }
@@ -782,7 +786,6 @@ impl Problem for UnsatisfiedAptConflicts {
             "relations": self.0,
         })
     }
-
 }
 
 impl std::fmt::Display for UnsatisfiedAptConflicts {
@@ -793,6 +796,7 @@ impl std::fmt::Display for UnsatisfiedAptConflicts {
 
 impl std::error::Error for UnsatisfiedAptConflicts {}
 
+#[derive(Debug, Clone)]
 pub struct ArchitectureNotInList {
     pub arch: String,
     pub arch_list: Vec<String>,
@@ -832,7 +836,6 @@ impl Problem for UnsatisfiedAptDependencies {
     }
 }
 
-
 impl std::fmt::Display for UnsatisfiedAptDependencies {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "unsatisfied apt dependencies: {}", self.0)
@@ -860,6 +863,10 @@ impl Problem for InsufficientDiskSpace {
 
 impl std::fmt::Display for InsufficientDiskSpace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Insufficient disk space for build. Need: {} KiB, free: {} KiB", self.needed, self.free)
+        write!(
+            f,
+            "Insufficient disk space for build. Need: {} KiB, free: {} KiB",
+            self.needed, self.free
+        )
     }
 }
