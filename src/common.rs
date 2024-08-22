@@ -3442,3 +3442,130 @@ pub fn find_build_failure_description(
 
     (None, None)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_match(
+        lines: Vec<&str>,
+        lineno: usize,
+        mut expected: Option<Box<dyn Problem>>,
+    ) {
+        let (r#match, actual_err) = super::find_build_failure_description(lines.clone());
+        if let Some(r#match) = r#match.as_ref() {
+            assert_eq!(&r#match.line(), &lines[lineno - 1]);
+            assert_eq!(lineno, r#match.lineno());
+        } else {
+            assert!(r#match.is_none());
+        }
+        if let Some(expected) = expected.take() {
+            assert!(r#match.is_some(), "err ({:?}) provided but match missing", &expected);
+            assert_eq!(actual_err, Some(expected));
+        } else {
+            assert!(actual_err.is_none());
+        }
+    }
+
+    #[test]
+    fn test_make_missing_rule() {
+        assert_match(
+            vec![
+                "make[1]: *** No rule to make target 'nno.autopgen.bin', needed by 'dan-nno.autopgen.bin'.  Stop."
+            ],
+            1,
+            Some(Box::new(MissingBuildFile{filename: "nno.autopgen.bin".to_owned()})),
+        );
+
+        assert_match(vec![
+                "make[1]: *** No rule to make target '/usr/share/blah/blah', needed by 'dan-nno.autopgen.bin'.  Stop."
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/share/blah/blah".into()))),
+        );
+        assert_match(
+            vec![
+                "debian/rules:4: /usr/share/openstack-pkg-tools/pkgos.make: No such file or directory"
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/share/openstack-pkg-tools/pkgos.make".into()))),
+        );
+    }
+
+    #[test]
+    fn test_git_identity() {
+        assert_match(
+            vec![
+                "fatal: unable to auto-detect email address (got 'jenkins@osuosl167-amd64.(none)')"
+            ],
+            1,
+            Some(Box::new(MissingGitIdentity)),
+        );
+    }
+
+    #[test]
+    fn test_ioerror() {
+        assert_match(
+            vec![
+                "E   IOError: [Errno 2] No such file or directory: '/usr/lib/python2.7/poly1305/rfc7539.txt'"
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/lib/python2.7/poly1305/rfc7539.txt".into()))),
+        );
+    }
+
+    #[test]
+    fn test_vignette() {
+        assert_match(
+            vec![
+                "Error: processing vignette 'uroot-intro.Rnw' failed with diagnostics:",
+                "pdflatex is not available",
+            ],
+            2,
+            Some(Box::new(MissingVagueDependency::simple("pdflatex")))
+        );
+    }
+
+    #[test]
+    fn test_upstart_file_present() {
+        assert_match(
+            vec![
+                "dh_installinit: upstart jobs are no longer supported!  Please remove debian/sddm.upstart and check if you need to add a conffile removal"
+            ],
+            1,
+            Some(Box::new(UpstartFilePresent("debian/sddm.upstart".into()))),
+        );
+    }
+
+    #[test]
+    fn test_missing_go_mod_file() {
+        assert_match(
+            vec![
+                "go: go.mod file not found in current directory or any parent directory; see 'go help modules'"
+            ],
+            1,
+            Some(Box::new(MissingGoModFile)),
+        );
+    }
+
+    #[test]
+    fn test_missing_javascript_runtime() {
+        assert_match(
+            vec![
+                "ExecJS::RuntimeUnavailable: Could not find a JavaScript runtime. See https://github.com/rails/execjs for a list of available runtimes."],
+            1,
+            Some(Box::new(MissingJavaScriptRuntime))
+        );
+    }
+
+    #[test]
+    fn test_directory_missing() {
+        assert_match(
+            vec![
+                "debian/components/build: 19: cd: can't cd to rollup-plugin",
+            ],
+            1,
+            Some(Box::new(DirectoryNonExistant("rollup-plugin".to_owned()))),
+        );
+    }
+}
