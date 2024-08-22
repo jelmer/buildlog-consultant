@@ -264,6 +264,13 @@ fn find_secondary_build_failure(lines: Vec<String>, offset: usize) -> Option<Mat
         .map(|m| Match(Box::new(m)))
 }
 
+#[pyfunction]
+fn find_apt_get_failure(lines: Vec<String>) -> (Option<Match>, Option<Problem>) {
+    let lines = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    let (m, p) = buildlog_consultant::apt::find_apt_get_failure(lines);
+    (m.map(Match), p.map(Problem))
+}
+
 #[pymodule]
 fn _buildlog_consultant_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
@@ -276,5 +283,6 @@ fn _buildlog_consultant_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(find_secondary_build_failure, m)?)?;
     m.add_function(wrap_pyfunction!(find_autopkgtest_failure_description, m)?)?;
     m.add_function(wrap_pyfunction!(find_build_failure_description, m)?)?;
+    m.add_function(wrap_pyfunction!(find_apt_get_failure, m)?)?;
     Ok(())
 }
