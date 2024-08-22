@@ -26,6 +26,10 @@ impl Problem for MissingFile {
             "path": self.path.to_string_lossy(),
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingFile {
@@ -55,6 +59,10 @@ impl Problem for MissingBuildFile {
             "filename": self.filename,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingBuildFile {
@@ -77,6 +85,10 @@ impl Problem for MissingCommandOrBuildFile {
         serde_json::json!({
             "filename": self.filename,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -106,6 +118,10 @@ impl Problem for VcsControlDirectoryNeeded {
         serde_json::json!({
             "vcs": self.vcs,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -164,6 +180,10 @@ impl Problem for MissingPythonModule {
             "minimum_version": self.minimum_version,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -184,6 +204,10 @@ impl Problem for MissingCommand {
         serde_json::json!({
             "command": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -223,6 +247,10 @@ impl Problem for MissingPythonDistribution {
             "python_version": self.python_version,
             "minimum_version": self.minimum_version,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -300,6 +328,10 @@ impl Problem for MissingHaskellModule {
             "module": self.module,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -320,6 +352,10 @@ impl Problem for MissingLibrary {
         serde_json::json!({
             "library": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -342,6 +378,10 @@ impl Problem for MissingIntrospectionTypelib {
             "library": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -362,6 +402,10 @@ impl Problem for MissingPytestFixture {
         serde_json::json!({
             "fixture": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -384,6 +428,10 @@ impl Problem for UnsupportedPytestConfigOption {
             "name": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -404,6 +452,10 @@ impl Problem for UnsupportedPytestArguments {
         serde_json::json!({
             "args": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -443,6 +495,10 @@ impl Problem for MissingRPackage {
             "minimum_version": self.minimum_version,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -459,6 +515,10 @@ impl Problem for MissingGoPackage {
         serde_json::json!({
             "package": self.package,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -482,6 +542,10 @@ impl Problem for MissingCHeader {
         serde_json::json!({
             "header": self.header,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -510,6 +574,10 @@ impl Problem for MissingNodeModule {
             "module": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingNodeModule {
@@ -531,6 +599,10 @@ impl Problem for MissingNodePackage {
             "package": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingNodePackage {
@@ -549,6 +621,10 @@ impl Problem for MissingConfigure {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -590,6 +666,10 @@ impl Problem for MissingVagueDependency {
             "current_version": self.current_version,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingVagueDependency {
@@ -609,6 +689,10 @@ impl Problem for MissingQt {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingQt {
@@ -627,6 +711,10 @@ impl Problem for MissingX11 {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -662,6 +750,10 @@ impl Problem for MissingAutoconfMacro {
             "need_rebuild": self.need_rebuild,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingAutoconfMacro {
@@ -682,6 +774,10 @@ impl Problem for DirectoryNonExistant {
         serde_json::json!({
             "path": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -704,6 +800,10 @@ impl Problem for MissingValaPackage {
             "package": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingValaPackage {
@@ -725,6 +825,10 @@ impl Problem for UpstartFilePresent {
             "filename": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for UpstartFilePresent {
@@ -745,6 +849,10 @@ impl Problem for MissingPostgresExtension {
         serde_json::json!({
             "extension": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -770,6 +878,10 @@ impl Problem for MissingPkgConfig {
             "module": self.module,
             "minimum_version": self.minimum_version,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -816,6 +928,10 @@ impl Problem for MissingHaskellDependencies {
             "deps": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingHaskellDependencies {
@@ -835,6 +951,10 @@ impl Problem for NoSpaceOnDevice {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for NoSpaceOnDevice {
@@ -853,6 +973,10 @@ impl Problem for MissingJRE {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -882,6 +1006,10 @@ impl Problem for MissingJDK {
         serde_json::json!({
             "jdk_path": self.jdk_path
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -914,6 +1042,10 @@ impl Problem for MissingJDKFile {
             "filename": self.filename
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingJDKFile {
@@ -944,6 +1076,10 @@ impl Problem for MissingPerlFile {
             "filename": self.filename,
             "inc": self.inc
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -982,6 +1118,10 @@ impl Problem for MissingPerlModule {
             "inc": self.inc,
             "minimum_version": self.minimum_version,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1030,6 +1170,10 @@ impl Problem for MissingSetupPyCommand {
             "command": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingSetupPyCommand {
@@ -1048,6 +1192,10 @@ impl Problem for MissingCSharpCompiler {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1068,6 +1216,10 @@ impl Problem for MissingRustCompiler {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingRustCompiler {
@@ -1086,6 +1238,10 @@ impl Problem for MissingAssembler {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1111,6 +1267,10 @@ impl Problem for MissingCargoCrate {
             "crate": self.crate_name,
             "requirement": self.requirement
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1148,6 +1308,10 @@ impl Problem for DhWithOrderIncorrect {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for DhWithOrderIncorrect {
@@ -1182,6 +1346,10 @@ impl Problem for UnsupportedDebhelperCompatLevel {
             "requested": self.requested
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for UnsupportedDebhelperCompatLevel {
@@ -1205,6 +1373,10 @@ impl Problem for SetuptoolScmVersionIssue {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for SetuptoolScmVersionIssue {
@@ -1225,6 +1397,10 @@ impl Problem for MissingMavenArtifacts {
         serde_json::json!({
             "artifacts": self.0
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1253,6 +1429,10 @@ impl Problem for NotExecutableFile {
             "path": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for NotExecutableFile {
@@ -1280,6 +1460,10 @@ impl Problem for DhMissingUninstalled {
             "missing_file": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for DhMissingUninstalled {
@@ -1306,6 +1490,10 @@ impl Problem for DhLinkDestinationIsDirectory {
         serde_json::json!({
             "path": self.0
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1336,6 +1524,10 @@ impl Problem for MissingXmlEntity {
             "url": self.url
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingXmlEntity {
@@ -1362,6 +1554,10 @@ impl Problem for CcacheError {
         serde_json::json!({
             "error": self.0
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1392,6 +1588,10 @@ impl Problem for DebianVersionRejected {
             "version": self.version
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for DebianVersionRejected {
@@ -1420,6 +1620,10 @@ impl Problem for PatchApplicationFailed {
         serde_json::json!({
             "patchname": self.patchname
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1454,6 +1658,10 @@ impl Problem for NeedPgBuildExtUpdateControl {
             "generated_path": self.generated_path,
             "template_path": self.template_path
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1490,6 +1698,10 @@ impl Problem for DhAddonLoadFailure {
             "path": self.path
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for DhAddonLoadFailure {
@@ -1520,6 +1732,10 @@ impl Problem for DhUntilUnsupported {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1558,6 +1774,10 @@ impl Problem for DebhelperPatternNotFound {
             "directories": self.directories
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for DebhelperPatternNotFound {
@@ -1593,6 +1813,10 @@ impl Problem for MissingPerlManifest {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingPerlManifest {
@@ -1621,6 +1845,10 @@ impl Problem for ImageMagickDelegateMissing {
         serde_json::json!({
             "delegate": self.delegate
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1653,6 +1881,10 @@ impl Problem for Cancelled {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for Cancelled {
@@ -1684,6 +1916,10 @@ impl Problem for DisappearedSymbols {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for DisappearedSymbols {
@@ -1712,6 +1948,10 @@ impl Problem for DuplicateDHCompatLevel {
         serde_json::json!({
             "command": self.command
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1746,6 +1986,10 @@ impl Problem for MissingDHCompatLevel {
             "command": self.command
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingDHCompatLevel {
@@ -1776,6 +2020,10 @@ impl Problem for MissingJVM {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1812,6 +2060,10 @@ impl Problem for MissingRubyGem {
             "version": self.version
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingRubyGem {
@@ -1847,6 +2099,10 @@ impl Problem for MissingJavaScriptRuntime {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingJavaScriptRuntime {
@@ -1875,6 +2131,10 @@ impl Problem for MissingRubyFile {
         serde_json::json!({
             "filename": self.filename
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -1909,6 +2169,10 @@ impl Problem for MissingPhpClass {
             "php_class": self.php_class
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingPhpClass {
@@ -1942,6 +2206,10 @@ impl Problem for MissingJavaClass {
             "classname": self.classname
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingJavaClass {
@@ -1972,6 +2240,10 @@ impl Problem for MissingSprocketsFile {
             "name": self.name,
             "content_type": self.content_type
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2006,6 +2278,10 @@ impl Problem for MissingXfceDependency {
             "package": self.package
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingXfceDependency {
@@ -2024,6 +2300,10 @@ impl Problem for GnomeCommonMissing {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2053,6 +2333,10 @@ impl Problem for MissingConfigStatusInput {
         serde_json::json!({
             "path": self.path
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2092,6 +2376,10 @@ impl Problem for MissingGnomeCommonDependency {
             "minimum_version": self.minimum_version
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingGnomeCommonDependency {
@@ -2126,6 +2414,10 @@ impl Problem for MissingAutomakeInput {
             "path": self.path
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingAutomakeInput {
@@ -2154,6 +2446,10 @@ impl Problem for ChrootNotFound {
         serde_json::json!({
             "chroot": self.chroot
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2186,6 +2482,10 @@ impl Problem for MissingLibtool {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Display for MissingLibtool {
@@ -2210,6 +2510,10 @@ impl Problem for CMakeFilesMissing {
             "filenames": self.filenames,
             "version": self.version,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2236,6 +2540,10 @@ impl Problem for MissingCMakeComponents {
             "components": self.components,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingCMakeComponents {
@@ -2260,6 +2568,10 @@ impl Problem for MissingCMakeConfig {
             "name": self.name,
             "version": self.version,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2298,6 +2610,10 @@ impl Problem for CMakeNeedExactVersion {
             "path": self.path,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for CMakeNeedExactVersion {
@@ -2327,6 +2643,10 @@ impl Problem for MissingStaticLibrary {
             "filename": self.filename,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingStaticLibrary {
@@ -2345,6 +2665,10 @@ impl Problem for MissingGoRuntime {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2367,6 +2691,10 @@ impl Problem for UnknownCertificateAuthority {
             "url": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for UnknownCertificateAuthority {
@@ -2388,6 +2716,10 @@ impl Problem for MissingPerlPredeclared {
             "name": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingPerlPredeclared {
@@ -2406,6 +2738,10 @@ impl Problem for MissingGitIdentity {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2426,6 +2762,10 @@ impl Problem for MissingSecretGpgKey {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingSecretGpgKey {
@@ -2444,6 +2784,10 @@ impl Problem for MissingVcVersionerVersion {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2475,6 +2819,10 @@ impl Problem for MissingLatexFile {
             "filename": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingLatexFile {
@@ -2493,6 +2841,10 @@ impl Problem for MissingXDisplay {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2515,6 +2867,10 @@ impl Problem for MissingFontspec {
             "fontspec": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingFontspec {
@@ -2536,6 +2892,10 @@ impl Problem for InactiveKilled {
             "minutes": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for InactiveKilled {
@@ -2554,6 +2914,10 @@ impl Problem for MissingPauseCredentials {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2580,6 +2944,10 @@ impl Problem for MismatchGettextVersions {
             "autoconf_version": self.autoconf_version
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MismatchGettextVersions {
@@ -2605,6 +2973,10 @@ impl Problem for InvalidCurrentUser {
             "user": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for InvalidCurrentUser {
@@ -2625,6 +2997,10 @@ impl Problem for MissingGnulibDirectory {
         serde_json::json!({
             "directory": self.0
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2647,6 +3023,10 @@ impl Problem for MissingLuaModule {
             "module": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingLuaModule {
@@ -2666,6 +3046,10 @@ impl Problem for MissingGoModFile {
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingGoModFile {
@@ -2684,6 +3068,10 @@ impl Problem for OutdatedGoModFile {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2710,6 +3098,10 @@ impl Problem for CodeCoverageTooLow {
             "required": self.required
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for CodeCoverageTooLow {
@@ -2735,6 +3127,10 @@ impl Problem for ESModuleMustUseImport {
             "path": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for ESModuleMustUseImport {
@@ -2756,6 +3152,10 @@ impl Problem for MissingPHPExtension {
             "extension": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingPHPExtension {
@@ -2776,6 +3176,10 @@ impl Problem for MinimumAutoconfTooOld {
         serde_json::json!({
             "minimum_version": self.0
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2802,6 +3206,10 @@ impl Problem for MissingPerlDistributionFile {
             "filename": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingPerlDistributionFile {
@@ -2827,6 +3235,10 @@ impl Problem for MissingGoSumEntry {
             "version": self.version
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingGoSumEntry {
@@ -2845,6 +3257,10 @@ impl Problem for ValaCompilerCannotCompile {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -2867,6 +3283,10 @@ impl Problem for MissingDebianBuildDep {
             "dep": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingDebianBuildDep {
@@ -2888,6 +3308,10 @@ impl Problem for MissingQtModules {
             "modules": self.0
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for MissingQtModules {
@@ -2908,6 +3332,10 @@ impl Problem for MissingOCamlPackage {
         serde_json::json!({
             "package": self.0
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

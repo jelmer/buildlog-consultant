@@ -14,6 +14,10 @@ impl Problem for DpkgError {
             "msg": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for DpkgError {
@@ -32,6 +36,10 @@ impl Problem for AptUpdateError {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -58,6 +66,10 @@ impl Problem for AptFetchFailure {
             "error": self.error,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for AptFetchFailure {
@@ -83,6 +95,10 @@ impl Problem for AptMissingReleaseFile {
             "url": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for AptMissingReleaseFile {
@@ -103,6 +119,10 @@ impl Problem for AptPackageUnknown {
         serde_json::json!({
             "package": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -129,6 +149,10 @@ impl Problem for AptBrokenPackages {
             "broken": self.broken,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for AptBrokenPackages {
@@ -153,6 +177,10 @@ impl Problem for UnableToFindUpstreamTarball {
             "package": self.package,
             "version": self.version.to_string(),
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -183,6 +211,10 @@ impl Problem for SourceFormatUnbuildable {
             "reason": self.reason,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for SourceFormatUnbuildable {
@@ -208,6 +240,10 @@ impl Problem for SourceFormatUnsupported {
             "source_format": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for SourceFormatUnsupported {
@@ -228,6 +264,10 @@ impl Problem for PatchFileMissing {
         serde_json::json!({
             "path": self.0.display().to_string(),
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -253,6 +293,10 @@ impl Problem for DpkgSourceLocalChanges {
             "diff_file": self.diff_file,
             "files": self.files,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -283,6 +327,10 @@ impl Problem for DpkgSourceUnrepresentableChanges {
     fn json(&self) -> serde_json::Value {
         serde_json::Value::Null
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
@@ -301,6 +349,10 @@ impl Problem for DpkgUnwantedBinaryFiles {
 
     fn json(&self) -> serde_json::Value {
         serde_json::Value::Null
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -323,6 +375,10 @@ impl Problem for DpkgBinaryFileChanged {
             "files": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for DpkgBinaryFileChanged {
@@ -341,6 +397,10 @@ impl Problem for MissingControlFile {
 
     fn json(&self) -> serde_json::Value {
         serde_json::Value::Null
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -363,6 +423,10 @@ impl Problem for UnknownMercurialExtraFields {
             "field": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for UnknownMercurialExtraFields {
@@ -381,6 +445,10 @@ impl Problem for UpstreamPGPSignatureVerificationFailed {
 
     fn json(&self) -> serde_json::Value {
         serde_json::Value::Null
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -403,6 +471,10 @@ impl Problem for UScanRequestVersionMissing {
             "version": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for UScanRequestVersionMissing {
@@ -423,6 +495,10 @@ impl Problem for DebcargoFailure {
         serde_json::json!({
             "reason": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -445,6 +521,10 @@ impl Problem for ChangelogParseError {
             "reason": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for ChangelogParseError {
@@ -465,6 +545,10 @@ impl Problem for UScanError {
         serde_json::json!({
             "reason": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -491,6 +575,10 @@ impl Problem for UScanFailed {
             "reason": self.reason,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for UScanFailed {
@@ -515,6 +603,10 @@ impl Problem for InconsistentSourceFormat {
             "version": self.version,
             "source_format": self.source_format,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -544,6 +636,10 @@ impl Problem for UpstreamMetadataFileParseError {
             "reason": self.reason,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for UpstreamMetadataFileParseError {
@@ -564,6 +660,10 @@ impl Problem for DpkgSourcePackFailed {
         serde_json::json!({
             "reason": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -589,6 +689,10 @@ impl Problem for DpkgBadVersion {
             "version": self.version,
             "reason": self.reason,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -618,6 +722,10 @@ impl Problem for MissingDebcargoCrate {
             "crate": self.cratename,
             "version": self.version,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -665,6 +773,10 @@ impl Problem for PristineTarTreeMissing {
             "treeish": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for PristineTarTreeMissing {
@@ -685,6 +797,10 @@ impl Problem for MissingRevision {
         serde_json::json!({
             "revision": String::from_utf8_lossy(&self.0),
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -710,6 +826,10 @@ impl Problem for DebcargoUnacceptablePredicate {
             "crate": self.cratename,
             "predicate": self.predicate,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -740,6 +860,10 @@ impl Problem for DebcargoUnacceptableComparator {
             "comparator": self.comparator,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for DebcargoUnacceptableComparator {
@@ -765,6 +889,10 @@ impl Problem for UScanTooManyRequests {
             "reason": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for UScanTooManyRequests {
@@ -785,6 +913,10 @@ impl Problem for UnsatisfiedAptConflicts {
         serde_json::json!({
             "relations": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -813,6 +945,10 @@ impl Problem for ArchitectureNotInList {
             "arch_list": self.arch_list,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for ArchitectureNotInList {
@@ -833,6 +969,10 @@ impl Problem for UnsatisfiedAptDependencies {
         serde_json::json!({
             "relations": self.0
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -858,6 +998,10 @@ impl Problem for InsufficientDiskSpace {
             "needed": self.needed,
             "free": self.free,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

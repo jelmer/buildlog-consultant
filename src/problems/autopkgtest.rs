@@ -33,8 +33,11 @@ impl Problem for AutopkgtestDepsUnsatisfiable {
             "args": self.0,
         })
     }
-}
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
 
 impl std::fmt::Display for AutopkgtestDepsUnsatisfiable {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -52,6 +55,10 @@ impl Problem for AutopkgtestTimedOut {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -71,6 +78,10 @@ impl Problem for XDGRunTimeNotSet {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -93,6 +104,10 @@ impl Problem for AutopkgtestTestbedFailure {
             "reason": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for AutopkgtestTestbedFailure {
@@ -111,6 +126,10 @@ impl Problem for AutopkgtestDepChrootDisappeared {
 
     fn json(&self) -> serde_json::Value {
         serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -133,6 +152,10 @@ impl Problem for AutopkgtestErroneousPackage {
             "reason": self.0,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for AutopkgtestErroneousPackage {
@@ -153,6 +176,10 @@ impl Problem for AutopkgtestStderrFailure {
         serde_json::json!({
             "stderr_line": self.0,
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -181,6 +208,10 @@ impl Problem for AutopkgtestTestbedSetupFailure {
             "error": self.error,
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl std::fmt::Display for AutopkgtestTestbedSetupFailure {
@@ -192,5 +223,3 @@ impl std::fmt::Display for AutopkgtestTestbedSetupFailure {
         )
     }
 }
-
-
