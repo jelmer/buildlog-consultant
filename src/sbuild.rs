@@ -666,6 +666,17 @@ pub enum Phase {
     CreateSession,
 }
 
+impl std::fmt::Display for Phase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Phase::AutoPkgTest(s) => write!(f, "autopkgtest: {}", s),
+            Phase::Build => write!(f, "build"),
+            Phase::BuildEnv => write!(f, "build-env"),
+            Phase::CreateSession => write!(f, "create-session"),
+        }
+    }
+}
+
 pub const DEFAULT_LOOK_BACK: usize = 50;
 
 pub fn strip_build_tail<'a>(
