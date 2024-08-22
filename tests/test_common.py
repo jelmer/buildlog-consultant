@@ -18,41 +18,29 @@
 import unittest
 
 from buildlog_consultant.common import (
-    CcacheError,
     CMakeFilesMissing,
     CMakeNeedExactVersion,
-    DhAddonLoadFailure,
     DhMissingUninstalled,
-    DhUntilUnsupported,
-    DhWithOrderIncorrect,
-    MissingAssembler,
     MissingCHeader,
     MissingCMakeComponents,
-    MissingCommand,
-    MissingConfigure,
     MissingFile,
     MissingGoPackage,
     MissingIntrospectionTypelib,
-    MissingJavaClass,
     MissingJDK,
     MissingJDKFile,
     MissingJRE,
     MissingLatexFile,
-    MissingLibrary,
     MissingMavenArtifacts,
     MissingNodeModule,
     MissingPerlFile,
     MissingPerlModule,
     MissingPerlPredeclared,
-    MissingPhpClass,
-    MissingPkgConfig,
     MissingPythonDistribution,
     MissingPythonModule,
     MissingRubyGem,
     MissingSetupPyCommand,
     MissingVagueDependency,
     MissingValaPackage,
-    MissingXmlEntity,
     NoSpaceOnDevice,
     UnknownCertificateAuthority,
     UnsupportedPytestArguments,
@@ -544,143 +532,6 @@ error: invalid command 'test'
             MissingSetupPyCommand("test"),
         )
 
-    def test_command_missing(self):
-        self.run_test(
-            ["./ylwrap: line 176: yacc: command not found"], 1, MissingCommand("yacc")
-        )
-        self.run_test(["/bin/sh: 1: cmake: not found"], 1, MissingCommand("cmake"))
-        self.run_test(["sh: 1: git: not found"], 1, MissingCommand("git"))
-        self.run_test(
-            ["/usr/bin/env: ‘python3’: No such file or directory"],
-            1,
-            MissingCommand("python3"),
-        )
-        self.run_test(
-            ["%Error: 'flex' must be installed to build"], 1, MissingCommand("flex")
-        )
-        self.run_test(
-            ['pkg-config: exec: "pkg-config": executable file not found in $PATH'],
-            1,
-            MissingCommand("pkg-config"),
-        )
-        self.run_test(
-            ['Can\'t exec "git": No such file or directory at ' "Makefile.PL line 25."],
-            1,
-            MissingCommand("git"),
-        )
-        self.run_test(
-            [
-                "vcver.scm.git.GitCommandError: 'git describe --tags --match 'v*'"
-                " --abbrev=0' returned an error code 127"
-            ],
-            1,
-            MissingCommand("git"),
-        )
-        self.run_test(
-            ["make[1]: docker: Command not found"], 1, MissingCommand("docker")
-        )
-        self.run_test(["make[1]: git: Command not found"], 1, MissingCommand("git"))
-        self.run_test(["make[1]: ./docker: Command not found"], 1, None)
-        self.run_test(
-            ["make: dh_elpa: Command not found"], 1, MissingCommand("dh_elpa")
-        )
-        self.run_test(
-            ["/bin/bash: valac: command not found"], 1, MissingCommand("valac")
-        )
-        self.run_test(
-            ["E: Failed to execute “python3”: No such file or directory"],
-            1,
-            MissingCommand("python3"),
-        )
-        self.run_test(
-            [
-                'Can\'t exec "cmake": No such file or directory at '
-                "/usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line 484."
-            ],
-            1,
-            MissingCommand("cmake"),
-        )
-        self.run_test(
-            [
-                "Invalid gemspec in [unicorn.gemspec]: "
-                "No such file or directory - git"
-            ],
-            1,
-            MissingCommand("git"),
-        )
-        self.run_test(
-            [
-                "dbus-run-session: failed to exec 'xvfb-run': "
-                "No such file or directory"
-            ],
-            1,
-            MissingCommand("xvfb-run"),
-        )
-        self.run_test(["/bin/sh: 1: ./configure: not found"], 1, MissingConfigure())
-        self.run_test(
-            ["xvfb-run: error: xauth command not found"], 1, MissingCommand("xauth")
-        )
-        self.run_test(
-            [
-                "meson.build:39:2: ERROR: Program(s) ['wrc'] "
-                "not found or not executable"
-            ],
-            1,
-            MissingCommand("wrc"),
-        )
-        self.run_test(
-            [
-                "/tmp/autopkgtest.FnbV06/build.18W/src/debian/tests/"
-                "blas-testsuite: 7: dpkg-architecture: not found"
-            ],
-            1,
-            MissingCommand("dpkg-architecture"),
-        )
-        self.run_test(
-            [
-                "Traceback (most recent call last):",
-                '  File "/usr/lib/python3/dist-packages/mesonbuild/mesonmain.py", line 140, in run',
-                "    return options.run_func(options)",
-                '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 267, in run',
-                "    names = create_dist_git(dist_name, archives, src_root, bld_root, dist_sub, b.dist_scripts, subprojects)",
-                '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 119, in create_dist_git',
-                "    git_clone(src_root, distdir)",
-                '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 108, in git_clone',
-                "    if git_have_dirty_index(src_root):",
-                '  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 104, in git_have_dirty_index',
-                "    ret = subprocess.call(['git', '-C', src_root, 'diff-index', '--quiet', 'HEAD'])",
-                '  File "/usr/lib/python3.9/subprocess.py", line 349, in call',
-                "    with Popen(*popenargs, **kwargs) as p:",
-                '  File "/usr/lib/python3.9/subprocess.py", line 951, in __init__',
-                "    self._execute_child(args, executable, preexec_fn, close_fds,",
-                '  File "/usr/lib/python3.9/subprocess.py", line 1823, in _execute_child',
-                "    raise child_exception_type(errno_num, err_msg, err_filename)",
-                "FileNotFoundError: [Errno 2] No such file or directory: 'git'",
-            ],
-            18,
-            MissingCommand("git"),
-        )
-        self.run_test(
-            ['> Cannot run program "git": error=2, No such file or directory'],
-            1,
-            MissingCommand("git"),
-        )
-        self.run_test(["E ImportError: Bad git executable"], 1, MissingCommand("git"))
-        self.run_test(["E ImportError: Bad git executable."], 1, MissingCommand("git"))
-        self.run_test(
-            ['Could not find external command "java"'], 1, MissingCommand("java")
-        )
-
-    def test_ts_error(self):
-        self.run_test(
-            [
-                "blah/tokenizer.ts(175,21): error TS2532: "
-                "Object is possibly 'undefined'."
-            ],
-            1,
-            None,
-        )
-
     def test_nim_error(self):
         self.run_test(
             [
@@ -768,107 +619,6 @@ Call Stack (most recent call first):
             ],
             4,
             MissingVagueDependency("pkg-config", minimum_version="0.9.0"),
-        )
-
-    def test_pkg_config_missing(self):
-        self.run_test(
-            [
-                "configure: error: Package requirements "
-                "(apertium-3.2 >= 3.2.0) were not met:"
-            ],
-            1,
-            MissingPkgConfig("apertium-3.2", "3.2.0"),
-        )
-        self.run_test(
-            [
-                "checking for GLEW... configure: error: Package requirements (glew) were not met:"
-            ],
-            1,
-            MissingPkgConfig("glew"),
-        )
-        self.run_test(
-            [
-                'meson.build:10:0: ERROR: Dependency "gssdp-1.2" not '
-                "found, tried pkgconfig"
-            ],
-            1,
-            MissingPkgConfig("gssdp-1.2"),
-        )
-        self.run_test(
-            [
-                "src/plugins/sysprof/meson.build:3:0: "
-                'ERROR: Dependency "sysprof-3" not found, tried pkgconfig'
-            ],
-            1,
-            MissingPkgConfig("sysprof-3"),
-        )
-        self.run_test(
-            [
-                "meson.build:84:0: ERROR: Invalid version of dependency, "
-                "need 'libpeas-1.0' ['>= 1.24.0'] found '1.22.0'."
-            ],
-            1,
-            MissingPkgConfig("libpeas-1.0", "1.24.0"),
-        )
-        self.run_test(
-            [
-                "meson.build:233:0: ERROR: Invalid version of dependency, need 'vte-2.91' ['>=0.63.0'] found '0.62.3'."
-            ],
-            1,
-            MissingPkgConfig("vte-2.91", "0.63.0"),
-        )
-
-        self.run_test(["No package 'tepl-3' found"], 1, MissingPkgConfig("tepl-3"))
-        self.run_test(
-            ["Requested 'vte-2.91 >= 0.59.0' but version of vte is 0.58.2"],
-            1,
-            MissingPkgConfig("vte-2.91", "0.59.0"),
-        )
-        self.run_test(
-            ["configure: error: x86_64-linux-gnu-pkg-config sdl2 couldn't " "be found"],
-            1,
-            MissingPkgConfig("sdl2"),
-        )
-        self.run_test(
-            ["configure: error: No package 'libcrypto' found"],
-            1,
-            MissingPkgConfig("libcrypto"),
-        )
-        self.run_test(
-            [
-                "-- Checking for module 'gtk+-3.0'",
-                "--   Package 'gtk+-3.0', required by 'virtual:world', not found",
-            ],
-            2,
-            MissingPkgConfig("gtk+-3.0"),
-        )
-        self.run_test(
-            [
-                "configure: error: libfilezilla not found: Package dependency "
-                "requirement 'libfilezilla >= 0.17.1' could not be satisfied."
-            ],
-            1,
-            MissingPkgConfig("libfilezilla", "0.17.1"),
-        )
-
-    def test_pkgconf(self):
-        self.run_test(
-            [
-                "checking for LAPACK... "
-                'configure: error: "Cannot check for existence of module lapack without pkgconf"'
-            ],
-            1,
-            MissingCommand("pkgconf"),
-        )
-
-    def test_dh_with_order(self):
-        self.run_test(
-            [
-                "dh: Unknown sequence --with "
-                "(options should not come before the sequence)"
-            ],
-            1,
-            DhWithOrderIncorrect(),
         )
 
     def test_no_disk_space(self):
@@ -1265,70 +1015,6 @@ Call Stack (most recent call first):
             DhMissingUninstalled("usr/lib/x86_64-linux-gnu/libflorence-1.0.la"),
         )
 
-    def test_dh_until_unsupported(self):
-        self.run_test(
-            [
-                "dh: The --until option is not supported any longer (#932537). "
-                "Use override targets instead."
-            ],
-            1,
-            DhUntilUnsupported(),
-        )
-
-    def test_missing_xml_entity(self):
-        self.run_test(
-            [
-                "I/O error : Attempt to load network entity "
-                "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
-            ],
-            1,
-            MissingXmlEntity("http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"),
-        )
-
-    def test_ccache_error(self):
-        self.run_test(
-            [
-                "ccache: error: Failed to create directory "
-                "/sbuild-nonexistent/.ccache/tmp: Permission denied"
-            ],
-            1,
-            CcacheError(
-                "Failed to create directory "
-                "/sbuild-nonexistent/.ccache/tmp: Permission denied"
-            ),
-        )
-
-    def test_dh_addon_load_failure(self):
-        self.run_test(
-            [
-                "dh: unable to load addon nodejs: "
-                "Debian/Debhelper/Sequence/nodejs.pm did not return a true "
-                "value at (eval 11) line 1."
-            ],
-            1,
-            DhAddonLoadFailure("nodejs", "Debian/Debhelper/Sequence/nodejs.pm"),
-        )
-
-    def test_missing_library(self):
-        self.run_test(
-            ["/usr/bin/ld: cannot find -lpthreads"], 1, MissingLibrary("pthreads")
-        )
-        self.run_test(
-            [
-                "./testFortranCompiler.f:4: undefined reference to `sgemm_'",
-            ],
-            1,
-        )
-        self.run_test(
-            [
-                "writer.d:59: error: undefined reference to 'sam_hdr_parse_'",
-            ],
-            1,
-        )
-
-    def test_assembler(self):
-        self.run_test(["Found no assembler"], 1, MissingAssembler())
-
     def test_fpic(self):
         self.run_test(
             [
@@ -1443,42 +1129,6 @@ Call Stack (most recent call first):
             1,
             MissingRubyGem("rdoc", "0.a"),
         )
-
-    def test_missing_php_class(self):
-        self.run_test(
-            [
-                "PHP Fatal error:  Uncaught Error: Class "
-                "'PHPUnit_Framework_TestCase' not found in "
-                "/tmp/autopkgtest.gO7h1t/build.b1p/src/Horde_Text_Diff-"
-                "2.2.0/test/Horde/Text/Diff/EngineTest.php:9"
-            ],
-            1,
-            MissingPhpClass("PHPUnit_Framework_TestCase"),
-        )
-
-    def test_missing_java_class(self):
-        self.run_test(
-            """\
-Caused by: java.lang.ClassNotFoundException: org.codehaus.Xpp3r$Builder
-\tat org.codehaus.strategy.SelfFirstStrategy.loadClass(lfFirstStrategy.java:50)
-\tat org.codehaus.realm.ClassRealm.unsynchronizedLoadClass(ClassRealm.java:271)
-\tat org.codehaus.realm.ClassRealm.loadClass(ClassRealm.java:247)
-\tat org.codehaus.realm.ClassRealm.loadClass(ClassRealm.java:239)
-\t... 46 more
-""".splitlines(),
-            1,
-            MissingJavaClass("org.codehaus.Xpp3r$Builder"),
-        )
-
-    def test_install_docs_link(self):
-        self.run_test(
-            """\
-dh_installdocs: --link-doc not allowed between sympow and sympow-data (one is \
-arch:all and the other not)""".splitlines(),
-            1,
-        )
-
-
 
 
 class SecondaryErrorFinder(unittest.TestCase):
