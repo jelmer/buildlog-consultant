@@ -104,6 +104,7 @@ impl SingleLineMatch {
     }
 }
 
+#[derive(Clone)]
 pub struct MultiLineMatch {
     pub origin: Origin,
     pub offsets: Vec<usize>,
