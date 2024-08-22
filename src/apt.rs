@@ -3,7 +3,6 @@ use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::relations::Relations;
-use serde::{Deserialize, Serialize};
 
 pub fn find_apt_get_failure(
     lines: Vec<&str>,

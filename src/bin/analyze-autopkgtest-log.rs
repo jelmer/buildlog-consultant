@@ -1,5 +1,4 @@
 use clap::Parser;
-use std::cmp::{max, min};
 use std::io::Write;
 
 #[derive(Parser)]

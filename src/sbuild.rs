@@ -945,7 +945,7 @@ pub fn find_failure_arch_check(sbuildlog: &SbuildLog, failed_stage: &str) -> Opt
         description: Some(description),
         error,
         phase: None,
-        section: section.clone().cloned(),
+        section: section.cloned(),
         r#match,
     })
 }

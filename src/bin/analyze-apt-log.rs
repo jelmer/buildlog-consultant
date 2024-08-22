@@ -1,5 +1,4 @@
 use clap::Parser;
-use std::cmp::{max, min};
 
 #[derive(Parser)]
 struct Args {
