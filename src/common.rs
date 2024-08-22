@@ -4622,4 +4622,423 @@ arch:all and the other not)"#
             Some(DhWithOrderIncorrect),
         );
     }
+
+    #[test]
+    fn test_fpic() {
+        assert_just_match(
+            vec![
+                "/usr/bin/ld: pcap-linux.o: relocation R_X86_64_PC32 against symbol `stderr@@GLIBC_2.2.5' can not be used when making a shared object; recompile with -fPIC"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_rspec() {
+        assert_just_match(
+            vec![
+                "rspec ./spec/acceptance/cookbook_resource_spec.rb:20 # Client API operations downloading a cookbook when the cookbook of the name/version is found downloads the cookbook to the destination"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_multiple_definition() {
+        assert_just_match(
+            vec![
+                "./dconf-paths.c:249: multiple definition of `dconf_is_rel_dir'; client/libdconf-client.a(dconf-paths.c.o):./obj-x86_64-linux-gnu/../common/dconf-paths.c:249: first defined here"
+            ],
+            1,
+        );
+        assert_just_match(
+            vec![
+                "/usr/bin/ld: ../lib/libaxe.a(stream.c.o):(.bss+0x10): multiple definition of `gsl_message_mask'; ../lib/libaxe.a(error.c.o):(.bss+0x8): first defined here"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_missing_ruby_gem() {
+        assert_match(
+            vec![
+                "Could not find gem 'childprocess (~> 0.5)', which is required by gem 'selenium-webdriver', in any of the sources."
+            ],
+            1,
+            Some(MissingRubyGem::new("childprocess".to_owned(), Some("0.5".to_owned()))),
+        );
+        assert_match(
+            vec![
+                "Could not find gem 'rexml', which is required by gem 'rubocop', in any of the sources."
+            ],
+            1,
+            Some(MissingRubyGem::simple("rexml".to_owned())),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:310:in `to_specs': Could not find 'http-parser' (~> 1.2.0) among 59 total gem(s) (Gem::MissingSpecError)"
+            ],
+            1,
+            Some(MissingRubyGem::new("http-parser".to_owned(), Some("1.2.0".to_string()))),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:312:in `to_specs': Could not find 'celluloid' (~> 0.17.3) - did find: [celluloid-0.16.0] (Gem::MissingSpecVersionError)"
+            ],
+            1,
+            Some(MissingRubyGem{gem:"celluloid".to_owned(), version:Some("0.17.3".to_owned())}),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:312:in `to_specs': Could not find 'i18n' (~> 0.7) - did find: [i18n-1.5.3] (Gem::MissingSpecVersionError)"
+            ],
+            1,
+            Some(MissingRubyGem{gem:"i18n".to_owned(), version: Some("0.7".to_owned())}),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.5.0/rubygems/dependency.rb:310:in `to_specs': Could not find 'sassc' (>= 2.0.0) among 34 total gem(s) (Gem::MissingSpecError)"
+            ],
+            1,
+            Some(MissingRubyGem{gem:"sassc".to_string(), version: Some("2.0.0".to_string())}),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.7.0/bundler/resolver.rb:290:in `block in verify_gemfile_dependencies_are_found!': Could not find gem 'rake-compiler' in any of the gem sources listed in your Gemfile. (Bundler::GemNotFound)"
+            ],
+            1,
+            Some(MissingRubyGem::simple("rake-compiler".to_owned())),
+        );
+        assert_match(
+            vec![
+                "/usr/lib/ruby/2.7.0/rubygems.rb:275:in `find_spec_for_exe': can't find gem rdoc (>= 0.a) with executable rdoc (Gem::GemNotFoundException)"
+            ],
+            1,
+            Some(MissingRubyGem::new("rdoc".to_owned(), Some("0.a".to_owned()))),
+        );
+    }
+
+    #[test]
+    fn test_missing_maven_artifacts() {
+        assert_match(
+            vec![
+                "[ERROR] Failed to execute goal on project byteman-bmunit5: Could not resolve dependencies for project org.jboss.byteman:byteman-bmunit5:jar:4.0.7: The following artifacts could not be resolved: org.junit.jupiter:junit-jupiter-api:jar:5.4.0, org.junit.jupiter:junit-jupiter-params:jar:5.4.0, org.junit.jupiter:junit-jupiter-engine:jar:5.4.0: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.junit.jupiter:junit-jupiter-api:jar:5.4.0 has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(
+                vec![
+                    "org.junit.jupiter:junit-jupiter-api:jar:5.4.0".to_string(),
+                    "org.junit.jupiter:junit-jupiter-params:jar:5.4.0".to_string(),
+                    "org.junit.jupiter:junit-jupiter-engine:jar:5.4.0".to_string(),
+                ]
+            )),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Failed to execute goal on project opennlp-uima: Could not resolve dependencies for project org.apache.opennlp:opennlp-uima:jar:1.9.2-SNAPSHOT: Cannot access ApacheIncubatorRepository (http://people.apache.org/repo/m2-incubating-repository/) in offline mode and the artifact org.apache.opennlp:opennlp-tools:jar:debian has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.apache.opennlp:opennlp-tools:jar:debian".to_string()])),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Failed to execute goal on project bookkeeper-server: Could not resolve dependencies for project org.apache.bookkeeper:bookkeeper-server:jar:4.4.0: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact io.netty:netty:jar:debian has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["io.netty:netty:jar:debian".to_string()])),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Unresolveable build extension: Plugin org.apache.felix:maven-bundle-plugin:2.3.7 or one of its dependencies could not be resolved: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.felix:maven-bundle-plugin:jar:2.3.7 has not been downloaded from it before. @"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.apache.felix:maven-bundle-plugin:2.3.7".to_string()])),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Plugin org.apache.maven.plugins:maven-jar-plugin:2.6 or one of its dependencies could not be resolved: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.plugins:maven-jar-plugin:jar:2.6 has not been downloaded from it before. -> [Help 1]"
+            ],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.apache.maven.plugins:maven-jar-plugin:2.6".to_string()])),
+        );
+
+        assert_match(
+            vec![
+                "[FATAL] Non-resolvable parent POM for org.joda:joda-convert:2.2.1: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.joda:joda-parent:pom:1.4.0 has not been downloaded from it before. and 'parent.relativePath' points at wrong local POM @ line 8, column 10"],
+            1,
+            Some(MissingMavenArtifacts(vec!["org.joda:joda-parent:pom:1.4.0".to_string()])),
+        );
+
+        assert_match(
+            vec![
+                "[ivy:retrieve] \t\t:: com.carrotsearch.randomizedtesting#junit4-ant;${/com.carrotsearch.randomizedtesting/junit4-ant}: not found"
+            ],
+            1,
+            Some(MissingMavenArtifacts(
+                vec!["com.carrotsearch.randomizedtesting:junit4-ant:jar:debian".to_string()]
+            )),
+        );
+        assert_match(
+            vec![
+                "[ERROR] Plugin org.apache.maven.plugins:maven-compiler-plugin:3.10.1 or one of its dependencies could not be resolved: Failed to read artifact descriptor for org.apache.maven.plugins:maven-compiler-plugin:jar:3.10.1: 1 problem was encountered while building the effective model for org.apache.maven.plugins:maven-compiler-plugin:3.10.1"
+            ],
+            1,
+            Some(MissingMavenArtifacts(
+                vec!["org.apache.maven.plugins:maven-compiler-plugin:3.10.1".to_string()]
+            )),
+        );
+    }
+
+    #[test]
+    fn test_maven_errors() {
+        assert_just_match(
+            vec![
+                "[ERROR] Failed to execute goal org.apache.maven.plugins:maven-jar-plugin:3.1.2:jar (default-jar) on project xslthl: Execution default-jar of goal org.apache.maven.plugins:maven-jar-plugin:3.1.2:jar failed: An API incompatibility was encountered while executing org.apache.maven.plugins:maven-jar-plugin:3.1.2:jar: java.lang.NoSuchMethodError: 'void org.codehaus.plexus.util.DirectoryScanner.setFilenameComparator(java.util.Comparator)'"],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_dh_missing_uninstalled() {
+        assert_match(
+            vec![
+                "dh_missing --fail-missing", "dh_missing: usr/share/man/man1/florence_applet.1 exists in debian/tmp but is not installed to anywhere", "dh_missing: usr/lib/x86_64-linux-gnu/libflorence-1.0.la exists in debian/tmp but is not installed to anywhere", "dh_missing: missing files, aborting",
+            ],
+            3,
+            Some(DhMissingUninstalled("usr/lib/x86_64-linux-gnu/libflorence-1.0.la".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_module() {
+        assert_match(
+            vec![
+                "Converting tags.ledger... Can't locate String/Interpolate.pm in @INC (you may need to install the String::Interpolate module) (@INC contains: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.28.1 /usr/local/share/perl/5.28.1 /usr/lib/x86_64-linux-gnu/perl5/5.28 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.28 /usr/share/perl/5.28 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base) at ../bin/ledger2beancount line 23."
+            ],
+            1,
+            Some(MissingPerlModule {
+                filename: Some("String/Interpolate.pm".to_owned()),
+                module: "String::Interpolate".to_owned(),
+                inc: Some(vec![
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.28.1".to_owned(),
+                    "/usr/local/share/perl/5.28.1".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.28".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.28".to_owned(),
+                    "/usr/share/perl/5.28".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                ]),
+                minimum_version: None
+            }),
+        );
+        assert_match(
+            vec![
+                "Can't locate Test/Needs.pm in @INC (you may need to install the Test::Needs module) (@INC contains: t/lib /<<PKGBUILDDIR>>/blib/lib /<<PKGBUILDDIR>>/blib/arch /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.30.0 /usr/local/share/perl/5.30.0 /usr/lib/x86_64-linux-gnu/perl5/5.30 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.30 /usr/share/perl/5.30 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base .) at t/anon-basic.t line 7."
+            ],
+            1,
+            Some(MissingPerlModule{
+                filename: Some("Test/Needs.pm".to_owned()),
+                module: "Test::Needs".to_owned(),
+                inc: Some(vec![
+                    "t/lib".to_owned(),
+                    "/<<PKGBUILDDIR>>/blib/lib".to_owned(),
+                    "/<<PKGBUILDDIR>>/blib/arch".to_owned(),
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.30.0".to_owned(),
+                    "/usr/local/share/perl/5.30.0".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.30".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.30".to_owned(),
+                    "/usr/share/perl/5.30".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                    ".".to_owned(),
+                ]),
+                minimum_version: None
+            }),
+        );
+        assert_match(
+            vec!["- ExtUtils::Depends         ...missing. (would need 0.302)"],
+            1,
+            Some(MissingPerlModule {
+                filename: None,
+                module: "ExtUtils::Depends".to_owned(),
+                inc: None,
+                minimum_version: Some("0.302".to_owned()),
+            }),
+        );
+        assert_match(
+            vec![
+                r#"Can't locate object method "new" via package "Dist::Inkt::Profile::TOBYINK" (perhaps you forgot to load "Dist::Inkt::Profile::TOBYINK"?) at /usr/share/perl5/Dist/Inkt.pm line 208."#,
+            ],
+            1,
+            Some(MissingPerlModule::simple("Dist::Inkt::Profile::TOBYINK")),
+        );
+        assert_match(
+            vec![
+                "Can't locate ExtUtils/Depends.pm in @INC (you may need to install the ExtUtils::Depends module) (@INC contains: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.32.1 /usr/local/share/perl/5.32.1 /usr/lib/x86_64-linux-gnu/perl5/5.32 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.32 /usr/share/perl/5.32 /usr/local/lib/site_perl) at (eval 11) line 1."
+            ],
+            1,
+            Some(MissingPerlModule{
+                filename: Some("ExtUtils/Depends.pm".to_owned()),
+                module: "ExtUtils::Depends".to_owned(),
+                inc: Some(vec![
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.32.1".to_owned(),
+                    "/usr/local/share/perl/5.32.1".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.32".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.32".to_owned(),
+                    "/usr/share/perl/5.32".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                ]),
+                minimum_version: None
+            }),
+        );
+        assert_match(
+            vec![
+                "Pod::Weaver::Plugin::WikiDoc (for section -WikiDoc) does not appear to be installed"
+            ],
+            1,
+            Some(MissingPerlModule::simple("Pod::Weaver::Plugin::WikiDoc")),
+        );
+        assert_match(
+            vec![
+                "List::Util version 1.56 required--this is only version 1.55 at /build/tmpttq5hhpt/package/blib/lib/List/AllUtils.pm line 8."
+            ],
+            1,
+            Some(MissingPerlModule {
+                filename: None,
+                inc: None,
+                module: "List::Util".to_owned(), minimum_version: Some("1.56".to_owned())}),
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_file() {
+        assert_match(
+            vec![
+                "Can't locate debian/perldl.conf in @INC (@INC contains: /<<PKGBUILDDIR>>/inc /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.28.1 /usr/local/share/perl/5.28.1 /usr/lib/x86_64-linux-gnu/perl5/5.28 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.28 /usr/share/perl/5.28 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base) at Makefile.PL line 131."
+            ],
+            1,
+            Some(MissingPerlFile {
+                filename: "debian/perldl.conf".to_owned(),
+                inc: Some(vec![
+                    "/<<PKGBUILDDIR>>/inc".to_owned(),
+                    "/etc/perl".to_owned(),
+                    "/usr/local/lib/x86_64-linux-gnu/perl/5.28.1".to_owned(),
+                    "/usr/local/share/perl/5.28.1".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl5/5.28".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl/5.28".to_owned(),
+                    "/usr/share/perl/5.28".to_owned(),
+                    "/usr/local/lib/site_perl".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
+                ]),
+            }),
+        );
+        assert_match(
+            vec![r#"Can't open perl script "Makefile.PL": No such file or directory"#],
+            1,
+            Some(MissingPerlFile {
+                filename: "Makefile.PL".to_owned(),
+                inc: None,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_perl_expand() {
+        assert_match(
+            vec![">(error): Could not expand [ 'Dist::Inkt::Profile::TOBYINK'"],
+            1,
+            Some(MissingPerlModule::simple("Dist::Inkt::Profile::TOBYINK")),
+        );
+    }
+
+    #[test]
+    fn test_perl_missing_predeclared() {
+        assert_match(
+            vec![
+                "String found where operator expected at Makefile.PL line 13, near \"author_tests 'xt'\"", "\t(Do you need to predeclare author_tests?)",
+                "syntax error at Makefile.PL line 13, near \"author_tests 'xt'\"", r#""strict subs" in use at Makefile.PL line 13."#,
+            ],
+            2,
+            Some(MissingPerlPredeclared("author_tests".to_owned())),
+        );
+        assert_match(
+            vec![
+                "String found where operator expected at Makefile.PL line 8, near \"readme_from    'lib/URL/Encode.pod'\""
+            ],
+            1,
+            Some(MissingPerlPredeclared("readme_from".to_owned())),
+        );
+
+        assert_match(
+            vec![
+                r#"Bareword "use_test_base" not allowed while "strict subs" in use at Makefile.PL line 12."#,
+            ],
+            1,
+            Some(MissingPerlPredeclared("use_test_base".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_unknown_cert_authority() {
+        assert_match(
+            vec![
+                r#"go: github.com/golangci/golangci-lint@v1.24.0: Get "https://proxy.golang.org/github.com/golangci/golangci-lint/@v/v1.24.0.mod": x509: certificate signed by unknown authority"#,
+            ],
+            1,
+            Some(UnknownCertificateAuthority(
+                "https://proxy.golang.org/github.com/golangci/golangci-lint/@v/v1.24.0.mod"
+                    .to_owned(),
+            )),
+        );
+    }
+
+    #[test]
+    fn test_no_disk_space() {
+        assert_match(
+            vec![
+                "/usr/bin/install: error writing '/<<PKGBUILDDIR>>/debian/tmp/usr/lib/gcc/x86_64-linux-gnu/8/cc1objplus': No space left on device"
+            ],
+            1,
+            Some(NoSpaceOnDevice)
+        );
+
+        assert_match(
+            ["OSError: [Errno 28] No space left on device"].to_vec(),
+            1,
+            Some(NoSpaceOnDevice),
+        );
+    }
+
+    #[test]
+    fn test_segmentation_fault() {
+        assert_just_match(
+            vec![
+                r#"/bin/bash: line 3:  7392 Segmentation fault      itstool -m "${mo}" ${d}/C/index.docbook ${d}/C/legal.xml"#,
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_plugin() {
+        assert_match(
+            vec!["Required plugin bundle Dist::Zilla::PluginBundle::Git isn't installed."],
+            1,
+            Some(MissingPerlModule::simple("Dist::Zilla::PluginBundle::Git")),
+        );
+        assert_match(
+            vec!["Required plugin Dist::Zilla::Plugin::PPPort isn't installed."],
+            1,
+            Some(MissingPerlModule::simple("Dist::Zilla::Plugin::PPPort")),
+        );
+    }
 }

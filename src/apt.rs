@@ -234,7 +234,7 @@ pub fn find_apt_get_update_failure(
     (Some(focus_section.to_string()), match_, problem)
 }
 
-pub fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
+pub(crate) fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
     let mut offset = None;
     for (i, line) in lines.enumerate_backward(None) {
         if line.starts_with("output-version:") {

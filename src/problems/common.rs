@@ -1786,8 +1786,8 @@ impl Display for MissingJVM {
 
 #[derive(Debug, Clone)]
 pub struct MissingRubyGem {
-    gem: String,
-    version: Option<String>,
+    pub gem: String,
+    pub version: Option<String>,
 }
 
 impl MissingRubyGem {
