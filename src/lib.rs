@@ -6,6 +6,7 @@ use std::ops::Index;
 pub mod apt;
 pub mod autopkgtest;
 pub mod brz;
+pub mod cudf;
 pub mod lines;
 pub mod problems;
 
@@ -196,7 +197,10 @@ impl Eq for dyn Problem {}
 impl serde::Serialize for dyn Problem {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serde_json::Map::new();
-        map.insert("kind".to_string(), serde_json::Value::String(self.kind().to_string()));
+        map.insert(
+            "kind".to_string(),
+            serde_json::Value::String(self.kind().to_string()),
+        );
         map.insert("details".to_string(), self.json());
         map.serialize(serializer)
     }
@@ -391,3 +395,25 @@ pub mod common;
 pub mod r#match;
 
 pub mod sbuild;
+
+pub fn highlight_lines(lines: &[&str], m: &dyn Match, context: usize) {
+    use std::cmp::{max, min};
+    if m.linenos().len() == 1 {
+        println!("Issue found at line {}:", m.lineno());
+    } else {
+        println!(
+            "Issue found at lines {}-{}:",
+            m.linenos().first().unwrap(),
+            m.linenos().last().unwrap()
+        );
+    }
+    for i in max(0, m.offsets()[0] - context)
+        ..min(lines.len(), m.offsets().last().unwrap() + context + 1)
+    {
+        println!(
+            " {}  {}",
+            if m.offsets().contains(&i) { ">" } else { " " },
+            lines[i].trim_end_matches('\n')
+        );
+    }
+}

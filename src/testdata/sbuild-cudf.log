@@ -1,0 +1,125 @@
+
+
+Setup apt archive
+-----------------
+
+Merged Build-Depends: debhelper (>= 12), dh-cargo (>= 25), cargo, rustc, libstd-rust-dev, librust-breezyshim+default-dev (>= 0.1.138-~~), librust-breezyshim+dirty-tracker-dev (>= 0.1.138-~~), librust-chrono+default-dev (>= 0.4-~~), librust-chrono+serde-dev (>= 0.4-~~), librust-configparser-3+default-dev, librust-debian-changelog+default-dev (>= 0.1-~~), librust-debian-control+default-dev (>= 0.1-~~), librust-debian-copyright-0.1+default-dev (>= 0.1.2-~~), librust-debversion+default-dev (>= 0.3.0-~~), librust-debversion+python-debian-dev (>= 0.3.0-~~), librust-debversion+serde-dev (>= 0.3.0-~~), librust-dep3-0.1+default-dev, librust-distro-info+default-dev (>= 0.4.0-~~), librust-lazy-regex+default-dev (>= 2-~~), librust-lazy-static-1+default-dev (>= 1.4.0-~~), librust-log-0.4+default-dev, librust-makefile-lossless-0.1+default-dev, librust-maplit-1+default-dev (>= 1.0.2-~~), librust-patchkit-0.1+default-dev, librust-pyo3+chrono-dev (>= 0.22-~~), librust-pyo3+default-dev (>= 0.22-~~), librust-pyo3+serde-dev (>= 0.22-~~), librust-reqwest+blocking-dev (>= 0.11-~~), librust-reqwest+default-dev (>= 0.11-~~), librust-reqwest+json-dev (>= 0.11-~~), librust-serde-1+default-dev, librust-serde-1+derive-dev, librust-serde-json-1+default-dev, librust-tempfile-3+default-dev, librust-url-2+default-dev, build-essential, fakeroot, dumb-init
+Filtered Build-Depends: debhelper (>= 12), dh-cargo (>= 25), cargo, rustc, libstd-rust-dev, librust-breezyshim+default-dev (>= 0.1.138-~~), librust-breezyshim+dirty-tracker-dev (>= 0.1.138-~~), librust-chrono+default-dev (>= 0.4-~~), librust-chrono+serde-dev (>= 0.4-~~), librust-configparser-3+default-dev, librust-debian-changelog+default-dev (>= 0.1-~~), librust-debian-control+default-dev (>= 0.1-~~), librust-debian-copyright-0.1+default-dev (>= 0.1.2-~~), librust-debversion+default-dev (>= 0.3.0-~~), librust-debversion+python-debian-dev (>= 0.3.0-~~), librust-debversion+serde-dev (>= 0.3.0-~~), librust-dep3-0.1+default-dev, librust-distro-info+default-dev (>= 0.4.0-~~), librust-lazy-regex+default-dev (>= 2-~~), librust-lazy-static-1+default-dev (>= 1.4.0-~~), librust-log-0.4+default-dev, librust-makefile-lossless-0.1+default-dev, librust-maplit-1+default-dev (>= 1.0.2-~~), librust-patchkit-0.1+default-dev, librust-pyo3+chrono-dev (>= 0.22-~~), librust-pyo3+default-dev (>= 0.22-~~), librust-pyo3+serde-dev (>= 0.22-~~), librust-reqwest+blocking-dev (>= 0.11-~~), librust-reqwest+default-dev (>= 0.11-~~), librust-reqwest+json-dev (>= 0.11-~~), librust-serde-1+default-dev, librust-serde-1+derive-dev, librust-serde-json-1+default-dev, librust-tempfile-3+default-dev, librust-url-2+default-dev, build-essential, fakeroot, dumb-init
+dpkg-deb: building package 'sbuild-build-depends-main-dummy' in '/<<RESOLVERDIR>>/apt_archive/sbuild-build-depends-main-dummy.deb'.
+Ign:1 copy:/<<RESOLVERDIR>>/apt_archive ./ InRelease
+Get:2 copy:/<<RESOLVERDIR>>/apt_archive ./ Release [615 B]
+Ign:3 copy:/<<RESOLVERDIR>>/apt_archive ./ Release.gpg
+Get:4 copy:/<<RESOLVERDIR>>/apt_archive ./ Sources [2269 B]
+Get:5 copy:/<<RESOLVERDIR>>/apt_archive ./ Packages [1922 B]
+Fetched 4806 B in 0s (0 B/s)
+Reading package lists...
+Get:1 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ InRelease
+Ign:1 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ InRelease
+Get:2 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release [606 B]
+Get:2 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release [606 B]
+Get:3 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release.gpg
+Ign:3 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release.gpg
+Reading package lists...
+Reading package lists...
+
+Install main build dependencies (apt-based resolver)
+----------------------------------------------------
+
+Installing build dependencies
+Reading package lists...
+Building dependency tree...
+Reading state information...
+Some packages could not be installed. This may mean that you have
+requested an impossible situation or if you are using the unstable
+distribution that some required packages have not yet been created
+or been moved out of Incoming.
+The following information may help to resolve the situation:
+
+The following packages have unmet dependencies:
+ sbuild-build-depends-main-dummy : Depends: librust-breezyshim+dirty-tracker-dev (>= 0.1.138-~~) but it is not installable
+E: Unable to correct problems, you have held broken packages.
+apt-get failed.
+E: Package installation failed
+Not removing build depends: cloned chroot in use
+
+Setup apt archive
+-----------------
+
+Merged Build-Depends: dose-distcheck
+Filtered Build-Depends: dose-distcheck
+dpkg-deb: building package 'sbuild-build-depends-dose3-dummy' in '/<<RESOLVERDIR>>/apt_archive/sbuild-build-depends-dose3-dummy.deb'.
+Ign:1 copy:/<<RESOLVERDIR>>/apt_archive ./ InRelease
+Get:2 copy:/<<RESOLVERDIR>>/apt_archive ./ Release [615 B]
+Ign:3 copy:/<<RESOLVERDIR>>/apt_archive ./ Release.gpg
+Get:4 copy:/<<RESOLVERDIR>>/apt_archive ./ Sources [2848 B]
+Get:5 copy:/<<RESOLVERDIR>>/apt_archive ./ Packages [2537 B]
+Fetched 6000 B in 0s (0 B/s)
+Reading package lists...
+Get:1 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ InRelease
+Ign:1 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ InRelease
+Get:2 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release [606 B]
+Get:2 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release [606 B]
+Get:3 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release.gpg
+Ign:3 file:/<<BUILDDIR>>/resolver-lsZ2jW/apt_archive ./ Release.gpg
+Reading package lists...
+Reading package lists...
+
+Install dose3 build dependencies (apt-based resolver)
+-----------------------------------------------------
+
+Installing build dependencies
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  g++-13 g++-13-x86-64-linux-gnu libpython3.11-minimal libpython3.11-stdlib
+  libstd-rust-1.75 libstdc++-13-dev python3.11 python3.11-minimal
+Use 'apt autoremove' to remove them.
+The following additional packages will be installed:
+  dose-distcheck
+The following NEW packages will be installed:
+  dose-distcheck sbuild-build-depends-dose3-dummy
+0 upgraded, 2 newly installed, 0 to remove and 0 not upgraded.
+Need to get 1089 kB of archives.
+After this operation, 4472 kB of additional disk space will be used.
+Get:1 copy:/<<RESOLVERDIR>>/apt_archive ./ sbuild-build-depends-dose3-dummy 0.invalid.0 [852 B]
+Get:2 http://deb.debian.org/debian unstable/main amd64 dose-distcheck amd64 7.0.0-5+b2 [1088 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 1089 kB in 0s (8038 kB/s)
+Selecting previously unselected package dose-distcheck.
+(Reading database ... 24915 files and directories currently installed.)
+Preparing to unpack .../dose-distcheck_7.0.0-5+b2_amd64.deb ...
+Unpacking dose-distcheck (7.0.0-5+b2) ...
+Selecting previously unselected package sbuild-build-depends-dose3-dummy.
+Preparing to unpack .../sbuild-build-depends-dose3-dummy_0.invalid.0_amd64.deb ...
+Unpacking sbuild-build-depends-dose3-dummy (0.invalid.0) ...
+Setting up dose-distcheck (7.0.0-5+b2) ...
+Setting up sbuild-build-depends-dose3-dummy (0.invalid.0) ...
+Processing triggers for man-db (2.12.1-2) ...
+(I)Doseparse: Parsing and normalizing...
+(I)Dose_deb: Parsing Packages file -...
+(I)Dose_common: total packages 71128
+(I)Dose_applications: Cudf Universe: 71128 packages
+(I)Dose_applications: --checkonly specified, consider all packages as background packages
+(I)Dose_applications: Solving...
+output-version: 1.2
+native-architecture: amd64
+report:
+ -
+  package: sbuild-build-depends-main-dummy
+  version: 0.invalid.0
+  architecture: amd64
+  status: broken
+  reasons:
+   -
+    missing:
+     pkg:
+      package: sbuild-build-depends-main-dummy
+      version: 0.invalid.0
+      architecture: amd64
+      unsat-dependency: librust-breezyshim+dirty-tracker-dev:amd64 (>= 0.1.138-~~)
+ 
+background-packages: 71127
+foreground-packages: 1
+total-packages: 71128
+broken-packages: 1

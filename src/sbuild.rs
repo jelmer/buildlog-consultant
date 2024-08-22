@@ -31,7 +31,7 @@ pub struct Summary {
     build_architecture: Option<String>,
     build_type: Option<String>,
     build_time: Option<Duration>,
-    build_space: Option<u64>,
+    build_space: Option<Space>,
     host_architecture: Option<String>,
     install_time: Option<Duration>,
     lintian: Option<String>,
@@ -44,7 +44,26 @@ pub struct Summary {
     source_version: Option<Version>,
     machine_architecture: Option<String>,
     status: Option<String>,
-    space: Option<u64>,
+    space: Option<Space>,
+    version: Option<Version>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Space {
+    NotAvailable,
+    Bytes(u64),
+}
+
+impl std::str::FromStr for Space {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "n/a" {
+            Ok(Space::NotAvailable)
+        } else {
+            Ok(Space::Bytes(s.parse()?))
+        }
+    }
 }
 
 pub fn parse_summary(lines: &[&str]) -> Summary {
@@ -65,6 +84,7 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
     let mut machine_architecture = None;
     let mut fail_stage = None;
     let mut space = None;
+    let mut version = None;
     for line in lines {
         if line.trim() == "" {
             continue;
@@ -89,6 +109,7 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
                 "Autopkgtest" => autopkgtest = Some(value.to_string()),
                 "Status" => status = Some(value.to_string()),
                 "Space" => space = Some(value.parse().unwrap()),
+                "Version" => version = Some(value.parse().unwrap()),
                 n => {
                     log::warn!("Unknown key in summary: {}", n);
                 }
@@ -115,6 +136,7 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
         machine_architecture,
         status,
         space,
+        version,
     }
 }
 
@@ -157,13 +179,21 @@ impl SbuildLog {
     }
 }
 
+impl<F: std::io::Read> TryFrom<BufReader<F>> for SbuildLog {
+    type Error = std::io::Error;
+
+    fn try_from(reader: BufReader<F>) -> Result<Self, Self::Error> {
+        let sections = parse_sbuild_log(reader);
+        Ok(SbuildLog(sections.collect()))
+    }
+}
+
 impl TryFrom<File> for SbuildLog {
     type Error = std::io::Error;
 
     fn try_from(f: File) -> Result<Self, Self::Error> {
         let reader = BufReader::new(f);
-        let sections = parse_sbuild_log(reader);
-        Ok(SbuildLog(sections.collect()))
+        reader.try_into()
     }
 }
 
@@ -272,12 +302,12 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
 }
 
 pub struct SbuildFailure {
-    stage: Option<String>,
-    description: Option<String>,
-    error: Option<Box<dyn Problem>>,
-    phase: Option<Phase>,
-    section: Option<SbuildLogSection>,
-    r#match: Option<Box<dyn Match>>,
+    pub stage: Option<String>,
+    pub description: Option<String>,
+    pub error: Option<Box<dyn Problem>>,
+    pub phase: Option<Phase>,
+    pub section: Option<SbuildLogSection>,
+    pub r#match: Option<Box<dyn Match>>,
 }
 
 impl Serialize for SbuildFailure {
@@ -625,7 +655,7 @@ pub fn find_preamble_failure_description(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-enum Phase {
+pub enum Phase {
     #[serde(rename = "autopkgtest")]
     AutoPkgTest(String),
     #[serde(rename = "build")]
@@ -954,17 +984,17 @@ pub fn find_install_deps_failure_description(
     if let Some(dose3_lines) = dose3_lines {
         let dose3_output = crate::apt::find_cudf_output(dose3_lines);
         if let Some(dose3_output) = dose3_output {
-            let error = crate::apt::error_from_dose3_report(dose3_output["report"].clone());
+            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
             return (Some(DOSE3_SECTION), None, error);
         }
     }
 
-    const SECTION: &str = "install package build dependencies";
+    const SECTION: &str = "Install package build dependencies";
     let build_dependencies_lines = sbuildlog.get_section_lines(Some(SECTION));
     if let Some(build_dependencies_lines) = build_dependencies_lines {
         let dose3_output = crate::apt::find_cudf_output(build_dependencies_lines.clone());
         if let Some(dose3_output) = dose3_output {
-            let error = crate::apt::error_from_dose3_report(dose3_output["report"].clone());
+            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
             return (Some(SECTION), None, error);
         }
         let (r#match, error) = crate::apt::find_apt_get_failure(build_dependencies_lines);
@@ -1051,7 +1081,12 @@ pub fn find_failure_autopkgtest(
 
 pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
     // TODO(jelmer): Doesn't this do the same thing as the tail?
-    if sbuildlog.sections().count() == 1 {
+    if sbuildlog
+        .sections()
+        .map(|x| x.title.as_deref())
+        .collect::<Vec<_>>()
+        == vec![None]
+    {
         let section = sbuildlog.sections().next().unwrap();
         let (r#match, error) = find_preamble_failure_description(section.lines());
         if let Some(error) = error {
@@ -1198,11 +1233,12 @@ mod tests {
         assert_eq!(
             sbuild_log.summary().unwrap(),
             Summary {
+                version: Some("0.1.3-1".parse().unwrap()),
                 fail_stage: None,
                 autopkgtest: Some("pass".to_string()),
                 build_architecture: Some("amd64".to_string()),
                 build_type: Some("binary".to_string()),
-                build_space: Some(41428),
+                build_space: Some(Space::Bytes(41428)),
                 build_time: Some(Duration::from_secs(3)),
                 distribution: Some("unstable".to_string()),
                 host_architecture: Some("amd64".to_string()),
@@ -1216,7 +1252,7 @@ mod tests {
                 package: Some("rust-always-assert".to_string()),
                 package_time: Some(Duration::from_secs(72)),
                 source_version: Some("0.1.3-1".parse().unwrap()),
-                space: Some(41428),
+                space: Some(Space::Bytes(41428)),
                 status: Some("successful".to_string()),
             }
         );

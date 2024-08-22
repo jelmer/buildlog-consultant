@@ -40,6 +40,11 @@ name = "analyze-build-log"
 path = "src/bin/analyze-build-log.rs"
 required-features = ["cli"]
 
+[[bin]]
+name = "analyze-sbuild-log"
+path = "src/bin/analyze-sbuild-log.rs"
+required-features = ["cli"]
+
 [dependencies]
 pyo3 = { workspace = true }
 inventory = "0.3"
@@ -50,7 +55,7 @@ serde = { version = "1", features = ["derive"] }
 shlex = "1"
 log = "0.4.20"
 text-size = "1.1.1"
-debversion = ">=0.3"
+debversion = { version = ">=0.3", features = ["serde"] }
 chrono = "0.4.31"
 fancy-regex = "0.13.0"
 lazy-regex = "3.0.2"
