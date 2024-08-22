@@ -700,7 +700,7 @@ def find_failure_build(sbuildlog, failed_stage):
     )
 
 
-def find_failure_autopkgtest(sbuildlog, failed_stage):
+def find_failure_autopkgtest(sbuildlog: SbuildLog, failed_stage) -> SbuildFailure:
     focus_section = {
         "run-post-build-commands": "post build commands",
         "post-build": "post build",
@@ -727,10 +727,10 @@ def find_failure_autopkgtest(sbuildlog, failed_stage):
     return SbuildFailure(
         failed_stage,
         description,
-        error=error,
+        error=error,  # type: ignore
         phase=phase,
         section=section,
-        match=match,
+        match=match,  # type: ignore
     )
 
 

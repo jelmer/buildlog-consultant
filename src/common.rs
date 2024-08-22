@@ -3442,3 +3442,219 @@ pub fn find_build_failure_description(
 
     (None, None)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_match(
+        lines: Vec<&str>,
+        lineno: usize,
+        mut expected: Option<Box<dyn Problem>>,
+    ) {
+        let (r#match, actual_err) = super::find_build_failure_description(lines.clone());
+        if let Some(r#match) = r#match.as_ref() {
+            assert_eq!(&r#match.line(), &lines[lineno - 1]);
+            assert_eq!(lineno, r#match.lineno());
+        } else {
+            assert!(r#match.is_none());
+        }
+        if let Some(expected) = expected.take() {
+            assert!(r#match.is_some(), "err ({:?}) provided but match missing", &expected);
+            assert_eq!(actual_err, Some(expected));
+        } else {
+            assert!(actual_err.is_none());
+        }
+    }
+
+    #[test]
+    fn test_make_missing_rule() {
+        assert_match(
+            vec![
+                "make[1]: *** No rule to make target 'nno.autopgen.bin', needed by 'dan-nno.autopgen.bin'.  Stop."
+            ],
+            1,
+            Some(Box::new(MissingBuildFile{filename: "nno.autopgen.bin".to_owned()})),
+        );
+
+        assert_match(vec![
+                "make[1]: *** No rule to make target '/usr/share/blah/blah', needed by 'dan-nno.autopgen.bin'.  Stop."
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/share/blah/blah".into()))),
+        );
+        assert_match(
+            vec![
+                "debian/rules:4: /usr/share/openstack-pkg-tools/pkgos.make: No such file or directory"
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/share/openstack-pkg-tools/pkgos.make".into()))),
+        );
+    }
+
+    #[test]
+    fn test_git_identity() {
+        assert_match(
+            vec![
+                "fatal: unable to auto-detect email address (got 'jenkins@osuosl167-amd64.(none)')"
+            ],
+            1,
+            Some(Box::new(MissingGitIdentity)),
+        );
+    }
+
+    #[test]
+    fn test_ioerror() {
+        assert_match(
+            vec![
+                "E   IOError: [Errno 2] No such file or directory: '/usr/lib/python2.7/poly1305/rfc7539.txt'"
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/lib/python2.7/poly1305/rfc7539.txt".into()))),
+        );
+    }
+
+    #[test]
+    fn test_vignette() {
+        assert_match(
+            vec![
+                "Error: processing vignette 'uroot-intro.Rnw' failed with diagnostics:",
+                "pdflatex is not available",
+            ],
+            2,
+            Some(Box::new(MissingVagueDependency::simple("pdflatex")))
+        );
+    }
+
+    #[test]
+    fn test_upstart_file_present() {
+        assert_match(
+            vec![
+                "dh_installinit: upstart jobs are no longer supported!  Please remove debian/sddm.upstart and check if you need to add a conffile removal"
+            ],
+            1,
+            Some(Box::new(UpstartFilePresent("debian/sddm.upstart".into()))),
+        );
+    }
+
+    #[test]
+    fn test_missing_go_mod_file() {
+        assert_match(
+            vec![
+                "go: go.mod file not found in current directory or any parent directory; see 'go help modules'"
+            ],
+            1,
+            Some(Box::new(MissingGoModFile)),
+        );
+    }
+
+    #[test]
+    fn test_missing_javascript_runtime() {
+        assert_match(
+            vec![
+                "ExecJS::RuntimeUnavailable: Could not find a JavaScript runtime. See https://github.com/rails/execjs for a list of available runtimes."],
+            1,
+            Some(Box::new(MissingJavaScriptRuntime))
+        );
+    }
+
+    #[test]
+    fn test_directory_missing() {
+        assert_match(
+            vec![
+                "debian/components/build: 19: cd: can't cd to rollup-plugin",
+            ],
+            1,
+            Some(Box::new(DirectoryNonExistant("rollup-plugin".to_owned()))),
+        );
+    }
+
+    #[test]
+    fn test_vcs_control_directory() {
+        assert_match(
+            vec![
+                "   > Cannot find '.git' directory",
+            ],
+            1,
+            Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))),
+        );
+    }
+
+    #[test]
+    fn test_missing_sprockets_file() {
+        assert_match(
+            vec![
+                "Sprockets::FileNotFound: couldn't find file 'activestorage' with type 'application/javascript'"
+            ],
+            1,
+            Some(Box::new(MissingSprocketsFile { name: "activestorage".to_owned(), content_type: "application/javascript".to_owned()})),
+        );
+    }
+
+    #[test]
+    fn test_gxx_missing_file() {
+        assert_match(
+            vec![
+                "g++: error: /usr/lib/x86_64-linux-gnu/libGL.so: No such file or directory"
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/lib/x86_64-linux-gnu/libGL.so".into()))),
+        );
+    }
+
+    #[test]
+    fn test_build_xml_missing_file() {
+        assert_match(
+            vec![
+                "/<<PKGBUILDDIR>>/build.xml:59: /<<PKGBUILDDIR>>/lib does not exist."
+            ],
+            1,
+            Some(Box::new(MissingBuildFile{ filename: "lib".to_owned()})),
+        );
+    }
+
+    #[test]
+    fn test_vignette_builder() {
+        assert_match(
+            vec![
+                "  vignette builder 'R.rsp' not found"
+            ],
+            1,
+            Some(Box::new(MissingRPackage::simple("R.rsp"))),
+        );
+    }
+
+    #[test]
+    fn test_dh_missing_addon() {
+        assert_match(
+            vec![
+                "   dh_auto_clean -O--buildsystem=pybuild",
+                "E: Please add appropriate interpreter package to Build-Depends, see pybuild(1) for details.this: $VAR1 = bless( {",
+                "     'py3vers' => '3.8',",
+                "     'py3def' => '3.8',",
+                "     'pyvers' => '',",
+                "     'parallel' => '2',",
+                "     'cwd' => '/<<PKGBUILDDIR>>',",
+                "     'sourcedir' => '.',",
+                "     'builddir' => undef,",
+                "     'pypydef' => '',",
+                "     'pydef' => ''",
+                "   }, 'Debian::Debhelper::Buildsystem::pybuild' );",
+                "deps: $VAR1 = [];",
+            ],
+            2,
+            Some(Box::new(DhAddonLoadFailure{ name: "pybuild".to_owned(), path: "Debian/Debhelper/Buildsystem/pybuild.pm".to_owned()})),
+        );
+    }
+
+    #[test]
+    fn test_libtoolize_missing_file() {
+        assert_match(
+            vec![
+                "libtoolize:   error: '/usr/share/aclocal/ltdl.m4' does not exist."
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/share/aclocal/ltdl.m4".into()))),
+        );
+    }
+}

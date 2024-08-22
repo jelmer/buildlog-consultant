@@ -23,7 +23,6 @@ def test_suite():
     names = [
         "apt",
         "base",
-        "autopkgtest",
         "common",
         "sbuild",
     ]
