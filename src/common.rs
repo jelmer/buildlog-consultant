@@ -3568,4 +3568,93 @@ mod tests {
             Some(Box::new(DirectoryNonExistant("rollup-plugin".to_owned()))),
         );
     }
+
+    #[test]
+    fn test_vcs_control_directory() {
+        assert_match(
+            vec![
+                "   > Cannot find '.git' directory",
+            ],
+            1,
+            Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))),
+        );
+    }
+
+    #[test]
+    fn test_missing_sprockets_file() {
+        assert_match(
+            vec![
+                "Sprockets::FileNotFound: couldn't find file 'activestorage' with type 'application/javascript'"
+            ],
+            1,
+            Some(Box::new(MissingSprocketsFile { name: "activestorage".to_owned(), content_type: "application/javascript".to_owned()})),
+        );
+    }
+
+    #[test]
+    fn test_gxx_missing_file() {
+        assert_match(
+            vec![
+                "g++: error: /usr/lib/x86_64-linux-gnu/libGL.so: No such file or directory"
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/lib/x86_64-linux-gnu/libGL.so".into()))),
+        );
+    }
+
+    #[test]
+    fn test_build_xml_missing_file() {
+        assert_match(
+            vec![
+                "/<<PKGBUILDDIR>>/build.xml:59: /<<PKGBUILDDIR>>/lib does not exist."
+            ],
+            1,
+            Some(Box::new(MissingBuildFile{ filename: "lib".to_owned()})),
+        );
+    }
+
+    #[test]
+    fn test_vignette_builder() {
+        assert_match(
+            vec![
+                "  vignette builder 'R.rsp' not found"
+            ],
+            1,
+            Some(Box::new(MissingRPackage::simple("R.rsp"))),
+        );
+    }
+
+    #[test]
+    fn test_dh_missing_addon() {
+        assert_match(
+            vec![
+                "   dh_auto_clean -O--buildsystem=pybuild",
+                "E: Please add appropriate interpreter package to Build-Depends, see pybuild(1) for details.this: $VAR1 = bless( {",
+                "     'py3vers' => '3.8',",
+                "     'py3def' => '3.8',",
+                "     'pyvers' => '',",
+                "     'parallel' => '2',",
+                "     'cwd' => '/<<PKGBUILDDIR>>',",
+                "     'sourcedir' => '.',",
+                "     'builddir' => undef,",
+                "     'pypydef' => '',",
+                "     'pydef' => ''",
+                "   }, 'Debian::Debhelper::Buildsystem::pybuild' );",
+                "deps: $VAR1 = [];",
+            ],
+            2,
+            Some(Box::new(DhAddonLoadFailure{ name: "pybuild".to_owned(), path: "Debian/Debhelper/Buildsystem/pybuild.pm".to_owned()})),
+        );
+    }
+
+    #[test]
+    fn test_libtoolize_missing_file() {
+        assert_match(
+            vec![
+                "libtoolize:   error: '/usr/share/aclocal/ltdl.m4' does not exist."
+            ],
+            1,
+            Some(Box::new(MissingFile::new("/usr/share/aclocal/ltdl.m4".into()))),
+        );
+    }
 }
