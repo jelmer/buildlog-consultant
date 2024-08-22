@@ -5041,4 +5041,100 @@ arch:all and the other not)"#
             Some(MissingPerlModule::simple("Dist::Zilla::Plugin::PPPort")),
         );
     }
+
+    #[test]
+    fn test_nim_error() {
+        assert_just_match(
+            vec![
+                "/<<PKGBUILDDIR>>/msgpack4nim.nim(470, 6) Error: usage of 'isNil' is a user-defined error",
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_scala_error() {
+        assert_just_match(
+            vec![
+                "core/src/main/scala/org/json4s/JsonFormat.scala:131: error: No JSON deserializer found for type List[T]. Try to implement an implicit Reader or JsonFormat for this type."
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_vala_error() {
+        assert_just_match(
+vec![
+                "../src/Backend/FeedServer.vala:60.98-60.148: error: The name `COLLECTION_CREATE_NONE' does not exist in the context of `Secret.CollectionCreateFlags'"
+            ],
+            1,
+        );
+        assert_match(
+            vec![
+                "error: Package `glib-2.0' not found in specified Vala API directories or GObject-Introspection GIR directories"
+            ],
+            1,
+            Some(MissingValaPackage("glib-2.0".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_gir() {
+        assert_match(
+            vec!["ValueError: Namespace GnomeDesktop not available"],
+            1,
+            Some(MissingIntrospectionTypelib("GnomeDesktop".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_missing_boost_components() {
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
+  Could NOT find Boost (missing: program_options filesystem system graph
+  serialization iostreams) (found suitable version "1.74.0", minimum required
+  is "1.55.0")
+Call Stack (most recent call first):
+  /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:458 (_FPHSA_FAILURE_MESSAGE)
+  /usr/share/cmake-3.18/Modules/FindBoost.cmake:2177 (find_package_handle_standard_args)
+  src/CMakeLists.txt:4 (find_package)
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            4,
+            Some(MissingCMakeComponents{
+                name: "Boost".to_owned(),
+                components: vec![
+                    "program_options".to_owned(),
+                    "filesystem".to_owned(),
+                    "system".to_owned(),
+                    "graph".to_owned(),
+                    "serialization".to_owned(),
+                    "iostreams".to_owned(),
+                ],
+            }),
+        );
+    }
+
+    #[test]
+    fn test_pkg_config_too_old() {
+        assert_match(
+            vec![
+                "checking for pkg-config... no",
+                "",
+                "*** Your version of pkg-config is too old. You need atleast",
+                "*** pkg-config 0.9.0 or newer. You can download pkg-config",
+                "*** from the freedesktop.org software repository at",
+                "***",
+                "***    https://www.freedesktop.org/wiki/Software/pkg-config/",
+                "***",
+            ],
+            4,
+            Some(MissingVagueDependency {
+                name: "pkg-config".to_owned(),
+                minimum_version: Some("0.9.0".to_owned()),
+                url: None,
+                current_version: None,
+            }),
+        );
+    }
 }

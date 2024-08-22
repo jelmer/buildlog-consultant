@@ -253,7 +253,7 @@ pub(crate) fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::c
     Some((offsets, serde_yaml::from_str(&output.join("\n")).unwrap()))
 }
 
-pub fn error_from_dose3_reports(reports: &[crate::cudf::Report]) -> Option<Box<dyn Problem>> {
+pub(crate) fn error_from_dose3_reports(reports: &[crate::cudf::Report]) -> Option<Box<dyn Problem>> {
     let packages = reports
         .iter()
         .map(|report| &report.package)
