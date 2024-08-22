@@ -189,7 +189,6 @@ pub fn find_autopkgtest_failure_description(
     let mut current_field: Option<Field> = None;
     let mut it = lines.iter().enumerate().peekable();
     while let Some((i, line)) = it.next() {
-        let line = lines[i];
         match parse_autopgktest_line(line) {
             Some((_, Packet::Source)) => {}
             Some((_, Packet::Other(_))) => {}
@@ -198,7 +197,7 @@ pub fn find_autopkgtest_failure_description(
                 {
                     let mut sublines = vec![msg];
                     while i < lines.len() {
-                        let (i, line) = it.next().unwrap();
+                        let (_i, line) = it.next().unwrap();
                         sublines.push(line);
                         if line.chars().filter(|x| x == &'"').count() == 1 {
                             break;
@@ -480,7 +479,7 @@ pub fn find_autopkgtest_failure_description(
                         .entry(current_field.clone())
                         .or_insert((vec![], i))
                         .0
-                        .push(line.to_owned());
+                        .push(line.to_string());
                 }
             }
         }
@@ -1221,6 +1220,4 @@ mod tests {
             );
         }
     }
-
-
 }

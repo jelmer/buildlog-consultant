@@ -2677,7 +2677,7 @@ lazy_static::lazy_static! {
         ),
         regex_para_matcher!(
             r#".*Could not find a package configuration file provided by "(.*)"\s+with\s+any\s+of\s+the\s+following\s+names:\n\n(  .*\n)+\n.*$"#,
-            |m| Ok(Some(Box::new(CMakeFilesMissing{ filenames: m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect(), version: Some(m.get(2).unwrap().as_str().to_string()) })))
+            |m| Ok(Some(Box::new(CMakeFilesMissing{ filenames: m.get(2).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect(), version: None })))
         ),
         regex_para_matcher!(
             r#".*Could not find a package configuration file provided by "(.*)"\s\(requested\sversion\s(.+\))\swith\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$"#, |m| {
@@ -5135,6 +5135,513 @@ Call Stack (most recent call first):
                 url: None,
                 current_version: None,
             }),
+        );
+    }
+
+    #[test]
+    fn test_missing_jdk() {
+        assert_match(
+            vec![
+                "> Kotlin could not find the required JDK tools in the Java installation '/usr/lib/jvm/java-8-openjdk-amd64/jre' used by Gradle. Make sure Gradle is running on a JDK, not JRE.",
+            ],
+            1,
+            Some(MissingJDK::new("/usr/lib/jvm/java-8-openjdk-amd64/jre".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_missing_jre() {
+        assert_match(
+            vec!["ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."],
+            1,
+            Some(MissingJRE),
+        );
+    }
+
+    #[test]
+    fn test_node_module_missing() {
+        assert_match(
+            vec!["Error: Cannot find module 'tape'"],
+            1,
+            Some(MissingNodeModule("tape".to_owned())),
+        );
+        assert_just_match(
+            vec!["✖ [31mERROR:[39m Cannot find module '/<<PKGBUILDDIR>>/test'"],
+            1,
+        );
+        assert_match(
+            vec!["npm ERR! [!] Error: Cannot find module '@rollup/plugin-buble'"],
+            1,
+            Some(MissingNodeModule("@rollup/plugin-buble".to_owned())),
+        );
+        assert_match(
+            vec!["npm ERR! Error: Cannot find module 'fs-extra'"],
+            1,
+            Some(MissingNodeModule("fs-extra".to_owned())),
+        );
+        assert_match(
+            vec!["\x1b[1m\x1b[31m[!] \x1b[1mError: Cannot find module '@rollup/plugin-buble'"],
+            1,
+            Some(MissingNodeModule("@rollup/plugin-buble".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_setup_py_command() {
+        assert_match(
+            r#"""/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'long_description_content_type'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'test_suite'
+  warnings.warn(msg)
+/usr/lib/python3.9/distutils/dist.py:274: UserWarning: Unknown distribution option: 'python_requires'
+  warnings.warn(msg)
+usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+   or: setup.py --help [cmd1 cmd2 ...]
+   or: setup.py --help-commands
+   or: setup.py cmd --help
+
+error: invalid command 'test'
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            12,
+            Some(MissingSetupPyCommand("test".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_c_header_missing() {
+        assert_match(
+            vec!["cdhit-common.h:39:9: fatal error: zlib.h: No such file or directory"],
+            1,
+            Some(MissingCHeader {
+                header: "zlib.h".to_owned(),
+            }),
+        );
+        assert_match(
+            vec![
+                "/<<PKGBUILDDIR>>/Kernel/Operation_Vector.cpp:15:10: fatal error: petscvec.h: No such file or directory"
+            ],
+            1,
+            Some(MissingCHeader{header: "petscvec.h".to_owned()}),
+        );
+        assert_match(
+            vec!["src/bubble.h:27:10: fatal error: DBlurEffectWidget: No such file or directory"],
+            1,
+            Some(MissingCHeader {
+                header: "DBlurEffectWidget".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_missing_jdk_file() {
+        assert_match(
+            vec![
+                "> Could not find tools.jar. Please check that /usr/lib/jvm/java-8-openjdk-amd64 contains a valid JDK installation.",
+            ],
+            1,
+            Some(MissingJDKFile{jdk_path: "/usr/lib/jvm/java-8-openjdk-amd64".to_owned(), filename: "tools.jar".to_owned()}),
+        );
+    }
+
+    #[test]
+    fn test_python2_import() {
+        assert_match(
+            vec!["ImportError: No module named pytz"],
+            1,
+            Some(MissingPythonModule::simple("pytz".to_owned())),
+        );
+        assert_just_match(vec!["ImportError: cannot import name SubfieldBase"], 1);
+    }
+
+    #[test]
+    fn test_python3_import() {
+        assert_match(
+            ["ModuleNotFoundError: No module named 'django_crispy_forms'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "django_crispy_forms".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            [" ModuleNotFoundError: No module named 'Cython'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "Cython".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            ["ModuleNotFoundError: No module named 'distro'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "distro".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            ["E   ModuleNotFoundError: No module named 'twisted'"].to_vec(),
+            1,
+            Some(MissingPythonModule {
+                module: "twisted".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            vec![
+                "E   ImportError: cannot import name 'async_poller' from 'msrest.polling' (/usr/lib/python3/dist-packages/msrest/polling/__init__.py)"
+            ],
+            1,
+            Some(MissingPythonModule::simple("msrest.polling.async_poller".to_owned())),
+        );
+        assert_match(
+            vec!["/usr/bin/python3: No module named sphinx"],
+            1,
+            Some(MissingPythonModule {
+                module: "sphinx".to_owned(),
+                python_version: Some(3),
+                minimum_version: None,
+            }),
+        );
+        assert_match(
+            vec![
+                "Could not import extension sphinx.ext.pngmath (exception: No module named pngmath)"
+            ],
+            1,
+            Some(MissingPythonModule::simple("pngmath".to_owned())),
+        );
+        assert_match(
+            vec![
+                "/usr/bin/python3: Error while finding module specification for 'pep517.build' (ModuleNotFoundError: No module named 'pep517')"
+            ],
+            1,
+            Some(MissingPythonModule{module: "pep517".to_owned(), python_version:Some(3), minimum_version: None}),
+        );
+    }
+
+    #[test]
+    fn test_sphinx() {
+        assert_just_match(
+            vec!["There is a syntax error in your configuration file: Unknown syntax: Constant"],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_go_missing() {
+        assert_match(
+            vec![
+                r#"src/github.com/vuls/config/config.go:30:2: cannot find package "golang.org/x/xerrors" in any of:"#,
+            ],
+            1,
+            Some(MissingGoPackage {
+                package: "golang.org/x/xerrors".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_lazy_font() {
+        assert_match(
+            vec![
+                "[ERROR] LazyFont - Failed to read font file /usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf <java.io.FileNotFoundException: /usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf (No such file or directory)>java.io.FileNotFoundException: /usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf (No such file or directory)"],
+            1,
+            Some(MissingFile::new(
+                "/usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/STIX2Math.otf".into()
+            )),
+        );
+    }
+
+    #[test]
+    fn test_missing_latex_files() {
+        assert_match(
+            vec!["! LaTeX Error: File `fancyvrb.sty' not found."],
+            1,
+            Some(MissingLatexFile("fancyvrb.sty".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_pytest_import() {
+        assert_match(
+            vec!["E   ImportError: cannot import name cmod"],
+            1,
+            Some(MissingPythonModule::simple("cmod".to_owned())),
+        );
+        assert_match(
+            vec!["E   ImportError: No module named mock"],
+            1,
+            Some(MissingPythonModule::simple("mock".to_owned())),
+        );
+        assert_match(
+            vec![
+                "pluggy.manager.PluginValidationError: Plugin 'xdist.looponfail' could not be loaded: (pytest 3.10.1 (/usr/lib/python2.7/dist-packages), Requirement.parse('pytest>=4.4.0'))!"
+            ],
+            1,
+            Some(MissingPythonModule{
+                module: "pytest".to_owned(), python_version: Some(2), minimum_version: Some("4.4.0".to_owned())
+            }),
+        );
+        assert_match(
+            vec![
+                r#"ImportError: Error importing plugin "tests.plugins.mock_libudev": No module named mock"#,
+            ],
+            1,
+            Some(MissingPythonModule::simple("mock".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_sed() {
+        assert_match(
+            vec!["sed: can't read /etc/locale.gen: No such file or directory"],
+            1,
+            Some(MissingFile::new("/etc/locale.gen".into())),
+        );
+    }
+
+    #[test]
+    fn test_pytest_args() {
+        assert_match(
+            vec![
+                "pytest: error: unrecognized arguments: --cov=janitor --cov-report=html --cov-report=term-missing:skip-covered"
+            ],
+            1,
+            Some(UnsupportedPytestArguments(
+                vec![
+                    "--cov=janitor".to_owned(),
+                    "--cov-report=html".to_owned(),
+                    "--cov-report=term-missing:skip-covered".to_owned(),
+                ]
+            )),
+        );
+    }
+
+    #[test]
+    fn test_pytest_config() {
+        assert_match(
+            vec!["INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: asyncio_mode"],
+            1,
+            Some(UnsupportedPytestConfigOption("asyncio_mode".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_distutils_missing() {
+        assert_match(
+            vec![
+                "distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('pytest-runner')"
+            ],
+            1,
+            Some(MissingPythonDistribution::simple("pytest-runner")),
+        );
+        assert_match(
+            vec![
+                "distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('certifi>=2019.3.9')"
+            ],
+            1,
+            Some(MissingPythonDistribution{distribution: "certifi".to_owned(), minimum_version: Some("2019.3.9".to_owned()), python_version: None }),
+        );
+        assert_match(
+            vec![
+                r#"distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('cffi; platform_python_implementation == "CPython"\')"#,
+            ],
+            1,
+            Some(MissingPythonDistribution::simple("cffi")),
+        );
+        assert_match(
+            vec!["error: Could not find suitable distribution for Requirement.parse('gitlab')"],
+            1,
+            Some(MissingPythonDistribution::simple("gitlab")),
+        );
+        assert_match(
+            vec![
+                "pkg_resources.DistributionNotFound: The 'configparser>=3.5' distribution was not found and is required by importlib-metadata"
+            ],
+            1,
+            Some(MissingPythonDistribution{distribution:"configparser".to_owned(), minimum_version: Some("3.5".to_owned()), python_version: None}),
+        );
+        assert_match(
+            vec![
+                "error: Command '['/usr/bin/python3.9', '-m', 'pip', '--disable-pip-version-check', 'wheel', '--no-deps', '-w', '/tmp/tmp973_8lhm', '--quiet', 'asynctest']' returned non-zero exit status 1."
+            ],
+            1,
+            Some(MissingPythonDistribution{distribution: "asynctest".to_owned(), python_version:Some(3), minimum_version: None}),
+        );
+        assert_match(
+            vec![
+                "subprocess.CalledProcessError: Command '['/usr/bin/python', '-m', 'pip', '--disable-pip-version-check', 'wheel', '--no-deps', '-w', '/tmp/tmpm2l3kcgv', '--quiet', 'setuptools_scm']' returned non-zero exit status 1."
+            ],
+            1,
+            Some(MissingPythonDistribution::simple("setuptools_scm")),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_file() {
+        assert_match(
+            r#"""CMake Error at /usr/lib/x86_64-/cmake/Qt5Gui/Qt5GuiConfig.cmake:27 (message):
+  The imported target "Qt5::Gui" references the file
+
+     "/usr/lib/x86_64-linux-gnu/libEGL.so"
+
+  but this file does not exist.  Possible reasons include:
+
+  * The file was deleted, renamed, or moved to another location.
+
+  * An install or uninstall procedure did not complete successfully.
+
+  * The installation package was faulty and contained
+
+     "/usr/lib/x86_64-linux-gnu/cmake/Qt5Gui/Qt5GuiConfigExtras.cmake"
+
+  but not all the files it references.
+
+Call Stack (most recent call first):
+  /usr/lib/x86_64-linux-gnu/QtGui/Qt5Gui.cmake:63 (_qt5_Gui_check_file_exists)
+  /usr/lib/x86_64-linux-gnu/QtGui/Qt5Gui.cmake:85 (_qt5gui_find_extra_libs)
+  /usr/lib/x86_64-linux-gnu/QtGui/Qt5Gui.cmake:186 (include)
+  /usr/lib/x86_64-linux-gnu/QtWidgets/Qt5Widgets.cmake:101 (find_package)
+  /usr/lib/x86_64-linux-gnu/Qt/Qt5Config.cmake:28 (find_package)
+  CMakeLists.txt:34 (find_package)
+dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
+"""#
+            .split_inclusive('\n')
+            .collect::<Vec<&str>>(),
+            16,
+            Some(MissingFile::new(
+                "/usr/lib/x86_64-linux-gnu/libEGL.so".into(),
+            )),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_include() {
+        assert_match(
+            r#"""-- Performing Test _OFFT_IS_64BIT
+-- Performing Test _OFFT_IS_64BIT - Success
+-- Performing Test HAVE_DATE_TIME
+-- Performing Test HAVE_DATE_TIME - Success
+CMake Error at CMakeLists.txt:43 (include):
+  include could not find load file:
+
+    KDEGitCommitHooks
+
+
+-- Found KF5Activities: /usr/lib/x86_64-linux-gnu/cmake/KF5Activities/KF5ActivitiesConfig.cmake (found version "5.78.0") 
+-- Found KF5Config: /usr/lib/x86_64-linux-gnu/cmake/KF5Config/KF5ConfigConfig.cmake (found version "5.78.0") 
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            8,
+            Some(CMakeFilesMissing{filenames:vec!["KDEGitCommitHooks.cmake".to_string()], version :None}),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_cmake_files() {
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:230 (message):
+  Could not find a package configuration file provided by "sensor_msgs" with
+  any of the following names:
+
+    sensor_msgsConfig.cmake
+    sensor_msgs-config.cmake
+
+  Add the installation prefix of "sensor_msgs" to CMAKE_PREFIX_PATH or set
+  "sensor_msgs_DIR" to a directory containing one of the above files.  If
+  "sensor_msgs" provides a separate development package or SDK, be sure it
+  has been installed.
+dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
+"""#
+            .split_inclusive('\n')
+            .collect::<Vec<&str>>(),
+            11,
+            Some(CMakeFilesMissing {
+                filenames: vec![
+                    "sensor_msgsConfig.cmake".to_string(),
+                    "sensor_msgs-config.cmake".to_string(),
+                ],
+                version: None,
+            }),
+        );
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:230 (message):
+  Could NOT find KF5 (missing: Plasma PlasmaQuick Wayland ModemManagerQt
+  NetworkManagerQt) (found suitable version "5.92.0", minimum required is
+  "5.86")
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            4,
+            Some(MissingCMakeComponents{
+                name: "KF5".into(),
+                components: vec![
+                    "Plasma".into(),
+                    "PlasmaQuick".into(),
+                    "Wayland".into(),
+                    "ModemManagerQt".into(),
+                    "NetworkManagerQt".into(),
+                ],
+            }),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_exact_version() {
+        assert_match(
+            r#"""CMake Error at /usr/share/cmake-3.18/Modules/FindPackageHandleStandardArgs.cmake:165 (message):
+  Could NOT find SignalProtocol: Found unsuitable version "2.3.3", but
+  required is exact version "2.3.2" (found
+  /usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so)
+"""#.split_inclusive('\n').collect::<Vec<&str>>(),
+            4,
+            Some(CMakeNeedExactVersion{
+                package: "SignalProtocol".to_owned(),
+                version_found: "2.3.3".to_owned(),
+                exact_version_needed: "2.3.2".to_owned(),
+                path: "/usr/lib/x86_64-linux-gnu/libsignal-protocol-c.so".into(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_vague() {
+        assert_match(
+            vec![
+                "CMake Error at CMakeLists.txt:84 (MESSAGE):",
+                "  alut not found",
+            ],
+            2,
+            Some(MissingVagueDependency::simple("alut")),
+        );
+        assert_match(
+            vec![
+                "CMake Error at CMakeLists.txt:213 (message):",
+                "  could not find zlib",
+            ],
+            2,
+            Some(MissingVagueDependency::simple("zlib")),
+        );
+        assert_match(
+            r#"""-- Found LibSolv_ext: /usr/lib/x86_64-linux-gnu/libsolvext.so  
+-- Found LibSolv: /usr/include /usr/lib/x86_64-linux-gnu/libsolv.so;/usr/lib/x86_64-linux-gnu/libsolvext.so
+-- No usable gpgme flavours found.
+CMake Error at cmake/modules/FindGpgme.cmake:398 (message):
+  Did not find GPGME
+Call Stack (most recent call first):
+  CMakeLists.txt:223 (FIND_PACKAGE)
+  """#.split_inclusive('\n').collect::<Vec<&str>>(),
+            5,
+            Some(MissingVagueDependency::simple("GPGME")),
+        );
+    }
+
+    #[test]
+    fn test_secondary() {
+        assert!(super::find_secondary_build_failure(&["Unknown option --foo"], 10).is_some());
+        assert!(
+            super::find_secondary_build_failure(&["Unknown option --foo, ignoring."], 10).is_none()
         );
     }
 }

@@ -231,6 +231,7 @@ impl MissingPythonDistribution {
         text: &str,
         python_version: Option<i32>,
     ) -> PyResult<MissingPythonDistribution> {
+        pyo3::prepare_freethreaded_python();
         Python::with_gil(|py| {
             let requirement = py
                 .import_bound("requirements.requirement")?
