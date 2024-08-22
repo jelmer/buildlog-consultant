@@ -18,19 +18,7 @@ class SbuildLogSection:
 
 def parse_sbuild_log(lines: list[bytes]) -> Iterator[SbuildLogSection]: ...
 
-class Match:
-    line: str
-
-    offset: int
-
-    origin: str
-
-    lineno: int
-
-class Problem:
-    kind: str
-
-    def json(self): ...
+from buildlog_consultant import Match, Problem
 
 def match_lines(
     lines: list[str], lineno: int
@@ -38,3 +26,4 @@ def match_lines(
 def find_secondary_build_failure(lines: list[str], lineno: int) -> Match | None: ...
 
 def find_autopkgtest_failure_description(lines: list[str]) -> tuple[Match | None, str | None, Problem | None, str | None]: ...
+def find_build_failure_description(lines: list[str]) -> tuple[Match | None, Problem | None]: ...

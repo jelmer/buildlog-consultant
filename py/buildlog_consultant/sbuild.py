@@ -727,10 +727,10 @@ def find_failure_autopkgtest(sbuildlog: SbuildLog, failed_stage) -> SbuildFailur
     return SbuildFailure(
         failed_stage,
         description,
-        error=error,  # type: ignore
+        error=error,
         phase=phase,
         section=section,
-        match=match,  # type: ignore
+        match=match,
     )
 
 

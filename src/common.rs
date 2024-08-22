@@ -3807,7 +3807,9 @@ mod tests {
                 "e.g. MESS=/path/to/program/mess ./configure",
             ],
             3,
-            Some((MissingVagueDependency::simple("the Multi Emulator Super System (MESS)"))),
+            Some(MissingVagueDependency::simple(
+                "the Multi Emulator Super System (MESS)",
+            )),
         );
     }
 
@@ -3818,7 +3820,7 @@ mod tests {
                 "/bin/bash: /usr/bin/rst2man: /usr/bin/python: bad interpreter: No such file or directory"
             ],
             1,
-            Some((MissingFile::new("/usr/bin/python".into())))
+            Some(MissingFile::new("/usr/bin/python".into()))
         );
         assert_just_match(
             vec!["env: ‘/<<PKGBUILDDIR>>/socket-activate’: No such file or directory"],
@@ -4161,7 +4163,7 @@ mod tests {
                 "ERROR: dependencies 'igraph', 'matlab', 'expm', 'RcppParallel' are not available for package 'markovchain'"
             ],
             1,
-            Some((MissingRPackage::simple("igraph")))
+            Some(MissingRPackage::simple("igraph"))
         );
         assert_match(
             vec![

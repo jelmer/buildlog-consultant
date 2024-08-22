@@ -750,7 +750,7 @@ pub fn find_testbed_setup_failure(
 
 #[cfg(test)]
 mod tests {
-    use crate::problems::autopkgtest::*;
+    
     use crate::problems::common::*;
     use super::*;
 

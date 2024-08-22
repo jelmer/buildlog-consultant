@@ -18,12 +18,10 @@
 
 import logging
 import re
-from typing import Optional, cast
+from typing import Optional
 
 from . import (
-    Match,
     Problem,
-    SingleLineMatch,
     _buildlog_consultant_rs,  # type: ignore
     )
 
@@ -891,90 +889,4 @@ class ESModuleMustUseImport(Problem, kind="esmodule-must-use-import"):
 
 
 find_secondary_build_failure = _buildlog_consultant_rs.find_secondary_build_failure
-
-
-def find_build_failure_description(  # noqa: C901
-    lines: list[str],
-) -> tuple[Optional[Match], Optional[Problem]]:
-    """Find the key failure line in build output.
-
-    Returns:
-      tuple with (match object, error object)
-    """
-    OFFSET = 250
-    # Is this cmake-specific, or rather just kf5 / qmake ?
-    cmake = False
-    # We search backwards for clear errors.
-    for i in range(1, OFFSET):
-        lineno = len(lines) - i
-        if lineno < 0:
-            break
-        if "cmake" in lines[lineno]:
-            cmake = True
-        mm, merr = _buildlog_consultant_rs.match_lines(lines, lineno)
-        if mm:
-            return cast(Match, mm), cast(Problem, merr)
-
-    # TODO(jelmer): Remove this in favour of CMakeErrorMatcher above.
-    if cmake:
-        missing_file_pat = re.compile(
-            r"\s*The imported target \"(.*)\" references the file"
-        )
-        binary_pat = re.compile(r"  Could NOT find (.*) \(missing: .*\)")
-        cmake_files_pat = re.compile(
-            "^  Could not find a package configuration file provided "
-            'by "(.*)" with any of the following names:'
-        )
-        # Urgh, multi-line regexes---
-        for lineno in range(len(lines)):
-            line = lines[lineno].rstrip("\n")
-            rm = re.fullmatch(binary_pat, line)
-            if rm:
-                return (
-                    SingleLineMatch.from_lines(
-                        lines, lineno, origin=f"direct regex ({binary_pat}"
-                    ),
-                    MissingCommand(rm.group(1).lower()),
-                )
-            rm = re.fullmatch(missing_file_pat, line)
-            if rm:
-                lineno += 1
-                while lineno < len(lines) and not line:
-                    lineno += 1
-                if lines[lineno + 2].startswith("  but this file does not exist."):
-                    rm = re.fullmatch(r'\s*"(.*)"', line)
-                    if rm:
-                        filename = rm.group(1)
-                    else:
-                        filename = line
-                    return (
-                        SingleLineMatch.from_lines(
-                            lines, lineno, origin=f"direct regex {missing_file_pat}"
-                        ),
-                        MissingFile(filename),
-                    )
-                continue
-            if lineno + 1 < len(lines):
-                rm = re.fullmatch(
-                    cmake_files_pat,
-                    line + " " + lines[lineno + 1].lstrip(" ").strip("\n"),
-                )
-                if rm and lines[lineno + 2] == "\n":
-                    i = 3
-                    filenames = []
-                    while lines[lineno + i].strip():
-                        filenames.append(lines[lineno + i].strip())
-                        i += 1
-                    return (
-                        SingleLineMatch.from_lines(
-                            lines, lineno, origin="direct regex (cmake)"
-                        ),
-                        CMakeFilesMissing(filenames),
-                    )
-
-    # And forwards for vague ("secondary") errors.
-    match = find_secondary_build_failure(lines, OFFSET)
-    if match:
-        return cast(Match, match), None
-
-    return None, None
+find_build_failure_description = _buildlog_consultant_rs.find_build_failure_description

@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use buildlog_consultant::find_build_failure_description;
 use buildlog_consultant::{Match, Problem};
 use std::cmp::{max, min};
@@ -49,7 +49,7 @@ pub fn main() -> Result<(), i8> {
         .init();
 
     let log = if let Some(path) = args.path.as_deref() {
-        std::fs::read_to_string(&path).expect("Failed to read log file")
+        std::fs::read_to_string(path).expect("Failed to read log file")
     } else {
             use std::io::Read;
             let mut log = String::new();
