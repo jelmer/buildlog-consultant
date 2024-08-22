@@ -234,7 +234,7 @@ pub fn find_apt_get_update_failure(
     (Some(focus_section.to_string()), match_, problem)
 }
 
-pub fn find_cudf_output(lines: Vec<&str>) -> Option<crate::cudf::Cudf> {
+pub fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
     let mut offset = None;
     for (i, line) in lines.enumerate_backward(None) {
         if line.starts_with("output-version:") {
@@ -243,12 +243,14 @@ pub fn find_cudf_output(lines: Vec<&str>) -> Option<crate::cudf::Cudf> {
     }
     let mut offset = offset?;
     let mut output = vec![];
+    let mut offsets = vec![];
     while !lines[offset].trim().is_empty() {
+        offsets.push(offset);
         output.push(lines[offset]);
         offset += 1;
     }
 
-    serde_yaml::from_str(&output.join("\n")).ok()
+    Some((offsets, serde_yaml::from_str(&output.join("\n")).unwrap()))
 }
 
 pub fn error_from_dose3_reports(reports: &[crate::cudf::Report]) -> Option<Box<dyn Problem>> {
@@ -369,7 +371,8 @@ mod tests {
         let lines = include_str!("testdata/sbuild-cudf.log")
             .split_inclusive('\n')
             .collect::<Vec<_>>();
-        let report = find_cudf_output(lines).unwrap();
+        let (offsets, report) = find_cudf_output(lines).unwrap();
+        assert_eq!(offsets, (104..=119).collect::<Vec<_>>());
         let expected = Cudf {
             output_version: (1, 2),
             native_architecture: "amd64".to_string(),

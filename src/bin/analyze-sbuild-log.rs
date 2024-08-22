@@ -84,19 +84,7 @@ pub fn main() -> Result<(), i8> {
 
     let failed_stage = sbuildlog.get_failed_stage();
 
-    if let Some(failed_stage) = failed_stage {
-        log::info!("Failed stage: {}", failed_stage);
-    } else {
-        log::info!("No failed stage found");
-    }
-
     let failure = worker_failure_from_sbuild_log(&sbuildlog);
-
-    if let Some(error) = failure.error.as_ref() {
-        log::info!("Error: {}", error);
-    } else {
-        log::debug!("No error found");
-    }
 
     if args.json {
         let ret = as_json(
@@ -104,18 +92,28 @@ pub fn main() -> Result<(), i8> {
             failure.error.as_ref().map(|p| p.as_ref()),
         );
         serde_json::to_writer_pretty(std::io::stdout(), &ret).expect("Failed to write JSON");
-    }
-
-    if let (Some(m), Some(s)) = (failure.r#match.as_ref(), failure.section.as_ref()) {
-        buildlog_consultant::highlight_lines(&s.lines(), m.as_ref(), args.context);
     } else {
-        assert!(failure.r#match.is_some());
-        assert!(failure.section.is_some());
-        log::info!("No specific issue found");
-    }
+        if let Some(failed_stage) = failed_stage {
+            log::info!("Failed stage: {}", failed_stage);
+        } else {
+            log::info!("No failed stage found");
+        }
 
-    if let Some(problem) = failure.error.as_ref() {
-        log::info!("Identified issue: {}: {}", problem.kind(), problem);
+        if let Some(error) = failure.error.as_ref() {
+            log::info!("Error: {}", error);
+        } else {
+            log::debug!("No error found");
+        }
+
+        if let (Some(m), Some(s)) = (failure.r#match.as_ref(), failure.section.as_ref()) {
+            buildlog_consultant::highlight_lines(&s.lines(), m.as_ref(), args.context);
+        } else {
+            log::info!("No specific issue found");
+        }
+
+        if let Some(problem) = failure.error.as_ref() {
+            log::info!("Identified issue: {}: {}", problem.kind(), problem);
+        }
     }
 
     Ok(())

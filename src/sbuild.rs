@@ -982,20 +982,23 @@ pub fn find_install_deps_failure_description(
 ) {
     let dose3_lines = sbuildlog.get_section_lines(Some(DOSE3_SECTION));
     if let Some(dose3_lines) = dose3_lines {
-        let dose3_output = crate::apt::find_cudf_output(dose3_lines);
-        if let Some(dose3_output) = dose3_output {
+        let dose3 = crate::apt::find_cudf_output(dose3_lines.clone());
+        if let Some((dose3_offsets, dose3_output)) = dose3 {
             let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
-            return (Some(DOSE3_SECTION), None, error);
+            let r#match = crate::MultiLineMatch::from_lines(&dose3_lines, dose3_offsets, None);
+            return (Some(DOSE3_SECTION), Some(Box::new(r#match)), error);
         }
     }
 
     const SECTION: &str = "Install package build dependencies";
     let build_dependencies_lines = sbuildlog.get_section_lines(Some(SECTION));
     if let Some(build_dependencies_lines) = build_dependencies_lines {
-        let dose3_output = crate::apt::find_cudf_output(build_dependencies_lines.clone());
-        if let Some(dose3_output) = dose3_output {
+        let dose3 = crate::apt::find_cudf_output(build_dependencies_lines.clone());
+        if let Some((dose3_offsets, dose3_output)) = dose3 {
             let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
-            return (Some(SECTION), None, error);
+            let r#match =
+                crate::MultiLineMatch::from_lines(&build_dependencies_lines, dose3_offsets, None);
+            return (Some(SECTION), Some(Box::new(r#match)), error);
         }
         let (r#match, error) = crate::apt::find_apt_get_failure(build_dependencies_lines);
         return (Some(SECTION), r#match, error);
