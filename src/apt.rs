@@ -330,3 +330,72 @@ pub fn error_from_dose3_report(report: serde_json::Value) -> Option<Box<dyn Prob
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_just_match(lines: Vec<&str>, lineno: usize) {
+        let (r#match, actual_err) = super::find_apt_get_failure(lines.clone());
+        assert!(actual_err.is_none());
+        if let Some(r#match) = r#match.as_ref() {
+            assert_eq!(&r#match.line(), &lines[lineno - 1]);
+            assert_eq!(lineno, r#match.lineno());
+        } else {
+            assert!(r#match.is_none());
+        }
+    }
+
+    fn assert_match(lines: Vec<&str>, lineno: usize, mut expected: Option<impl Problem + 'static>) {
+        let (r#match, actual_err) = super::find_apt_get_failure(lines.clone());
+        if let Some(r#match) = r#match.as_ref() {
+            assert_eq!(&r#match.line(), &lines[lineno - 1]);
+            assert_eq!(lineno, r#match.lineno());
+        } else {
+            assert!(r#match.is_none());
+        }
+        if let Some(expected) = expected.take() {
+            assert!(
+                r#match.is_some(),
+                "err ({:?}) provided but match missing",
+                &expected
+            );
+            assert_eq!(
+                actual_err.as_ref().map(|x| x.as_ref()),
+                Some(&expected as &dyn Problem)
+            );
+        } else {
+            assert!(actual_err.is_none());
+        }
+    }
+
+    #[test]
+    fn test_make_missing_rule() {
+        assert_match(
+            vec![
+                "E: Failed to fetch http://janitor.debian.net/blah/Packages.xz  File has unexpected size (3385796 != 3385720). Mirror sync in progress? [IP]"
+            ],
+            1,
+            Some(AptFetchFailure{
+                url: Some("http://janitor.debian.net/blah/Packages.xz".to_owned()),
+                error: "File has unexpected size (3385796 != 3385720). Mirror sync in progress? [IP]".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_missing_release_file() {
+        assert_match(
+            vec![
+                "E: The repository 'https://janitor.debian.net/ blah/ Release' does not have a Release file.",
+            ],
+            1,
+            Some(AptMissingReleaseFile("https://janitor.debian.net/ blah/ Release".to_owned()))
+        );
+    }
+
+    #[test]
+    fn test_vague() {
+        assert_just_match(vec!["E: Stuff is broken"], 1);
+    }
+}

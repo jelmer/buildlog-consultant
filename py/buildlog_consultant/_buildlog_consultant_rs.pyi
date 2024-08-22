@@ -1,6 +1,8 @@
 from collections.abc import Iterator
 from typing import BinaryIO
 
+from buildlog_consultant import Match, Problem
+
 class SbuildLog:
     def get_section_lines(self, section: str | None) -> list[str] | None: ...
     def get_section(self, section: str | None) -> SbuildLogSection | None: ...
@@ -18,23 +20,11 @@ class SbuildLogSection:
 
 def parse_sbuild_log(lines: list[bytes]) -> Iterator[SbuildLogSection]: ...
 
-class Match:
-    line: str
-
-    offset: int
-
-    origin: str
-
-    lineno: int
-
-class Problem:
-    kind: str
-
-    def json(self): ...
-
 def match_lines(
     lines: list[str], lineno: int
 ) -> tuple[Match | None, Problem | None]: ...
 def find_secondary_build_failure(lines: list[str], lineno: int) -> Match | None: ...
 
 def find_autopkgtest_failure_description(lines: list[str]) -> tuple[Match | None, str | None, Problem | None, str | None]: ...
+def find_build_failure_description(lines: list[str]) -> tuple[Match | None, Problem | None]: ...
+def find_apt_get_failure(lines: list[str]) -> tuple[Match | None, Problem | None]: ...

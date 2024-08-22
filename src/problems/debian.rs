@@ -49,7 +49,7 @@ pub struct AptFetchFailure {
 
 impl Problem for AptFetchFailure {
     fn kind(&self) -> std::borrow::Cow<str> {
-        "apt-fetch-failure".into()
+        "apt-file-fetch-failure".into()
     }
 
     fn json(&self) -> serde_json::Value {
@@ -75,7 +75,7 @@ pub struct AptMissingReleaseFile(pub String);
 
 impl Problem for AptMissingReleaseFile {
     fn kind(&self) -> std::borrow::Cow<str> {
-        "apt-missing-release-file".into()
+        "missing-release-file".into()
     }
 
     fn json(&self) -> serde_json::Value {

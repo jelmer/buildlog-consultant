@@ -46,9 +46,15 @@ impl Match {
 
     fn __richcmp__(&self, other: PyRef<Match>, op: CompareOp) -> PyResult<bool> {
         match op {
-            CompareOp::Eq => Ok(self.0.offsets() == other.0.offsets() && self.line() == other.line()),
-            CompareOp::Ne => Ok(self.0.offsets() != other.0.offsets() || self.line() != other.line()),
-            _ => Err(PyNotImplementedError::new_err("Only == and != are implemented")),
+            CompareOp::Eq => {
+                Ok(self.0.offsets() == other.0.offsets() && self.line() == other.line())
+            }
+            CompareOp::Ne => {
+                Ok(self.0.offsets() != other.0.offsets() || self.line() != other.line())
+            }
+            _ => Err(PyNotImplementedError::new_err(
+                "Only == and != are implemented",
+            )),
         }
     }
 
@@ -131,11 +137,25 @@ impl Problem {
 #[pyfunction]
 fn find_autopkgtest_failure_description(
     lines: Vec<String>,
-) -> (Option<Match>, Option<String>, Option<Problem>, Option<String>) {
-    let (m, t, p, d)= buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(lines.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+) -> (
+    Option<Match>,
+    Option<String>,
+    Option<Problem>,
+    Option<String>,
+) {
+    let (m, t, p, d) = buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(
+        lines.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+    );
     (m.map(Match), t, p.map(Problem), d)
 }
 
+#[pyfunction]
+fn find_build_failure_description(lines: Vec<String>) -> (Option<Match>, Option<Problem>) {
+    let (m, p) = buildlog_consultant::common::find_build_failure_description(
+        lines.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+    );
+    (m.map(Match), p.map(Problem))
+}
 
 #[pyfunction]
 fn match_lines(lines: Vec<String>, offset: usize) -> PyResult<(Option<Match>, Option<Problem>)> {
@@ -244,6 +264,13 @@ fn find_secondary_build_failure(lines: Vec<String>, offset: usize) -> Option<Mat
         .map(|m| Match(Box::new(m)))
 }
 
+#[pyfunction]
+fn find_apt_get_failure(lines: Vec<String>) -> (Option<Match>, Option<Problem>) {
+    let lines = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    let (m, p) = buildlog_consultant::apt::find_apt_get_failure(lines);
+    (m.map(Match), p.map(Problem))
+}
+
 #[pymodule]
 fn _buildlog_consultant_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
@@ -255,5 +282,7 @@ fn _buildlog_consultant_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_sbuild_log, m)?)?;
     m.add_function(wrap_pyfunction!(find_secondary_build_failure, m)?)?;
     m.add_function(wrap_pyfunction!(find_autopkgtest_failure_description, m)?)?;
+    m.add_function(wrap_pyfunction!(find_build_failure_description, m)?)?;
+    m.add_function(wrap_pyfunction!(find_apt_get_failure, m)?)?;
     Ok(())
 }

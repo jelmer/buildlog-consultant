@@ -3447,11 +3447,18 @@ pub fn find_build_failure_description(
 mod tests {
     use super::*;
 
-    fn assert_match(
-        lines: Vec<&str>,
-        lineno: usize,
-        mut expected: Option<Box<dyn Problem>>,
-    ) {
+    fn assert_just_match(lines: Vec<&str>, lineno: usize) {
+        let (r#match, actual_err) = super::find_build_failure_description(lines.clone());
+        assert!(actual_err.is_none());
+        if let Some(r#match) = r#match.as_ref() {
+            assert_eq!(&r#match.line(), &lines[lineno - 1]);
+            assert_eq!(lineno, r#match.lineno());
+        } else {
+            assert!(r#match.is_none());
+        }
+    }
+
+    fn assert_match(lines: Vec<&str>, lineno: usize, mut expected: Option<impl Problem + 'static>) {
         let (r#match, actual_err) = super::find_build_failure_description(lines.clone());
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
@@ -3460,8 +3467,15 @@ mod tests {
             assert!(r#match.is_none());
         }
         if let Some(expected) = expected.take() {
-            assert!(r#match.is_some(), "err ({:?}) provided but match missing", &expected);
-            assert_eq!(actual_err, Some(expected));
+            assert!(
+                r#match.is_some(),
+                "err ({:?}) provided but match missing",
+                &expected
+            );
+            assert_eq!(
+                actual_err.as_ref().map(|x| x.as_ref()),
+                Some(&expected as &dyn Problem)
+            );
         } else {
             assert!(actual_err.is_none());
         }
@@ -3474,21 +3488,21 @@ mod tests {
                 "make[1]: *** No rule to make target 'nno.autopgen.bin', needed by 'dan-nno.autopgen.bin'.  Stop."
             ],
             1,
-            Some(Box::new(MissingBuildFile{filename: "nno.autopgen.bin".to_owned()})),
+            Some(MissingBuildFile{filename: "nno.autopgen.bin".to_owned()}),
         );
 
         assert_match(vec![
                 "make[1]: *** No rule to make target '/usr/share/blah/blah', needed by 'dan-nno.autopgen.bin'.  Stop."
             ],
             1,
-            Some(Box::new(MissingFile::new("/usr/share/blah/blah".into()))),
+            Some(MissingFile::new("/usr/share/blah/blah".into())),
         );
         assert_match(
             vec![
                 "debian/rules:4: /usr/share/openstack-pkg-tools/pkgos.make: No such file or directory"
             ],
             1,
-            Some(Box::new(MissingFile::new("/usr/share/openstack-pkg-tools/pkgos.make".into()))),
+            Some(MissingFile::new("/usr/share/openstack-pkg-tools/pkgos.make".into())),
         );
     }
 
@@ -3496,10 +3510,10 @@ mod tests {
     fn test_git_identity() {
         assert_match(
             vec![
-                "fatal: unable to auto-detect email address (got 'jenkins@osuosl167-amd64.(none)')"
+                "fatal: unable to auto-detect email address (got 'jenkins@osuosl167-amd64.(none)')",
             ],
             1,
-            Some(Box::new(MissingGitIdentity)),
+            Some(MissingGitIdentity),
         );
     }
 
@@ -3510,7 +3524,7 @@ mod tests {
                 "E   IOError: [Errno 2] No such file or directory: '/usr/lib/python2.7/poly1305/rfc7539.txt'"
             ],
             1,
-            Some(Box::new(MissingFile::new("/usr/lib/python2.7/poly1305/rfc7539.txt".into()))),
+            Some(MissingFile::new("/usr/lib/python2.7/poly1305/rfc7539.txt".into())),
         );
     }
 
@@ -3522,7 +3536,7 @@ mod tests {
                 "pdflatex is not available",
             ],
             2,
-            Some(Box::new(MissingVagueDependency::simple("pdflatex")))
+            Some(MissingVagueDependency::simple("pdflatex")),
         );
     }
 
@@ -3533,7 +3547,7 @@ mod tests {
                 "dh_installinit: upstart jobs are no longer supported!  Please remove debian/sddm.upstart and check if you need to add a conffile removal"
             ],
             1,
-            Some(Box::new(UpstartFilePresent("debian/sddm.upstart".into()))),
+            Some(UpstartFilePresent("debian/sddm.upstart".into())),
         );
     }
 
@@ -3544,7 +3558,7 @@ mod tests {
                 "go: go.mod file not found in current directory or any parent directory; see 'go help modules'"
             ],
             1,
-            Some(Box::new(MissingGoModFile)),
+            Some(MissingGoModFile),
         );
     }
 
@@ -3554,29 +3568,25 @@ mod tests {
             vec![
                 "ExecJS::RuntimeUnavailable: Could not find a JavaScript runtime. See https://github.com/rails/execjs for a list of available runtimes."],
             1,
-            Some(Box::new(MissingJavaScriptRuntime))
+            Some(MissingJavaScriptRuntime)
         );
     }
 
     #[test]
     fn test_directory_missing() {
         assert_match(
-            vec![
-                "debian/components/build: 19: cd: can't cd to rollup-plugin",
-            ],
+            vec!["debian/components/build: 19: cd: can't cd to rollup-plugin"],
             1,
-            Some(Box::new(DirectoryNonExistant("rollup-plugin".to_owned()))),
+            Some(DirectoryNonExistant("rollup-plugin".to_owned())),
         );
     }
 
     #[test]
     fn test_vcs_control_directory() {
         assert_match(
-            vec![
-                "   > Cannot find '.git' directory",
-            ],
+            vec!["   > Cannot find '.git' directory"],
             1,
-            Some(Box::new(VcsControlDirectoryNeeded::new(vec!["git"]))),
+            Some(VcsControlDirectoryNeeded::new(vec!["git"])),
         );
     }
 
@@ -3587,40 +3597,38 @@ mod tests {
                 "Sprockets::FileNotFound: couldn't find file 'activestorage' with type 'application/javascript'"
             ],
             1,
-            Some(Box::new(MissingSprocketsFile { name: "activestorage".to_owned(), content_type: "application/javascript".to_owned()})),
+            Some(MissingSprocketsFile { name: "activestorage".to_owned(), content_type: "application/javascript".to_owned()}),
         );
     }
 
     #[test]
     fn test_gxx_missing_file() {
         assert_match(
-            vec![
-                "g++: error: /usr/lib/x86_64-linux-gnu/libGL.so: No such file or directory"
-            ],
+            vec!["g++: error: /usr/lib/x86_64-linux-gnu/libGL.so: No such file or directory"],
             1,
-            Some(Box::new(MissingFile::new("/usr/lib/x86_64-linux-gnu/libGL.so".into()))),
+            Some(MissingFile::new(
+                "/usr/lib/x86_64-linux-gnu/libGL.so".into(),
+            )),
         );
     }
 
     #[test]
     fn test_build_xml_missing_file() {
         assert_match(
-            vec![
-                "/<<PKGBUILDDIR>>/build.xml:59: /<<PKGBUILDDIR>>/lib does not exist."
-            ],
+            vec!["/<<PKGBUILDDIR>>/build.xml:59: /<<PKGBUILDDIR>>/lib does not exist."],
             1,
-            Some(Box::new(MissingBuildFile{ filename: "lib".to_owned()})),
+            Some(MissingBuildFile {
+                filename: "lib".to_owned(),
+            }),
         );
     }
 
     #[test]
     fn test_vignette_builder() {
         assert_match(
-            vec![
-                "  vignette builder 'R.rsp' not found"
-            ],
+            vec!["  vignette builder 'R.rsp' not found"],
             1,
-            Some(Box::new(MissingRPackage::simple("R.rsp"))),
+            Some(MissingRPackage::simple("R.rsp")),
         );
     }
 
@@ -3643,18 +3651,975 @@ mod tests {
                 "deps: $VAR1 = [];",
             ],
             2,
-            Some(Box::new(DhAddonLoadFailure{ name: "pybuild".to_owned(), path: "Debian/Debhelper/Buildsystem/pybuild.pm".to_owned()})),
+            Some(DhAddonLoadFailure{ name: "pybuild".to_owned(), path: "Debian/Debhelper/Buildsystem/pybuild.pm".to_owned()}),
         );
     }
 
     #[test]
     fn test_libtoolize_missing_file() {
         assert_match(
+            vec!["libtoolize:   error: '/usr/share/aclocal/ltdl.m4' does not exist."],
+            1,
+            Some(MissingFile::new("/usr/share/aclocal/ltdl.m4".into())),
+        );
+    }
+
+    #[test]
+    fn test_ruby_missing_file() {
+        assert_match(
             vec![
-                "libtoolize:   error: '/usr/share/aclocal/ltdl.m4' does not exist."
+                "Error: Error: ENOENT: no such file or directory, open '/usr/lib/nodejs/requirejs/text.js'"
             ],
             1,
-            Some(Box::new(MissingFile::new("/usr/share/aclocal/ltdl.m4".into()))),
+            Some(MissingFile::new("/usr/lib/nodejs/requirejs/text.js".into())),
+        );
+    }
+
+    #[test]
+    fn test_vcversioner() {
+        assert_match(
+            vec![
+                "vcversioner: ['git', '--git-dir', '/build/tmp0tlam4pe/pyee/.git', 'describe', '--tags', '--long'] failed and '/build/tmp0tlam4pe/pyee/version.txt' isn't present."
+            ],
+            1,
+            Some(MissingVcVersionerVersion),
+        );
+    }
+
+    #[test]
+    fn test_python_missing_file() {
+        assert_match(
+            vec![
+                "python3.7: can't open file '/usr/bin/blah.py': [Errno 2] No such file or directory"
+            ],
+            1,
+            Some(MissingFile::new("/usr/bin/blah.py".into())),
+        );
+        assert_match(
+            vec!["python3.7: can't open file 'setup.py': [Errno 2] No such file or directory"],
+            1,
+            Some(MissingBuildFile::new("setup.py".into())),
+        );
+        assert_match(
+            vec![
+                "E           FileNotFoundError: [Errno 2] No such file or directory: '/usr/share/firmware-microbit-micropython/firmware.hex'"
+            ],
+            1,
+            Some(MissingFile::new(
+                "/usr/share/firmware-microbit-micropython/firmware.hex".into()
+            )),
+        );
+    }
+
+    #[test]
+    fn test_vague() {
+        assert_match(
+            vec![
+                "configure: error: Please install gnu flex from http://www.gnu.org/software/flex/",
+            ],
+            1,
+            Some(MissingVagueDependency {
+                name: "gnu flex".to_string(),
+                url: Some("http://www.gnu.org/software/flex/".to_owned()),
+                minimum_version: None,
+                current_version: None,
+            }),
+        );
+        assert_match(
+            vec!["RuntimeError: cython is missing"],
+            1,
+            Some(MissingVagueDependency::simple("cython")),
+        );
+        assert_match(
+            vec![
+                "configure: error:",
+                "",
+                "        Unable to find the Multi Emulator Super System (MESS).",
+            ],
+            3,
+            Some(MissingVagueDependency::simple(
+                "the Multi Emulator Super System (MESS)",
+            )),
+        );
+        assert_match(
+            vec![
+                "configure: error: libwandio 4.0.0 or better is required to compile this version of libtrace. If you have installed libwandio in a non-standard location please use LDFLAGS to specify the location of the library. WANDIO can be obtained from http://research.wand.net.nz/software/libwandio.php"
+            ],
+            1,
+            Some(MissingVagueDependency{
+                name: "libwandio".to_owned(),
+                minimum_version: Some("4.0.0".to_owned()),
+                current_version: None,
+                url: None,
+            }),
+        );
+        assert_match(
+            vec![
+                "configure: error: libpcap0.8 or greater is required to compile libtrace. If you have installed it in a non-standard location please use LDFLAGS to specify the location of the library"
+            ],
+            1,
+            Some(MissingVagueDependency::simple("libpcap0.8")),
+        );
+        assert_match(
+            vec!["Error: Please install xml2 package"],
+            1,
+            Some(MissingVagueDependency::simple("xml2")),
+        );
+    }
+
+    #[test]
+    fn test_gettext_mismatch() {
+        assert_match(
+            vec![
+                "*** error: gettext infrastructure mismatch: using a Makefile.in.in from gettext version 0.19 but the autoconf macros are from gettext version 0.20"
+            ],
+            1,
+            Some(MismatchGettextVersions{makefile_version: "0.19".to_string(), autoconf_version: "0.20".to_string()}),
+        );
+    }
+
+    #[test]
+    fn test_x11_missing() {
+        assert_match(
+            vec![
+                "configure: error: *** No X11! Install X-Windows development headers/libraries! ***"
+            ],
+            1,
+            Some(MissingX11),
+        );
+    }
+
+    #[test]
+    fn test_multi_line_configure_error() {
+        assert_just_match(
+            vec!["configure: error:", "", "        Some other error."],
+            3,
+        );
+        assert_match(
+            vec![
+                "configure: error:",
+                "",
+                "   Unable to find the Multi Emulator Super System (MESS).",
+                "",
+                "   Please install MESS, or specify the MESS command with",
+                "   a MESS environment variable.",
+                "",
+                "e.g. MESS=/path/to/program/mess ./configure",
+            ],
+            3,
+            Some(MissingVagueDependency::simple(
+                "the Multi Emulator Super System (MESS)",
+            )),
+        );
+    }
+
+    #[test]
+    fn test_interpreter_missing() {
+        assert_match(
+            vec![
+                "/bin/bash: /usr/bin/rst2man: /usr/bin/python: bad interpreter: No such file or directory"
+            ],
+            1,
+            Some(MissingFile::new("/usr/bin/python".into()))
+        );
+        assert_just_match(
+            vec!["env: ‘/<<PKGBUILDDIR>>/socket-activate’: No such file or directory"],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_webpack_missing() {
+        assert_just_match(
+            vec![
+                "ERROR in Entry module not found: Error: Can't resolve 'index.js' in '/<<PKGBUILDDIR>>'"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_installdocs_missing() {
+        assert_match(
+            vec![
+                r#"dh_installdocs: Cannot find (any matches for) "README.txt" (tried in ., debian/tmp)"#,
+            ],
+            1,
+            Some(DebhelperPatternNotFound {
+                pattern: "README.txt".to_owned(),
+                tool: "installdocs".to_owned(),
+                directories: vec![".".to_string(), "debian/tmp".to_owned()],
+            }),
+        );
+    }
+
+    #[test]
+    fn test_dh_compat_dupe() {
+        assert_match(
+            vec![
+                "dh_autoreconf: debhelper compat level specified both in debian/compat and via build-dependency on debhelper-compat"
+            ],
+            1,
+            Some(DuplicateDHCompatLevel{command: "dh_autoreconf".to_owned()}),
+        );
+    }
+
+    #[test]
+    fn test_dh_compat_missing() {
+        assert_match(
+            vec!["dh_clean: Please specify the compatibility level in debian/compat"],
+            1,
+            Some(MissingDHCompatLevel {
+                command: "dh_clean".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_dh_compat_too_old() {
+        assert_match(
+            vec! [
+                "dh_clean: error: Compatibility levels before 7 are no longer supported (level 5 requested)"
+            ],
+            1,
+            Some(UnsupportedDebhelperCompatLevel{ oldest_supported: 7, requested: 5})
+        );
+    }
+
+    #[test]
+    fn test_dh_udeb_shared_library() {
+        assert_just_match(vec![
+                "dh_makeshlibs: The udeb libepoxy0-udeb (>= 1.3) does not contain any shared libraries but --add-udeb=libepoxy0-udeb (>= 1.3) was passed!?"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_dh_systemd() {
+        assert_just_match(
+            vec![
+                "dh: unable to load addon systemd: dh: The systemd-sequence is no longer provided in compat >= 11, please rely on dh_installsystemd instead"
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_dh_before() {
+        assert_just_match(vec![
+                "dh: The --before option is not supported any longer (#932537). Use override targets instead."
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_meson_missing_git() {
+        assert_match(
+            vec!["meson.build:13:0: ERROR: Git program not found."],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_meson_missing_lib() {
+        assert_match(
+            vec!["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
+            1,
+            Some(MissingLibrary("vulkan-1".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_ocaml_library_missing() {
+        assert_match(
+            vec![r#"Error: Library "camlp-streams" not found."#],
+            1,
+            Some(MissingOCamlPackage("camlp-streams".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_meson_version() {
+        assert_match(
+            vec!["meson.build:1:0: ERROR: Meson version is 0.49.2 but project requires >=0.50"],
+            1,
+            Some(MissingVagueDependency {
+                name: "meson".to_owned(),
+                minimum_version: Some("0.50".to_owned()),
+                current_version: Some("0.49.2".to_owned()),
+                url: None,
+            }),
+        );
+        assert_match(
+            vec!["../meson.build:1:0: ERROR: Meson version is 0.49.2 but project requires >=0.50"],
+            1,
+            Some(MissingVagueDependency {
+                name: "meson".to_string(),
+                minimum_version: Some("0.50".to_owned()),
+                current_version: Some("0.49.2".to_owned()),
+                url: None,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_need_pgbuildext() {
+        assert_match(
+            vec![
+                "Error: debian/control needs updating from debian/control.in. Run 'pg_buildext updatecontrol'."
+            ],
+            1,
+            Some(NeedPgBuildExtUpdateControl{generated_path: "debian/control".to_owned(), template_path: "debian/control.in".to_owned()})
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_command() {
+        assert_match(
+            vec![
+                "  Could NOT find Git (missing: GIT_EXECUTABLE)",
+                "dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args",
+            ],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_autoconf_version() {
+        assert_match(
+            vec!["configure.ac:13: error: Autoconf version 2.71 or higher is required"],
+            1,
+            Some(MissingVagueDependency {
+                name: "autoconf".to_string(),
+                minimum_version: Some("2.71".to_string()),
+                current_version: None,
+                url: None,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_claws_version() {
+        assert_match(
+            vec!["configure: error: libetpan 0.57 not found"],
+            1,
+            Some(MissingVagueDependency {
+                name: "libetpan".to_string(),
+                minimum_version: Some("0.57".to_string()),
+                current_version: None,
+                url: None,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_config_status_input() {
+        assert_match(
+            vec!["config.status: error: cannot find input file: `po/Makefile.in.in'"],
+            1,
+            Some(MissingConfigStatusInput {
+                path: "po/Makefile.in.in".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_jvm() {
+        assert_match(
+            vec!["ERROR: JAVA_HOME is set to an invalid directory: /usr/lib/jvm/default-java/"],
+            1,
+            Some(MissingJVM),
+        );
+    }
+
+    #[test]
+    fn test_cp() {
+        assert_match(
+            vec![
+                "cp: cannot stat '/<<PKGBUILDDIR>>/debian/patches/lshw-gtk.desktop': No such file or directory"
+            ],
+            1,
+            Some(MissingBuildFile::new("debian/patches/lshw-gtk.desktop".to_owned()))
+        );
+    }
+
+    #[test]
+    fn test_bash_redir_missing() {
+        assert_match(
+            vec!["/bin/bash: idna-tables-properties.csv: No such file or directory"],
+            1,
+            Some(MissingBuildFile::new(
+                "idna-tables-properties.csv".to_owned(),
+            )),
+        );
+    }
+
+    #[test]
+    fn test_automake_input() {
+        assert_match(
+            vec!["automake: error: cannot open < gtk-doc.make: No such file or directory"],
+            1,
+            Some(MissingAutomakeInput {
+                path: "gtk-doc.make".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_shellcheck() {
+        assert_just_match(
+            vec![
+                &(" ".repeat(40)
+                    + "^----^ SC2086: Double quote to prevent globbing and word splitting."),
+            ],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_autoconf_macro() {
+        assert_match(
+            vec!["configure.in:1802: error: possibly undefined macro: AC_CHECK_CCA"],
+            1,
+            Some(MissingAutoconfMacro {
+                r#macro: "AC_CHECK_CCA".to_owned(),
+                need_rebuild: false,
+            }),
+        );
+        assert_match(
+            vec!["./configure: line 12569: PKG_PROG_PKG_CONFIG: command not found"],
+            1,
+            Some(MissingAutoconfMacro {
+                r#macro: "PKG_PROG_PKG_CONFIG".to_owned(),
+                need_rebuild: false,
+            }),
+        );
+        assert_match(
+            vec![
+                "checking for gawk... (cached) mawk",
+                "./configure: line 2368: syntax error near unexpected token `APERTIUM,'",
+                "./configure: line 2368: `PKG_CHECK_MODULES(APERTIUM, apertium >= 3.7.1)'",
+            ],
+            3,
+            Some(MissingAutoconfMacro {
+                r#macro: "PKG_CHECK_MODULES".to_owned(),
+                need_rebuild: true,
+            }),
+        );
+        assert_match(
+            vec![
+                "checking for libexif to use... ./configure: line 15968: syntax error near unexpected token `LIBEXIF,libexif'",
+                "./configure: line 15968: `\t\t\t\t\t\tPKG_CHECK_MODULES(LIBEXIF,libexif >= 0.6.18,have_LIBEXIF=yes,:)'",
+            ],
+            2,
+            Some(MissingAutoconfMacro{
+                r#macro: "PKG_CHECK_MODULES".to_owned(), need_rebuild:true})
+        );
+    }
+
+    #[test]
+    fn test_r_missing() {
+        assert_match(
+            vec![
+                "ERROR: dependencies ‘ellipsis’, ‘pkgload’ are not available for package ‘testthat’"
+            ],
+            1,
+            Some(MissingRPackage::simple("ellipsis")),
+        );
+        assert_match(
+            vec!["  namespace ‘DBI’ 1.0.0 is being loaded, but >= 1.0.0.9003 is required"],
+            1,
+            Some(MissingRPackage {
+                package: "DBI".to_owned(),
+                minimum_version: Some("1.0.0.9003".to_owned()),
+            }),
+        );
+        assert_match(
+            vec![
+                "  namespace ‘spatstat.utils’ 1.13-0 is already loaded, but >= 1.15.0 is required",
+            ],
+            1,
+            Some(MissingRPackage {
+                package: "spatstat.utils".to_owned(),
+                minimum_version: Some("1.15.0".to_owned()),
+            }),
+        );
+        assert_match(
+            vec!["Error in library(zeligverse) : there is no package called 'zeligverse'"],
+            1,
+            Some(MissingRPackage::simple("zeligverse")),
+        );
+        assert_match(
+            vec!["there is no package called 'mockr'"],
+            1,
+            Some(MissingRPackage::simple("mockr")),
+        );
+        assert_match(
+            vec![
+                "ERROR: dependencies 'igraph', 'matlab', 'expm', 'RcppParallel' are not available for package 'markovchain'"
+            ],
+            1,
+            Some(MissingRPackage::simple("igraph"))
+        );
+        assert_match(
+            vec![
+                "Error: package 'BH' 1.66.0-1 was found, but >= 1.75.0.0 is required by 'RSQLite'",
+            ],
+            1,
+            Some(MissingRPackage {
+                package: "BH".to_owned(),
+                minimum_version: Some("1.75.0.0".to_owned()),
+            }),
+        );
+        assert_match(
+         vec![
+                "Error: package ‘AnnotationDbi’ 1.52.0 was found, but >= 1.53.1 is required by ‘GO.db’"
+            ],
+            1,
+            Some(MissingRPackage{ package: "AnnotationDbi".to_owned(), minimum_version: Some("1.53.1".to_owned())})
+        );
+        assert_match(
+            vec!["  namespace 'alakazam' 1.1.0 is being loaded, but >= 1.1.0.999 is required"],
+            1,
+            Some(MissingRPackage {
+                package: "alakazam".to_string(),
+                minimum_version: Some("1.1.0.999".to_string()),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_mv_stat() {
+        assert_match(
+            vec!["mv: cannot stat '/usr/res/boss.png': No such file or directory"],
+            1,
+            Some(MissingFile::new("/usr/res/boss.png".into())),
+        );
+        assert_just_match(
+            vec!["mv: cannot stat 'res/boss.png': No such file or directory"],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_dh_link_error() {
+        assert_match(
+            vec![
+                "dh_link: link destination debian/r-cran-crosstalk/usr/lib/R/site-library/crosstalk/lib/ionrangeslider is a directory"
+            ],
+            1,
+            Some(DhLinkDestinationIsDirectory(
+                "debian/r-cran-crosstalk/usr/lib/R/site-library/crosstalk/lib/ionrangeslider".to_owned()
+            )),
+        );
+    }
+
+    #[test]
+    fn test_go_test() {
+        assert_just_match(vec!["FAIL\tgithub.com/edsrzf/mmap-go\t0.083s"], 1);
+    }
+
+    #[test]
+    fn test_debhelper_pattern() {
+        assert_match(
+            vec![
+                r#"dh_install: Cannot find (any matches for) "server/etc/gnumed/gnumed-restore.conf" (tried in ., debian/tmp)"#,
+            ],
+            1,
+            Some(DebhelperPatternNotFound {
+                pattern: "server/etc/gnumed/gnumed-restore.conf".to_owned(),
+                tool: "install".to_owned(),
+                directories: vec![".".to_string(), "debian/tmp".to_string()],
+            }),
+        );
+    }
+
+    #[test]
+    fn test_symbols() {
+        assert_match(
+            vec![
+                "dpkg-gensymbols: error: some symbols or patterns disappeared in the symbols file: see diff output below"
+            ],
+            1,
+            Some(DisappearedSymbols)
+        );
+    }
+
+    #[test]
+    fn test_missing_php_class() {
+        assert_match(
+            vec![
+                "PHP Fatal error:  Uncaught Error: Class 'PHPUnit_Framework_TestCase' not found in /tmp/autopkgtest.gO7h1t/build.b1p/src/Horde_Text_Diff-2.2.0/test/Horde/Text/Diff/EngineTest.php:9"
+            ],
+            1,
+            Some(MissingPhpClass{php_class: "PHPUnit_Framework_TestCase".to_owned()})
+        );
+    }
+
+    #[test]
+    fn test_missing_java_class() {
+        assert_match(
+            r#"Caused by: java.lang.ClassNotFoundException: org.codehaus.Xpp3r$Builder
+\tat org.codehaus.strategy.SelfFirstStrategy.loadClass(lfFirstStrategy.java:50)
+\tat org.codehaus.realm.ClassRealm.unsynchronizedLoadClass(ClassRealm.java:271)
+\tat org.codehaus.realm.ClassRealm.loadClass(ClassRealm.java:247)
+\tat org.codehaus.realm.ClassRealm.loadClass(ClassRealm.java:239)
+\t... 46 more
+"#
+            .split("\n")
+            .collect::<Vec<&str>>(),
+            1,
+            Some(MissingJavaClass {
+                classname: "org.codehaus.Xpp3r$Builder".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_install_docs_link() {
+        assert_just_match(
+            r#"dh_installdocs: --link-doc not allowed between sympow and sympow-data (one is \
+arch:all and the other not)"#
+                .split("\n")
+                .collect::<Vec<&str>>(),
+            1,
+        );
+    }
+
+    #[test]
+    fn test_dh_until_unsupported() {
+        assert_match(
+            vec![
+                "dh: The --until option is not supported any longer (#932537). Use override targets instead."
+            ],
+            1,
+            Some(DhUntilUnsupported)
+        );
+    }
+
+    #[test]
+    fn test_missing_xml_entity() {
+        assert_match(
+            vec![
+                "I/O error : Attempt to load network entity http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
+            ],
+            1,
+            Some(MissingXmlEntity{url: "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd".to_owned()})
+        );
+    }
+
+    #[test]
+    fn test_ccache_error() {
+        assert_match(
+            vec![
+                "ccache: error: Failed to create directory /sbuild-nonexistent/.ccache/tmp: Permission denied"
+            ],
+            1,
+            Some(CcacheError(
+                "Failed to create directory /sbuild-nonexistent/.ccache/tmp: Permission denied".to_owned()
+            ))
+        );
+    }
+
+    #[test]
+    fn test_dh_addon_load_failure() {
+        assert_match(
+            vec![
+                "dh: unable to load addon nodejs: Debian/Debhelper/Sequence/nodejs.pm did not return a true value at (eval 11) line 1."
+            ],
+            1,
+            Some(DhAddonLoadFailure{name: "nodejs".to_owned(), path: "Debian/Debhelper/Sequence/nodejs.pm".to_owned()})
+        );
+    }
+
+    #[test]
+    fn test_missing_library() {
+        assert_match(
+            vec!["/usr/bin/ld: cannot find -lpthreads"],
+            1,
+            Some(MissingLibrary("pthreads".to_owned())),
+        );
+        assert_just_match(
+            vec!["./testFortranCompiler.f:4: undefined reference to `sgemm_'"],
+            1,
+        );
+        assert_just_match(
+            vec!["writer.d:59: error: undefined reference to 'sam_hdr_parse_'"],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_assembler() {
+        assert_match(vec!["Found no assembler"], 1, Some(MissingAssembler))
+    }
+
+    #[test]
+    fn test_command_missing() {
+        assert_match(
+            vec!["./ylwrap: line 176: yacc: command not found"],
+            1,
+            Some(MissingCommand("yacc".to_owned())),
+        );
+        assert_match(
+            vec!["/bin/sh: 1: cmake: not found"],
+            1,
+            Some(MissingCommand("cmake".to_owned())),
+        );
+        assert_match(
+            vec!["sh: 1: git: not found"],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec!["/usr/bin/env: ‘python3’: No such file or directory"],
+            1,
+            Some(MissingCommand("python3".to_owned())),
+        );
+        assert_match(
+            vec!["%Error: 'flex' must be installed to build"],
+            1,
+            Some(MissingCommand("flex".to_owned())),
+        );
+        assert_match(
+            vec![r#"pkg-config: exec: "pkg-config": executable file not found in $PATH"#],
+            1,
+            Some(MissingCommand("pkg-config".to_owned())),
+        );
+        assert_match(
+            vec![r#"Can't exec "git": No such file or directory at Makefile.PL line 25."#],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec![
+                "vcver.scm.git.GitCommandError: 'git describe --tags --match 'v*' --abbrev=0' returned an error code 127"
+            ],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec!["make[1]: docker: Command not found"],
+            1,
+            Some(MissingCommand("docker".to_owned())),
+        );
+        assert_match(
+            vec!["make[1]: git: Command not found"],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_just_match(vec!["make[1]: ./docker: Command not found"], 1);
+        assert_match(
+            vec!["make: dh_elpa: Command not found"],
+            1,
+            Some(MissingCommand("dh_elpa".to_owned())),
+        );
+        assert_match(
+            vec!["/bin/bash: valac: command not found"],
+            1,
+            Some(MissingCommand("valac".to_owned())),
+        );
+        assert_match(
+            vec!["E: Failed to execute “python3”: No such file or directory"],
+            1,
+            Some(MissingCommand("python3".to_owned())),
+        );
+        assert_match(
+            vec![
+                r#"Can't exec "cmake": No such file or directory at /usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line 484."#,
+            ],
+            1,
+            Some(MissingCommand("cmake".to_owned())),
+        );
+        assert_match(
+            vec!["Invalid gemspec in [unicorn.gemspec]: No such file or directory - git"],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec!["dbus-run-session: failed to exec 'xvfb-run': No such file or directory"],
+            1,
+            Some(MissingCommand("xvfb-run".to_owned())),
+        );
+        assert_match(
+            vec!["/bin/sh: 1: ./configure: not found"],
+            1,
+            Some(MissingConfigure),
+        );
+        assert_match(
+            vec!["xvfb-run: error: xauth command not found"],
+            1,
+            Some(MissingCommand("xauth".to_owned())),
+        );
+        assert_match(
+            vec!["meson.build:39:2: ERROR: Program(s) ['wrc'] not found or not executable"],
+            1,
+            Some(MissingCommand("wrc".to_owned())),
+        );
+        assert_match(
+            vec![
+                "/tmp/autopkgtest.FnbV06/build.18W/src/debian/tests/blas-testsuite: 7: dpkg-architecture: not found"
+            ],
+            1,
+            Some(MissingCommand("dpkg-architecture".to_owned())),
+        );
+        assert_match(
+            vec![
+                "Traceback (most recent call last):",
+                r#"  File "/usr/lib/python3/dist-packages/mesonbuild/mesonmain.py", line 140, in run"#,
+                "    return options.run_func(options)",
+                r#"  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 267, in run"#,
+                "    names = create_dist_git(dist_name, archives, src_root, bld_root, dist_sub, b.dist_scripts, subprojects)",
+                r#"  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 119, in create_dist_git"#,
+                "    git_clone(src_root, distdir)",
+                r#"  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 108, in git_clone"#,
+                "    if git_have_dirty_index(src_root):",
+                r#"  File "/usr/lib/python3/dist-packages/mesonbuild/mdist.py", line 104, in git_have_dirty_index"#,
+                "    ret = subprocess.call(['git', '-C', src_root, 'diff-index', '--quiet', 'HEAD'])",
+                r#"  File "/usr/lib/python3.9/subprocess.py", line 349, in call"#,
+                "    with Popen(*popenargs, **kwargs) as p:",
+                r#"  File "/usr/lib/python3.9/subprocess.py", line 951, in __init__"#,
+                "    self._execute_child(args, executable, preexec_fn, close_fds,",
+                r#"  File "/usr/lib/python3.9/subprocess.py", line 1823, in _execute_child"#,
+                "    raise child_exception_type(errno_num, err_msg, err_filename)",
+                "FileNotFoundError: [Errno 2] No such file or directory: 'git'",
+            ],
+            18,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec![r#"> Cannot run program "git": error=2, No such file or directory"#],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec!["E ImportError: Bad git executable"],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec!["E ImportError: Bad git executable."],
+            1,
+            Some(MissingCommand("git".to_owned())),
+        );
+        assert_match(
+            vec![r#"Could not find external command "java""#],
+            1,
+            Some(MissingCommand("java".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_ts_error() {
+        assert_just_match(
+            vec!["blah/tokenizer.ts(175,21): error TS2532: Object is possibly 'undefined'."],
+            1,
+        );
+    }
+
+    #[test]
+    fn test_pkg_config_missing() {
+        assert_match(
+            vec!["configure: error: Package requirements (apertium-3.2 >= 3.2.0) were not met:"],
+            1,
+            Some(MissingPkgConfig::new(
+                "apertium-3.2".to_owned(),
+                Some("3.2.0".to_owned()),
+            )),
+        );
+        assert_match(
+            vec![
+                "checking for GLEW... configure: error: Package requirements (glew) were not met:",
+            ],
+            1,
+            Some(MissingPkgConfig::simple("glew".to_owned())),
+        );
+        assert_match(
+            vec!["meson.build:10:0: ERROR: Dependency \"gssdp-1.2\" not found, tried pkgconfig"],
+            1,
+            Some(MissingPkgConfig::simple("gssdp-1.2".to_owned())),
+        );
+        assert_match(
+            vec![
+                "src/plugins/sysprof/meson.build:3:0: ERROR: Dependency \"sysprof-3\" not found, tried pkgconfig"
+            ],
+            1,
+            Some(MissingPkgConfig::simple("sysprof-3".to_owned())),
+        );
+        assert_match(
+            vec![
+                "meson.build:84:0: ERROR: Invalid version of dependency, need 'libpeas-1.0' ['>= 1.24.0'] found '1.22.0'."
+            ],
+            1,
+            Some(MissingPkgConfig::new("libpeas-1.0".to_owned(), Some("1.24.0".to_owned()))),
+        );
+        assert_match(
+            vec![
+                "meson.build:233:0: ERROR: Invalid version of dependency, need 'vte-2.91' ['>=0.63.0'] found '0.62.3'."
+            ],
+            1,
+            Some(MissingPkgConfig::new("vte-2.91".to_owned(), Some("0.63.0".to_owned()))),
+        );
+
+        assert_match(
+            vec!["No package 'tepl-3' found"],
+            1,
+            Some(MissingPkgConfig::simple("tepl-3".to_owned())),
+        );
+        assert_match(
+            vec!["Requested 'vte-2.91 >= 0.59.0' but version of vte is 0.58.2"],
+            1,
+            Some(MissingPkgConfig::new(
+                "vte-2.91".to_owned(),
+                Some("0.59.0".to_owned()),
+            )),
+        );
+        assert_match(
+            vec!["configure: error: x86_64-linux-gnu-pkg-config sdl2 couldn't be found"],
+            1,
+            Some(MissingPkgConfig::simple("sdl2".to_owned())),
+        );
+        assert_match(
+            vec!["configure: error: No package 'libcrypto' found"],
+            1,
+            Some(MissingPkgConfig::simple("libcrypto".to_owned())),
+        );
+        assert_match(
+            vec![
+                "-- Checking for module 'gtk+-3.0'",
+                "--   Package 'gtk+-3.0', required by 'virtual:world', not found",
+            ],
+            2,
+            Some(MissingPkgConfig::simple("gtk+-3.0".to_owned())),
+        );
+        assert_match(
+            vec![
+                "configure: error: libfilezilla not found: Package dependency requirement 'libfilezilla >= 0.17.1' could not be satisfied."
+            ],
+            1,
+            Some(MissingPkgConfig::new("libfilezilla".to_owned(), Some("0.17.1".to_owned()))),
+        );
+    }
+
+    #[test]
+    fn test_pkgconf() {
+        assert_match(
+            vec!["checking for LAPACK... configure: error: \"Cannot check for existence of module lapack without pkgconf\""],
+            1,
+            Some(MissingCommand("pkgconf".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_dh_with_order() {
+        assert_match(
+            vec!["dh: Unknown sequence --with (options should not come before the sequence)"],
+            1,
+            Some(DhWithOrderIncorrect),
         );
     }
 }
