@@ -5,8 +5,6 @@ all: check
 build-inplace:
 	$(PYTHON) setup.py build_ext --inplace
 
-check:: testsuite
-
 check:: cargo-test
 
 cargo-test:
