@@ -39,6 +39,12 @@ pub struct MissingBuildFile {
     pub filename: String,
 }
 
+impl MissingBuildFile {
+    pub fn new(filename: String) -> Self {
+        Self { filename }
+    }
+}
+
 impl Problem for MissingBuildFile {
     fn kind(&self) -> Cow<str> {
         "missing-build-file".into()

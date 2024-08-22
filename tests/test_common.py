@@ -21,42 +21,26 @@ from buildlog_consultant.common import (
     CcacheError,
     CMakeFilesMissing,
     CMakeNeedExactVersion,
-    DebhelperPatternNotFound,
     DhAddonLoadFailure,
-    DhLinkDestinationIsDirectory,
     DhMissingUninstalled,
     DhUntilUnsupported,
     DhWithOrderIncorrect,
-    DirectoryNonExistant,
-    DisappearedSymbols,
-    DuplicateDHCompatLevel,
-    MismatchGettextVersions,
     MissingAssembler,
-    MissingAutoconfMacro,
-    MissingAutomakeInput,
-    MissingBuildFile,
     MissingCHeader,
     MissingCMakeComponents,
     MissingCommand,
-    MissingConfigStatusInput,
     MissingConfigure,
-    MissingDHCompatLevel,
     MissingFile,
-    MissingGitIdentity,
-    MissingGoModFile,
     MissingGoPackage,
     MissingIntrospectionTypelib,
     MissingJavaClass,
-    MissingJavaScriptRuntime,
     MissingJDK,
     MissingJDKFile,
     MissingJRE,
-    MissingJVM,
     MissingLatexFile,
     MissingLibrary,
     MissingMavenArtifacts,
     MissingNodeModule,
-    MissingOCamlPackage,
     MissingPerlFile,
     MissingPerlModule,
     MissingPerlPredeclared,
@@ -64,23 +48,15 @@ from buildlog_consultant.common import (
     MissingPkgConfig,
     MissingPythonDistribution,
     MissingPythonModule,
-    MissingRPackage,
     MissingRubyGem,
     MissingSetupPyCommand,
-    MissingSprocketsFile,
     MissingVagueDependency,
     MissingValaPackage,
-    MissingVcVersionerVersion,
-    MissingX11,
     MissingXmlEntity,
-    NeedPgBuildExtUpdateControl,
     NoSpaceOnDevice,
     UnknownCertificateAuthority,
-    UnsupportedDebhelperCompatLevel,
     UnsupportedPytestArguments,
     UnsupportedPytestConfigOption,
-    UpstartFilePresent,
-    VcsControlDirectoryNeeded,
     find_build_failure_description,
     find_secondary_build_failure,
 )
@@ -100,169 +76,6 @@ class FindBuildFailureDescriptionTests(unittest.TestCase):
             self.assertEqual(actual_err, err, f"{actual_err} != {err}; origin: {match.origin}")
         else:
             self.assertIs(None, actual_err)
-
-    def test_ruby_missing_file(self):
-        self.run_test(
-            [
-                "Error: Error: ENOENT: no such file or directory, "
-                "open '/usr/lib/nodejs/requirejs/text.js'"
-            ],
-            1,
-            MissingFile("/usr/lib/nodejs/requirejs/text.js"),
-        )
-
-    def test_vcversioner(self):
-        self.run_test(
-            [
-                "vcversioner: ['git', '--git-dir', '/build/tmp0tlam4pe/pyee/.git', "
-                "'describe', '--tags', '--long'] failed and "
-                "'/build/tmp0tlam4pe/pyee/version.txt' isn't present."
-            ],
-            1,
-            MissingVcVersionerVersion(),
-        )
-
-    def test_python_missing_file(self):
-        self.run_test(
-            [
-                "python3.7: can't open file '/usr/bin/blah.py': "
-                "[Errno 2] No such file or directory"
-            ],
-            1,
-            MissingFile("/usr/bin/blah.py"),
-        )
-        self.run_test(
-            [
-                "python3.7: can't open file 'setup.py': "
-                "[Errno 2] No such file or directory"
-            ],
-            1,
-            MissingBuildFile("setup.py"),
-        )
-        self.run_test(
-            [
-                "E           FileNotFoundError: [Errno 2] "
-                "No such file or directory: "
-                "'/usr/share/firmware-microbit-micropython/firmware.hex'"
-            ],
-            1,
-            MissingFile("/usr/share/firmware-microbit-micropython/firmware.hex"),
-        )
-
-    def test_vague(self):
-        self.run_test(
-            [
-                "configure: error: Please install gnu flex from http://www.gnu.org/software/flex/"
-            ],
-            1,
-            MissingVagueDependency("gnu flex", "http://www.gnu.org/software/flex/"),
-        )
-        self.run_test(
-            ["RuntimeError: cython is missing"], 1, MissingVagueDependency("cython")
-        )
-        self.run_test(
-            [
-                "configure: error:",
-                "",
-                "        Unable to find the Multi Emulator Super System (MESS).",
-            ],
-            3,
-            MissingVagueDependency("the Multi Emulator Super System (MESS)"),
-        )
-        self.run_test(
-            [
-                "configure: error: libwandio 4.0.0 or better is required to compile "
-                "this version of libtrace. If you have installed libwandio in a "
-                "non-standard location please use LDFLAGS to specify the location of "
-                "the library. WANDIO can be obtained from "
-                "http://research.wand.net.nz/software/libwandio.php"
-            ],
-            1,
-            MissingVagueDependency("libwandio", minimum_version="4.0.0"),
-        )
-        self.run_test(
-            [
-                "configure: error: libpcap0.8 or greater is required to compile "
-                "libtrace. If you have installed it in a non-standard location please "
-                "use LDFLAGS to specify the location of the library"
-            ],
-            1,
-            MissingVagueDependency("libpcap0.8"),
-        )
-        self.run_test(
-            ["Error: Please install xml2 package"], 1, MissingVagueDependency("xml2")
-        )
-
-    def test_gettext_mismatch(self):
-        self.run_test(
-            [
-                "*** error: gettext infrastructure mismatch: using a "
-                "Makefile.in.in from gettext version 0.19 but the autoconf "
-                "macros are from gettext version 0.20"
-            ],
-            1,
-            MismatchGettextVersions("0.19", "0.20"),
-        )
-        self.run_test(
-            [
-                "configure: error: *** "
-                "No X11! Install X-Windows development headers/libraries! ***"
-            ],
-            1,
-            MissingX11(),
-        )
-
-    def test_multi_line_configure_error(self):
-        self.run_test(["configure: error:", "", "        Some other error."], 3, None)
-        self.run_test(
-            [
-                "configure: error:",
-                "",
-                "   Unable to find the Multi Emulator Super System (MESS).",
-                "",
-                "   Please install MESS, or specify the MESS command with",
-                "   a MESS environment variable.",
-                "",
-                "e.g. MESS=/path/to/program/mess ./configure",
-            ],
-            3,
-            MissingVagueDependency("the Multi Emulator Super System (MESS)"),
-        )
-
-    def test_interpreter_missing(self):
-        self.run_test(
-            [
-                "/bin/bash: /usr/bin/rst2man: /usr/bin/python: "
-                "bad interpreter: No such file or directory"
-            ],
-            1,
-            MissingFile("/usr/bin/python"),
-        )
-        self.run_test(
-            ["env: ‘/<<PKGBUILDDIR>>/socket-activate’: " "No such file or directory"],
-            1,
-            None,
-        )
-
-    def test_webpack_missing(self):
-        self.run_test(
-            [
-                "ERROR in Entry module not found: "
-                "Error: Can't resolve 'index.js' in '/<<PKGBUILDDIR>>'"
-            ],
-            1,
-            None,
-        )
-
-    def test_installdocs_missing(self):
-        self.run_test(
-            [
-                'dh_installdocs: Cannot find (any matches for) "README.txt" '
-                "(tried in ., debian/tmp)"
-            ],
-            1,
-            DebhelperPatternNotFound("README.txt", "installdocs", [".", "debian/tmp"]),
-        )
 
     def test_cmake_missing_file(self):
         self.run_test(
@@ -295,71 +108,6 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
 """.splitlines(True),
             16,
             MissingFile("/usr/lib/x86_64-linux-gnu/libEGL.so"),
-        )
-
-    def test_meson_missing_git(self):
-        self.run_test(
-            ["meson.build:13:0: ERROR: Git program not found."],
-            1,
-            MissingCommand("git"),
-        )
-
-    def test_meson_missing_lib(self):
-        self.run_test(
-            [
-                "meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"
-            ],
-            1,
-            MissingLibrary("vulkan-1"),
-        )
-
-    def test_ocaml_library_missing(self):
-        self.run_test(
-            ['Error: Library "camlp-streams" not found.'],
-            1,
-            MissingOCamlPackage("camlp-streams"),
-        )
-
-    def test_meson_version(self):
-        self.run_test(
-            [
-                "meson.build:1:0: ERROR: Meson version is 0.49.2 but "
-                "project requires >=0.50"
-            ],
-            1,
-            MissingVagueDependency(
-                "meson", minimum_version="0.50", current_version="0.49.2"
-            ),
-        )
-        self.run_test(
-            [
-                "../meson.build:1:0: ERROR: Meson version is 0.49.2 but "
-                "project requires >=0.50"
-            ],
-            1,
-            MissingVagueDependency(
-                "meson", minimum_version="0.50", current_version="0.49.2"
-            ),
-        )
-
-    def test_need_pgbuildext(self):
-        self.run_test(
-            [
-                "Error: debian/control needs updating from debian/control.in. "
-                "Run 'pg_buildext updatecontrol'."
-            ],
-            1,
-            NeedPgBuildExtUpdateControl("debian/control", "debian/control.in"),
-        )
-
-    def test_cmake_missing_command(self):
-        self.run_test(
-            [
-                "  Could NOT find Git (missing: GIT_EXECUTABLE)",
-                "dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args",
-            ],
-            1,
-            MissingCommand("git"),
         )
 
     def test_cmake_missing_include(self):
@@ -460,62 +208,6 @@ Call Stack (most recent call first):
   """.splitlines(True),
             5,
             MissingVagueDependency("GPGME"),
-        )
-
-    def test_dh_compat_dupe(self):
-        self.run_test(
-            [
-                "dh_autoreconf: debhelper compat level specified both in "
-                "debian/compat and via build-dependency on debhelper-compat"
-            ],
-            1,
-            DuplicateDHCompatLevel("dh_autoreconf"),
-        )
-
-    def test_dh_compat_missing(self):
-        self.run_test(
-            ["dh_clean: Please specify the compatibility level in " "debian/compat"],
-            1,
-            MissingDHCompatLevel("dh_clean"),
-        )
-
-    def test_dh_compat_too_old(self):
-        self.run_test(
-            [
-                "dh_clean: error: Compatibility levels before 7 are no longer "
-                "supported (level 5 requested)"
-            ],
-            1,
-            UnsupportedDebhelperCompatLevel(7, 5),
-        )
-
-    def test_dh_udeb_shared_library(self):
-        self.run_test(
-            [
-                "dh_makeshlibs: The udeb libepoxy0-udeb (>= 1.3) does not contain"
-                " any shared libraries but --add-udeb=libepoxy0-udeb (>= 1.3) "
-                "was passed!?"
-            ],
-            1,
-        )
-
-    def test_dh_systemd(self):
-        self.run_test(
-            [
-                "dh: unable to load addon systemd: dh: The systemd-sequence is "
-                "no longer provided in compat >= 11, please rely on "
-                "dh_installsystemd instead"
-            ],
-            1,
-        )
-
-    def test_dh_before(self):
-        self.run_test(
-            [
-                "dh: The --before option is not supported any longer (#932537). "
-                "Use override targets instead."
-            ],
-            1,
         )
 
     def test_pytest_args(self):
@@ -1786,219 +1478,7 @@ arch:all and the other not)""".splitlines(),
             1,
         )
 
-    def test_r_missing(self):
-        self.run_test(
-            [
-                "ERROR: dependencies ‘ellipsis’, ‘pkgload’ are not available "
-                "for package ‘testthat’"
-            ],
-            1,
-            MissingRPackage("ellipsis"),
-        )
-        self.run_test(
-            [
-                "  namespace ‘DBI’ 1.0.0 is being loaded, "
-                "but >= 1.0.0.9003 is required"
-            ],
-            1,
-            MissingRPackage("DBI", "1.0.0.9003"),
-        )
-        self.run_test(
-            [
-                "  namespace ‘spatstat.utils’ 1.13-0 is already loaded, "
-                "but >= 1.15.0 is required"
-            ],
-            1,
-            MissingRPackage("spatstat.utils", "1.15.0"),
-        )
-        self.run_test(
-            [
-                "Error in library(zeligverse) : there is no package called "
-                "'zeligverse'"
-            ],
-            1,
-            MissingRPackage("zeligverse"),
-        )
-        self.run_test(
-            ["there is no package called 'mockr'"], 1, MissingRPackage("mockr")
-        )
-        self.run_test(
-            [
-                "ERROR: dependencies 'igraph', 'matlab', 'expm', 'RcppParallel' are not available for package 'markovchain'"
-            ],
-            1,
-            MissingRPackage("igraph"),
-        )
-        self.run_test(
-            [
-                "Error: package 'BH' 1.66.0-1 was found, but >= 1.75.0.0 is required by 'RSQLite'"
-            ],
-            1,
-            MissingRPackage("BH", "1.75.0.0"),
-        )
-        self.run_test(
-            [
-                "Error: package ‘AnnotationDbi’ 1.52.0 was found, but >= 1.53.1 is required by ‘GO.db’"
-            ],
-            1,
-            MissingRPackage("AnnotationDbi", "1.53.1"),
-        )
-        self.run_test(
-            [
-                "  namespace 'alakazam' 1.1.0 is being loaded, but >= 1.1.0.999 is required"
-            ],
-            1,
-            MissingRPackage("alakazam", "1.1.0.999"),
-        )
 
-    def test_mv_stat(self):
-        self.run_test(
-            ["mv: cannot stat '/usr/res/boss.png': No such file or directory"],
-            1,
-            MissingFile("/usr/res/boss.png"),
-        )
-        self.run_test(["mv: cannot stat 'res/boss.png': No such file or directory"], 1)
-
-    def test_dh_link_error(self):
-        self.run_test(
-            [
-                "dh_link: link destination debian/r-cran-crosstalk/usr/lib/R/"
-                "site-library/crosstalk/lib/ionrangeslider is a directory"
-            ],
-            1,
-            DhLinkDestinationIsDirectory(
-                "debian/r-cran-crosstalk/usr/lib/R/site-library/crosstalk/"
-                "lib/ionrangeslider"
-            ),
-        )
-
-    def test_go_test(self):
-        self.run_test(
-            ["FAIL\tgithub.com/edsrzf/mmap-go\t0.083s"],
-            1,
-            None,
-        )
-
-    def test_debhelper_pattern(self):
-        self.run_test(
-            [
-                "dh_install: Cannot find (any matches for) "
-                '"server/etc/gnumed/gnumed-restore.conf" '
-                "(tried in ., debian/tmp)"
-            ],
-            1,
-            DebhelperPatternNotFound(
-                "server/etc/gnumed/gnumed-restore.conf", "install", [".", "debian/tmp"]
-            ),
-        )
-
-    def test_symbols(self):
-        self.run_test(
-            [
-                "dpkg-gensymbols: error: some symbols or patterns disappeared in "
-                "the symbols file: see diff output below"
-            ],
-            1,
-            DisappearedSymbols(),
-        )
-
-    def test_autoconf_macro(self):
-        self.run_test(
-            ["configure.in:1802: error: possibly undefined macro: " "AC_CHECK_CCA"],
-            1,
-            MissingAutoconfMacro("AC_CHECK_CCA"),
-        )
-        self.run_test(
-            ["./configure: line 12569: PKG_PROG_PKG_CONFIG: command not found"],
-            1,
-            MissingAutoconfMacro("PKG_PROG_PKG_CONFIG"),
-        )
-        self.run_test(
-            [
-                "checking for gawk... (cached) mawk",
-                "./configure: line 2368: syntax error near unexpected token `APERTIUM,'",
-                "./configure: line 2368: `PKG_CHECK_MODULES(APERTIUM, apertium >= 3.7.1)'",
-            ],
-            3,
-            MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True),
-        )
-        self.run_test(
-            [
-                "checking for libexif to use... ./configure: line 15968: syntax error near unexpected token `LIBEXIF,libexif'",
-                "./configure: line 15968: `\t\t\t\t\t\tPKG_CHECK_MODULES(LIBEXIF,libexif >= 0.6.18,have_LIBEXIF=yes,:)'",
-            ],
-            2,
-            MissingAutoconfMacro("PKG_CHECK_MODULES", need_rebuild=True),
-        )
-
-    def test_autoconf_version(self):
-        self.run_test(
-            ["configure.ac:13: error: Autoconf version 2.71 or higher is required"],
-            1,
-            MissingVagueDependency("autoconf", minimum_version="2.71"),
-        )
-
-    def test_claws_version(self):
-        self.run_test(
-            ["configure: error: libetpan 0.57 not found"],
-            1,
-            MissingVagueDependency("libetpan", minimum_version="0.57"),
-        )
-
-    def test_config_status_input(self):
-        self.run_test(
-            ["config.status: error: cannot find input file: " "`po/Makefile.in.in'"],
-            1,
-            MissingConfigStatusInput("po/Makefile.in.in"),
-        )
-
-    def test_jvm(self):
-        self.run_test(
-            [
-                "ERROR: JAVA_HOME is set to an invalid "
-                "directory: /usr/lib/jvm/default-java/"
-            ],
-            1,
-            MissingJVM(),
-        )
-
-    def test_cp(self):
-        self.run_test(
-            [
-                "cp: cannot stat "
-                "'/<<PKGBUILDDIR>>/debian/patches/lshw-gtk.desktop': "
-                "No such file or directory"
-            ],
-            1,
-            MissingBuildFile("debian/patches/lshw-gtk.desktop"),
-        )
-
-    def test_bash_redir_missing(self):
-        self.run_test(
-            ["/bin/bash: idna-tables-properties.csv: " "No such file or directory"],
-            1,
-            MissingBuildFile("idna-tables-properties.csv"),
-        )
-
-    def test_automake_input(self):
-        self.run_test(
-            [
-                "automake: error: cannot open < gtk-doc.make: "
-                "No such file or directory"
-            ],
-            1,
-            MissingAutomakeInput("gtk-doc.make"),
-        )
-
-    def test_shellcheck(self):
-        self.run_test(
-            [
-                " " * 40 + "^----^ SC2086: "
-                "Double quote to prevent globbing and word splitting."
-            ],
-            1,
-            None,
-        )
 
 
 class SecondaryErrorFinder(unittest.TestCase):
