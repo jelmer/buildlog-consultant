@@ -11,7 +11,7 @@ pub mod problems;
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;
 
-pub trait Match: Send + Sync + std::fmt::Debug {
+pub trait Match: Send + Sync + std::fmt::Debug + std::fmt::Display {
     fn line(&self) -> String;
 
     fn origin(&self) -> Origin;
@@ -103,7 +103,7 @@ impl SingleLineMatch {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MultiLineMatch {
     pub origin: Origin,
     pub offsets: Vec<usize>,
@@ -172,7 +172,7 @@ impl Match for MultiLineMatch {
     }
 }
 
-impl std::fmt::Debug for MultiLineMatch {
+impl std::fmt::Display for MultiLineMatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:{}: {}", self.origin.0, self.lineno(), self.line())
     }
