@@ -3387,3 +3387,26 @@ impl std::fmt::Display for MissingOCamlPackage {
         write!(f, "Missing OCaml package: {}", self.0)
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct TooManyOpenFiles;
+
+impl Problem for TooManyOpenFiles {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "too-many-open-files".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl std::fmt::Display for TooManyOpenFiles {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Too many open files")
+    }
+}
