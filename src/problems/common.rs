@@ -3410,3 +3410,39 @@ impl std::fmt::Display for TooManyOpenFiles {
         write!(f, "Too many open files")
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct MissingMakeTarget(pub String, pub Option<String>);
+
+impl MissingMakeTarget {
+    pub fn new(target: &str, required_by: Option<&str>) -> Self {
+        Self(target.to_string(), required_by.map(String::from))
+    }
+
+    pub fn simple(target: &str) -> Self {
+        Self::new(target, None)
+    }
+}
+
+impl std::fmt::Display for MissingMakeTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Unknown make target: {}", self.0)
+    }
+}
+
+impl Problem for MissingMakeTarget {
+    fn kind(&self) -> std::borrow::Cow<str> {
+        "missing-make-target".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "target": self.0,
+            "required_by": self.1
+        })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}

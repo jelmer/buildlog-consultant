@@ -479,10 +479,6 @@ const MAVEN_ERROR_PREFIX: &str = "(?:\\[ERROR\\]|\\[\x1b\\[1;31mERROR\x1b\\[m\\]
 
 lazy_static::lazy_static! {
     static ref COMMON_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
-        regex_line_matcher!(
-            r"^make\[[0-9]+\]: \*\*\* No rule to make target '(.*)', needed by '.*'\.  Stop\.$",
-            file_not_found
-        ),
         regex_line_matcher!(r"^[^:]+:\d+: (.*): No such file or directory$", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
         regex_line_matcher!(
         r"^(distutils.errors.DistutilsError|error): Could not find suitable distribution for Requirement.parse\('([^']+)'\)$",
@@ -2244,6 +2240,13 @@ lazy_static::lazy_static! {
         r"E: pybuild pybuild:(.*): configure: plugin (.*) failed with: PEP517 plugin dependencies are not available\. Please Build-Depend on (.*)\.",
         |m| Ok(Some(Box::new(MissingDebianBuildDep(m.get(1).unwrap().as_str().to_string()))))
     ),
+    regex_line_matcher!(
+        r"^make\[[0-9]+\]: \*\*\* No rule to make target '(.*)', needed by '(.*)'\.  Stop\.$",
+        |m| Ok(Some(Box::new(MissingMakeTarget::new(m.get(1).unwrap().as_str(), Some(m.get(2).unwrap().as_str())))))
+    ),
+    regex_line_matcher!(r#"make: \*\*\* No rule to make target \'(.*)\'\.  Stop\."#, |m| Ok(Some(Box::new(MissingMakeTarget::simple(m.get(1).unwrap().as_str()))))),
+    regex_line_matcher!(
+        r"make\[[0-9]+\]: \*\*\* No rule to make target \'(.*)\'\.  Stop\.", |m| Ok(Some(Box::new(MissingMakeTarget::simple(m.get(1).unwrap().as_str()))))),
     // ADD NEW REGEXES ABOVE THIS LINE
     regex_line_matcher!(
         r#"configure: error: Can not find "(.*)" .* in your PATH"#,
@@ -3003,11 +3006,8 @@ lazy_static::lazy_static! {
     secondary_matcher!(r"\[ERROR\] (.*\.java):\[[0-9]+,[0-9]+\] (.*)"),
     secondary_matcher!(r"make: \*\*\* No targets specified and no makefile found\.  Stop\."),
     secondary_matcher!(r"make\[[0-9]+\]: \*\*\* No targets specified and no makefile found\.  Stop\."),
-    secondary_matcher!(r#"make: \*\*\* No rule to make target \'(.*)\'\.  Stop\."#),
     secondary_matcher!(r"make\[[0-9]+\]: (.*): No such file or directory"),
     secondary_matcher!(r"make\[[0-9]+\]: \*\*\* \[.*:[0-9]+: .*\] Segmentation fault"),
-    secondary_matcher!(
-        r"make\[[0-9]+\]: \*\*\* No rule to make target \'(?!maintainer-clean)(?!clean)(.*)\'\.  Stop\."),
     secondary_matcher!(
     r".*:[0-9]+: \*\*\* empty variable name.  Stop."),
     secondary_matcher!(
@@ -3488,14 +3488,14 @@ mod tests {
                 "make[1]: *** No rule to make target 'nno.autopgen.bin', needed by 'dan-nno.autopgen.bin'.  Stop."
             ],
             1,
-            Some(MissingBuildFile{filename: "nno.autopgen.bin".to_owned()}),
+            Some(MissingMakeTarget::new( "nno.autopgen.bin", Some("dan-nno.autopgen.bin"))),
         );
 
         assert_match(vec![
                 "make[1]: *** No rule to make target '/usr/share/blah/blah', needed by 'dan-nno.autopgen.bin'.  Stop."
             ],
             1,
-            Some(MissingFile::new("/usr/share/blah/blah".into())),
+            Some(MissingMakeTarget::new("/usr/share/blah/blah", Some("dan-nno.autopgen.bin"))),
         );
         assert_match(
             vec![
