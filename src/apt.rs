@@ -2,7 +2,7 @@ use crate::lines::Lines;
 use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
-use debian_control::relations::Relations;
+use debian_control::lossless::relations::{Entry,Relations};
 
 pub fn find_apt_get_failure(
     lines: Vec<&str>,
@@ -266,7 +266,7 @@ pub(crate) fn error_from_dose3_reports(reports: &[crate::cudf::Report]) -> Optio
     let mut conflict = vec![];
     for reason in &reports[0].reasons {
         if let Some(this_missing) = &reason.missing {
-            let relation: debian_control::relations::Entry = this_missing
+            let relation: Entry = this_missing
                 .pkg
                 .unsat_dependency
                 .as_ref()
