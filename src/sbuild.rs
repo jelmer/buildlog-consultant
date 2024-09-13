@@ -271,13 +271,13 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
                 if !lines.is_empty() {
                     // The unwrap_or_else is to provide a default value in case 'title' is None.
                     sections.push(SbuildLogSection {
-                        title: title.map(|t| t.trim().to_string()),
+                        title: title.clone(),
                         offsets: (begin_offset, end_offset),
                         lines: lines.clone(),
                     });
                 }
 
-                title = Some(l1_trimmed[1..l1.len() - 2].trim().to_string());
+                title = Some(l1_trimmed.trim_matches('|').trim().to_string());
                 lines.clear();
                 begin_offset = lineno;
             } else {
