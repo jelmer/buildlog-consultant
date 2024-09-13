@@ -20,4 +20,9 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
-    # TODO(jelmer): Actually run tests
+      env:
+        RUSTFLAGS: -Dwarnings
+    - name: Build
+      run: cargo test --verbose
+      env:
+        RUSTFLAGS: -Dwarnings

@@ -277,7 +277,7 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
                     });
                 }
 
-                title = Some(l1_trimmed[1..l1.len() - 2].trim().to_string());
+                title = Some(l1_trimmed.trim_matches('|').trim().to_string());
                 lines.clear();
                 begin_offset = lineno;
             } else {
