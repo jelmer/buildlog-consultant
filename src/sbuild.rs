@@ -271,7 +271,7 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
                 if !lines.is_empty() {
                     // The unwrap_or_else is to provide a default value in case 'title' is None.
                     sections.push(SbuildLogSection {
-                        title: title.clone(),
+                        title: title.map(|t| t.trim().to_string()),
                         offsets: (begin_offset, end_offset),
                         lines: lines.clone(),
                     });
