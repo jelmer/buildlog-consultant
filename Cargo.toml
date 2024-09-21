@@ -7,6 +7,7 @@ license = "GPL-2.0+"
 description = "buildlog parser and analyser"
 repository = "https://github.com/jelmer/buildlog-consultant.git"
 homepage = "https://github.com/jelmer/buildlog-consultant"
+exclude = ["build", "py", "Makefile", ".github", "tox.ini", "pyproject.toml", "disperse.conf", "setup.py", ".gitignore", "MANIFEST", "MANIFEST.in"]
 
 [workspace]
 members = [ "buildlog-consultant-py",]
