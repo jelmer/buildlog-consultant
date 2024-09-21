@@ -24,11 +24,7 @@ fn parse_debcargo_failure(_: &regex::Captures, prior_lines: Vec<&str>) -> Option
     const MORE_TAIL: &str = "\x1b[0m\n";
     const MORE_HEAD1: &str = "\x1b[1;31mSomething failed: ";
     const MORE_HEAD2: &str = "\x1b[1;31mdebcargo failed: ";
-    if let Some(extra) = prior_lines
-        .last()
-        .unwrap()
-        .strip_suffix(MORE_TAIL)
-    {
+    if let Some(extra) = prior_lines.last().unwrap().strip_suffix(MORE_TAIL) {
         let mut extra = vec![extra];
         for line in prior_lines[..prior_lines.len() - 1].iter().rev() {
             if let Some(middle) = extra[0].strip_prefix(MORE_HEAD1) {
@@ -118,12 +114,15 @@ pub fn parse_brz_error<'a>(
     for (re, f) in BRZ_ERRORS.iter() {
         if let Some(m) = re.captures(line) {
             let err = f(&m, prior_lines);
-            let description= err.as_ref().unwrap().to_string();
+            let description = err.as_ref().unwrap().to_string();
             return (err, description);
         }
     }
     if let Some(suffix) = line.strip_prefix("UScan failed to run: ") {
-        return (Some(Box::new(UScanError(suffix.to_owned()))), line.to_string());
+        return (
+            Some(Box::new(UScanError(suffix.to_owned()))),
+            line.to_string(),
+        );
     }
     if let Some(suffix) = line.strip_prefix("Unable to parse changelog: ") {
         return (
@@ -141,16 +140,18 @@ mod tests {
     use super::*;
     #[test]
     fn test_inconsistent_source_format() {
-        let (err, line) = 
-            parse_brz_error(
+        let (err, line) = parse_brz_error(
                 "Inconsistency between source format and version: version is not native, format is native.",
                 vec![]);
         assert_eq!(
             line,
-                "Inconsistent source format between version and source format",
+            "Inconsistent source format between version and source format",
         );
         assert_eq!(
-            Some(Box::new(InconsistentSourceFormat { version: true, source_format: false }) as Box<dyn Problem>),
+            Some(Box::new(InconsistentSourceFormat {
+                version: true,
+                source_format: false
+            }) as Box<dyn Problem>),
             err
         );
     }
@@ -179,21 +180,28 @@ mod tests {
 
     #[test]
     fn test_missing_debcargo_crate2() {
-        let lines = vec!["Running 'sbuild -A -s -v'\n",
-        "Building using working tree\n",
-        "Building package in merge mode\n",
-        "Using crate name: utf8parse, version 0.10.1+git20220116.1.dfac57e\n",
-"    Updating crates.io index\n",
-"    Updating crates.io index\n",
-"\x1b[1;31mdebcargo failed: Couldn't find any crate matching utf8parse =0.10.1\n",
-"Try `debcargo update` to update the crates.io index.\x1b[0m\n",
-"brz: ERROR: Debcargo failed to run.\n"
+        let lines = vec![
+            "Running 'sbuild -A -s -v'\n",
+            "Building using working tree\n",
+            "Building package in merge mode\n",
+            "Using crate name: utf8parse, version 0.10.1+git20220116.1.dfac57e\n",
+            "    Updating crates.io index\n",
+            "    Updating crates.io index\n",
+            "\x1b[1;31mdebcargo failed: Couldn't find any crate matching utf8parse =0.10.1\n",
+            "Try `debcargo update` to update the crates.io index.\x1b[0m\n",
+            "brz: ERROR: Debcargo failed to run.\n",
         ];
         let (err, line) = find_brz_build_error(lines).unwrap();
         assert_eq!(
             line,
             "debcargo can't find crate utf8parse (version: 0.10.1)"
         );
-        assert_eq!(err, Some(Box::new(MissingDebcargoCrate{cratename: "utf8parse".to_owned(), version: Some("0.10.1".to_owned())}) as Box<dyn Problem>));
+        assert_eq!(
+            err,
+            Some(Box::new(MissingDebcargoCrate {
+                cratename: "utf8parse".to_owned(),
+                version: Some("0.10.1".to_owned())
+            }) as Box<dyn Problem>)
+        );
     }
 }
