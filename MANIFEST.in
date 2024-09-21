@@ -1,7 +1,0 @@
-include CODE_OF_CONDUCT.md
-include AUTHORS
-include README.md
-include SECURITY.md
-include Cargo.toml buildlog-consultant-py/Cargo.toml
-recursive-include buildlog-consultant-py *.rs
-recursive-include src *.rs
