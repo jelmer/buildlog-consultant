@@ -26,3 +26,5 @@ jobs:
       run: cargo test --verbose
       env:
         RUSTFLAGS: -Dwarnings
+    - name: Check formatting
+      run: cargo fmt -- --check

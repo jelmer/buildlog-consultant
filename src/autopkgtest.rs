@@ -749,9 +749,9 @@ pub fn find_testbed_setup_failure(
 
 #[cfg(test)]
 mod tests {
-    
-    use crate::problems::common::*;
+
     use super::*;
+    use crate::problems::common::*;
 
     fn assert_autopkgtest_match(
         lines: Vec<&str>,
@@ -780,7 +780,7 @@ mod tests {
     #[test]
     fn test_no_match() {
         let lines = vec!["blalblala\n"];
-        assert_autopkgtest_match(lines, vec![0],Some("blalblala\n"), None, None);
+        assert_autopkgtest_match(lines, vec![0], Some("blalblala\n"), None, None);
     }
 
     #[test]
@@ -804,7 +804,13 @@ mod tests {
             "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
             "unit-tests           FAIL timed out\n",
         ];
-        assert_autopkgtest_match(lines, vec![1], Some("unit-tests"), Some(Box::new(error)), Some("timed out"));
+        assert_autopkgtest_match(
+            lines,
+            vec![1],
+            Some("unit-tests"),
+            Some(Box::new(error)),
+            Some("timed out"),
+        );
     }
 
     #[test]
@@ -885,10 +891,7 @@ mod tests {
 "'\n",
 "autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 32] Broken pipe\n"
         ];
-        assert_autopkgtest_match(lines, vec![3], 
-                None,
-                Some(Box::new(error)),
-                Some("<VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory\n")
+        assert_autopkgtest_match(lines, vec![3], None, Some(Box::new(error)), Some("<VirtSubproc>: failure: ['chmod', '1777', '/tmp/autopkgtest.JLqPpH'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2-53ed-4f84-8f0d-2c53ebe71010: Failed to stat file: No such file or directory\n")
             );
     }
 
@@ -904,10 +907,12 @@ mod tests {
             "intltool            FAIL stderr: some output",
         ];
 
-        assert_autopkgtest_match(lines, vec![2], 
-                Some("intltool"),
-                Some(Box::new(error)),
-                Some("Test intltool failed due to unauthorized stderr output: some output"),
+        assert_autopkgtest_match(
+            lines,
+            vec![2],
+            Some("intltool"),
+            Some(Box::new(error)),
+            Some("Test intltool failed due to unauthorized stderr output: some output"),
         );
         let lines =                 vec![
                     "autopkgtest [20:49:00]: test intltool:  - - - - - - - - - - stderr - - - - - - - - - -",
@@ -917,16 +922,29 @@ mod tests {
                     "intltool            FAIL stderr: /tmp/bla: 12: ss: not found",
                 ];
         let error = MissingCommand("ss".to_owned());
-        assert_autopkgtest_match(lines, vec![1], Some("intltool"), Some(Box::new(error)), Some("/tmp/bla: 12: ss: not found"));
+        assert_autopkgtest_match(
+            lines,
+            vec![1],
+            Some("intltool"),
+            Some(Box::new(error)),
+            Some("/tmp/bla: 12: ss: not found"),
+        );
 
         let lines = vec![
-                    "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
-                    r#"command10            FAIL stderr: Can't exec "uptime": No such file or directory at /usr/lib/nagios/plugins/check_uptime line 529."#,
+            "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+            r#"command10            FAIL stderr: Can't exec "uptime": No such file or directory at /usr/lib/nagios/plugins/check_uptime line 529."#,
         ];
 
         let error = MissingCommand("uptime".to_owned());
         assert_autopkgtest_match(
-            lines, vec![1], Some("command10"), Some(Box::new(error)), Some(r#"Can't exec "uptime": No such file or directory at /usr/lib/nagios/plugins/check_uptime line 529."#));
+            lines,
+            vec![1],
+            Some("command10"),
+            Some(Box::new(error)),
+            Some(
+                r#"Can't exec "uptime": No such file or directory at /usr/lib/nagios/plugins/check_uptime line 529."#,
+            ),
+        );
     }
 
     #[test]
@@ -943,7 +961,8 @@ mod tests {
 
     #[test]
     fn test_testbed_failure_with_test() {
-        let error = AutopkgtestTestbedFailure("testbed auxverb failed with exit code 255".to_owned());
+        let error =
+            AutopkgtestTestbedFailure("testbed auxverb failed with exit code 255".to_owned());
 
         let lines = vec!["Removing autopkgtest-satdep (0) ...\n",
         "autopkgtest [06:59:00]: test phpunit: [-----------------------\n",
@@ -975,7 +994,13 @@ mod tests {
 
         let error = MissingFile::new("/usr/share/php/Pimple/autoload.php".into());
 
-        assert_autopkgtest_match(lines, vec![5], Some("command2"), Some(Box::new(error)), Some("Cannot open file \"/usr/share/php/Pimple/autoload.php\".\n"));
+        assert_autopkgtest_match(
+            lines,
+            vec![5],
+            Some("command2"),
+            Some(Box::new(error)),
+            Some("Cannot open file \"/usr/share/php/Pimple/autoload.php\".\n"),
+        );
     }
 
     #[test]
@@ -1013,7 +1038,13 @@ mod tests {
             "Exiting with 4\n"
         ];
 
-        assert_autopkgtest_match(lines, vec![10], Some("unmunge"), None, Some("Test unmunge failed: non-zero exit status 2"));
+        assert_autopkgtest_match(
+            lines,
+            vec![10],
+            Some("unmunge"),
+            None,
+            Some("Test unmunge failed: non-zero exit status 2"),
+        );
     }
 
     #[test]
@@ -1037,7 +1068,13 @@ mod tests {
 "Exiting with 4"
         ];
 
-        assert_autopkgtest_match(lines, vec![5], Some("unit-tests-3"), None, Some("builtins.OverflowError: mktime argument out of range"));
+        assert_autopkgtest_match(
+            lines,
+            vec![5],
+            Some("unit-tests-3"),
+            None,
+            Some("builtins.OverflowError: mktime argument out of range"),
+        );
     }
 
     mod parse_autopkgtest_summary {
@@ -1151,7 +1188,9 @@ mod tests {
         #[test]
         fn test_source() {
             assert_eq!(
-                super::parse_autopgktest_line("autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ source "),
+                super::parse_autopgktest_line(
+                    "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ source "
+                ),
                 Some(("07:58:03", super::Packet::Source))
             );
         }
@@ -1159,7 +1198,9 @@ mod tests {
         #[test]
         fn test_summary() {
             assert_eq!(
-                super::parse_autopgktest_line("autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary"),
+                super::parse_autopgktest_line(
+                    "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary"
+                ),
                 Some(("07:58:03", super::Packet::Summary))
             );
         }
@@ -1167,7 +1208,9 @@ mod tests {
         #[test]
         fn test_test_begin_output() {
             assert_eq!(
-                super::parse_autopgktest_line("autopkgtest [07:58:03]: test unit-tests: [-----------------------"),
+                super::parse_autopgktest_line(
+                    "autopkgtest [07:58:03]: test unit-tests: [-----------------------"
+                ),
                 Some(("07:58:03", super::Packet::TestBeginOutput("unit-tests")))
             );
         }
@@ -1175,7 +1218,9 @@ mod tests {
         #[test]
         fn test_test_end_output() {
             assert_eq!(
-                super::parse_autopgktest_line("autopkgtest [07:58:03]: test unit-tests: -----------------------]"),
+                super::parse_autopgktest_line(
+                    "autopkgtest [07:58:03]: test unit-tests: -----------------------]"
+                ),
                 Some(("07:58:03", super::Packet::TestEndOutput("unit-tests")))
             );
         }
@@ -1199,7 +1244,9 @@ mod tests {
         #[test]
         fn test_testbed_setup() {
             assert_eq!(
-                super::parse_autopgktest_line("autopkgtest [07:58:03]: test unit-tests: preparing testbed"),
+                super::parse_autopgktest_line(
+                    "autopkgtest [07:58:03]: test unit-tests: preparing testbed"
+                ),
                 Some(("07:58:03", super::Packet::TestbedSetup("unit-tests")))
             );
         }
@@ -1207,8 +1254,13 @@ mod tests {
         #[test]
         fn test_test_output() {
             assert_eq!(
-                super::parse_autopgktest_line("autopkgtest [07:58:03]: test unit-tests: some output"),
-                Some(("07:58:03", super::Packet::TestOutput("unit-tests", "some output")))
+                super::parse_autopgktest_line(
+                    "autopkgtest [07:58:03]: test unit-tests: some output"
+                ),
+                Some((
+                    "07:58:03",
+                    super::Packet::TestOutput("unit-tests", "some output")
+                ))
             );
         }
 
