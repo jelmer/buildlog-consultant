@@ -51,18 +51,18 @@ log = "0.4.20"
 text-size = "1.1.1"
 debversion = { version = ">=0.3", features = ["serde"] }
 chrono = "0.4.31"
-fancy-regex = "0.13.0"
+fancy-regex = "0.11"
 lazy-regex = "3.0.2"
 textwrap = "0.16.0"
 chatgpt_rs = { version = "1", optional = true }
-env_logger = { version = "0.11", optional = true }
+env_logger = { version = ">=0.10", optional = true }
 clap = { version = "4", optional = true, features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 serde_yaml = { version = "0.9" }
 debian-control = "0.1.18"
 maplit = "1.0.2"
-pep508_rs = { version = "0.6", optional = true }
-pep440_rs = { version = "0.6", optional = true }
+pep508_rs = { version = ">=0.2", optional = true }
+pep440_rs = { version = ">=0.3", optional = true }
 
 [dev-dependencies]
 maplit = "1.0.2"
