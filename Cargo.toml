@@ -10,10 +10,9 @@ homepage = "https://github.com/jelmer/buildlog-consultant"
 exclude = [".github", "disperse.conf", ".gitignore", "MANIFEST", "MANIFEST.in"]
 
 [features]
-default = ["cli", "python"]
+default = ["cli"]
 chatgpt = ["dep:chatgpt_rs"]
 cli = ["dep:clap", "dep:env_logger"]
-python = ["dep:pep508_rs", "dep:pep440_rs"]
 
 [[bin]]
 name = "chatgpt-analyze-log"
@@ -61,8 +60,8 @@ tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 serde_yaml = { version = "0.9" }
 debian-control = "0.1.18"
 maplit = "1.0.2"
-pep508_rs = { version = ">=0.2", optional = true }
-pep440_rs = { version = ">=0.3", optional = true }
+pep508_rs = { version = ">=0.2" }
+pep440_rs = { version = ">=0.3" }
 
 [dev-dependencies]
 maplit = "1.0.2"
