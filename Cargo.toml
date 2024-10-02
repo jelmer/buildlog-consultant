@@ -48,7 +48,7 @@ serde = { version = "1", features = ["derive"] }
 shlex = "1"
 log = "0.4.20"
 text-size = "1.1.1"
-debversion = { version = ">=0.3", features = ["serde"] }
+debversion = { version = "^0.4", features = ["serde"] }
 chrono = "0.4.31"
 fancy-regex = "0.11"
 lazy-regex = "3.0.2"
@@ -60,8 +60,9 @@ tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 serde_yaml = { version = "0.9" }
 debian-control = "0.1.18"
 maplit = "1.0.2"
-pep508_rs = { version = ">=0.2" }
-pep440_rs = { version = ">=0.3" }
+# Pin specific versions of pep508 and pep440, since we need compatible versions.
+pep508_rs = { version = "0.6.1" }
+pep440_rs = { version = "0.6.5" }
 
 [dev-dependencies]
 maplit = "1.0.2"
