@@ -285,7 +285,8 @@ impl MissingPythonDistribution {
 
         let distribution = depspec.name.to_string();
 
-        let python_version = python_version.or_else(||find_python_version(depspec.marker.to_dnf()));
+        let python_version =
+            python_version.or_else(|| find_python_version(depspec.marker.to_dnf()));
         let minimum_version = if let Some(v_u) = depspec.version_or_url {
             if let VersionOrUrl::VersionSpecifier(vs) = v_u {
                 if vs.len() == 1 {
