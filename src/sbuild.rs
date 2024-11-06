@@ -682,7 +682,7 @@ pub const DEFAULT_LOOK_BACK: usize = 50;
 pub fn strip_build_tail<'a>(
     lines: &'a [&'a str],
     look_back: Option<usize>,
-) -> (&'a [&'a str], HashMap<&'a str, &'_ [&'a str]>) {
+) -> (&'a [&'a str], HashMap<&'a str, &'a [&'a str]>) {
     let look_back = look_back.unwrap_or(DEFAULT_LOOK_BACK);
 
     let mut interesting_lines: &'_ [&'a str] = lines;

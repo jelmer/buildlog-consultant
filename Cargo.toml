@@ -50,7 +50,7 @@ log = "0.4.20"
 text-size = "1.1.1"
 debversion = { version = "^0.4", features = ["serde"] }
 chrono = "0.4.31"
-fancy-regex = "0.11"
+fancy-regex = "0.14"
 lazy-regex = "3.0.2"
 textwrap = "0.16.0"
 chatgpt_rs = { version = "1", optional = true }
@@ -61,8 +61,8 @@ serde_yaml = { version = "0.9" }
 debian-control = "0.1.18"
 maplit = "1.0.2"
 # Pin specific versions of pep508 and pep440, since we need compatible versions.
-pep508_rs = { version = "0.6.1" }
-pep440_rs = { version = "0.6.5" }
+pep508_rs = "0.9.1"
+pep440_rs = "0.7.2"
 
 [dev-dependencies]
 maplit = "1.0.2"
