@@ -1,4 +1,5 @@
 use crate::Problem;
+use pep508_rs::pep440_rs;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display};
@@ -253,57 +254,39 @@ impl Problem for MissingPythonDistribution {
     }
 }
 
+fn find_python_version(marker: Vec<Vec<pep508_rs::MarkerExpression>>) -> Option<i32> {
+    let mut major_version = None;
+    for expr in marker.iter().flat_map(|x| x.iter()) {
+        match expr {
+            pep508_rs::MarkerExpression::Version {
+                key: pep508_rs::MarkerValueVersion::PythonVersion,
+                specifier,
+            } => {
+                let version = specifier.version();
+                major_version = Some(version.release()[0] as i32);
+            }
+            _ => {}
+        }
+    }
+
+    major_version
+}
+
 impl MissingPythonDistribution {
     pub fn from_requirement_str(
         text: &str,
         python_version: Option<i32>,
     ) -> MissingPythonDistribution {
         use pep440_rs::Operator;
-        use pep508_rs::{
-            MarkerOperator, MarkerTree, MarkerValue, MarkerValueVersion, Requirement, VersionOrUrl,
-        };
+        use pep508_rs::{Requirement, VersionOrUrl};
         use std::str::FromStr;
 
-        let depspec = Requirement::from_str(text).unwrap();
+        let depspec: Requirement = Requirement::from_str(text).unwrap();
 
         let distribution = depspec.name.to_string();
 
-        fn extract_python_version(marker: &MarkerTree) -> Option<i32> {
-            match marker {
-                MarkerTree::Expression(e) => {
-                    if e.operator == MarkerOperator::GreaterEqual
-                        && e.l_value
-                            == pep508_rs::MarkerValue::MarkerEnvVersion(
-                                MarkerValueVersion::PythonVersion,
-                            )
-                    {
-                        if let MarkerValue::QuotedString(v) = &e.r_value {
-                            return Some(v.split('.').next().unwrap().parse().unwrap());
-                        }
-                    }
-                    None
-                }
-                MarkerTree::And(os) => {
-                    let mut pv = None;
-                    for o in os {
-                        let npv = extract_python_version(o);
-                        if let Some(npv) = npv {
-                            pv = Some(npv);
-                        }
-                    }
-                    pv
-                }
-                MarkerTree::Or(os) => {
-                    if os.len() == 1 {
-                        return extract_python_version(&os[0]);
-                    }
-                    None
-                }
-            }
-        }
-
         let python_version =
-            python_version.or_else(|| depspec.marker.as_ref().and_then(extract_python_version));
+            python_version.or_else(|| find_python_version(depspec.marker.to_dnf()));
         let minimum_version = if let Some(v_u) = depspec.version_or_url {
             if let VersionOrUrl::VersionSpecifier(vs) = v_u {
                 if vs.len() == 1 {
