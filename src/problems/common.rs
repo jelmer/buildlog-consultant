@@ -1382,7 +1382,7 @@ impl Display for UnsupportedDebhelperCompatLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "Request debhlper compat level {} lower than supported {}",
+            "Request debhelper compat level {} lower than supported {}",
             self.requested, self.oldest_supported
         )
     }
