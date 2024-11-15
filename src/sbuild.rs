@@ -687,7 +687,7 @@ pub fn strip_build_tail<'a>(
 
     let mut interesting_lines: &'_ [&'a str] = lines;
 
-    // Strip off unuseful tail
+    // Strip off useless tail
     for (i, line) in lines.enumerate_tail_forward(look_back) {
         if line.starts_with("Build finished at ") {
             interesting_lines = &lines[..i];
