@@ -184,6 +184,13 @@ pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
     fn json(&self) -> serde_json::Value;
 
     fn as_any(&self) -> &dyn std::any::Any;
+
+    /// Is this problem universal, i.e. applicable to all build steps?
+    ///
+    /// Good examples of universal problems are e.g. disk full, out of memory, etc.
+    fn is_universal(&self) -> bool {
+        false
+    }
 }
 
 impl PartialEq for dyn Problem {
