@@ -58,6 +58,9 @@ pub fn main() -> Result<(), i8> {
         } else {
             log::LevelFilter::Info
         })
+        .format_timestamp(None)
+        .format_level(false)
+        .format_target(false)
         .init();
 
     let log = if let Some(path) = args.path.as_deref() {
