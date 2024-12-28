@@ -27,6 +27,9 @@ fn main() {
         } else {
             log::LevelFilter::Info
         })
+        .format_timestamp(None)
+        .format_level(false)
+        .format_target(false)
         .init();
 
     let log = std::fs::read_to_string(&args.path).expect("Failed to read log file");
