@@ -1,15 +1,38 @@
+//! Buildlog-consultant provides tools for analyzing build logs to identify problems.
+//!
+//! This crate contains functionality for parsing and analyzing build logs from various
+//! build systems, primarily focusing on Debian package building tools.
+
+#![deny(missing_docs)]
+
 use std::borrow::Cow;
 use std::ops::Index;
 
+/// Module for handling apt-related logs and problems.
 pub mod apt;
+/// Module for processing autopkgtest logs.
 pub mod autopkgtest;
+/// Module for Bazaar (brz) version control system logs.
 pub mod brz;
+/// Module for Common Upgradeability Description Format (CUDF) logs.
 pub mod cudf;
+/// Module for line-level processing.
 pub mod lines;
+/// Module containing problem definitions for various build systems.
 pub mod problems;
 
 #[cfg(feature = "chatgpt")]
+/// Module for interacting with ChatGPT for log analysis.
 pub mod chatgpt;
+
+/// Common utilities and helpers for build log analysis.
+pub mod common;
+
+/// Match-related functionality for finding patterns in logs.
+pub mod r#match;
+
+/// Module for handling sbuild logs and related problems.
+pub mod sbuild;
 
 #[cfg(test)]
 mod tests {
@@ -210,28 +233,43 @@ mod tests {
     }
 }
 
+/// Trait for representing a match of content in a log file.
+///
+/// This trait defines the interface for working with matched content in logs,
+/// providing methods to access the content and its location information.
 pub trait Match: Send + Sync + std::fmt::Debug + std::fmt::Display {
+    /// Returns the matched line of text.
     fn line(&self) -> String;
 
+    /// Returns the origin information for this match.
     fn origin(&self) -> Origin;
 
+    /// Returns the 0-based offset of the match in the source.
     fn offset(&self) -> usize;
 
+    /// Returns the 1-based line number of the match in the source.
     fn lineno(&self) -> usize {
         self.offset() + 1
     }
 
+    /// Returns all 1-based line numbers for this match.
     fn linenos(&self) -> Vec<usize> {
         self.offsets().iter().map(|&x| x + 1).collect()
     }
 
+    /// Returns all 0-based offsets for this match.
     fn offsets(&self) -> Vec<usize>;
 
+    /// Returns all lines of text in this match.
     fn lines(&self) -> Vec<String>;
 
+    /// Creates a new match with all offsets shifted by the given amount.
     fn add_offset(&self, offset: usize) -> Box<dyn Match>;
 }
 
+/// Source identifier for a match.
+///
+/// This struct represents the source/origin of a match, typically a file name or other identifier.
 #[derive(Clone, Debug)]
 pub struct Origin(String);
 
@@ -241,10 +279,16 @@ impl std::fmt::Display for Origin {
     }
 }
 
+/// A match for a single line in a log file.
+///
+/// This struct implements the `Match` trait for single-line matches.
 #[derive(Clone, Debug)]
 pub struct SingleLineMatch {
+    /// Source identifier for the match.
     pub origin: Origin,
+    /// Zero-based line offset in the source.
     pub offset: usize,
+    /// The matched line content.
     pub line: String,
 }
 
@@ -285,6 +329,15 @@ impl std::fmt::Display for SingleLineMatch {
 }
 
 impl SingleLineMatch {
+    /// Creates a new `SingleLineMatch` from a collection of lines, an offset, and an optional origin.
+    ///
+    /// # Arguments
+    /// * `lines` - Collection of lines that can be indexed
+    /// * `offset` - Zero-based offset of the line to match
+    /// * `origin` - Optional source identifier
+    ///
+    /// # Returns
+    /// A new `SingleLineMatch` instance
     pub fn from_lines<'a>(
         lines: &impl Index<usize, Output = &'a str>,
         offset: usize,
@@ -302,14 +355,29 @@ impl SingleLineMatch {
     }
 }
 
+/// A match for multiple consecutive lines in a log file.
+///
+/// This struct implements the `Match` trait for multi-line matches.
 #[derive(Clone, Debug)]
 pub struct MultiLineMatch {
+    /// Source identifier for the match.
     pub origin: Origin,
+    /// Zero-based line offsets for each matching line.
     pub offsets: Vec<usize>,
+    /// The matched line contents.
     pub lines: Vec<String>,
 }
 
 impl MultiLineMatch {
+    /// Creates a new `MultiLineMatch` with the specified origin, offsets, and lines.
+    ///
+    /// # Arguments
+    /// * `origin` - The source identifier
+    /// * `offsets` - Vector of zero-based line offsets
+    /// * `lines` - Vector of matched line contents
+    ///
+    /// # Returns
+    /// A new `MultiLineMatch` instance
     pub fn new(origin: Origin, offsets: Vec<usize>, lines: Vec<String>) -> Self {
         assert!(!offsets.is_empty());
         assert!(offsets.len() == lines.len());
@@ -320,6 +388,15 @@ impl MultiLineMatch {
         }
     }
 
+    /// Creates a new `MultiLineMatch` from a collection of lines, a vector of offsets, and an optional origin.
+    ///
+    /// # Arguments
+    /// * `lines` - Collection of lines that can be indexed
+    /// * `offsets` - Vector of zero-based line offsets to match
+    /// * `origin` - Optional source identifier
+    ///
+    /// # Returns
+    /// A new `MultiLineMatch` instance
     pub fn from_lines<'a>(
         lines: &impl Index<usize, Output = &'a str>,
         offsets: Vec<usize>,
@@ -377,11 +454,18 @@ impl std::fmt::Display for MultiLineMatch {
     }
 }
 
+/// Trait for representing a problem found in build logs.
+///
+/// This trait defines the interface for working with problems identified in build logs,
+/// providing methods to access problem information and properties.
 pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
+    /// Returns the kind/type of problem.
     fn kind(&self) -> Cow<str>;
 
+    /// Returns the problem details as a JSON value.
     fn json(&self) -> serde_json::Value;
 
+    /// Returns the problem as a trait object that can be downcast.
     fn as_any(&self) -> &dyn std::any::Any;
 
     /// Is this problem universal, i.e. applicable to all build steps?
@@ -419,12 +503,12 @@ impl std::hash::Hash for dyn Problem {
     }
 }
 
-pub mod common;
-
-pub mod r#match;
-
-pub mod sbuild;
-
+/// Prints highlighted lines from a match with surrounding context.
+///
+/// # Arguments
+/// * `lines` - All lines from the source
+/// * `m` - The match to highlight
+/// * `context` - Number of lines of context to display before and after the match
 pub fn highlight_lines(lines: &[&str], m: &dyn Match, context: usize) {
     use std::cmp::{max, min};
     if m.linenos().len() == 1 {

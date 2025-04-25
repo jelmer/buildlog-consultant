@@ -1,6 +1,16 @@
 use crate::Problem;
 
+/// Problem representing unsatisfiable dependencies in autopkgtest.
+#[derive(Debug, Clone)]
+pub struct AutopkgtestDepsUnsatisfiable(pub Vec<(Option<String>, String)>);
+
 impl AutopkgtestDepsUnsatisfiable {
+    /// Creates a new instance from a blame line string.
+    ///
+    /// Parses a blame line from autopkgtest output to extract dependency issues.
+    ///
+    /// # Arguments
+    /// * `line` - The blame line string to parse
     pub fn from_blame_line(line: &str) -> Self {
         let mut args = vec![];
         for entry in line.strip_prefix("blame: ").unwrap().split_whitespace() {
@@ -19,9 +29,6 @@ impl AutopkgtestDepsUnsatisfiable {
         Self(args)
     }
 }
-
-#[derive(Debug, Clone)]
-pub struct AutopkgtestDepsUnsatisfiable(pub Vec<(Option<String>, String)>);
 
 impl Problem for AutopkgtestDepsUnsatisfiable {
     fn kind(&self) -> std::borrow::Cow<str> {
@@ -45,6 +52,7 @@ impl std::fmt::Display for AutopkgtestDepsUnsatisfiable {
     }
 }
 
+/// Problem representing an autopkgtest test that timed out during execution.
 #[derive(Debug, Clone)]
 pub struct AutopkgtestTimedOut;
 
@@ -68,6 +76,9 @@ impl std::fmt::Display for AutopkgtestTimedOut {
     }
 }
 
+/// Problem representing a missing XDG_RUNTIME_DIR environment variable.
+///
+/// This issue typically occurs when running GUI tests in autopkgtest.
 #[derive(Debug, Clone)]
 pub struct XDGRunTimeNotSet;
 
@@ -91,6 +102,9 @@ impl std::fmt::Display for XDGRunTimeNotSet {
     }
 }
 
+/// Problem representing a failure in the autopkgtest testbed.
+///
+/// Contains a string describing the specific reason for the testbed failure.
 #[derive(Debug, Clone)]
 pub struct AutopkgtestTestbedFailure(pub String);
 
@@ -116,6 +130,10 @@ impl std::fmt::Display for AutopkgtestTestbedFailure {
     }
 }
 
+/// Problem representing an autopkgtest dependency chroot that disappeared.
+///
+/// This occurs when the chroot environment used for dependency resolution
+/// becomes unavailable during testing.
 #[derive(Debug, Clone)]
 pub struct AutopkgtestDepChrootDisappeared;
 
@@ -139,6 +157,9 @@ impl std::fmt::Display for AutopkgtestDepChrootDisappeared {
     }
 }
 
+/// Problem representing an erroneous package in autopkgtest.
+///
+/// Contains a string describing the specific package error encountered.
 #[derive(Debug, Clone)]
 pub struct AutopkgtestErroneousPackage(pub String);
 
@@ -164,6 +185,9 @@ impl std::fmt::Display for AutopkgtestErroneousPackage {
     }
 }
 
+/// Problem representing a failure detected from stderr output in autopkgtest.
+///
+/// Contains the stderr line that indicates the failure.
 #[derive(Debug, Clone)]
 pub struct AutopkgtestStderrFailure(pub String);
 
@@ -189,10 +213,17 @@ impl std::fmt::Display for AutopkgtestStderrFailure {
     }
 }
 
+/// Problem representing a failure during autopkgtest testbed setup.
+///
+/// Contains details about the command that failed, its exit status,
+/// and the error message.
 #[derive(Debug, Clone)]
 pub struct AutopkgtestTestbedSetupFailure {
+    /// The command that failed to execute properly.
     pub command: String,
+    /// The exit status code of the failed command.
     pub exit_status: i32,
+    /// The error message provided by the command.
     pub error: String,
 }
 

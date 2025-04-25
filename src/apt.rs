@@ -1,9 +1,27 @@
+//! Module for parsing and analyzing APT package manager logs.
+//!
+//! This module contains functions for detecting and diagnosing common issues
+//! in APT package manager output, such as missing packages, disk space issues,
+//! and dependency problems.
+
 use crate::lines::Lines;
 use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::lossless::relations::{Entry, Relations};
 
+/// Analyzes APT output to identify failures and their causes.
+///
+/// This function scans APT output for common error patterns and returns the matching line(s)
+/// along with a problem description.
+///
+/// # Arguments
+/// * `lines` - Vector of lines from an APT log
+///
+/// # Returns
+/// A tuple containing:
+/// * An optional match with the location of the error
+/// * An optional problem description
 pub fn find_apt_get_failure(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
@@ -221,6 +239,19 @@ pub fn find_apt_get_failure(
     ret
 }
 
+/// Analyzes APT update failure in an sbuild log.
+///
+/// This function extracts the "update chroot" section from an sbuild log
+/// and analyzes it for APT failures.
+///
+/// # Arguments
+/// * `sbuildlog` - The sbuild log to analyze
+///
+/// # Returns
+/// A tuple containing:
+/// * An optional section name where the failure was found
+/// * An optional match with the location of the error
+/// * An optional problem description
 pub fn find_apt_get_update_failure(
     sbuildlog: &crate::sbuild::SbuildLog,
 ) -> (
@@ -234,6 +265,18 @@ pub fn find_apt_get_update_failure(
     (Some(focus_section.to_string()), match_, problem)
 }
 
+/// Finds and parses CUDF output in a log.
+///
+/// This function searches for and extracts CUDF (Common Upgradeability Description Format)
+/// output from a log file.
+///
+/// # Arguments
+/// * `lines` - Vector of lines to search in
+///
+/// # Returns
+/// An optional tuple containing:
+/// * A vector of line offsets where the CUDF output was found
+/// * The parsed CUDF data
 pub(crate) fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
     let mut offset = None;
     for (i, line) in lines.enumerate_backward(None) {
@@ -253,6 +296,16 @@ pub(crate) fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::c
     Some((offsets, serde_yaml::from_str(&output.join("\n")).unwrap()))
 }
 
+/// Extracts error information from DOSE3 reports.
+///
+/// This function analyzes DOSE3 reports to identify dependency problems
+/// and conflicts.
+///
+/// # Arguments
+/// * `reports` - Slice of CUDF reports from DOSE3
+///
+/// # Returns
+/// An optional problem description extracted from the reports
 pub(crate) fn error_from_dose3_reports(
     reports: &[crate::cudf::Report],
 ) -> Option<Box<dyn Problem>> {

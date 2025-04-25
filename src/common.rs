@@ -1,8 +1,13 @@
+//! Common utilities for analyzing build logs across different environments.
+//!
+//! This module provides common functionality for analyzing build logs from various
+//! environments and identifying problems. It contains a wide range of pattern matchers
+//! and problem extraction logic that can be used by different log analyzers.
+//!
+//! NOTE: This module is currently a direct port from Python and needs refactoring.
+
 use crate::lines::Lines;
 use crate::problems::common::*;
-/// Common code for all environments.
-// TODO(jelmer): Right now this is just a straight port from Python. It needs a massive amount of
-// refactoring, including a split of the file.
 use crate::r#match::{Error, Matcher, MatcherGroup, RegexLineMatcher};
 use crate::regex_line_matcher;
 use crate::regex_para_matcher;
@@ -2958,6 +2963,20 @@ impl Matcher for CMakeErrorMatcher {
     }
 }
 
+/// Attempts to match and identify problems in the given lines.
+///
+/// This function applies common matchers to the specified lines to identify
+/// known problems in build logs.
+///
+/// # Arguments
+/// * `lines` - The log lines to analyze
+/// * `offset` - The offset at which to start analyzing
+///
+/// # Returns
+/// A result containing either:
+/// * `Ok(Some((match, problem)))` - A match was found, possibly with a problem
+/// * `Ok(None)` - No match was found
+/// * `Err(error)` - An error occurred during matching
 pub fn match_lines(
     lines: &[&str],
     offset: usize,
@@ -3321,6 +3340,17 @@ lazy_static::lazy_static! {
 ];
 }
 
+/// Finds secondary indicators of build failures in log lines.
+///
+/// This function looks for secondary patterns that suggest a build failure
+/// but aren't the primary error message.
+///
+/// # Arguments
+/// * `lines` - The log lines to analyze
+/// * `start_offset` - The number of lines to consider from the end of the log
+///
+/// # Returns
+/// An optional match for a potential build failure
 pub fn find_secondary_build_failure(
     lines: &[&str],
     start_offset: usize,

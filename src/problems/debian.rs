@@ -1,6 +1,10 @@
 use crate::Problem;
 use debversion::Version;
 
+/// Problem representing a generic dpkg error.
+///
+/// This struct is used for errors reported by the dpkg package manager
+/// that don't fit into more specific categories.
 #[derive(Debug)]
 pub struct DpkgError(pub String);
 
@@ -26,6 +30,10 @@ impl std::fmt::Display for DpkgError {
     }
 }
 
+/// Problem representing an error during apt-get update.
+///
+/// This struct is used when the apt package database update process
+/// fails for any reason.
 #[derive(Debug, Clone)]
 pub struct AptUpdateError;
 
@@ -49,9 +57,15 @@ impl std::fmt::Display for AptUpdateError {
     }
 }
 
+/// Problem representing a failure to fetch a package or repository data.
+///
+/// This struct is used when apt cannot download a package or repository
+/// data from the specified URL.
 #[derive(Debug, Clone)]
 pub struct AptFetchFailure {
+    /// The URL that apt was trying to fetch from, if available.
     pub url: Option<String>,
+    /// The error message from the fetch failure.
     pub error: String,
 }
 
@@ -82,6 +96,10 @@ impl std::fmt::Display for AptFetchFailure {
     }
 }
 
+/// Problem representing a missing Release file for a repository.
+///
+/// This struct is used when apt cannot find the Release file for a repository,
+/// which typically indicates a misconfigured or unavailable repository.
 #[derive(Debug, Clone)]
 pub struct AptMissingReleaseFile(pub String);
 
@@ -107,6 +125,10 @@ impl std::fmt::Display for AptMissingReleaseFile {
     }
 }
 
+/// Problem representing a package that apt cannot find.
+///
+/// This struct is used when apt cannot find a requested package in any
+/// of the configured repositories.
 #[derive(Debug, Clone)]
 pub struct AptPackageUnknown(pub String);
 
@@ -132,9 +154,15 @@ impl std::fmt::Display for AptPackageUnknown {
     }
 }
 
+/// Problem representing broken package dependencies.
+///
+/// This struct is used when apt reports broken packages in the dependency
+/// resolution process, which can occur when packages have incompatible dependencies.
 #[derive(Debug, Clone)]
 pub struct AptBrokenPackages {
+    /// A description of the broken package situation.
     pub description: String,
+    /// List of packages that are broken, if available.
     pub broken: Option<Vec<String>>,
 }
 
@@ -161,9 +189,15 @@ impl std::fmt::Display for AptBrokenPackages {
     }
 }
 
+/// Problem representing a missing upstream source tarball.
+///
+/// This struct is used when the build process cannot find the upstream
+/// source tarball for a package, which is required for the build.
 #[derive(Debug, Clone)]
 pub struct UnableToFindUpstreamTarball {
+    /// The name of the package.
     pub package: String,
+    /// The version of the package for which the tarball is missing.
     pub version: Version,
 }
 
@@ -194,9 +228,15 @@ impl std::fmt::Display for UnableToFindUpstreamTarball {
     }
 }
 
+/// Problem representing a source format that cannot be built.
+///
+/// This struct is used when the source package format specified in
+/// debian/source/format cannot be built for some reason.
 #[derive(Debug, Clone)]
 pub struct SourceFormatUnbuildable {
+    /// The source format that can't be built (e.g., "3.0 (quilt)").
     pub source_format: String,
+    /// The reason why the source format cannot be built.
     pub reason: String,
 }
 
@@ -227,6 +267,10 @@ impl std::fmt::Display for SourceFormatUnbuildable {
     }
 }
 
+/// Problem representing a source format that is not supported.
+///
+/// This struct is used when the source package format specified in
+/// debian/source/format is not supported by the build environment.
 #[derive(Debug, Clone)]
 pub struct SourceFormatUnsupported(pub String);
 
@@ -252,6 +296,10 @@ impl std::fmt::Display for SourceFormatUnsupported {
     }
 }
 
+/// Problem representing a missing patch file.
+///
+/// This struct is used when a build requires a patch file that is
+/// referenced in the debian/patches directory but is not found.
 #[derive(Debug, Clone)]
 pub struct PatchFileMissing(pub std::path::PathBuf);
 
@@ -277,9 +325,15 @@ impl std::fmt::Display for PatchFileMissing {
     }
 }
 
+/// Problem representing unexpected local changes in the source package.
+///
+/// This struct is used when dpkg-source detects unexpected local changes
+/// to upstream source code, which should be represented as patches instead.
 #[derive(Debug, Clone)]
 pub struct DpkgSourceLocalChanges {
+    /// Path to the diff file showing the changes, if available.
     pub diff_file: Option<String>,
+    /// List of files that have been changed locally, if available.
     pub files: Option<Vec<String>>,
 }
 
@@ -316,6 +370,10 @@ impl std::fmt::Display for DpkgSourceLocalChanges {
     }
 }
 
+/// Problem representing changes that cannot be represented in the source package.
+///
+/// This struct is used when dpkg-source detects changes that cannot be
+/// represented in the chosen source format, such as mode changes in some formats.
 #[derive(Debug, Clone)]
 pub struct DpkgSourceUnrepresentableChanges;
 
@@ -339,6 +397,10 @@ impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
     }
 }
 
+/// Problem representing unwanted binary files in the source package.
+///
+/// This struct is used when dpkg-source detects binary files in the source
+/// package that are not allowed, which can happen when the source is dirty.
 #[derive(Debug, Clone)]
 pub struct DpkgUnwantedBinaryFiles;
 
@@ -362,6 +424,10 @@ impl std::fmt::Display for DpkgUnwantedBinaryFiles {
     }
 }
 
+/// Problem representing changes to binary files in the source package.
+///
+/// This struct is used when dpkg-source detects that binary files have been
+/// changed, which cannot be properly represented in source package formats.
 #[derive(Debug, Clone)]
 pub struct DpkgBinaryFileChanged(pub Vec<String>);
 
@@ -387,6 +453,10 @@ impl std::fmt::Display for DpkgBinaryFileChanged {
     }
 }
 
+/// Problem representing a missing debian control file.
+///
+/// This struct is used when the debian/control file, which is required for
+/// any Debian package, is missing from the source package.
 #[derive(Debug, Clone)]
 pub struct MissingControlFile(pub std::path::PathBuf);
 
@@ -410,6 +480,10 @@ impl std::fmt::Display for MissingControlFile {
     }
 }
 
+/// Problem representing unknown Mercurial extra fields.
+///
+/// This struct is used when the build process encounters unknown extra fields
+/// in Mercurial version control metadata.
 #[derive(Debug, Clone)]
 pub struct UnknownMercurialExtraFields(pub String);
 
@@ -435,6 +509,10 @@ impl std::fmt::Display for UnknownMercurialExtraFields {
     }
 }
 
+/// Problem representing a failure to verify an upstream PGP signature.
+///
+/// This struct is used when the build process cannot verify the PGP signature
+/// of an upstream source tarball, which may indicate a security issue.
 #[derive(Debug, Clone)]
 pub struct UpstreamPGPSignatureVerificationFailed;
 
@@ -458,6 +536,10 @@ impl std::fmt::Display for UpstreamPGPSignatureVerificationFailed {
     }
 }
 
+/// Problem representing a missing requested version in uscan.
+///
+/// This struct is used when the uscan tool (which checks for upstream versions)
+/// cannot find a specifically requested version.
 #[derive(Debug, Clone)]
 pub struct UScanRequestVersionMissing(pub String);
 
@@ -483,6 +565,10 @@ impl std::fmt::Display for UScanRequestVersionMissing {
     }
 }
 
+/// Problem representing a failure in the debcargo tool.
+///
+/// This struct is used when the debcargo tool, which is used to package
+/// Rust crates as Debian packages, encounters an error.
 #[derive(Debug, Clone)]
 pub struct DebcargoFailure(pub String);
 
@@ -508,6 +594,10 @@ impl std::fmt::Display for DebcargoFailure {
     }
 }
 
+/// Problem representing an error parsing a debian/changelog file.
+///
+/// This struct is used when the build process encounters a syntax error
+/// or other issue when parsing the debian/changelog file.
 #[derive(Debug, Clone)]
 pub struct ChangelogParseError(pub String);
 
@@ -533,6 +623,10 @@ impl std::fmt::Display for ChangelogParseError {
     }
 }
 
+/// Problem representing a generic error in the uscan tool.
+///
+/// This struct is used when the uscan tool, which checks for upstream versions,
+/// encounters an error that doesn't fit into more specific categories.
 #[derive(Debug, Clone)]
 pub struct UScanError(pub String);
 
@@ -558,9 +652,15 @@ impl std::fmt::Display for UScanError {
     }
 }
 
+/// Problem representing a failure in the uscan tool.
+///
+/// This struct is used when the uscan tool fails to find or process
+/// upstream versions from a specific URL.
 #[derive(Debug, Clone)]
 pub struct UScanFailed {
+    /// The URL that uscan was trying to process.
     pub url: String,
+    /// The reason for the failure.
     pub reason: String,
 }
 
@@ -587,9 +687,15 @@ impl std::fmt::Display for UScanFailed {
     }
 }
 
+/// Problem representing inconsistency between source format and version.
+///
+/// This struct is used when there's an inconsistency between the source format
+/// specified in debian/source/format and the version numbering scheme.
 #[derive(Debug, Clone)]
 pub struct InconsistentSourceFormat {
+    /// Whether the version is inconsistent with the source format.
     pub version: bool,
+    /// Whether the source format is inconsistent with the version.
     pub source_format: bool,
 }
 
@@ -619,9 +725,15 @@ impl std::fmt::Display for InconsistentSourceFormat {
     }
 }
 
+/// Problem representing an error parsing the debian/upstream/metadata file.
+///
+/// This struct is used when the build process cannot parse the
+/// debian/upstream/metadata file, which contains information about the upstream project.
 #[derive(Debug, Clone)]
 pub struct UpstreamMetadataFileParseError {
+    /// The path to the metadata file.
     pub path: std::path::PathBuf,
+    /// The reason for the parsing failure.
     pub reason: String,
 }
 
@@ -648,6 +760,10 @@ impl std::fmt::Display for UpstreamMetadataFileParseError {
     }
 }
 
+/// Problem representing a failure in dpkg-source when packaging source files.
+///
+/// This struct is used when dpkg-source cannot package the source files
+/// into a source package for various reasons.
 #[derive(Debug, Clone)]
 pub struct DpkgSourcePackFailed(pub String);
 
@@ -673,9 +789,15 @@ impl std::fmt::Display for DpkgSourcePackFailed {
     }
 }
 
+/// Problem representing an invalid version string in a package.
+///
+/// This struct is used when dpkg encounters a version string that
+/// doesn't follow the Debian version format rules.
 #[derive(Debug, Clone)]
 pub struct DpkgBadVersion {
+    /// The invalid version string.
     pub version: String,
+    /// The reason why the version is invalid, if available.
     pub reason: Option<String>,
 }
 
@@ -706,9 +828,15 @@ impl std::fmt::Display for DpkgBadVersion {
     }
 }
 
+/// Problem representing a missing Rust crate in debcargo.
+///
+/// This struct is used when debcargo cannot find a Rust crate
+/// that is required for the build.
 #[derive(Debug, Clone)]
 pub struct MissingDebcargoCrate {
+    /// The name of the missing Rust crate.
     pub cratename: String,
+    /// The version of the crate that is required, if specified.
     pub version: Option<String>,
 }
 
@@ -744,6 +872,16 @@ impl std::fmt::Display for MissingDebcargoCrate {
 }
 
 impl MissingDebcargoCrate {
+    /// Creates a MissingDebcargoCrate instance from a string.
+    ///
+    /// Parses a string in the format "cratename=version" or just "cratename"
+    /// to create a new instance.
+    ///
+    /// # Arguments
+    /// * `text` - The string to parse
+    ///
+    /// # Returns
+    /// A new MissingDebcargoCrate instance
     pub fn from_string(text: &str) -> Self {
         let text = text.trim();
         if let Some((cratename, version)) = text.split_once('=') {
@@ -760,6 +898,10 @@ impl MissingDebcargoCrate {
     }
 }
 
+/// Problem representing a missing pristine-tar tree reference.
+///
+/// This struct is used when a pristine-tar operation cannot find
+/// a referenced tree in the git repository.
 #[derive(Debug, Clone)]
 pub struct PristineTarTreeMissing(pub String);
 
@@ -785,6 +927,10 @@ impl std::fmt::Display for PristineTarTreeMissing {
     }
 }
 
+/// Problem representing a missing revision in version control.
+///
+/// This struct is used when a build process references a revision
+/// in version control that does not exist.
 #[derive(Debug, Clone)]
 pub struct MissingRevision(pub Vec<u8>);
 
@@ -810,9 +956,15 @@ impl std::fmt::Display for MissingRevision {
     }
 }
 
+/// Problem representing a Rust crate dependency predicate that debcargo cannot handle.
+///
+/// This struct is used when debcargo cannot represent a predicate in a Rust
+/// crate dependency, such as certain prerelease version constraints.
 #[derive(Debug)]
 pub struct DebcargoUnacceptablePredicate {
+    /// The name of the crate with the unacceptable predicate.
     pub cratename: String,
+    /// The predicate that cannot be represented.
     pub predicate: String,
 }
 
@@ -843,9 +995,15 @@ impl std::fmt::Display for DebcargoUnacceptablePredicate {
     }
 }
 
+/// Problem representing a Rust crate dependency comparator that debcargo cannot handle.
+///
+/// This struct is used when debcargo cannot represent a version comparison operator
+/// in a Rust crate dependency, such as certain complex version constraints.
 #[derive(Debug)]
 pub struct DebcargoUnacceptableComparator {
+    /// The name of the crate with the unacceptable comparator.
     pub cratename: String,
+    /// The comparator that cannot be represented.
     pub comparator: String,
 }
 
@@ -876,6 +1034,10 @@ impl std::fmt::Display for DebcargoUnacceptableComparator {
     }
 }
 
+/// Problem representing a "too many requests" error from uscan.
+///
+/// This struct is used when uscan receives a rate limiting response
+/// from a server it is checking for upstream versions.
 #[derive(Debug)]
 pub struct UScanTooManyRequests(pub String);
 
@@ -901,6 +1063,10 @@ impl std::fmt::Display for UScanTooManyRequests {
     }
 }
 
+/// Problem representing unsatisfied conflicts in apt dependencies.
+///
+/// This struct is used when apt cannot resolve package conflicts
+/// during the dependency resolution process.
 #[derive(Debug)]
 pub struct UnsatisfiedAptConflicts(pub String);
 
@@ -928,9 +1094,15 @@ impl std::fmt::Display for UnsatisfiedAptConflicts {
 
 impl std::error::Error for UnsatisfiedAptConflicts {}
 
+/// Problem representing an architecture not in the supported architecture list.
+///
+/// This struct is used when a build is attempted for an architecture that
+/// is not in the list of architectures supported by the package.
 #[derive(Debug, Clone)]
 pub struct ArchitectureNotInList {
+    /// The architecture being built for.
     pub arch: String,
+    /// The list of supported architectures.
     pub arch_list: Vec<String>,
 }
 
@@ -957,6 +1129,10 @@ impl std::fmt::Display for ArchitectureNotInList {
     }
 }
 
+/// Problem representing unsatisfied dependencies in apt.
+///
+/// This struct is used when apt cannot satisfy the dependencies
+/// required for a package installation.
 #[derive(Debug)]
 pub struct UnsatisfiedAptDependencies(pub String);
 
@@ -982,9 +1158,15 @@ impl std::fmt::Display for UnsatisfiedAptDependencies {
     }
 }
 
+/// Problem representing insufficient disk space for a build.
+///
+/// This struct is used when a build process determines that there is
+/// not enough disk space available to complete the build.
 #[derive(Debug)]
 pub struct InsufficientDiskSpace {
+    /// The amount of disk space needed for the build in KiB.
     pub needed: i64,
+    /// The amount of free disk space available in KiB.
     pub free: i64,
 }
 
