@@ -1,10 +1,19 @@
+//! Module providing pattern matching functionality for log analysis.
+//!
+//! This module contains tools for matching patterns in logs and extracting problems.
+//! It includes regex-based matchers and a matcher group for combining multiple matchers.
+
 use crate::SingleLineMatch;
 use crate::{Match, Origin, Problem};
 use regex::{Captures, Regex};
 use std::fmt::Display;
 
+/// Error type for matchers.
+///
+/// Used when pattern matching or problem extraction fails.
 #[derive(Debug)]
 pub struct Error {
+    /// Error message describing what went wrong.
     pub message: String,
 }
 
@@ -16,12 +25,32 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
+/// A matcher that uses regular expressions to find patterns in single lines.
+///
+/// This matcher applies a regex to individual lines and can extract problem information
+/// through a callback function when a match is found.
 pub struct RegexLineMatcher {
+    /// The regular expression to match against each line.
     regex: Regex,
+    /// Callback function that extracts problem information from regex captures.
     callback: Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>,
 }
 
+/// Trait for pattern matchers that can extract matches and problems from logs.
+///
+/// Implementors of this trait can search through log lines to find patterns and
+/// extract problem information.
 pub trait Matcher: Sync {
+    /// Extracts a match and optional problem from a specific line in a log.
+    ///
+    /// # Arguments
+    /// * `lines` - The collection of log lines
+    /// * `offset` - The line offset to analyze
+    ///
+    /// # Returns
+    /// * `Ok(Some((match, problem)))` - A match was found along with an optional problem
+    /// * `Ok(None)` - No match was found
+    /// * `Err(error)` - An error occurred during matching
     fn extract_from_lines(
         &self,
         lines: &[&str],
@@ -30,6 +59,14 @@ pub trait Matcher: Sync {
 }
 
 impl RegexLineMatcher {
+    /// Creates a new `RegexLineMatcher` with the given regex and callback.
+    ///
+    /// # Arguments
+    /// * `regex` - The regex pattern to match against lines
+    /// * `callback` - Function that processes regex captures and returns an optional problem
+    ///
+    /// # Returns
+    /// A new `RegexLineMatcher` instance
     pub fn new(
         regex: Regex,
         callback: Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>,
@@ -37,10 +74,27 @@ impl RegexLineMatcher {
         Self { regex, callback }
     }
 
+    /// Checks if a line matches the regex pattern.
+    ///
+    /// # Arguments
+    /// * `line` - The line to check
+    ///
+    /// # Returns
+    /// `true` if the line matches the pattern, `false` otherwise
     pub fn matches_line(&self, line: &str) -> bool {
         self.regex.is_match(line)
     }
 
+    /// Attempts to extract problem information from a line.
+    ///
+    /// # Arguments
+    /// * `line` - The line to analyze
+    ///
+    /// # Returns
+    /// * `Ok(Some(Some(problem)))` - A match was found and a problem was extracted
+    /// * `Ok(Some(None))` - A match was found but no problem was extracted
+    /// * `Ok(None)` - No match was found
+    /// * `Err(error)` - An error occurred during matching or problem extraction
     pub fn extract_from_line(&self, line: &str) -> Result<Option<Option<Box<dyn Problem>>>, Error> {
         let c = self.regex.captures(line);
         if let Some(c) = c {
@@ -49,6 +103,10 @@ impl RegexLineMatcher {
         Ok(None)
     }
 
+    /// Creates an origin identifier for matches from this matcher.
+    ///
+    /// # Returns
+    /// An `Origin` identifying the regex pattern used for matching
     fn origin(&self) -> Origin {
         Origin(format!("direct regex ({})", self.regex.as_str()))
     }
@@ -73,6 +131,26 @@ impl Matcher for RegexLineMatcher {
     }
 }
 
+/// Macro for creating regex-based line matchers.
+///
+/// This macro simplifies the creation of `RegexLineMatcher` instances by automatically
+/// handling regex compilation and callback boxing.
+///
+/// # Examples
+///
+/// ```
+/// # use buildlog_consultant::regex_line_matcher;
+/// # use buildlog_consultant::r#match::RegexLineMatcher;
+/// // With callback
+/// let matcher = regex_line_matcher!(r"error: (.*)", |captures| {
+///     let message = captures.get(1).unwrap().as_str();
+///     // Process the error message
+///     Ok(None)
+/// });
+///
+/// // Without callback (just matches the pattern)
+/// let simple_matcher = regex_line_matcher!(r"warning");
+/// ```
 #[macro_export]
 macro_rules! regex_line_matcher {
     ($regex:expr, $callback:expr) => {
@@ -89,6 +167,26 @@ macro_rules! regex_line_matcher {
     };
 }
 
+/// Macro for creating regex-based paragraph matchers.
+///
+/// This macro is similar to `regex_line_matcher`, but creates matchers that can match
+/// across multiple lines by automatically enabling the "dot matches newline" regex flag (?s).
+///
+/// # Examples
+///
+/// ```
+/// # use buildlog_consultant::regex_para_matcher;
+/// # use buildlog_consultant::r#match::RegexLineMatcher;
+/// // With callback
+/// let matcher = regex_para_matcher!(r"BEGIN(.*?)END", |captures| {
+///     let content = captures.get(1).unwrap().as_str();
+///     // Process the content between BEGIN and END
+///     Ok(None)
+/// });
+///
+/// // Without callback
+/// let simple_matcher = regex_para_matcher!(r"function\s*\{.*?\}");
+/// ```
 #[macro_export]
 macro_rules! regex_para_matcher {
     ($regex:expr, $callback:expr) => {{
@@ -105,9 +203,20 @@ macro_rules! regex_para_matcher {
     }};
 }
 
+/// A group of matchers that can be used to match multiple patterns.
+///
+/// This struct allows combining multiple matchers and trying them in sequence
+/// until a match is found.
 pub struct MatcherGroup(Vec<Box<dyn Matcher>>);
 
 impl MatcherGroup {
+    /// Creates a new `MatcherGroup` with the given matchers.
+    ///
+    /// # Arguments
+    /// * `matchers` - Vector of boxed matchers
+    ///
+    /// # Returns
+    /// A new `MatcherGroup` instance
     pub fn new(matchers: Vec<Box<dyn Matcher>>) -> Self {
         Self(matchers)
     }
@@ -126,6 +235,19 @@ impl From<Vec<Box<dyn Matcher>>> for MatcherGroup {
 }
 
 impl MatcherGroup {
+    /// Tries each matcher in the group until one finds a match.
+    ///
+    /// This method attempts to extract a match and problem from a specific line
+    /// by trying each matcher in the group in sequence until one succeeds.
+    ///
+    /// # Arguments
+    /// * `lines` - The collection of log lines
+    /// * `offset` - The line offset to analyze
+    ///
+    /// # Returns
+    /// * `Ok(Some((match, problem)))` - A match was found by one of the matchers
+    /// * `Ok(None)` - No match was found by any matcher
+    /// * `Err(error)` - An error occurred during matching
     pub fn extract_from_lines(
         &self,
         lines: &[&str],

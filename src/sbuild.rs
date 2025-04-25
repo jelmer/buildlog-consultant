@@ -1,7 +1,9 @@
-//! Parsing of Debian sbuild logs
+//! Module for parsing and analyzing Debian sbuild logs.
 //!
-//! This module provides a parser for Debian sbuild logs. It extracts the different sections of the
-//! log file, and makes them accessible.
+//! This module provides functionality for parsing Debian sbuild logs, extracting
+//! structured information from them, and identifying common build failures.
+//! It can analyze logs for issues like dependency problems, space issues,
+//! compilation errors, and other common build failures.
 
 use crate::common::find_build_failure_description;
 use crate::lines::Lines;
@@ -17,6 +19,16 @@ use std::iter::Iterator;
 use std::str::FromStr;
 use std::time::Duration;
 
+/// Finds the failed stage in sbuild log lines.
+///
+/// This function searches for a line starting with "Fail-Stage: " and returns
+/// the stage value if found.
+///
+/// # Arguments
+/// * `lines` - The log lines to search
+///
+/// # Returns
+/// An optional reference to the failed stage string
 pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
     for line in lines {
         if let Some(value) = line.strip_prefix("Fail-Stage: ") {
@@ -26,31 +38,77 @@ pub fn find_failed_stage<'a>(lines: &'a [&'a str]) -> Option<&'a str> {
     None
 }
 
+/// Summary information extracted from an sbuild log.
+///
+/// This structure contains metadata about a build extracted from an sbuild log,
+/// including build times, architectures, package information, and failure details.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Summary {
+    /// The architecture the package was built for.
     build_architecture: Option<String>,
+
+    /// The type of build (e.g., binary, source).
     build_type: Option<String>,
+
+    /// How long the build process took.
     build_time: Option<Duration>,
+
+    /// Disk space used by the build.
     build_space: Option<Space>,
+
+    /// The architecture of the host system.
     host_architecture: Option<String>,
+
+    /// How long package installation took.
     install_time: Option<Duration>,
+
+    /// Output from lintian, if available.
     lintian: Option<String>,
+
+    /// The name of the package being built.
     package: Option<String>,
+
+    /// How long the packaging step took.
     package_time: Option<Duration>,
+
+    /// The target distribution (e.g., unstable, bullseye).
     distribution: Option<String>,
+
+    /// The stage at which the build failed, if applicable.
     fail_stage: Option<String>,
+
+    /// Job identifier.
     job: Option<String>,
+
+    /// Autopkgtest information, if available.
     autopkgtest: Option<String>,
+
+    /// The version of the source package.
     source_version: Option<Version>,
+
+    /// The machine architecture.
     machine_architecture: Option<String>,
+
+    /// The final status of the build (e.g., successful, failed).
     status: Option<String>,
+
+    /// Disk space information.
     space: Option<Space>,
+
+    /// The version of the built package.
     version: Option<Version>,
 }
 
+/// Representation of disk space information.
+///
+/// This enum represents disk space information, either as a byte count
+/// or indicating that space information is not available.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Space {
+    /// Indicates that space information is not available.
     NotAvailable,
+
+    /// Space in bytes.
     Bytes(u64),
 }
 
@@ -66,6 +124,16 @@ impl std::str::FromStr for Space {
     }
 }
 
+/// Parses sbuild summary information from log lines.
+///
+/// This function extracts metadata about a build from sbuild log lines,
+/// such as build times, architectures, package information, and status.
+///
+/// # Arguments
+/// * `lines` - The log lines to parse
+///
+/// # Returns
+/// A `Summary` structure containing the extracted information
 pub fn parse_summary(lines: &[&str]) -> Summary {
     let mut build_architecture = None;
     let mut build_type = None;
@@ -140,6 +208,10 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
     }
 }
 
+/// Structure representing a parsed sbuild log file.
+///
+/// This structure contains the parsed sections of an sbuild log file,
+/// allowing for easy access to different parts of the build log.
 #[derive(Debug, Clone)]
 pub struct SbuildLog(pub Vec<SbuildLogSection>);
 
@@ -173,6 +245,13 @@ impl SbuildLog {
         self.0.iter()
     }
 
+    /// Get the summary information from the log.
+    ///
+    /// This method extracts and parses the Summary section of the log
+    /// if it exists.
+    ///
+    /// # Returns
+    /// An optional `Summary` structure containing build metadata
     pub fn summary(&self) -> Option<Summary> {
         let lines = self.get_section_lines(Some("Summary"));
         lines.map(|lines| parse_summary(lines.as_slice()))
@@ -207,19 +286,42 @@ impl FromStr for SbuildLog {
     }
 }
 
+/// A section of an sbuild log file.
+///
+/// This structure represents a section of an sbuild log file, identified by
+/// its title, line offsets, and content.
 #[derive(Debug, Clone)]
 pub struct SbuildLogSection {
+    /// The title of the section, if any.
     pub title: Option<String>,
+
+    /// The starting and ending line offsets of the section in the original log.
     pub offsets: (usize, usize),
+
+    /// The lines of text in the section.
     pub lines: Vec<String>,
 }
 
 impl SbuildLogSection {
+    /// Returns the lines in this section as string slices.
+    ///
+    /// # Returns
+    /// A vector of string slices, one for each line in the section
     pub fn lines(&self) -> Vec<&str> {
         self.lines.iter().map(|x| x.as_str()).collect()
     }
 }
 
+/// Parses an sbuild log file into sections.
+///
+/// This function reads an sbuild log file and divides it into sections based on
+/// the standard sbuild section formatting with separator lines.
+///
+/// # Arguments
+/// * `reader` - A buffered reader providing access to the log file
+///
+/// # Returns
+/// An iterator over the sections found in the log file
 pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = SbuildLogSection> {
     let mut begin_offset = 1;
     let mut lines = Vec::new();
@@ -301,12 +403,28 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
     sections.into_iter()
 }
 
+/// Represents a failure in an sbuild log.
+///
+/// This structure contains information about a build failure, including
+/// the stage where it failed, a description of the failure, and the
+/// specific problem that caused the failure.
 pub struct SbuildFailure {
+    /// The build stage where the failure occurred (e.g., "unpack", "build").
     pub stage: Option<String>,
+
+    /// A human-readable description of the failure.
     pub description: Option<String>,
+
+    /// The specific problem that caused the failure.
     pub error: Option<Box<dyn Problem>>,
+
+    /// The phase of the build process where the failure occurred.
     pub phase: Option<Phase>,
+
+    /// The log section containing the failure.
     pub section: Option<SbuildLogSection>,
+
+    /// The matched text identifying the failure.
     pub r#match: Option<Box<dyn Match>>,
 }
 
@@ -350,6 +468,16 @@ impl std::fmt::Display for SbuildFailure {
     }
 }
 
+/// Searches for build failure descriptions in the preamble of a log file.
+///
+/// This function looks for various error patterns in the preamble section of a build log,
+/// such as dpkg-source errors, local changes, unrepresentable changes, and patch failures.
+///
+/// # Arguments
+/// * `lines` - The log lines to search
+///
+/// # Returns
+/// A tuple containing an optional Match and an optional Problem representing the failure
 pub fn find_preamble_failure_description(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
@@ -654,14 +782,25 @@ pub fn find_preamble_failure_description(
     ret
 }
 
+/// The phase of the build process where a failure occurred.
+///
+/// This enum represents the different phases of the build process
+/// that can be identified when analyzing a build failure.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Phase {
+    /// Autopkgtest phase with a test name.
     #[serde(rename = "autopkgtest")]
     AutoPkgTest(String),
+
+    /// Main build phase.
     #[serde(rename = "build")]
     Build,
+
+    /// Build environment setup phase.
     #[serde(rename = "build-env")]
     BuildEnv,
+
+    /// Session creation phase.
     #[serde(rename = "create-session")]
     CreateSession,
 }
@@ -677,8 +816,22 @@ impl std::fmt::Display for Phase {
     }
 }
 
+/// Default number of lines to look back when searching for build information.
 pub const DEFAULT_LOOK_BACK: usize = 50;
 
+/// Strips the unnecessary tail from build logs and extracts file contents.
+///
+/// This function removes boilerplate content from the end of build logs and
+/// extracts content labeled with "==> FILE <==".
+///
+/// # Arguments
+/// * `lines` - The log lines to process
+/// * `look_back` - Optional number of lines to look back when searching for build end markers
+///
+/// # Returns
+/// A tuple containing:
+/// * The trimmed log body
+/// * A map of file names to their contents
 pub fn strip_build_tail<'a>(
     lines: &'a [&'a str],
     look_back: Option<usize>,
@@ -730,6 +883,17 @@ pub fn strip_build_tail<'a>(
     (body, files)
 }
 
+/// Analyzes log sections to find failures in the fetch source stage.
+///
+/// This function examines the log for errors that occurred during the "fetch source files"
+/// stage of an sbuild build process.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_fetch_src(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
     let section = if let Some(section) = sbuildlog.get_section(Some("fetch source files")) {
         section
@@ -767,6 +931,17 @@ pub fn find_failure_fetch_src(sbuildlog: &SbuildLog, failed_stage: &str) -> Opti
     })
 }
 
+/// Analyzes log sections to find failures in the session creation stage.
+///
+/// This function examines the log for errors that occurred during the "create-session"
+/// stage of an sbuild build process, such as chroot not found errors.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_create_session(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
@@ -785,6 +960,16 @@ pub fn find_failure_create_session(
     })
 }
 
+/// Searches for errors that occur during session creation.
+///
+/// This function examines log lines to find errors related to session creation,
+/// such as chroot not found or disk space issues.
+///
+/// # Arguments
+/// * `lines` - The log lines to search
+///
+/// # Returns
+/// A tuple containing an optional Match and an optional Problem representing the failure
 pub fn find_creation_session_error(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
@@ -831,6 +1016,17 @@ pub fn find_creation_session_error(
     ret
 }
 
+/// Analyzes log sections to find failures in the unpack stage.
+///
+/// This function examines the log for errors that occurred during the "unpack"
+/// stage of an sbuild build process.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_unpack(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
     let section = sbuildlog.get_section(Some("build"));
     if let Some(section) = section {
@@ -857,6 +1053,17 @@ pub fn find_failure_unpack(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<
     })
 }
 
+/// Analyzes log sections to find failures in the build stage.
+///
+/// This function examines the log for errors that occurred during the main "build"
+/// stage of an sbuild build process, looking for compilation errors and other build issues.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_build(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
     let phase = Phase::Build;
     let (section, r#match, error) = if let Some(section) = sbuildlog.get_section(Some("build")) {
@@ -884,6 +1091,17 @@ pub fn find_failure_build(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<S
     })
 }
 
+/// Analyzes log sections to find failures in the apt-get update stage.
+///
+/// This function examines the log for errors that occurred during the "apt-get update"
+/// stage of an sbuild build process, such as repository access issues.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_apt_get_update(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
@@ -906,6 +1124,16 @@ pub fn find_failure_apt_get_update(
     })
 }
 
+/// Searches for architecture check failures in log lines.
+///
+/// This function examines log lines to identify architecture compatibility issues,
+/// such as when a package doesn't support the current architecture.
+///
+/// # Arguments
+/// * `lines` - The log lines to search
+///
+/// # Returns
+/// A tuple containing an optional Match and an optional Problem representing the failure
 fn find_arch_check_failure_description(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
@@ -941,6 +1169,17 @@ fn find_arch_check_failure_description(
     )
 }
 
+/// Analyzes log sections to find failures in the architecture check stage.
+///
+/// This function examines the log for errors that occurred during the "arch-check"
+/// stage of an sbuild build process, such as unsupported architectures.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_arch_check(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
     let section = sbuildlog.get_section(Some("check architectures"));
     let (r#match, error) = section.map_or((None, None), |s| {
@@ -961,6 +1200,17 @@ pub fn find_failure_arch_check(sbuildlog: &SbuildLog, failed_stage: &str) -> Opt
     })
 }
 
+/// Analyzes log sections to find failures in the disk space check stage.
+///
+/// This function examines the log for errors that occurred during the "check-space"
+/// stage of an sbuild build process, such as insufficient disk space.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_check_space(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
@@ -982,8 +1232,26 @@ pub fn find_failure_check_space(
     })
 }
 
+/// Section title for dose3 dependency resolution logs.
+///
+/// This is the standard section title used in sbuild logs when using the dose3/aspcud
+/// dependency resolver to install build dependencies.
 pub const DOSE3_SECTION: &str = "install dose3 build dependencies (aspcud-based resolver)";
 
+/// Examines sbuild logs for dependency installation failures.
+///
+/// This function looks for failures during the dependency installation phase,
+/// searching in multiple possible dependency installation sections including
+/// dose3-based and apt-based dependency resolution.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+///
+/// # Returns
+/// A tuple containing:
+/// * An optional section title where the failure was found
+/// * An optional Match representing the specific failure
+/// * An optional Problem describing the dependency issue
 pub fn find_install_deps_failure_description(
     sbuildlog: &SbuildLog,
 ) -> (
@@ -1033,6 +1301,18 @@ pub fn find_install_deps_failure_description(
     (None, None, None)
 }
 
+/// Analyzes log sections to find failures in the dependency installation stage.
+///
+/// This function examines the log for errors that occurred during the "install-deps"
+/// or "explain-bd-uninstallable" stages of an sbuild build process, such as
+/// unresolvable dependencies or package conflicts.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_install_deps(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
@@ -1060,6 +1340,18 @@ pub fn find_failure_install_deps(
     })
 }
 
+/// Analyzes log sections to find failures in the autopkgtest stage.
+///
+/// This function examines the log for errors that occurred during the autopkgtest
+/// stages of an sbuild build process, including post-build commands and
+/// automated test failures.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+/// * `failed_stage` - The stage name that failed
+///
+/// # Returns
+/// An optional SbuildFailure structure with information about the failure
 pub fn find_failure_autopkgtest(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
@@ -1093,6 +1385,16 @@ pub fn find_failure_autopkgtest(
     })
 }
 
+/// Creates a SbuildFailure by analyzing a complete sbuild log.
+///
+/// This function analyzes a complete sbuild log and creates a SbuildFailure
+/// containing information about what went wrong during the build.
+///
+/// # Arguments
+/// * `sbuildlog` - The parsed sbuild log to analyze
+///
+/// # Returns
+/// A SbuildFailure structure with information about the failure
 pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
     // TODO(jelmer): Doesn't this do the same thing as the tail?
     if sbuildlog
@@ -1190,6 +1492,16 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
     }
 }
 
+/// Searches for disk space check failures in log lines.
+///
+/// This function examines log lines to identify disk space issues,
+/// such as insufficient space for the build process.
+///
+/// # Arguments
+/// * `lines` - The log lines to search
+///
+/// # Returns
+/// A tuple containing an optional Match and an optional Problem representing the failure
 fn find_check_space_failure_description(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {

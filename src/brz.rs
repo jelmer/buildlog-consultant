@@ -1,8 +1,24 @@
+//! Module for parsing and analyzing Bazaar (brz) version control system logs.
+//!
+//! This module contains functions to identify and diagnose common issues in
+//! Bazaar/Breezy output, particularly in the context of Debian packaging.
+
 use crate::lines::Lines;
 use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
 use crate::Problem;
 
+/// Searches for Bazaar (brz) build errors in log lines.
+///
+/// This function scans log lines for Bazaar errors and extracts problem information.
+///
+/// # Arguments
+/// * `lines` - Vector of log lines to analyze
+///
+/// # Returns
+/// An optional tuple containing:
+/// * An optional problem description
+/// * A string representation of the error
 pub fn find_brz_build_error(lines: Vec<&str>) -> Option<(Option<Box<dyn Problem>>, String)> {
     for (i, line) in lines.enumerate_backward(None) {
         if let Some(suffix) = line.strip_prefix("brz: ERROR: ") {
@@ -20,6 +36,17 @@ pub fn find_brz_build_error(lines: Vec<&str>) -> Option<(Option<Box<dyn Problem>
     None
 }
 
+/// Extracts debcargo-specific failures from brz error output.
+///
+/// This function parses error output specific to debcargo failures,
+/// looking for patterns like "Couldn't find any crate matching".
+///
+/// # Arguments
+/// * `_` - The regex captures (unused)
+/// * `prior_lines` - Lines preceding the error to analyze for context
+///
+/// # Returns
+/// An optional problem description
 fn parse_debcargo_failure(_: &regex::Captures, prior_lines: Vec<&str>) -> Option<Box<dyn Problem>> {
     const MORE_TAIL: &str = "\x1b[0m\n";
     const MORE_HEAD1: &str = "\x1b[1;31mSomething failed: ";
@@ -106,6 +133,19 @@ lazy_static::lazy_static! {
     ];
 }
 
+/// Parses a brz error message to identify the specific problem.
+///
+/// This function analyzes a Bazaar error message line and the preceding context
+/// to determine the specific problem type.
+///
+/// # Arguments
+/// * `line` - The error message to parse
+/// * `prior_lines` - Vector of lines preceding the error message in the log
+///
+/// # Returns
+/// A tuple containing:
+/// * An optional problem description if the error is recognized
+/// * A string representation of the error
 pub fn parse_brz_error<'a>(
     line: &'a str,
     prior_lines: Vec<&'a str>,

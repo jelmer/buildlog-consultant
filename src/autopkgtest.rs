@@ -1,22 +1,62 @@
+//! Module for parsing and analyzing autopkgtest logs.
+//!
+//! This module provides functionality for parsing and analyzing logs from
+//! autopkgtest, the Debian automated testing framework. It can identify and
+//! extract test results, errors, and other information from autopkgtest logs.
+
 use crate::lines::Lines;
 use crate::problems::autopkgtest::*;
 use crate::{Match, Problem, SingleLineMatch};
 use std::collections::HashMap;
 
+/// Represents different types of log packets in autopkgtest output.
+///
+/// Each variant corresponds to a specific type of log entry in autopkgtest output,
+/// such as test results, source information, or error messages.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Packet<'a> {
+    /// Source information marker in the log.
     Source,
+
+    /// Summary section marker in the log.
     Summary,
+
+    /// Beginning of test output for a specific test.
     TestBeginOutput(&'a str),
+
+    /// End of test output for a specific test.
     TestEndOutput(&'a str),
+
+    /// Test results section for a specific test.
     Results(&'a str),
+
+    /// Standard error output from a specific test.
     Stderr(&'a str),
+
+    /// Testbed setup information for a specific test.
     TestbedSetup(&'a str),
+
+    /// General test output with test name and status.
     TestOutput(&'a str, &'a str),
+
+    /// Error message in the log.
     Error(&'a str),
+
+    /// Other unrecognized log entries.
     Other(&'a str),
 }
 
+/// Parses a single line from an autopkgtest log.
+///
+/// This function extracts the timestamp and message content from a log line
+/// and categorizes it into a specific type of packet.
+///
+/// # Arguments
+/// * `line` - The log line to parse
+///
+/// # Returns
+/// An option containing a tuple of (timestamp, packet) if the line is a valid autopkgtest log line,
+/// or None if the line doesn't match the expected format
 fn parse_autopgktest_line(line: &str) -> Option<(&str, Packet)> {
     let (timestamp, message) =
         match lazy_regex::regex_captures!(r"autopkgtest \[([0-9:]+)\]: (.*)", line) {
@@ -53,11 +93,21 @@ fn parse_autopgktest_line(line: &str) -> Option<(&str, Packet)> {
     }
 }
 
+/// Represents the result of an individual autopkgtest test.
+///
+/// This enum represents the possible outcomes of an autopkgtest test case.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TestResult {
+    /// Test passed successfully.
     Pass,
+
+    /// Test failed.
     Fail,
+
+    /// Test was skipped.
     Skip,
+
+    /// Test produced inconsistent results (sometimes passes, sometimes fails).
     Flaky,
 }
 
@@ -75,24 +125,56 @@ impl std::str::FromStr for TestResult {
     }
 }
 
+/// Summary of an autopkgtest test result.
+///
+/// This structure represents a summary of an individual test result from an autopkgtest run,
+/// including the test name, result status, and additional information.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Summary {
+    /// The line offset of this summary in the log.
     pub offset: usize,
+
+    /// The name of the test.
     pub name: String,
+
+    /// The result of the test (pass, fail, skip, or flaky).
     pub result: TestResult,
+
+    /// Optional reason for the result, especially useful for failures.
     pub reason: Option<String>,
+
+    /// Additional information about the test result.
     pub extra: Vec<String>,
 }
 
 impl Summary {
+    /// Gets the line offset of this summary in the log.
+    ///
+    /// # Returns
+    /// The zero-based line offset
     pub fn offset(&self) -> usize {
         self.offset
     }
+
+    /// Gets the line number of this summary in the log.
+    ///
+    /// # Returns
+    /// The one-based line number
     pub fn lineno(&self) -> usize {
         self.offset + 1
     }
 }
 
+/// Parses autopkgtest summary lines to extract test results.
+///
+/// This function analyzes the summary section of an autopkgtest log
+/// and extracts information about individual test results.
+///
+/// # Arguments
+/// * `lines` - Vector of log lines from the summary section
+///
+/// # Returns
+/// A vector of `Summary` structures, one for each identified test result
 pub fn parse_autopkgtest_summary(lines: Vec<&str>) -> Vec<Summary> {
     let mut i = 0;
     let mut ret = vec![];
@@ -138,13 +220,28 @@ pub fn parse_autopkgtest_summary(lines: Vec<&str>) -> Vec<Summary> {
     ret
 }
 
+/// Represents different field types in an autopkgtest log.
+///
+/// This enum is used internally to categorize different sections of the log
+/// based on their content type and associated test.
 #[derive(Debug, PartialEq, Eq, Clone, std::hash::Hash)]
 enum Field {
+    /// General output for a specific test.
     Output(String),
+
+    /// Specific field output for a test.
     FieldOutput(String, String),
+
+    /// Standard error output for a test.
     Stderr(String),
+
+    /// Results output for a test.
     Results(String),
+
+    /// Testbed preparation output for a test.
     PrepareTestbed(String),
+
+    /// Summary section.
     Summary,
 }
 
@@ -682,6 +779,18 @@ pub fn find_autopkgtest_failure_description(
     (None, None, None, None)
 }
 
+/// Searches for testbed setup failures in autopkgtest logs.
+///
+/// This function analyzes log lines to identify errors that occurred during
+/// the autopkgtest testbed setup phase, such as chroot not found errors.
+///
+/// # Arguments
+/// * `lines` - Vector of log lines to analyze
+///
+/// # Returns
+/// A tuple containing:
+/// * An optional match identifying the location of the error
+/// * An optional problem description
 pub fn find_testbed_setup_failure(
     lines: Vec<&str>,
 ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {

@@ -1,12 +1,50 @@
+//! Module providing utilities for working with collections of text lines.
+//!
+//! This module defines the `Lines` trait and its implementations to provide
+//! consistent interfaces for iterating through lines in different directions
+//! and with different options.
+
+/// Trait for collections of text lines that provides bidirectional iteration.
+///
+/// This trait provides methods to iterate forward and backward through
+/// collections of text lines, with optional limits and offset information.
 pub trait Lines<'a> {
+    /// Iterates forward through the lines.
+    ///
+    /// # Arguments
+    /// * `limit` - Optional maximum number of lines to return
+    ///
+    /// # Returns
+    /// An iterator yielding lines in forward order
     fn iter_forward(&'a self, limit: Option<usize>) -> impl Iterator<Item = &'a str>;
 
+    /// Iterates forward through the lines with indices.
+    ///
+    /// # Arguments
+    /// * `limit` - Optional maximum number of lines to return
+    ///
+    /// # Returns
+    /// An iterator yielding (index, line) pairs in forward order
     fn enumerate_forward(&'a self, limit: Option<usize>) -> impl Iterator<Item = (usize, &'a str)> {
         self.iter_forward(limit).enumerate()
     }
 
+    /// Iterates backward through the lines.
+    ///
+    /// # Arguments
+    /// * `limit` - Optional maximum number of lines to return
+    ///
+    /// # Returns
+    /// An iterator yielding lines in reverse order
     fn iter_backward(&'a self, limit: Option<usize>) -> impl DoubleEndedIterator<Item = &'a str>;
 
+    /// Iterates forward through the last N lines with indices.
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of lines to return from the end
+    ///
+    /// # Returns
+    /// An iterator yielding (index, line) pairs for the last `limit` lines
     fn enumerate_tail_forward(&'a self, limit: usize) -> impl Iterator<Item = (usize, &'a str)> {
         let start_offset = self.len().saturating_sub(limit);
         self.iter_forward(None)
@@ -15,6 +53,13 @@ pub trait Lines<'a> {
             .map(move |(i, s)| (i + start_offset, s))
     }
 
+    /// Iterates backward through the lines with original indices.
+    ///
+    /// # Arguments
+    /// * `limit` - Optional maximum number of lines to return
+    ///
+    /// # Returns
+    /// An iterator yielding (original_index, line) pairs in reverse order
     fn enumerate_backward(
         &'a self,
         limit: Option<usize>,
@@ -25,7 +70,16 @@ pub trait Lines<'a> {
             .map(move |(i, s)| (len - i - 1, s))
     }
 
+    /// Returns the number of lines in the collection.
+    ///
+    /// # Returns
+    /// The line count
     fn len(&self) -> usize;
+
+    /// Checks if the collection is empty.
+    ///
+    /// # Returns
+    /// `true` if the collection contains no lines, `false` otherwise
     fn is_empty(&self) -> bool;
 }
 

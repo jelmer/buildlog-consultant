@@ -1,12 +1,31 @@
+//! Module for using ChatGPT to analyze build logs.
+//!
+//! This module provides functionality to use the ChatGPT API to identify
+//! the most likely error line in a build log.
+
 use crate::SingleLineMatch;
 use chatgpt::prelude::*;
 use chatgpt::types::CompletionResponse;
 
+/// Maximum number of tokens allowed in a ChatGPT request.
 pub const MAX_TOKENS: usize = 4096;
 
+/// Initial prompt used to ask ChatGPT to identify the error in a log file.
 pub const INITIAL_PROMPT: &str =
     "Which line in the log file below is the clearest explanation of a problem:\n\n";
 
+/// Uses ChatGPT to analyze log lines and identify the most likely error.
+///
+/// This function sends a portion of the log file to the ChatGPT API and asks
+/// it to identify the line that best explains the problem. It then tries to
+/// match the ChatGPT response back to an actual line in the log.
+///
+/// # Arguments
+/// * `chatgpt_key` - API key for ChatGPT
+/// * `lines` - Vector of log lines to analyze
+///
+/// # Returns
+/// An optional `SingleLineMatch` pointing to the identified error line
 pub async fn analyze(chatgpt_key: String, lines: Vec<&str>) -> Option<SingleLineMatch> {
     let client = ChatGPT::new(chatgpt_key).unwrap();
 
