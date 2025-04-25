@@ -139,3 +139,219 @@ impl MatcherGroup {
         Ok(None)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::borrow::Cow;
+
+    #[derive(Debug)]
+    struct TestProblem {
+        description: String,
+    }
+
+    impl std::fmt::Display for TestProblem {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.description)
+        }
+    }
+
+    impl Problem for TestProblem {
+        fn kind(&self) -> Cow<str> {
+            Cow::Borrowed("test")
+        }
+
+        fn json(&self) -> serde_json::Value {
+            serde_json::json!({
+                "description": self.description,
+            })
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+
+    #[test]
+    fn test_error_display() {
+        let error = Error {
+            message: "test error".to_string(),
+        };
+        assert_eq!(error.to_string(), "test error");
+    }
+
+    #[test]
+    fn test_regex_line_matcher_new() {
+        let regex = Regex::new(r"test").unwrap();
+        let callback = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem".to_string(),
+            })))
+        });
+        let matcher = RegexLineMatcher::new(regex, callback);
+        assert!(matcher.matches_line("test line"));
+        assert!(!matcher.matches_line("other line"));
+    }
+
+    #[test]
+    fn test_regex_line_matcher_matches_line() {
+        let regex = Regex::new(r"test").unwrap();
+        let callback =
+            Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> { Ok(None) });
+        let matcher = RegexLineMatcher::new(regex, callback);
+        assert!(matcher.matches_line("test line"));
+        assert!(!matcher.matches_line("other line"));
+    }
+
+    #[test]
+    fn test_regex_line_matcher_extract_from_line() {
+        let regex = Regex::new(r"test").unwrap();
+        let callback = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem".to_string(),
+            })))
+        });
+        let matcher = RegexLineMatcher::new(regex, callback);
+        let result = matcher.extract_from_line("test line").unwrap();
+        assert!(result.is_some());
+        let problem = result.unwrap();
+        assert!(problem.is_some());
+        let problem = problem.unwrap();
+        assert_eq!(problem.kind(), "test");
+    }
+
+    #[test]
+    fn test_regex_line_matcher_extract_from_line_no_match() {
+        let regex = Regex::new(r"test").unwrap();
+        let callback = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem".to_string(),
+            })))
+        });
+        let matcher = RegexLineMatcher::new(regex, callback);
+        let result = matcher.extract_from_line("other line").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_regex_line_matcher_extract_from_line_no_problem() {
+        let regex = Regex::new(r"test").unwrap();
+        let callback =
+            Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> { Ok(None) });
+        let matcher = RegexLineMatcher::new(regex, callback);
+        let result = matcher.extract_from_line("test line").unwrap();
+        assert!(result.is_some());
+        let problem = result.unwrap();
+        assert!(problem.is_none());
+    }
+
+    #[test]
+    fn test_regex_line_matcher_extract_from_lines() {
+        let regex = Regex::new(r"test").unwrap();
+        let callback = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem".to_string(),
+            })))
+        });
+        let matcher = RegexLineMatcher::new(regex, callback);
+        let lines = vec!["line 1", "test line", "line 3"];
+        let result = matcher.extract_from_lines(&lines, 1).unwrap();
+        assert!(result.is_some());
+        let (m, problem) = result.unwrap();
+        assert_eq!(m.line(), "test line");
+        assert_eq!(m.offset(), 1);
+        assert!(problem.is_some());
+        let problem = problem.unwrap();
+        assert_eq!(problem.kind(), "test");
+    }
+
+    #[test]
+    fn test_regex_line_matcher_extract_from_lines_no_match() {
+        let regex = Regex::new(r"test").unwrap();
+        let callback = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem".to_string(),
+            })))
+        });
+        let matcher = RegexLineMatcher::new(regex, callback);
+        let lines = vec!["line 1", "line 2", "line 3"];
+        let result = matcher.extract_from_lines(&lines, 1).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_matcher_group() {
+        let regex1 = Regex::new(r"test1").unwrap();
+        let callback1 = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem 1".to_string(),
+            })))
+        });
+        let matcher1 = RegexLineMatcher::new(regex1, callback1);
+
+        let regex2 = Regex::new(r"test2").unwrap();
+        let callback2 = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem 2".to_string(),
+            })))
+        });
+        let matcher2 = RegexLineMatcher::new(regex2, callback2);
+
+        let group = MatcherGroup::new(vec![Box::new(matcher1), Box::new(matcher2)]);
+        let lines = vec!["line 1", "test2 line", "line 3"];
+        let result = group.extract_from_lines(&lines, 1).unwrap();
+        assert!(result.is_some());
+        let (m, problem) = result.unwrap();
+        assert_eq!(m.line(), "test2 line");
+        assert_eq!(m.offset(), 1);
+        assert!(problem.is_some());
+        let problem = problem.unwrap();
+        assert_eq!(problem.kind(), "test");
+    }
+
+    #[test]
+    fn test_matcher_group_no_match() {
+        let regex1 = Regex::new(r"test1").unwrap();
+        let callback1 = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem 1".to_string(),
+            })))
+        });
+        let matcher1 = RegexLineMatcher::new(regex1, callback1);
+
+        let regex2 = Regex::new(r"test2").unwrap();
+        let callback2 = Box::new(|_: &Captures| -> Result<Option<Box<dyn Problem>>, Error> {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem 2".to_string(),
+            })))
+        });
+        let matcher2 = RegexLineMatcher::new(regex2, callback2);
+
+        let group = MatcherGroup::new(vec![Box::new(matcher1), Box::new(matcher2)]);
+        let lines = vec!["line 1", "line 2", "line 3"];
+        let result = group.extract_from_lines(&lines, 1).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_regex_line_matcher_macro() {
+        let matcher = regex_line_matcher!(r"test", |_| {
+            Ok(Some(Box::new(TestProblem {
+                description: "test problem".to_string(),
+            })))
+        });
+        let lines = vec!["line 1", "test line", "line 3"];
+        let result = matcher.extract_from_lines(&lines, 1).unwrap();
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_regex_line_matcher_macro_simple() {
+        let matcher = regex_line_matcher!(r"test");
+        let lines = vec!["line 1", "test line", "line 3"];
+        let result = matcher.extract_from_lines(&lines, 1).unwrap();
+        assert!(result.is_some());
+        let (_m, problem) = result.unwrap();
+        assert!(problem.is_none());
+    }
+}
