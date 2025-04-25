@@ -11,6 +11,205 @@ pub mod problems;
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_singlelinematch_line() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        assert_eq!(m.line(), "test line");
+    }
+
+    #[test]
+    fn test_singlelinematch_origin() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        let origin = m.origin();
+        assert_eq!(origin.0, "test");
+    }
+
+    #[test]
+    fn test_singlelinematch_offset() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        assert_eq!(m.offset(), 10);
+    }
+
+    #[test]
+    fn test_singlelinematch_lineno() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        assert_eq!(m.lineno(), 11);
+    }
+
+    #[test]
+    fn test_singlelinematch_linenos() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        assert_eq!(m.linenos(), vec![11]);
+    }
+
+    #[test]
+    fn test_singlelinematch_offsets() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        assert_eq!(m.offsets(), vec![10]);
+    }
+
+    #[test]
+    fn test_singlelinematch_lines() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        assert_eq!(m.lines(), vec!["test line"]);
+    }
+
+    #[test]
+    fn test_singlelinematch_add_offset() {
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 10,
+            line: "test line".to_string(),
+        };
+        let new_m = m.add_offset(5);
+        assert_eq!(new_m.offset(), 15);
+    }
+
+    #[test]
+    fn test_multilinelmatch_line() {
+        let m = MultiLineMatch {
+            origin: Origin("test".to_string()),
+            offsets: vec![10, 11, 12],
+            lines: vec![
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+        assert_eq!(m.line(), "line 3");
+    }
+
+    #[test]
+    fn test_multilinelmatch_origin() {
+        let m = MultiLineMatch {
+            origin: Origin("test".to_string()),
+            offsets: vec![10, 11, 12],
+            lines: vec![
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+        let origin = m.origin();
+        assert_eq!(origin.0, "test");
+    }
+
+    #[test]
+    fn test_multilinelmatch_offset() {
+        let m = MultiLineMatch {
+            origin: Origin("test".to_string()),
+            offsets: vec![10, 11, 12],
+            lines: vec![
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+        assert_eq!(m.offset(), 12);
+    }
+
+    #[test]
+    fn test_multilinelmatch_lineno() {
+        let m = MultiLineMatch {
+            origin: Origin("test".to_string()),
+            offsets: vec![10, 11, 12],
+            lines: vec![
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+        assert_eq!(m.lineno(), 13);
+    }
+
+    #[test]
+    fn test_multilinelmatch_offsets() {
+        let m = MultiLineMatch {
+            origin: Origin("test".to_string()),
+            offsets: vec![10, 11, 12],
+            lines: vec![
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+        assert_eq!(m.offsets(), vec![10, 11, 12]);
+    }
+
+    #[test]
+    fn test_multilinelmatch_lines() {
+        let m = MultiLineMatch {
+            origin: Origin("test".to_string()),
+            offsets: vec![10, 11, 12],
+            lines: vec![
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+        assert_eq!(m.lines(), vec!["line 1", "line 2", "line 3"]);
+    }
+
+    #[test]
+    fn test_multilinelmatch_add_offset() {
+        let m = MultiLineMatch {
+            origin: Origin("test".to_string()),
+            offsets: vec![10, 11, 12],
+            lines: vec![
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+        let new_m = m.add_offset(5);
+        assert_eq!(new_m.offsets(), vec![15, 16, 17]);
+    }
+
+    #[test]
+    fn test_highlight_lines() {
+        let lines = vec!["line 1", "line 2", "line 3", "line 4", "line 5"];
+        let m = SingleLineMatch {
+            origin: Origin("test".to_string()),
+            offset: 2,
+            line: "line 3".to_string(),
+        };
+        // This test just ensures the function doesn't panic
+        highlight_lines(&lines, &m, 1);
+    }
+}
+
 pub trait Match: Send + Sync + std::fmt::Debug + std::fmt::Display {
     fn line(&self) -> String;
 

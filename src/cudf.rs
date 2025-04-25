@@ -68,3 +68,124 @@ pub(crate) struct Pkg {
     #[serde(rename = "unsat-conflict)")]
     pub unsat_conflict: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_deserialize_output_version() {
+        let result: Result<(u8, u8), _> =
+            deserialize_output_version(&mut serde_json::Deserializer::from_str("\"2.0\""));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), (2, 0));
+    }
+
+    #[test]
+    fn test_deserialize_output_version_invalid() {
+        let result: Result<(u8, u8), _> =
+            deserialize_output_version(&mut serde_json::Deserializer::from_str("\"invalid\""));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cudf_deserialization() {
+        let json = json!({
+            "output-version": "2.0",
+            "native-architecture": "amd64",
+            "report": [
+                {
+                    "package": "libfoo",
+                    "version": "1.0-1",
+                    "architecture": "amd64",
+                    "status": "broken",
+                    "reasons": [
+                        {
+                            "missing": {
+                                "pkg": {
+                                    "package": "libbar",
+                                    "version": "2.0-1",
+                                    "architecture": "amd64",
+                                    "unsat-dependency": "libzlib (>= 3.0)"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let cudf: Cudf = serde_json::from_value(json).unwrap();
+        assert_eq!(cudf.output_version, (2, 0));
+        assert_eq!(cudf.native_architecture, "amd64");
+        assert_eq!(cudf.report.len(), 1);
+
+        let report = &cudf.report[0];
+        assert_eq!(report.package, "libfoo");
+        assert_eq!(report.version.to_string(), "1.0-1");
+        assert_eq!(report.architecture, "amd64");
+        assert_eq!(report.status, Status::Broken);
+        assert_eq!(report.reasons.len(), 1);
+
+        let reason = &report.reasons[0];
+        assert!(reason.missing.is_some());
+        assert!(reason.conflict.is_none());
+
+        let missing = reason.missing.as_ref().unwrap();
+        assert_eq!(missing.pkg.package, "libbar");
+        assert_eq!(missing.pkg.version.to_string(), "2.0-1");
+        assert_eq!(missing.pkg.architecture, "amd64");
+        assert_eq!(
+            missing.pkg.unsat_dependency,
+            Some("libzlib (>= 3.0)".to_string())
+        );
+        assert_eq!(missing.pkg.unsat_conflict, None);
+    }
+
+    #[test]
+    fn test_cudf_with_conflict() {
+        let json = json!({
+            "output-version": "2.0",
+            "native-architecture": "amd64",
+            "report": [
+                {
+                    "package": "libfoo",
+                    "version": "1.0-1",
+                    "architecture": "amd64",
+                    "status": "broken",
+                    "reasons": [
+                        {
+                            "conflict": {
+                                "pkg1": {
+                                    "package": "libbar",
+                                    "version": "2.0-1",
+                                    "architecture": "amd64"
+                                },
+                                "pkg2": {
+                                    "package": "libbaz",
+                                    "version": "3.0-1",
+                                    "architecture": "amd64"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let cudf: Cudf = serde_json::from_value(json).unwrap();
+        assert_eq!(cudf.output_version, (2, 0));
+
+        let report = &cudf.report[0];
+        let reason = &report.reasons[0];
+        assert!(reason.missing.is_none());
+        assert!(reason.conflict.is_some());
+
+        let conflict = reason.conflict.as_ref().unwrap();
+        assert_eq!(conflict.pkg1.package, "libbar");
+        assert_eq!(conflict.pkg1.version.to_string(), "2.0-1");
+        assert_eq!(conflict.pkg2.package, "libbaz");
+        assert_eq!(conflict.pkg2.version.to_string(), "3.0-1");
+    }
+}

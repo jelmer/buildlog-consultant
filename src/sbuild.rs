@@ -1335,4 +1335,147 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
             )
         );
     }
+
+    #[test]
+    fn test_find_failed_stage() {
+        let lines = &["Foo: bar", "Fail-Stage: unpack", "Bar: baz"];
+        assert_eq!(find_failed_stage(lines), Some("unpack"));
+
+        let lines = &["Foo: bar", "Bar: baz"];
+        assert_eq!(find_failed_stage(lines), None);
+    }
+
+    #[test]
+    fn test_parse_summary() {
+        let summary_lines = &[
+            "Package: rust-always-assert",
+            "Version: 0.1.3-1",
+            "Distribution: unstable",
+            "Status: successful",
+            "Build-Time: 3",
+        ];
+        let summary = parse_summary(summary_lines);
+        assert_eq!(summary.package, Some("rust-always-assert".to_string()));
+        assert_eq!(summary.version, Some("0.1.3-1".parse().unwrap()));
+        assert_eq!(summary.distribution, Some("unstable".to_string()));
+        assert_eq!(summary.status, Some("successful".to_string()));
+        assert_eq!(summary.build_time, Some(Duration::from_secs(3)));
+    }
+
+    #[test]
+    fn test_space_from_str() {
+        let space: Space = "1024".parse().unwrap();
+        assert_eq!(space, Space::Bytes(1024));
+
+        let space: Space = "n/a".parse().unwrap();
+        assert_eq!(space, Space::NotAvailable);
+    }
+
+    #[test]
+    fn test_sbuild_log_get_section() {
+        let sections = vec![
+            SbuildLogSection {
+                title: Some("Section1".to_string()),
+                offsets: (1, 5),
+                lines: vec!["Line1".to_string(), "Line2".to_string()],
+            },
+            SbuildLogSection {
+                title: Some("Section2".to_string()),
+                offsets: (6, 10),
+                lines: vec!["Line3".to_string(), "Line4".to_string()],
+            },
+        ];
+        let log = SbuildLog(sections);
+
+        let section = log.get_section(Some("Section1"));
+        assert!(section.is_some());
+        assert_eq!(section.unwrap().lines, vec!["Line1", "Line2"]);
+
+        let section = log.get_section(Some("NonExistent"));
+        assert!(section.is_none());
+    }
+
+    #[test]
+    fn test_sbuild_log_get_section_lines() {
+        let sections = vec![SbuildLogSection {
+            title: Some("Section1".to_string()),
+            offsets: (1, 5),
+            lines: vec!["Line1".to_string(), "Line2".to_string()],
+        }];
+        let log = SbuildLog(sections);
+
+        let lines = log.get_section_lines(Some("Section1"));
+        assert!(lines.is_some());
+        assert_eq!(lines.unwrap(), vec!["Line1", "Line2"]);
+    }
+
+    #[test]
+    fn test_sbuild_log_section_titles() {
+        let sections = vec![
+            SbuildLogSection {
+                title: Some("Section1".to_string()),
+                offsets: (1, 5),
+                lines: vec![],
+            },
+            SbuildLogSection {
+                title: Some("Section2".to_string()),
+                offsets: (6, 10),
+                lines: vec![],
+            },
+        ];
+        let log = SbuildLog(sections);
+
+        assert_eq!(log.section_titles(), vec!["Section1", "Section2"]);
+    }
+
+    #[test]
+    fn test_sbuild_log_sections() {
+        let sections = vec![
+            SbuildLogSection {
+                title: Some("Section1".to_string()),
+                offsets: (1, 5),
+                lines: vec![],
+            },
+            SbuildLogSection {
+                title: Some("Section2".to_string()),
+                offsets: (6, 10),
+                lines: vec![],
+            },
+        ];
+        let log = SbuildLog(sections.clone());
+
+        let sections_iter: Vec<_> = log.sections().collect();
+        assert_eq!(sections_iter.len(), 2);
+        assert_eq!(sections_iter[0].title, Some("Section1".to_string()));
+        assert_eq!(sections_iter[1].title, Some("Section2".to_string()));
+    }
+
+    #[test]
+    fn test_sbuild_log_from_str() {
+        let log_content = r#"+------------------------------------------------------------------------------+
+|                                                                              |
++------------------------------------------------------------------------------+
+
++------------------------------------------------------------------------------+
+| Section1                                                                      |
++------------------------------------------------------------------------------+
+Line1
+Line2
+
++------------------------------------------------------------------------------+
+| Section2                                                                      |
++------------------------------------------------------------------------------+
+Line3
+Line4
+"#;
+
+        let log: SbuildLog = log_content.parse().unwrap();
+        assert_eq!(log.section_titles(), vec!["Section1", "Section2"]);
+
+        let section1 = log.get_section(Some("Section1")).unwrap();
+        assert_eq!(section1.lines(), vec!["Line1\n", "Line2\n"]);
+
+        let section2 = log.get_section(Some("Section2")).unwrap();
+        assert_eq!(section2.lines(), vec!["Line3\n", "Line4\n"]);
+    }
 }
