@@ -421,6 +421,157 @@ mod tests {
     }
 
     #[test]
+    fn test_no_space_on_device() {
+        assert_match(
+            vec![
+                "E: Failed to fetch http://apt.example.com/pool/main/h/hello/hello_2.10.orig.tar.gz  No space left on device"
+            ],
+            1,
+            Some(NoSpaceOnDevice {}),
+        );
+    }
+
+    #[test]
+    fn test_dpkg_no_space_on_device() {
+        assert_match(
+            vec![
+                "dpkg-deb: error: unable to write file '/var/cache/apt/archives/hello_2.10-2_amd64.deb': No space left on device"
+            ],
+            1,
+            Some(NoSpaceOnDevice {}),
+        );
+    }
+
+    #[test]
+    fn test_apt_no_space_error() {
+        assert_match(
+            vec!["E: You don't have enough free space in /var."],
+            1,
+            Some(NoSpaceOnDevice {}),
+        );
+    }
+
+    #[test]
+    fn test_write_error_no_space() {
+        assert_match(
+            vec!["E: Write error - write (28: No space left on device)"],
+            1,
+            Some(NoSpaceOnDevice {}),
+        );
+    }
+
+    #[test]
+    fn test_dpkg_error_no_space() {
+        assert_match(
+            vec!["dpkg: error: writing to '/var/lib/dpkg/status': No space left on device"],
+            1,
+            Some(NoSpaceOnDevice {}),
+        );
+    }
+
+    #[test]
+    fn test_dpkg_error_general() {
+        assert_match(
+            vec!["dpkg: error: some other error occurred"],
+            1,
+            Some(DpkgError("some other error occurred".to_string())),
+        );
+    }
+
+    #[test]
+    fn test_dpkg_error_processing_package_direct() {
+        let lines = vec![
+            "dpkg: error processing package hello (--configure):",
+            "subprocess installed post-installation script returned error exit status 1",
+        ];
+
+        let (match_result, problem) = find_apt_get_failure(lines);
+
+        assert!(match_result.is_some());
+        assert!(problem.is_some());
+        if let Some(problem) = problem {
+            let dpkg_error = problem.as_any().downcast_ref::<DpkgError>();
+            assert!(dpkg_error.is_some());
+            let dpkg_error = dpkg_error.unwrap();
+            assert_eq!(dpkg_error.0, "processing package hello (--configure)");
+        }
+    }
+
+    // Direct test of functions without using helper functions
+    #[test]
+    fn test_broken_packages_direct() {
+        let lines = vec![
+            "The following packages have unmet dependencies:",
+            "E: Broken packages",
+        ];
+
+        let (match_result, problem) = find_apt_get_failure(lines);
+
+        assert!(match_result.is_some());
+        assert!(problem.is_some());
+        if let Some(problem) = problem {
+            let broken_packages = problem.as_any().downcast_ref::<AptBrokenPackages>();
+            assert!(broken_packages.is_some());
+            let broken_packages = broken_packages.unwrap();
+            assert_eq!(
+                broken_packages.description,
+                "The following packages have unmet dependencies:"
+            );
+            assert!(broken_packages.broken.is_none());
+        }
+    }
+
+    #[test]
+    fn test_unable_to_locate_package_direct() {
+        let lines = vec!["E: Unable to locate package nonexistent-package"];
+
+        let (match_result, problem) = find_apt_get_failure(lines);
+
+        assert!(match_result.is_some());
+        assert!(problem.is_some());
+        if let Some(problem) = problem {
+            let pkg_unknown = problem.as_any().downcast_ref::<AptPackageUnknown>();
+            assert!(pkg_unknown.is_some());
+            let pkg_unknown = pkg_unknown.unwrap();
+            assert_eq!(pkg_unknown.0, "nonexistent-package");
+        }
+    }
+
+    #[test]
+    fn test_copy_extracted_data_no_space_direct() {
+        let lines = vec![
+            "some text before",
+            " cannot copy extracted data for '/var/cache/apt/archives/hello_2.10-2_amd64.deb' to '/tmp/hello': failed to write (No space left on device)",
+            "some text after"
+        ];
+
+        let (match_result, problem) = find_apt_get_failure(lines);
+
+        assert!(match_result.is_some());
+        assert!(problem.is_some());
+        if let Some(problem) = problem {
+            assert!(problem.as_any().is::<NoSpaceOnDevice>());
+        }
+    }
+
+    #[test]
+    fn test_generic_no_space_error_direct() {
+        let lines = vec![
+            "some text before",
+            " /var/cache/apt/archives/hello_2.10-2_amd64.deb: No space left on device",
+            "some text after",
+        ];
+
+        let (match_result, problem) = find_apt_get_failure(lines);
+
+        assert!(match_result.is_some());
+        assert!(problem.is_some());
+        if let Some(problem) = problem {
+            assert!(problem.as_any().is::<NoSpaceOnDevice>());
+        }
+    }
+
+    #[test]
     fn test_find_cudf_output() {
         use crate::cudf::*;
         let lines = include_str!("testdata/sbuild-cudf.log")
@@ -455,5 +606,79 @@ mod tests {
         };
 
         assert_eq!(report, expected);
+    }
+
+    #[test]
+    fn test_error_from_dose3_reports() {
+        use crate::cudf::*;
+
+        // Test missing dependencies case
+        let missing_reports = vec![Report {
+            package: "sbuild-build-depends-main-dummy".to_string(),
+            version: "0.invalid.0".parse().unwrap(),
+            architecture: "amd64".to_string(),
+            status: Status::Broken,
+            reasons: vec![Reason {
+                missing: Some(Missing {
+                    pkg: Pkg {
+                        package: "sbuild-build-depends-main-dummy".to_string(),
+                        version: "0.invalid.0".parse().unwrap(),
+                        architecture: "amd64".to_string(),
+                        unsat_conflict: None,
+                        unsat_dependency: Some("libfoo (>= 1.0)".to_string()),
+                    },
+                }),
+                conflict: None,
+            }],
+        }];
+
+        let problem = error_from_dose3_reports(&missing_reports);
+        assert!(problem.is_some());
+        let problem = problem.unwrap();
+        assert!(problem.as_any().is::<UnsatisfiedAptDependencies>());
+
+        // Test conflict case
+        let conflict_reports = vec![Report {
+            package: "sbuild-build-depends-main-dummy".to_string(),
+            version: "0.invalid.0".parse().unwrap(),
+            architecture: "amd64".to_string(),
+            status: Status::Broken,
+            reasons: vec![Reason {
+                missing: None,
+                conflict: Some(Conflict {
+                    pkg1: Pkg {
+                        package: "sbuild-build-depends-main-dummy".to_string(),
+                        version: "0.invalid.0".parse().unwrap(),
+                        architecture: "amd64".to_string(),
+                        unsat_conflict: Some("libbar (>= 2.0)".to_string()),
+                        unsat_dependency: None,
+                    },
+                    pkg2: Pkg {
+                        package: "libbar".to_string(),
+                        version: "2.1".parse().unwrap(),
+                        architecture: "amd64".to_string(),
+                        unsat_conflict: None,
+                        unsat_dependency: None,
+                    },
+                }),
+            }],
+        }];
+
+        let problem = error_from_dose3_reports(&conflict_reports);
+        assert!(problem.is_some());
+        let problem = problem.unwrap();
+        assert!(problem.as_any().is::<UnsatisfiedAptConflicts>());
+
+        // Test non-broken status - for this test we set empty reasons to simulate non-broken
+        let ok_reports = vec![Report {
+            package: "sbuild-build-depends-main-dummy".to_string(),
+            version: "0.invalid.0".parse().unwrap(),
+            architecture: "amd64".to_string(),
+            status: Status::Broken, // The cudf.rs only has Broken enum variant
+            reasons: vec![],        // Empty reasons meaning it's actually "ok" for our test
+        }];
+
+        let problem = error_from_dose3_reports(&ok_reports);
+        assert!(problem.is_none());
     }
 }
