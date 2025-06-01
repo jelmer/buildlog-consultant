@@ -1,7 +1,7 @@
 use buildlog_consultant::common::find_build_failure_description;
 use buildlog_consultant::{Match, Problem};
 use clap::Parser;
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -95,7 +95,7 @@ pub fn main() -> Result<(), i8> {
                     m.linenos().last().unwrap()
                 );
             }
-            for i in max(0, m.offsets()[0] - args.context)
+            for i in m.offsets()[0].saturating_sub(args.context)
                 ..min(lines.len(), m.offsets().last().unwrap() + args.context + 1)
             {
                 log::info!(
