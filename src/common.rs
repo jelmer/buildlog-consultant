@@ -3358,19 +3358,44 @@ pub fn find_secondary_build_failure(
     for (offset, line) in lines.enumerate_tail_forward(start_offset) {
         let match_line = line.trim_end_matches('\n');
         for regexp in SECONDARY_MATCHERS.iter() {
-            if regexp.is_match(match_line).unwrap() {
-                let origin = Origin(format!("secondary regex {:?}", regexp));
-                log::debug!(
-                    "Found match against {:?} on {:?} (line {})",
-                    regexp,
-                    line,
-                    offset + 1
-                );
-                return Some(SingleLineMatch {
-                    origin,
-                    offset,
-                    line: line.to_string(),
-                });
+            match regexp.is_match(match_line) {
+                Ok(true) => {
+                    let origin = Origin(format!("secondary regex {:?}", regexp));
+                    log::debug!(
+                        "Found match against {:?} on {:?} (line {})",
+                        regexp,
+                        line,
+                        offset + 1
+                    );
+                    return Some(SingleLineMatch {
+                        origin,
+                        offset,
+                        line: line.to_string(),
+                    });
+                }
+                Ok(false) => {
+                    // No match, continue to next regex
+                }
+                Err(fancy_regex::Error::RuntimeError(
+                    fancy_regex::RuntimeError::BacktrackLimitExceeded,
+                )) => {
+                    // Handle backtracking limit exceeded gracefully
+                    log::debug!(
+                        "Regex backtracking limit exceeded for pattern '{}' on line (length: {})",
+                        regexp.as_str(),
+                        match_line.len()
+                    );
+                    // Continue to next regex
+                }
+                Err(other_error) => {
+                    // Log other regex errors but continue processing
+                    log::warn!(
+                        "Regex error for pattern '{}': {}",
+                        regexp.as_str(),
+                        other_error
+                    );
+                    // Continue to next regex
+                }
             }
         }
     }
@@ -5673,5 +5698,25 @@ Call Stack (most recent call first):
         assert!(
             super::find_secondary_build_failure(&["Unknown option --foo, ignoring."], 10).is_none()
         );
+    }
+
+    #[test]
+    fn test_backtrack_limit_handling() {
+        // Test that find_secondary_build_failure handles long lines gracefully
+        // without panicking on BacktrackLimitExceeded errors
+
+        // Create a line that could cause backtracking issues with some regex patterns
+        let long_line = format!("error: {}", "a".repeat(5000));
+        let lines = vec![long_line.as_str()];
+
+        // This should not panic and should return gracefully
+        let _result = find_secondary_build_failure(&lines, 1);
+        // The result could be Some or None, but it shouldn't panic
+
+        // Test that normal error lines still work
+        let normal_line = "Unknown option --foo";
+        let lines = vec![normal_line];
+        let result = find_secondary_build_failure(&lines, 1);
+        assert!(result.is_some());
     }
 }
