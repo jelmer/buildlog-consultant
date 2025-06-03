@@ -147,7 +147,7 @@ checksum = "66bb12751a83493ef4b8da1120451a262554e216a247f14b48cb5e8fe7ed8bdf"
 
 [[package]]
 name = "buildlog-consultant"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chatgpt_rs",
  "chrono",
@@ -365,9 +365,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cbefa5ce4df7e1afc9c25781149a8d1712ee538c8b37855c5bdd8ab1ac7f4e9"
+checksum = "cf3f538a087059fc1bcac2d3e7e930f487eecdb5c1d50b630f43f2ee868da331"
 dependencies = [
  "chrono",
  "deb822-fast",
