@@ -45,7 +45,7 @@ pub async fn analyze(chatgpt_key: String, lines: Vec<&str>) -> Option<SingleLine
         INITIAL_PROMPT,
         truncated
             .into_iter()
-            .map(|line| *line)
+            .copied()
             .collect::<Vec<_>>()
             .join("\n")
     );

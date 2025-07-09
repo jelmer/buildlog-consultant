@@ -317,15 +317,13 @@ impl Problem for MissingPythonDistribution {
 fn find_python_version(marker: Vec<Vec<pep508_rs::MarkerExpression>>) -> Option<i32> {
     let mut major_version = None;
     for expr in marker.iter().flat_map(|x| x.iter()) {
-        match expr {
-            pep508_rs::MarkerExpression::Version {
-                key: pep508_rs::MarkerValueVersion::PythonVersion,
-                specifier,
-            } => {
-                let version = specifier.version();
-                major_version = Some(version.release()[0] as i32);
-            }
-            _ => {}
+        if let pep508_rs::MarkerExpression::Version {
+            key: pep508_rs::MarkerValueVersion::PythonVersion,
+            specifier,
+        } = expr
+        {
+            let version = specifier.version();
+            major_version = Some(version.release()[0] as i32);
         }
     }
 
@@ -358,23 +356,16 @@ impl MissingPythonDistribution {
 
         let python_version =
             python_version.or_else(|| find_python_version(depspec.marker.to_dnf()));
-        let minimum_version = if let Some(v_u) = depspec.version_or_url {
-            if let VersionOrUrl::VersionSpecifier(vs) = v_u {
-                if vs.len() == 1 {
-                    if *vs[0].operator() == Operator::GreaterThanEqual {
-                        Some(vs[0].version().to_string())
-                    } else {
-                        None
-                    }
+        let minimum_version =
+            if let Some(VersionOrUrl::VersionSpecifier(vs)) = depspec.version_or_url {
+                if vs.len() == 1 && *vs[0].operator() == Operator::GreaterThanEqual {
+                    Some(vs[0].version().to_string())
                 } else {
                     None
                 }
             } else {
                 None
-            }
-        } else {
-            None
-        };
+            };
 
         MissingPythonDistribution {
             distribution,

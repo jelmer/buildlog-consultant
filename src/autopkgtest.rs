@@ -9,6 +9,17 @@ use crate::problems::autopkgtest::*;
 use crate::{Match, Problem, SingleLineMatch};
 use std::collections::HashMap;
 
+/// Type alias for autopkgtest failure result
+pub type AutopkgtestResult = (Option<Box<dyn Match>>, Option<Box<dyn Problem>>);
+
+/// Type alias for autopkgtest detailed result with test info
+pub type AutopkgtestDetailedResult = (
+    Option<Box<dyn Match>>,
+    Option<String>,
+    Option<Box<dyn Problem>>,
+    Option<String>,
+);
+
 /// Represents different types of log packets in autopkgtest output.
 ///
 /// Each variant corresponds to a specific type of log entry in autopkgtest output,
@@ -230,7 +241,7 @@ enum Field {
     Output(String),
 
     /// Specific field output for a test.
-    FieldOutput(String, String),
+    SpecificOutput(String, String),
 
     /// Standard error output for a test.
     Stderr(String),
@@ -252,7 +263,7 @@ impl std::fmt::Display for Field {
             Field::Stderr(testname) => write!(f, "stderr for test {}", testname),
             Field::Results(testname) => write!(f, "results for test {}", testname),
             Field::PrepareTestbed(testname) => write!(f, "testbed setup for test {}", testname),
-            Field::FieldOutput(testname, field) => {
+            Field::SpecificOutput(testname, field) => {
                 write!(f, "{} for test {}", field, testname)
             }
             Field::Summary => write!(f, "summary"),
@@ -267,21 +278,14 @@ impl Field {
             Field::Stderr(testname) => Some(testname),
             Field::Results(testname) => Some(testname),
             Field::PrepareTestbed(testname) => Some(testname),
-            Field::FieldOutput(testname, _) => Some(testname),
+            Field::SpecificOutput(testname, _) => Some(testname),
             Field::Summary => None,
         }
     }
 }
 
 /// Find the autopkgtest failure in output.
-pub fn find_autopkgtest_failure_description(
-    mut lines: Vec<&str>,
-) -> (
-    Option<Box<dyn Match>>,
-    Option<String>,
-    Option<Box<dyn Problem>>,
-    Option<String>,
-) {
+pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> AutopkgtestDetailedResult {
     let mut test_output: HashMap<Field, (Vec<String>, usize)> = HashMap::new();
     let mut current_field: Option<Field> = None;
     let mut it = lines.iter().enumerate().peekable();
@@ -558,7 +562,7 @@ pub fn find_autopkgtest_failure_description(
                     }
                     Packet::TestOutput(testname, field) => {
                         current_field =
-                            Some(Field::FieldOutput(testname.to_owned(), field.to_owned()));
+                            Some(Field::SpecificOutput(testname.to_owned(), field.to_owned()));
                     }
                     _ => {}
                 }
@@ -695,17 +699,17 @@ pub fn find_autopkgtest_failure_description(
                 || (vec![], None),
                 |x| (x.0.iter().map(|x| x.as_str()).collect(), Some(x.1)),
             );
-            if !output_lines.is_empty() && output_offset.is_some() {
+            if let (false, Some(offset)) = (output_lines.is_empty(), output_offset) {
                 let (r#match, error) = crate::apt::find_apt_get_failure(output_lines);
-                if error.is_some() && r#match.is_some() {
+                if let (Some(m), Some(e)) = (r#match, error) {
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
                             &lines,
-                            r#match.unwrap().offset() + output_offset.unwrap(),
+                            m.offset() + offset,
                             Some("direct regex"),
                         )) as Box<dyn Match>),
                         Some(packet.name),
-                        error,
+                        Some(e),
                         None,
                     );
                 }
@@ -751,10 +755,9 @@ pub fn find_autopkgtest_failure_description(
                 |x| (x.0.iter().map(|x| x.as_str()).collect(), Some(x.1)),
             );
             let (r#match, error) = crate::common::find_build_failure_description(output_lines);
-            let offset = if r#match.is_none() || output_offset.is_none() {
-                summary_offset + packet.offset()
-            } else {
-                r#match.as_ref().unwrap().offset() + output_offset.unwrap()
+            let offset = match (r#match.as_ref(), output_offset) {
+                (Some(m), Some(o)) => m.offset() + o,
+                _ => summary_offset + packet.offset(),
             };
             let description = if let Some(r#match) = r#match.as_ref() {
                 r#match.line()
@@ -791,9 +794,7 @@ pub fn find_autopkgtest_failure_description(
 /// A tuple containing:
 /// * An optional match identifying the location of the error
 /// * An optional problem description
-pub fn find_testbed_setup_failure(
-    lines: Vec<&str>,
-) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+pub fn find_testbed_setup_failure(lines: Vec<&str>) -> AutopkgtestResult {
     for (i, line) in lines.enumerate_backward(None) {
         if let Some((_, command, status_code, stderr)) = lazy_regex::regex_captures!(
             r"\[(.*)\] failed \(exit status ([0-9]+), stderr \'(.*)\'\)\n",

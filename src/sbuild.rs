@@ -19,6 +19,16 @@ use std::iter::Iterator;
 use std::str::FromStr;
 use std::time::Duration;
 
+/// Type alias for sbuild failure result
+pub type SbuildFailureResult = (Option<Box<dyn Match>>, Option<Box<dyn Problem>>);
+
+/// Type alias for sbuild failure result with extra info  
+pub type SbuildDetailedResult<'a> = (
+    Option<&'a str>,
+    Option<Box<dyn Match>>,
+    Option<Box<dyn Problem>>,
+);
+
 /// Finds the failed stage in sbuild log lines.
 ///
 /// This function searches for a line starting with "Fail-Stage: " and returns
@@ -478,10 +488,8 @@ impl std::fmt::Display for SbuildFailure {
 ///
 /// # Returns
 /// A tuple containing an optional Match and an optional Problem representing the failure
-pub fn find_preamble_failure_description(
-    lines: Vec<&str>,
-) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
-    let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
+pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResult {
+    let mut ret: SbuildFailureResult = (None, None);
     for (lineno, line) in lines.enumerate_backward(Some(100)) {
         let line = line.trim_end_matches('\n');
         if let Some((_, diff_file)) = lazy_regex::regex_captures!(
@@ -970,10 +978,8 @@ pub fn find_failure_create_session(
 ///
 /// # Returns
 /// A tuple containing an optional Match and an optional Problem representing the failure
-pub fn find_creation_session_error(
-    lines: Vec<&str>,
-) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
-    let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
+pub fn find_creation_session_error(lines: Vec<&str>) -> SbuildFailureResult {
+    let mut ret: SbuildFailureResult = (None, None);
     for (i, line) in lines.enumerate_backward(None) {
         if line.starts_with("E: ") {
             ret = (
@@ -1134,9 +1140,7 @@ pub fn find_failure_apt_get_update(
 ///
 /// # Returns
 /// A tuple containing an optional Match and an optional Problem representing the failure
-fn find_arch_check_failure_description(
-    lines: Vec<&str>,
-) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+fn find_arch_check_failure_description(lines: Vec<&str>) -> SbuildFailureResult {
     for (offset, line) in lines.enumerate_forward(None) {
         if let Some((_, arch, arch_list)) = lazy_regex::regex_captures!(
             "E: dsc: (.*) not in arch list or does not match any arch wildcards: (.*) -- skipping",
@@ -1252,13 +1256,7 @@ pub const DOSE3_SECTION: &str = "install dose3 build dependencies (aspcud-based 
 /// * An optional section title where the failure was found
 /// * An optional Match representing the specific failure
 /// * An optional Problem describing the dependency issue
-pub fn find_install_deps_failure_description(
-    sbuildlog: &SbuildLog,
-) -> (
-    Option<&str>,
-    Option<Box<dyn Match>>,
-    Option<Box<dyn Problem>>,
-) {
+pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SbuildDetailedResult<'_> {
     let dose3_lines = sbuildlog.get_section_lines(Some(DOSE3_SECTION));
     if let Some(dose3_lines) = dose3_lines {
         let dose3 = crate::apt::find_cudf_output(dose3_lines.clone());
@@ -1502,9 +1500,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
 ///
 /// # Returns
 /// A tuple containing an optional Match and an optional Problem representing the failure
-fn find_check_space_failure_description(
-    lines: Vec<&str>,
-) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+fn find_check_space_failure_description(lines: Vec<&str>) -> SbuildFailureResult {
     for (offset, line) in lines.enumerate_forward(None) {
         if line == "E: Disk space is probably not sufficient for building.\n" {
             if let Some((_, needed, free)) = lazy_regex::regex_captures!(

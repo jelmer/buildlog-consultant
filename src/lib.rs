@@ -520,13 +520,14 @@ pub fn highlight_lines(lines: &[&str], m: &dyn Match, context: usize) {
             m.linenos().last().unwrap()
         );
     }
-    for i in max(0, m.offsets()[0] - context)
-        ..min(lines.len(), m.offsets().last().unwrap() + context + 1)
-    {
+    let start = max(0, m.offsets()[0].saturating_sub(context));
+    let end = min(lines.len(), m.offsets().last().unwrap() + context + 1);
+
+    for (i, line) in lines.iter().enumerate().take(end).skip(start) {
         println!(
             " {}  {}",
             if m.offsets().contains(&i) { ">" } else { " " },
-            lines[i].trim_end_matches('\n')
+            line.trim_end_matches('\n')
         );
     }
 }
