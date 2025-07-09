@@ -8,6 +8,13 @@ use crate::{Match, Origin, Problem};
 use regex::{Captures, Regex};
 use std::fmt::Display;
 
+/// Type alias for the result of extracting a match and optional problem
+pub type MatchResult = Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error>;
+
+/// Type alias for a callback function that processes regex captures
+pub type RegexCallback =
+    Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>;
+
 /// Error type for matchers.
 ///
 /// Used when pattern matching or problem extraction fails.
@@ -33,7 +40,7 @@ pub struct RegexLineMatcher {
     /// The regular expression to match against each line.
     regex: Regex,
     /// Callback function that extracts problem information from regex captures.
-    callback: Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>,
+    callback: RegexCallback,
 }
 
 /// Trait for pattern matchers that can extract matches and problems from logs.
@@ -51,11 +58,7 @@ pub trait Matcher: Sync {
     /// * `Ok(Some((match, problem)))` - A match was found along with an optional problem
     /// * `Ok(None)` - No match was found
     /// * `Err(error)` - An error occurred during matching
-    fn extract_from_lines(
-        &self,
-        lines: &[&str],
-        offset: usize,
-    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error>;
+    fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult;
 }
 
 impl RegexLineMatcher {
@@ -67,10 +70,7 @@ impl RegexLineMatcher {
     ///
     /// # Returns
     /// A new `RegexLineMatcher` instance
-    pub fn new(
-        regex: Regex,
-        callback: Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>,
-    ) -> Self {
+    pub fn new(regex: Regex, callback: RegexCallback) -> Self {
         Self { regex, callback }
     }
 
@@ -113,11 +113,7 @@ impl RegexLineMatcher {
 }
 
 impl Matcher for RegexLineMatcher {
-    fn extract_from_lines(
-        &self,
-        lines: &[&str],
-        offset: usize,
-    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+    fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
         let line = lines[offset];
         if let Some(problem) = self.extract_from_line(line)? {
             let m = SingleLineMatch {
@@ -248,11 +244,7 @@ impl MatcherGroup {
     /// * `Ok(Some((match, problem)))` - A match was found by one of the matchers
     /// * `Ok(None)` - No match was found by any matcher
     /// * `Err(error)` - An error occurred during matching
-    pub fn extract_from_lines(
-        &self,
-        lines: &[&str],
-        offset: usize,
-    ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+    pub fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
         for matcher in self.0.iter() {
             if let Some(p) = matcher.extract_from_lines(lines, offset)? {
                 return Ok(Some(p));

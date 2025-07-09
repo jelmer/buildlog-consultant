@@ -8,6 +8,12 @@ use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
 use crate::Problem;
 
+/// Type alias for brz error handler
+pub type BrzErrorHandler = Vec<(
+    regex::Regex,
+    fn(&regex::Captures, Vec<&str>) -> Option<Box<dyn Problem>>,
+)>;
+
 /// Searches for Bazaar (brz) build errors in log lines.
 ///
 /// This function scans log lines for Bazaar errors and extracts problem information.
@@ -117,7 +123,7 @@ macro_rules! regex_line_matcher {
 }
 
 lazy_static::lazy_static! {
-    static ref BRZ_ERRORS: Vec<(regex::Regex, fn(&regex::Captures, Vec<&str>) -> Option<Box<dyn Problem>>)> = vec![
+    static ref BRZ_ERRORS: BrzErrorHandler = vec![
         regex_line_matcher!("Unable to find the needed upstream tarball for package (.*), version (.*)\\.",
         |m, _| Some(Box::new(UnableToFindUpstreamTarball{package: m.get(1).unwrap().as_str().to_string(), version: m.get(2).unwrap().as_str().parse().unwrap()}))),
         regex_line_matcher!("Unknown mercurial extra fields in (.*): b'(.*)'.", |m, _| Some(Box::new(UnknownMercurialExtraFields(m.get(2).unwrap().as_str().to_string())))),
@@ -172,7 +178,7 @@ pub fn parse_brz_error<'a>(
             line.to_string(),
         );
     }
-    return (None, line.split_once('\n').unwrap().0.to_string());
+    (None, line.split_once('\n').unwrap().0.to_string())
 }
 
 #[cfg(test)]

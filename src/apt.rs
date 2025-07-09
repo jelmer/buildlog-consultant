@@ -10,6 +10,16 @@ use crate::problems::debian::*;
 use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::lossless::relations::{Entry, Relations};
 
+/// Type alias for APT failure result
+pub type AptFailureResult = (Option<Box<dyn Match>>, Option<Box<dyn Problem>>);
+
+/// Type alias for APT dependency failure result
+pub type AptDependencyResult = (
+    Option<String>,
+    Option<Box<dyn Match>>,
+    Option<Box<dyn Problem>>,
+);
+
 /// Analyzes APT output to identify failures and their causes.
 ///
 /// This function scans APT output for common error patterns and returns the matching line(s)
@@ -22,10 +32,8 @@ use debian_control::lossless::relations::{Entry, Relations};
 /// A tuple containing:
 /// * An optional match with the location of the error
 /// * An optional problem description
-pub fn find_apt_get_failure(
-    lines: Vec<&str>,
-) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
-    let mut ret: (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) = (None, None);
+pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
+    let mut ret: AptFailureResult = (None, None);
     for (lineno, line) in lines.enumerate_backward(Some(50)) {
         let line = line.trim_end_matches('\n');
         if line.starts_with("E: Failed to fetch ") {
@@ -252,13 +260,7 @@ pub fn find_apt_get_failure(
 /// * An optional section name where the failure was found
 /// * An optional match with the location of the error
 /// * An optional problem description
-pub fn find_apt_get_update_failure(
-    sbuildlog: &crate::sbuild::SbuildLog,
-) -> (
-    Option<String>,
-    Option<Box<dyn Match>>,
-    Option<Box<dyn Problem>>,
-) {
+pub fn find_apt_get_update_failure(sbuildlog: &crate::sbuild::SbuildLog) -> AptDependencyResult {
     let focus_section = "update chroot";
     let lines = sbuildlog.get_section_lines(Some(focus_section));
     let (match_, problem) = find_apt_get_failure(lines.unwrap());

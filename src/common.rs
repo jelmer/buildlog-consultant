@@ -16,6 +16,12 @@ use crate::{MultiLineMatch, Origin, SingleLineMatch};
 use lazy_regex::{regex_captures, regex_is_match};
 use regex::Captures;
 
+/// Type alias for the common return type of build failure functions
+pub type BuildFailureResult = (Option<Box<dyn Match>>, Option<Box<dyn Problem>>);
+
+/// Type alias for matcher error result with match and problem
+pub type MatcherResult = Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error>;
+
 fn node_module_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     if c.get(1).unwrap().as_str().starts_with("/<<PKGBUILDDIR>>/") {
         return Ok(None);
@@ -87,9 +93,9 @@ fn interpreter_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     if c.get(1).unwrap().as_str().contains('/') {
         return Ok(None);
     }
-    return Ok(Some(Box::new(MissingCommand(
+    Ok(Some(Box::new(MissingCommand(
         c.get(1).unwrap().as_str().to_string(),
-    ))));
+    ))))
 }
 
 fn pkg_config_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
@@ -159,7 +165,7 @@ impl Matcher for MultiLineConfigureErrorMatcher {
         lines: &[&str],
         offset: usize,
     ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
-        if lines[offset].trim_end_matches(|c| c == '\r' || c == '\n') != "configure: error:" {
+        if lines[offset].trim_end_matches(['\r', '\n']) != "configure: error:" {
             return Ok(None);
         }
 
@@ -316,11 +322,11 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
         lines: &[&str],
         offset: usize,
     ) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
-        let line = lines[offset].trim_end_matches(|c| c == '\r' || c == '\n');
+        let line = lines[offset].trim_end_matches(['\r', '\n']);
         if line != "# The following modules are not available." {
             return Ok(None);
         }
-        if lines[offset + 1].trim_end_matches(|c| c == '\r' || c == '\n')
+        if lines[offset + 1].trim_end_matches(['\r', '\n'])
             != "# `perl Makefile.PL | cpanm` will install them:"
         {
             return Ok(None);
@@ -2977,10 +2983,7 @@ impl Matcher for CMakeErrorMatcher {
 /// * `Ok(Some((match, problem)))` - A match was found, possibly with a problem
 /// * `Ok(None)` - No match was found
 /// * `Err(error)` - An error occurred during matching
-pub fn match_lines(
-    lines: &[&str],
-    offset: usize,
-) -> Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error> {
+pub fn match_lines(lines: &[&str], offset: usize) -> MatcherResult {
     COMMON_MATCHERS.extract_from_lines(lines, offset)
 }
 
@@ -3406,9 +3409,7 @@ pub fn find_secondary_build_failure(
 ///
 /// # Returns
 /// A tuple with (match object, error object)
-pub fn find_build_failure_description(
-    lines: Vec<&str>,
-) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+pub fn find_build_failure_description(lines: Vec<&str>) -> BuildFailureResult {
     pub const OFFSET: usize = 250;
     // Is this cmake-specific, or rather just kf5 / qmake ?
     let mut cmake = false;
