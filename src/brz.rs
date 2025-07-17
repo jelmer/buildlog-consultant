@@ -29,11 +29,12 @@ pub fn find_brz_build_error(lines: Vec<&str>) -> Option<(Option<Box<dyn Problem>
     for (i, line) in lines.enumerate_backward(None) {
         if let Some(suffix) = line.strip_prefix("brz: ERROR: ") {
             let mut rest = vec![suffix.to_string()];
-            for n in lines[i + 1..].iter() {
-                if n.starts_with(" ") {
-                    rest.push(n.to_string());
-                }
-            }
+            rest.extend(
+                lines[i + 1..]
+                    .iter()
+                    .filter(|n| n.starts_with(" "))
+                    .map(|n| n.to_string()),
+            );
             let reflowed = rest.join("\n");
             let (err, line) = parse_brz_error(&reflowed, lines[..i].to_vec());
             return Some((err, line.to_string()));

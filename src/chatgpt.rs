@@ -25,43 +25,44 @@ pub const INITIAL_PROMPT: &str =
 /// * `lines` - Vector of log lines to analyze
 ///
 /// # Returns
-/// An optional `SingleLineMatch` pointing to the identified error line
-pub async fn analyze(chatgpt_key: String, lines: Vec<&str>) -> Option<SingleLineMatch> {
-    let client = ChatGPT::new(chatgpt_key).unwrap();
+/// A Result containing an optional `SingleLineMatch` pointing to the identified error line,
+/// or an error if the ChatGPT API call fails
+pub async fn analyze(
+    chatgpt_key: String,
+    lines: Vec<&str>,
+) -> std::result::Result<Option<SingleLineMatch>, Box<dyn std::error::Error + Send + Sync>> {
+    let client = ChatGPT::new(chatgpt_key)?;
 
     // Select lines from the end, but not more than MAX_TOKENS - INITIAL_PROMPT.len()
     // Also, only include full lines
-    let mut truncated = lines
+    let mut truncated: Vec<&str> = lines
         .iter()
         .rev()
         .take_while(|line| line.len() < MAX_TOKENS - INITIAL_PROMPT.len())
-        .collect::<Vec<_>>();
+        .copied()
+        .collect();
 
     // Reverse the lines back
     truncated.reverse();
 
-    let prompt = format!(
-        "{}{}",
-        INITIAL_PROMPT,
-        truncated
-            .into_iter()
-            .copied()
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
+    let prompt = format!("{}{}", INITIAL_PROMPT, truncated.join("\n"));
 
     // Sending a message and getting the completion
-    let response: CompletionResponse = client.send_message(&prompt).await.unwrap();
+    let response: CompletionResponse = client.send_message(&prompt).await?;
 
     let text = &response.message().content;
 
     for (i, line) in lines.iter().enumerate().rev() {
         if line.starts_with(text) {
-            return Some(SingleLineMatch::from_lines(&lines, i, Some("chatgpt")));
+            return Ok(Some(SingleLineMatch::from_lines(
+                &lines,
+                i,
+                Some("chatgpt"),
+            )));
         }
     }
 
     log::debug!("Unable to find chatgpt answer in lines: {:?}", text);
 
-    None
+    Ok(None)
 }
