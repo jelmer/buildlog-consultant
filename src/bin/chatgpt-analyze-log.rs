@@ -37,7 +37,12 @@ fn main() {
         lines.iter().map(|l| l.as_str()).collect::<Vec<_>>(),
     ));
 
-    if let Some(m) = m {
-        log::info!("match: {}", m);
+    match m {
+        Ok(Some(m)) => log::info!("match: {}", m),
+        Ok(None) => log::info!("No match found"),
+        Err(e) => {
+            log::error!("Failed to analyze log: {}", e);
+            std::process::exit(1);
+        }
     }
 }

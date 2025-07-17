@@ -353,13 +353,12 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                                 .get(&field)
                                 .map_or(vec![], |x| x.0.iter().map(|x| x.as_str()).collect()),
                         );
-                        if let Some(error) = error {
-                            assert!(r#match.is_some());
-                            let description = r#match.as_ref().unwrap().line();
+                        if let (Some(m), Some(error)) = (r#match, error) {
+                            let description = m.line().to_string();
                             return (
                                 Some(Box::new(SingleLineMatch::from_lines(
                                     &lines,
-                                    test_output.get(&field).unwrap().1 + r#match.unwrap().offset(),
+                                    test_output.get(&field).unwrap().1 + m.offset(),
                                     Some("direct regex"),
                                 )) as Box<dyn Match>),
                                 last_test.map(|x| x.to_owned()),
@@ -375,23 +374,23 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                         let (r#match, error) =
                             crate::common::find_build_failure_description(lines.clone());
                         if let Some(error) = error {
-                            let description = r#match.as_ref().unwrap().line();
+                            let description = r#match.as_ref().unwrap().line().to_string();
                             return (r#match, last_test, Some(error), Some(description));
                         }
                     }
 
                     if testbed_failure_reason == "cannot send to testbed: [Errno 32] Broken pipe" {
                         let (r#match, error) = find_testbed_setup_failure(lines.clone());
-                        if error.is_some() && r#match.is_some() {
-                            let description = r#match.as_ref().unwrap().line();
-                            return (r#match, last_test, error, Some(description));
+                        if let (Some(m), Some(e)) = (r#match, error) {
+                            let description = m.line().to_string();
+                            return (Some(m), last_test, Some(e), Some(description));
                         }
                     }
                     if testbed_failure_reason == "apt repeatedly failed to download packages" {
                         let (r#match, error) = crate::apt::find_apt_get_failure(lines.clone());
-                        if error.is_some() && r#match.is_some() {
-                            let description = r#match.as_ref().unwrap().line();
-                            return (Some(r#match.unwrap()), last_test, error, Some(description));
+                        if let (Some(m), Some(e)) = (r#match, error) {
+                            let description = m.line().to_string();
+                            return (Some(m), last_test, Some(e), Some(description));
                         }
                         return (
                             Some(Box::new(SingleLineMatch::from_lines(
@@ -425,12 +424,12 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                 {
                     let (r#match, error) =
                         crate::common::find_build_failure_description(lines[..i].to_vec());
-                    let description = r#match.as_ref().unwrap().line();
-                    if error.is_some() && r#match.is_some() {
+                    if let (Some(m), Some(e)) = (r#match, error) {
+                        let description = m.line().to_string();
                         return (
-                            r#match,
+                            Some(m),
                             last_test.map(|x| x.to_owned()),
-                            error,
+                            Some(e),
                             Some(description),
                         );
                     }
@@ -448,12 +447,12 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                 if msg == "unexpected error:" {
                     let (r#match, error) =
                         crate::common::find_build_failure_description(lines[(i + 1)..].to_vec());
-                    let description = r#match.as_ref().unwrap().line();
-                    if error.is_some() && r#match.is_some() {
+                    if let (Some(m), Some(e)) = (r#match, error) {
+                        let description = m.line().to_string();
                         return (
-                            r#match,
+                            Some(m),
                             last_test.map(|x| x.to_owned()),
-                            error,
+                            Some(e),
                             Some(description),
                         );
                     }
@@ -468,22 +467,20 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                             .map(|x| x.as_str())
                             .collect(),
                     );
-                    if error.is_some()
-                        && r#match.is_some()
-                        && test_output.contains_key(current_field)
-                    {
-                        let description = r#match.as_ref().unwrap().line();
-                        return (
-                            Some(Box::new(SingleLineMatch::from_lines(
-                                &lines,
-                                test_output.get(current_field).unwrap().1
-                                    + r#match.unwrap().offset(),
-                                Some("direct regex"),
-                            )) as Box<dyn Match>),
-                            last_test.map(|x| x.to_owned()),
-                            error,
-                            Some(description),
-                        );
+                    if let (Some(m), Some(e)) = (r#match, error) {
+                        if let Some(test_output_entry) = test_output.get(current_field) {
+                            let description = m.line().to_string();
+                            return (
+                                Some(Box::new(SingleLineMatch::from_lines(
+                                    &lines,
+                                    test_output_entry.1 + m.offset(),
+                                    Some("direct regex"),
+                                )) as Box<dyn Match>),
+                                last_test.map(|x| x.to_owned()),
+                                Some(e),
+                                Some(description),
+                            );
+                        }
                     }
                 }
                 if msg == "autopkgtest" && lines[i + 1].trim_end() == ": error cleaning up:" {
@@ -644,9 +641,9 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
             if !stderr_lines.is_empty() {
                 (r#match, error) =
                     crate::common::find_build_failure_description(stderr_lines.clone());
-                if r#match.is_some() && stderr_offset.is_some() {
-                    offset = Some(r#match.as_ref().unwrap().offset() + stderr_offset.unwrap());
-                    description = Some(r#match.as_ref().unwrap().line());
+                if let (Some(m), Some(so)) = (r#match.as_ref(), stderr_offset) {
+                    offset = Some(m.offset() + so);
+                    description = Some(m.line().to_string());
                 } else if stderr_lines.len() == 1
                     && lazy_regex::regex_is_match!(
                         r"QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to \'(.*)\'",
@@ -654,7 +651,7 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                     )
                 {
                     error = Some(Box::new(XDGRunTimeNotSet) as Box<dyn Problem>);
-                    description = Some(stderr_lines[0].to_owned());
+                    description = Some(stderr_lines[0].to_string());
                     offset = stderr_offset;
                 } else {
                     if let Some(stderr_offset) = stderr_offset {
@@ -668,7 +665,7 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                 (offset, description) = if let Some(r#match) = r#match.as_ref() {
                     (
                         Some(summary_offset + packet.offset() + r#match.offset()),
-                        Some(r#match.line()),
+                        Some(r#match.line().to_string()),
                     )
                 } else {
                     (None, None)
@@ -760,7 +757,7 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                 _ => summary_offset + packet.offset(),
             };
             let description = if let Some(r#match) = r#match.as_ref() {
-                r#match.line()
+                r#match.line().to_string()
             } else if let Some(reason) = packet.reason {
                 format!("Test {} failed: {}", packet.name, reason)
             } else {

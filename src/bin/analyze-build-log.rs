@@ -29,7 +29,7 @@ fn as_json(m: Option<&dyn Match>, problem: Option<&dyn Problem>) -> serde_json::
         );
         ret.insert(
             "line".to_string(),
-            serde_json::Value::String(m.line().clone()),
+            serde_json::Value::String(m.line().to_string()),
         );
         ret.insert(
             "origin".to_string(),

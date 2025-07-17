@@ -56,7 +56,7 @@ mod tests {
             line: "test line".to_string(),
         };
         let origin = m.origin();
-        assert_eq!(origin.0, "test");
+        assert_eq!(origin.as_str(), "test");
     }
 
     #[test]
@@ -146,7 +146,7 @@ mod tests {
             ],
         };
         let origin = m.origin();
-        assert_eq!(origin.0, "test");
+        assert_eq!(origin.as_str(), "test");
     }
 
     #[test]
@@ -239,10 +239,10 @@ mod tests {
 /// providing methods to access the content and its location information.
 pub trait Match: Send + Sync + std::fmt::Debug + std::fmt::Display {
     /// Returns the matched line of text.
-    fn line(&self) -> String;
+    fn line(&self) -> &str;
 
     /// Returns the origin information for this match.
-    fn origin(&self) -> Origin;
+    fn origin(&self) -> &Origin;
 
     /// Returns the 0-based offset of the match in the source.
     fn offset(&self) -> usize;
@@ -261,7 +261,7 @@ pub trait Match: Send + Sync + std::fmt::Debug + std::fmt::Display {
     fn offsets(&self) -> Vec<usize>;
 
     /// Returns all lines of text in this match.
-    fn lines(&self) -> Vec<String>;
+    fn lines(&self) -> Vec<&str>;
 
     /// Creates a new match with all offsets shifted by the given amount.
     fn add_offset(&self, offset: usize) -> Box<dyn Match>;
@@ -272,6 +272,13 @@ pub trait Match: Send + Sync + std::fmt::Debug + std::fmt::Display {
 /// This struct represents the source/origin of a match, typically a file name or other identifier.
 #[derive(Clone, Debug)]
 pub struct Origin(String);
+
+impl Origin {
+    /// Returns the inner string value.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 impl std::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -293,12 +300,12 @@ pub struct SingleLineMatch {
 }
 
 impl Match for SingleLineMatch {
-    fn line(&self) -> String {
-        self.line.clone()
+    fn line(&self) -> &str {
+        &self.line
     }
 
-    fn origin(&self) -> Origin {
-        self.origin.clone()
+    fn origin(&self) -> &Origin {
+        &self.origin
     }
 
     fn offset(&self) -> usize {
@@ -309,8 +316,8 @@ impl Match for SingleLineMatch {
         vec![self.offset]
     }
 
-    fn lines(&self) -> Vec<String> {
-        vec![self.line.clone()]
+    fn lines(&self) -> Vec<&str> {
+        vec![&self.line]
     }
 
     fn add_offset(&self, offset: usize) -> Box<dyn Match> {
@@ -414,16 +421,21 @@ impl MultiLineMatch {
 }
 
 impl Match for MultiLineMatch {
-    fn line(&self) -> String {
-        self.lines.last().unwrap().clone()
+    fn line(&self) -> &str {
+        self.lines
+            .last()
+            .expect("MultiLineMatch should have at least one line")
     }
 
-    fn origin(&self) -> Origin {
-        self.origin.clone()
+    fn origin(&self) -> &Origin {
+        &self.origin
     }
 
     fn offset(&self) -> usize {
-        *self.offsets.last().unwrap()
+        *self
+            .offsets
+            .last()
+            .expect("MultiLineMatch should have at least one offset")
     }
 
     fn lineno(&self) -> usize {
@@ -434,8 +446,8 @@ impl Match for MultiLineMatch {
         self.offsets.clone()
     }
 
-    fn lines(&self) -> Vec<String> {
-        self.lines.clone()
+    fn lines(&self) -> Vec<&str> {
+        self.lines.iter().map(|s| s.as_str()).collect()
     }
 
     fn add_offset(&self, extra: usize) -> Box<dyn Match> {

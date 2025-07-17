@@ -383,14 +383,13 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
                 if !lines.is_empty() {
                     // The unwrap_or_else is to provide a default value in case 'title' is None.
                     sections.push(SbuildLogSection {
-                        title: title.clone(),
+                        title: std::mem::take(&mut title),
                         offsets: (begin_offset, end_offset),
-                        lines: lines.clone(),
+                        lines: std::mem::take(&mut lines),
                     });
                 }
 
                 title = Some(l1_trimmed.trim_matches('|').trim().to_string());
-                lines.clear();
                 begin_offset = lineno;
             } else {
                 lines.push(line);
@@ -450,7 +449,10 @@ impl Serialize for SbuildFailure {
             "section",
             &self.section.as_ref().map(|s| s.title.as_deref()),
         )?;
-        state.serialize_field("origin", &self.r#match.as_ref().map(|m| m.origin().0))?;
+        state.serialize_field(
+            "origin",
+            &self.r#match.as_ref().map(|m| m.origin().as_str()),
+        )?;
         state.serialize_field(
             "lineno",
             &self
