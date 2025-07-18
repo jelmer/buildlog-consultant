@@ -5702,6 +5702,104 @@ Call Stack (most recent call first):
     }
 
     #[test]
+    fn test_missing_haskell_dependencies_trait() {
+        let problem = MissingHaskellDependencies(vec!["base".to_string(), "text".to_string()]);
+        assert_eq!(problem.kind(), "missing-haskell-dependencies");
+        let json = problem.json();
+        assert_eq!(json["deps"], serde_json::json!(["base", "text"]));
+    }
+
+    #[test]
+    fn test_missing_ruby_file_trait() {
+        let problem = MissingRubyFile {
+            filename: "foo.rb".to_string(),
+        };
+        let json = problem.json();
+        assert_eq!(json["filename"], "foo.rb");
+    }
+
+    #[test]
+    fn test_missing_configure_trait() {
+        let problem = MissingConfigure;
+        assert_eq!(problem.kind(), "missing-configure");
+    }
+
+    #[test]
+    fn test_missing_latex_file_trait() {
+        let problem = MissingLatexFile("article.cls".to_string());
+        assert_eq!(problem.kind(), "missing-latex-file");
+    }
+
+    #[test]
+    fn test_debhelper_pattern_not_found_trait() {
+        let problem = DebhelperPatternNotFound {
+            pattern: "debian/tmp/usr/lib/*".to_string(),
+            tool: "dh_install".to_string(),
+            directories: vec![],
+        };
+        assert_eq!(problem.kind(), "debhelper-pattern-not-found");
+    }
+
+    #[test]
+    fn test_vcs_control_directory_needed_trait() {
+        let problem = VcsControlDirectoryNeeded {
+            vcs: vec![".git".to_string()],
+        };
+        assert_eq!(problem.kind(), "vcs-control-directory-needed");
+    }
+
+    #[test]
+    fn test_missing_ocaml_package_trait() {
+        let problem = MissingOCamlPackage("lwt".to_string());
+        let json = problem.json();
+        assert_eq!(json["package"], "lwt");
+    }
+
+    #[test]
+    fn test_missing_python_module_display() {
+        let problem = MissingPythonModule {
+            module: "numpy".to_string(),
+            python_version: Some(3),
+            minimum_version: None,
+        };
+        let display = format!("{}", problem);
+        assert!(display.contains("numpy"));
+    }
+
+    #[test]
+    fn test_missing_go_runtime_trait() {
+        let problem = MissingGoRuntime;
+        assert_eq!(problem.kind(), "missing-go-runtime");
+    }
+
+    #[test]
+    fn test_unknown_certificate_authority_trait() {
+        let problem = UnknownCertificateAuthority("https://example.com".to_string());
+        assert_eq!(problem.kind(), "unknown-certificate-authority");
+    }
+
+    #[test]
+    fn test_missing_command_or_build_file_trait() {
+        let problem = MissingCommandOrBuildFile {
+            filename: "make".to_string(),
+        };
+        assert_eq!(problem.kind(), "missing-command-or-build-file");
+    }
+
+    #[test]
+    fn test_missing_php_class_trait() {
+        let problem = MissingPhpClass::new("PHPUnit\\Framework\\TestCase".to_string());
+        assert_eq!(problem.kind(), "missing-php-class");
+    }
+
+    #[test]
+    fn test_missing_go_mod_file_display() {
+        let problem = MissingGoModFile;
+        let display = format!("{}", problem);
+        assert_eq!(display, "go.mod file is missing");
+    }
+
+    #[test]
     fn test_backtrack_limit_handling() {
         // Test that find_secondary_build_failure handles long lines gracefully
         // without panicking on BacktrackLimitExceeded errors

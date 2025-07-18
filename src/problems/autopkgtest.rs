@@ -254,3 +254,22 @@ impl std::fmt::Display for AutopkgtestTestbedSetupFailure {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Problem;
+
+    #[test]
+    fn test_autopkgtest_testbed_setup_failure_trait() {
+        let problem = AutopkgtestTestbedSetupFailure {
+            command: "apt-get update".to_string(),
+            exit_status: 100,
+            error: "Failed to fetch".to_string(),
+        };
+        let json = problem.json();
+        assert_eq!(json["command"], "apt-get update");
+        assert_eq!(json["exit_status"], 100);
+        assert_eq!(json["error"], "Failed to fetch");
+    }
+}
