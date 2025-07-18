@@ -1196,3 +1196,27 @@ impl std::fmt::Display for InsufficientDiskSpace {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Problem;
+
+    #[test]
+    fn test_dpkg_source_local_changes_trait() {
+        let problem = DpkgSourceLocalChanges {
+            diff_file: Some("/tmp/diff.patch".to_string()),
+            files: Some(vec!["file1.txt".to_string(), "file2.txt".to_string()]),
+        };
+        let json = problem.json();
+        assert_eq!(json["diff_file"], "/tmp/diff.patch");
+        assert_eq!(json["files"], serde_json::json!(["file1.txt", "file2.txt"]));
+    }
+
+    #[test]
+    fn test_uscan_too_many_requests_trait() {
+        let problem = UScanTooManyRequests("rate limit exceeded".to_string());
+        let json = problem.json();
+        assert_eq!(json["reason"], "rate limit exceeded");
+    }
+}
