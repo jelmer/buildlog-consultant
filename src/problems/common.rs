@@ -26,7 +26,7 @@ impl MissingFile {
 }
 
 impl Problem for MissingFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-file".into()
     }
 
@@ -68,7 +68,7 @@ impl MissingBuildFile {
 }
 
 impl Problem for MissingBuildFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-build-file".into()
     }
 
@@ -100,7 +100,7 @@ pub struct MissingCommandOrBuildFile {
 }
 
 impl Problem for MissingCommandOrBuildFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-command-or-build-file".into()
     }
 
@@ -142,7 +142,7 @@ pub struct VcsControlDirectoryNeeded {
 }
 
 impl Problem for VcsControlDirectoryNeeded {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "vcs-control-directory-needed".into()
     }
 
@@ -219,7 +219,7 @@ impl MissingPythonModule {
 }
 
 impl Problem for MissingPythonModule {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-python-module".into()
     }
 
@@ -249,7 +249,7 @@ impl Display for MissingCommand {
 }
 
 impl Problem for MissingCommand {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "command-missing".into()
     }
 
@@ -297,7 +297,7 @@ impl Display for MissingPythonDistribution {
 }
 
 impl Problem for MissingPythonDistribution {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-python-distribution".into()
     }
 
@@ -425,7 +425,7 @@ impl Display for MissingHaskellModule {
 }
 
 impl Problem for MissingHaskellModule {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-haskell-module".into()
     }
 
@@ -453,7 +453,7 @@ impl Display for MissingLibrary {
 }
 
 impl Problem for MissingLibrary {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-library".into()
     }
 
@@ -481,7 +481,7 @@ impl Display for MissingIntrospectionTypelib {
 }
 
 impl Problem for MissingIntrospectionTypelib {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-introspection-typelib".into()
     }
 
@@ -509,7 +509,7 @@ impl Display for MissingPytestFixture {
 }
 
 impl Problem for MissingPytestFixture {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-pytest-fixture".into()
     }
 
@@ -538,7 +538,7 @@ impl Display for UnsupportedPytestConfigOption {
 }
 
 impl Problem for UnsupportedPytestConfigOption {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "unsupported-pytest-config-option".into()
     }
 
@@ -567,7 +567,7 @@ impl Display for UnsupportedPytestArguments {
 }
 
 impl Problem for UnsupportedPytestArguments {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "unsupported-pytest-arguments".into()
     }
 
@@ -621,7 +621,7 @@ impl Display for MissingRPackage {
 }
 
 impl Problem for MissingRPackage {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-r-package".into()
     }
 
@@ -648,7 +648,7 @@ pub struct MissingGoPackage {
 }
 
 impl Problem for MissingGoPackage {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-go-package".into()
     }
 
@@ -680,7 +680,7 @@ pub struct MissingCHeader {
 }
 
 impl Problem for MissingCHeader {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-c-header".into()
     }
 
@@ -722,7 +722,7 @@ impl MissingCHeader {
 pub struct MissingNodeModule(pub String);
 
 impl Problem for MissingNodeModule {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-node-module".into()
     }
 
@@ -751,7 +751,7 @@ impl Display for MissingNodeModule {
 pub struct MissingNodePackage(pub String);
 
 impl Problem for MissingNodePackage {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-node-package".into()
     }
 
@@ -780,7 +780,7 @@ impl Display for MissingNodePackage {
 pub struct MissingConfigure;
 
 impl Problem for MissingConfigure {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-configure".into()
     }
 
@@ -834,7 +834,7 @@ impl MissingVagueDependency {
 }
 
 impl Problem for MissingVagueDependency {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-vague-dependency".into()
     }
 
@@ -866,7 +866,7 @@ impl Display for MissingVagueDependency {
 pub struct MissingQt;
 
 impl Problem for MissingQt {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-qt".into()
     }
 
@@ -893,7 +893,7 @@ impl Display for MissingQt {
 pub struct MissingX11;
 
 impl Problem for MissingX11 {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-x11".into()
     }
 
@@ -941,7 +941,7 @@ impl MissingAutoconfMacro {
 }
 
 impl Problem for MissingAutoconfMacro {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-autoconf-macro".into()
     }
 
@@ -971,7 +971,7 @@ impl Display for MissingAutoconfMacro {
 pub struct DirectoryNonExistant(pub String);
 
 impl Problem for DirectoryNonExistant {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "local-directory-not-existing".into()
     }
 
@@ -1000,7 +1000,7 @@ impl Display for DirectoryNonExistant {
 pub struct MissingValaPackage(pub String);
 
 impl Problem for MissingValaPackage {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-vala-package".into()
     }
 
@@ -1029,7 +1029,7 @@ impl Display for MissingValaPackage {
 pub struct UpstartFilePresent(pub String);
 
 impl Problem for UpstartFilePresent {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "upstart-file-present".into()
     }
 
@@ -1058,7 +1058,7 @@ impl Display for UpstartFilePresent {
 pub struct MissingPostgresExtension(pub String);
 
 impl Problem for MissingPostgresExtension {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-postgresql-extension".into()
     }
 
@@ -1092,7 +1092,7 @@ pub struct MissingPkgConfig {
 }
 
 impl Problem for MissingPkgConfig {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-pkg-config-package".into()
     }
 
@@ -1161,7 +1161,7 @@ impl MissingPkgConfig {
 pub struct MissingHaskellDependencies(pub Vec<String>);
 
 impl Problem for MissingHaskellDependencies {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-haskell-dependencies".into()
     }
 
@@ -1190,7 +1190,7 @@ impl Display for MissingHaskellDependencies {
 pub struct NoSpaceOnDevice;
 
 impl Problem for NoSpaceOnDevice {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "no-space-on-device".into()
     }
 
@@ -1226,7 +1226,7 @@ impl Display for NoSpaceOnDevice {
 pub struct MissingJRE;
 
 impl Problem for MissingJRE {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-jre".into()
     }
 
@@ -1269,7 +1269,7 @@ impl MissingJDK {
 }
 
 impl Problem for MissingJDK {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-jdk".into()
     }
 
@@ -1317,7 +1317,7 @@ impl MissingJDKFile {
 }
 
 impl Problem for MissingJDKFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-jdk-file".into()
     }
 
@@ -1366,7 +1366,7 @@ impl MissingPerlFile {
 }
 
 impl Problem for MissingPerlFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-perl-file".into()
     }
 
@@ -1414,7 +1414,7 @@ pub struct MissingPerlModule {
 }
 
 impl Problem for MissingPerlModule {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-perl-module".into()
     }
 
@@ -1479,7 +1479,7 @@ impl MissingPerlModule {
 pub struct MissingSetupPyCommand(pub String);
 
 impl Problem for MissingSetupPyCommand {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-setup.py-command".into()
     }
 
@@ -1508,7 +1508,7 @@ impl Display for MissingSetupPyCommand {
 pub struct MissingCSharpCompiler;
 
 impl Problem for MissingCSharpCompiler {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-c#-compiler".into()
     }
 
@@ -1535,7 +1535,7 @@ impl Display for MissingCSharpCompiler {
 pub struct MissingRustCompiler;
 
 impl Problem for MissingRustCompiler {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-rust-compiler".into()
     }
 
@@ -1562,7 +1562,7 @@ impl Display for MissingRustCompiler {
 pub struct MissingAssembler;
 
 impl Problem for MissingAssembler {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-assembler".into()
     }
 
@@ -1594,7 +1594,7 @@ pub struct MissingCargoCrate {
 }
 
 impl Problem for MissingCargoCrate {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-cargo-crate".into()
     }
 
@@ -1648,7 +1648,7 @@ impl Display for MissingCargoCrate {
 pub struct DhWithOrderIncorrect;
 
 impl Problem for DhWithOrderIncorrect {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "debhelper-argument-order".into()
     }
 
@@ -1698,7 +1698,7 @@ impl UnsupportedDebhelperCompatLevel {
 }
 
 impl Problem for UnsupportedDebhelperCompatLevel {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "unsupported-debhelper-compat-level".into()
     }
 
@@ -1734,7 +1734,7 @@ impl Display for UnsupportedDebhelperCompatLevel {
 pub struct SetuptoolScmVersionIssue;
 
 impl Problem for SetuptoolScmVersionIssue {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "setuptools-scm-version-issue".into()
     }
 
@@ -1761,7 +1761,7 @@ impl Display for SetuptoolScmVersionIssue {
 pub struct MissingMavenArtifacts(pub Vec<String>);
 
 impl Problem for MissingMavenArtifacts {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-maven-artifacts".into()
     }
 
@@ -1803,7 +1803,7 @@ impl NotExecutableFile {
 }
 
 impl Problem for NotExecutableFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "not-executable-file".into()
     }
 
@@ -1845,7 +1845,7 @@ impl DhMissingUninstalled {
 }
 
 impl Problem for DhMissingUninstalled {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "dh-missing-uninstalled".into()
     }
 
@@ -1887,7 +1887,7 @@ impl DhLinkDestinationIsDirectory {
 }
 
 impl Problem for DhLinkDestinationIsDirectory {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "dh-link-destination-is-directory".into()
     }
 
@@ -1932,7 +1932,7 @@ impl MissingXmlEntity {
 }
 
 impl Problem for MissingXmlEntity {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-xml-entity".into()
     }
 
@@ -1974,7 +1974,7 @@ impl CcacheError {
 }
 
 impl Problem for CcacheError {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "ccache-error".into()
     }
 
@@ -2019,7 +2019,7 @@ impl DebianVersionRejected {
 }
 
 impl Problem for DebianVersionRejected {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "debian-version-rejected".into()
     }
 
@@ -2064,7 +2064,7 @@ impl PatchApplicationFailed {
 }
 
 impl Problem for PatchApplicationFailed {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "patch-application-failed".into()
     }
 
@@ -2115,7 +2115,7 @@ impl NeedPgBuildExtUpdateControl {
 }
 
 impl Problem for NeedPgBuildExtUpdateControl {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "need-pg-buildext-updatecontrol".into()
     }
 
@@ -2168,7 +2168,7 @@ impl DhAddonLoadFailure {
 }
 
 impl Problem for DhAddonLoadFailure {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "dh-addon-load-failure".into()
     }
 
@@ -2218,7 +2218,7 @@ impl DhUntilUnsupported {
 }
 
 impl Problem for DhUntilUnsupported {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "dh-until-unsupported".into()
     }
 
@@ -2271,7 +2271,7 @@ impl DebhelperPatternNotFound {
 }
 
 impl Problem for DebhelperPatternNotFound {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "debhelper-pattern-not-found".into()
     }
 
@@ -2326,7 +2326,7 @@ impl MissingPerlManifest {
 }
 
 impl Problem for MissingPerlManifest {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-perl-manifest".into()
     }
 
@@ -2369,7 +2369,7 @@ impl ImageMagickDelegateMissing {
 }
 
 impl Problem for ImageMagickDelegateMissing {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "imagemagick-delegate-missing".into()
     }
 
@@ -2418,7 +2418,7 @@ impl Cancelled {
 }
 
 impl Problem for Cancelled {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "cancelled".into()
     }
 
@@ -2465,7 +2465,7 @@ impl DisappearedSymbols {
 }
 
 impl Problem for DisappearedSymbols {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "disappeared-symbols".into()
     }
 
@@ -2508,7 +2508,7 @@ impl DuplicateDHCompatLevel {
 }
 
 impl Problem for DuplicateDHCompatLevel {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "duplicate-dh-compat-level".into()
     }
 
@@ -2557,7 +2557,7 @@ impl MissingDHCompatLevel {
 }
 
 impl Problem for MissingDHCompatLevel {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-dh-compat-level".into()
     }
 
@@ -2606,7 +2606,7 @@ impl MissingJVM {
 }
 
 impl Problem for MissingJVM {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-jvm".into()
     }
 
@@ -2663,7 +2663,7 @@ impl MissingRubyGem {
 }
 
 impl Problem for MissingRubyGem {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-ruby-gem".into()
     }
 
@@ -2717,7 +2717,7 @@ impl MissingJavaScriptRuntime {
 }
 
 impl Problem for MissingJavaScriptRuntime {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "javascript-runtime-missing".into()
     }
 
@@ -2760,7 +2760,7 @@ impl MissingRubyFile {
 }
 
 impl Problem for MissingRubyFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-ruby-file".into()
     }
 
@@ -2818,7 +2818,7 @@ impl MissingPhpClass {
 }
 
 impl Problem for MissingPhpClass {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-php-class".into()
     }
 
@@ -2876,7 +2876,7 @@ impl MissingJavaClass {
 }
 
 impl Problem for MissingJavaClass {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-java-class".into()
     }
 
@@ -2924,7 +2924,7 @@ impl MissingSprocketsFile {
 }
 
 impl Problem for MissingSprocketsFile {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-sprockets-file".into()
     }
 
@@ -2974,7 +2974,7 @@ impl MissingXfceDependency {
 }
 
 impl Problem for MissingXfceDependency {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-xfce-dependency".into()
     }
 
@@ -3003,7 +3003,7 @@ impl Display for MissingXfceDependency {
 pub struct GnomeCommonMissing;
 
 impl Problem for GnomeCommonMissing {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-gnome-common".into()
     }
 
@@ -3046,7 +3046,7 @@ impl MissingConfigStatusInput {
 }
 
 impl Problem for MissingConfigStatusInput {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-config.status-input".into()
     }
 
@@ -3108,7 +3108,7 @@ impl MissingGnomeCommonDependency {
 }
 
 impl Problem for MissingGnomeCommonDependency {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-gnome-common-dependency".into()
     }
 
@@ -3159,7 +3159,7 @@ impl MissingAutomakeInput {
 }
 
 impl Problem for MissingAutomakeInput {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-automake-input".into()
     }
 
@@ -3205,7 +3205,7 @@ impl ChrootNotFound {
 }
 
 impl Problem for ChrootNotFound {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "chroot-not-found".into()
     }
 
@@ -3254,7 +3254,7 @@ impl MissingLibtool {
 }
 
 impl Problem for MissingLibtool {
-    fn kind(&self) -> Cow<str> {
+    fn kind(&self) -> Cow<'_, str> {
         "missing-libtool".into()
     }
 
@@ -3286,7 +3286,7 @@ pub struct CMakeFilesMissing {
 }
 
 impl Problem for CMakeFilesMissing {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-cmake-files".into()
     }
 
@@ -3321,7 +3321,7 @@ pub struct MissingCMakeComponents {
 }
 
 impl Problem for MissingCMakeComponents {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-cmake-components".into()
     }
 
@@ -3356,7 +3356,7 @@ pub struct MissingCMakeConfig {
 }
 
 impl Problem for MissingCMakeConfig {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-cmake-config".into()
     }
 
@@ -3403,7 +3403,7 @@ pub struct CMakeNeedExactVersion {
 }
 
 impl Problem for CMakeNeedExactVersion {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "cmake-exact-version-missing".into()
     }
 
@@ -3444,7 +3444,7 @@ pub struct MissingStaticLibrary {
 }
 
 impl Problem for MissingStaticLibrary {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-static-library".into()
     }
 
@@ -3474,7 +3474,7 @@ impl std::fmt::Display for MissingStaticLibrary {
 pub struct MissingGoRuntime;
 
 impl Problem for MissingGoRuntime {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-go-runtime".into()
     }
 
@@ -3501,7 +3501,7 @@ impl std::fmt::Display for MissingGoRuntime {
 pub struct UnknownCertificateAuthority(pub String);
 
 impl Problem for UnknownCertificateAuthority {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unknown-certificate-authority".into()
     }
 
@@ -3530,7 +3530,7 @@ impl std::fmt::Display for UnknownCertificateAuthority {
 pub struct MissingPerlPredeclared(pub String);
 
 impl Problem for MissingPerlPredeclared {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-perl-predeclared".into()
     }
 
@@ -3559,7 +3559,7 @@ impl std::fmt::Display for MissingPerlPredeclared {
 pub struct MissingGitIdentity;
 
 impl Problem for MissingGitIdentity {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-git-identity".into()
     }
 
@@ -3586,7 +3586,7 @@ impl std::fmt::Display for MissingGitIdentity {
 pub struct MissingSecretGpgKey;
 
 impl Problem for MissingSecretGpgKey {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "no-secret-gpg-key".into()
     }
 
@@ -3613,7 +3613,7 @@ impl std::fmt::Display for MissingSecretGpgKey {
 pub struct MissingVcVersionerVersion;
 
 impl Problem for MissingVcVersionerVersion {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "no-vcversioner-version".into()
     }
 
@@ -3656,7 +3656,7 @@ impl MissingLatexFile {
 }
 
 impl Problem for MissingLatexFile {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-latex-file".into()
     }
 
@@ -3685,7 +3685,7 @@ impl std::fmt::Display for MissingLatexFile {
 pub struct MissingXDisplay;
 
 impl Problem for MissingXDisplay {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-x-display".into()
     }
 
@@ -3712,7 +3712,7 @@ impl std::fmt::Display for MissingXDisplay {
 pub struct MissingFontspec(pub String);
 
 impl Problem for MissingFontspec {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-fontspec".into()
     }
 
@@ -3741,7 +3741,7 @@ impl std::fmt::Display for MissingFontspec {
 pub struct InactiveKilled(pub i64);
 
 impl Problem for InactiveKilled {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "inactive-killed".into()
     }
 
@@ -3770,7 +3770,7 @@ impl std::fmt::Display for InactiveKilled {
 pub struct MissingPauseCredentials;
 
 impl Problem for MissingPauseCredentials {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-pause-credentials".into()
     }
 
@@ -3802,7 +3802,7 @@ pub struct MismatchGettextVersions {
 }
 
 impl Problem for MismatchGettextVersions {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "mismatch-gettext-versions".into()
     }
 
@@ -3836,7 +3836,7 @@ impl std::fmt::Display for MismatchGettextVersions {
 pub struct InvalidCurrentUser(pub String);
 
 impl Problem for InvalidCurrentUser {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "invalid-current-user".into()
     }
 
@@ -3865,7 +3865,7 @@ impl std::fmt::Display for InvalidCurrentUser {
 pub struct MissingGnulibDirectory(pub PathBuf);
 
 impl Problem for MissingGnulibDirectory {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-gnulib-directory".into()
     }
 
@@ -3894,7 +3894,7 @@ impl std::fmt::Display for MissingGnulibDirectory {
 pub struct MissingLuaModule(pub String);
 
 impl Problem for MissingLuaModule {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-lua-module".into()
     }
 
@@ -3923,7 +3923,7 @@ impl std::fmt::Display for MissingLuaModule {
 pub struct MissingGoModFile;
 
 impl Problem for MissingGoModFile {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-go.mod-file".into()
     }
 
@@ -3950,7 +3950,7 @@ impl std::fmt::Display for MissingGoModFile {
 pub struct OutdatedGoModFile;
 
 impl Problem for OutdatedGoModFile {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "outdated-go.mod-file".into()
     }
 
@@ -3982,7 +3982,7 @@ pub struct CodeCoverageTooLow {
 }
 
 impl Problem for CodeCoverageTooLow {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "code-coverage-too-low".into()
     }
 
@@ -4016,7 +4016,7 @@ impl std::fmt::Display for CodeCoverageTooLow {
 pub struct ESModuleMustUseImport(pub String);
 
 impl Problem for ESModuleMustUseImport {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "esmodule-must-use-import".into()
     }
 
@@ -4045,7 +4045,7 @@ impl std::fmt::Display for ESModuleMustUseImport {
 pub struct MissingPHPExtension(pub String);
 
 impl Problem for MissingPHPExtension {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-php-extension".into()
     }
 
@@ -4074,7 +4074,7 @@ impl std::fmt::Display for MissingPHPExtension {
 pub struct MinimumAutoconfTooOld(pub String);
 
 impl Problem for MinimumAutoconfTooOld {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "minimum-autoconf-too-old".into()
     }
 
@@ -4107,7 +4107,7 @@ impl std::fmt::Display for MinimumAutoconfTooOld {
 pub struct MissingPerlDistributionFile(pub String);
 
 impl Problem for MissingPerlDistributionFile {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-perl-distribution-file".into()
     }
 
@@ -4141,7 +4141,7 @@ pub struct MissingGoSumEntry {
 }
 
 impl Problem for MissingGoSumEntry {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-go.sum-entry".into()
     }
 
@@ -4171,7 +4171,7 @@ impl std::fmt::Display for MissingGoSumEntry {
 pub struct ValaCompilerCannotCompile;
 
 impl Problem for ValaCompilerCannotCompile {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "valac-cannot-compile".into()
     }
 
@@ -4198,7 +4198,7 @@ impl std::fmt::Display for ValaCompilerCannotCompile {
 pub struct MissingDebianBuildDep(pub String);
 
 impl Problem for MissingDebianBuildDep {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-debian-build-dep".into()
     }
 
@@ -4227,7 +4227,7 @@ impl std::fmt::Display for MissingDebianBuildDep {
 pub struct MissingQtModules(pub Vec<String>);
 
 impl Problem for MissingQtModules {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-qt-modules".into()
     }
 
@@ -4256,7 +4256,7 @@ impl std::fmt::Display for MissingQtModules {
 pub struct MissingOCamlPackage(pub String);
 
 impl Problem for MissingOCamlPackage {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-ocaml-package".into()
     }
 
@@ -4285,7 +4285,7 @@ impl std::fmt::Display for MissingOCamlPackage {
 pub struct TooManyOpenFiles;
 
 impl Problem for TooManyOpenFiles {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "too-many-open-files".into()
     }
 
@@ -4343,7 +4343,7 @@ impl std::fmt::Display for MissingMakeTarget {
 }
 
 impl Problem for MissingMakeTarget {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-make-target".into()
     }
 
