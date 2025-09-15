@@ -31,7 +31,7 @@ impl AutopkgtestDepsUnsatisfiable {
 }
 
 impl Problem for AutopkgtestDepsUnsatisfiable {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "badpkg".into()
     }
 
@@ -57,7 +57,7 @@ impl std::fmt::Display for AutopkgtestDepsUnsatisfiable {
 pub struct AutopkgtestTimedOut;
 
 impl Problem for AutopkgtestTimedOut {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "timed-out".into()
     }
 
@@ -83,7 +83,7 @@ impl std::fmt::Display for AutopkgtestTimedOut {
 pub struct XDGRunTimeNotSet;
 
 impl Problem for XDGRunTimeNotSet {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "xdg-runtime-dir-not-set".into()
     }
 
@@ -109,7 +109,7 @@ impl std::fmt::Display for XDGRunTimeNotSet {
 pub struct AutopkgtestTestbedFailure(pub String);
 
 impl Problem for AutopkgtestTestbedFailure {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "testbed-failure".into()
     }
 
@@ -138,7 +138,7 @@ impl std::fmt::Display for AutopkgtestTestbedFailure {
 pub struct AutopkgtestDepChrootDisappeared;
 
 impl Problem for AutopkgtestDepChrootDisappeared {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "testbed-chroot-disappeared".into()
     }
 
@@ -164,7 +164,7 @@ impl std::fmt::Display for AutopkgtestDepChrootDisappeared {
 pub struct AutopkgtestErroneousPackage(pub String);
 
 impl Problem for AutopkgtestErroneousPackage {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "erroneous-package".into()
     }
 
@@ -192,7 +192,7 @@ impl std::fmt::Display for AutopkgtestErroneousPackage {
 pub struct AutopkgtestStderrFailure(pub String);
 
 impl Problem for AutopkgtestStderrFailure {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "stderr-output".into()
     }
 
@@ -228,7 +228,7 @@ pub struct AutopkgtestTestbedSetupFailure {
 }
 
 impl Problem for AutopkgtestTestbedSetupFailure {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "testbed-setup-failure".into()
     }
 

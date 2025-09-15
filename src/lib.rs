@@ -472,7 +472,7 @@ impl std::fmt::Display for MultiLineMatch {
 /// providing methods to access problem information and properties.
 pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
     /// Returns the kind/type of problem.
-    fn kind(&self) -> Cow<str>;
+    fn kind(&self) -> Cow<'_, str>;
 
     /// Returns the problem details as a JSON value.
     fn json(&self) -> serde_json::Value;

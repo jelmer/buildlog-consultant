@@ -68,7 +68,7 @@ pub enum Packet<'a> {
 /// # Returns
 /// An option containing a tuple of (timestamp, packet) if the line is a valid autopkgtest log line,
 /// or None if the line doesn't match the expected format
-fn parse_autopgktest_line(line: &str) -> Option<(&str, Packet)> {
+fn parse_autopgktest_line(line: &str) -> Option<(&str, Packet<'_>)> {
     let (timestamp, message) =
         match lazy_regex::regex_captures!(r"autopkgtest \[([0-9:]+)\]: (.*)", line) {
             Some((_, timestamp, message)) => (timestamp, message),

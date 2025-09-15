@@ -9,7 +9,7 @@ use debversion::Version;
 pub struct DpkgError(pub String);
 
 impl Problem for DpkgError {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "dpkg-error".into()
     }
 
@@ -38,7 +38,7 @@ impl std::fmt::Display for DpkgError {
 pub struct AptUpdateError;
 
 impl Problem for AptUpdateError {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "apt-update-error".into()
     }
 
@@ -70,7 +70,7 @@ pub struct AptFetchFailure {
 }
 
 impl Problem for AptFetchFailure {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "apt-file-fetch-failure".into()
     }
 
@@ -104,7 +104,7 @@ impl std::fmt::Display for AptFetchFailure {
 pub struct AptMissingReleaseFile(pub String);
 
 impl Problem for AptMissingReleaseFile {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-release-file".into()
     }
 
@@ -133,7 +133,7 @@ impl std::fmt::Display for AptMissingReleaseFile {
 pub struct AptPackageUnknown(pub String);
 
 impl Problem for AptPackageUnknown {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "apt-package-unknown".into()
     }
 
@@ -167,7 +167,7 @@ pub struct AptBrokenPackages {
 }
 
 impl Problem for AptBrokenPackages {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "apt-broken-packages".into()
     }
 
@@ -202,7 +202,7 @@ pub struct UnableToFindUpstreamTarball {
 }
 
 impl Problem for UnableToFindUpstreamTarball {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unable-to-find-upstream-tarball".into()
     }
 
@@ -241,7 +241,7 @@ pub struct SourceFormatUnbuildable {
 }
 
 impl Problem for SourceFormatUnbuildable {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "source-format-unbuildable".into()
     }
 
@@ -275,7 +275,7 @@ impl std::fmt::Display for SourceFormatUnbuildable {
 pub struct SourceFormatUnsupported(pub String);
 
 impl Problem for SourceFormatUnsupported {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "source-format-unsupported".into()
     }
 
@@ -304,7 +304,7 @@ impl std::fmt::Display for SourceFormatUnsupported {
 pub struct PatchFileMissing(pub std::path::PathBuf);
 
 impl Problem for PatchFileMissing {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "patch-file-missing".into()
     }
 
@@ -338,7 +338,7 @@ pub struct DpkgSourceLocalChanges {
 }
 
 impl Problem for DpkgSourceLocalChanges {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unexpected-local-upstream-changes".into()
     }
 
@@ -378,7 +378,7 @@ impl std::fmt::Display for DpkgSourceLocalChanges {
 pub struct DpkgSourceUnrepresentableChanges;
 
 impl Problem for DpkgSourceUnrepresentableChanges {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unrepresentable-local-changes".into()
     }
 
@@ -405,7 +405,7 @@ impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
 pub struct DpkgUnwantedBinaryFiles;
 
 impl Problem for DpkgUnwantedBinaryFiles {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unwanted-binary-files".into()
     }
 
@@ -432,7 +432,7 @@ impl std::fmt::Display for DpkgUnwantedBinaryFiles {
 pub struct DpkgBinaryFileChanged(pub Vec<String>);
 
 impl Problem for DpkgBinaryFileChanged {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "binary-file-changed".into()
     }
 
@@ -461,7 +461,7 @@ impl std::fmt::Display for DpkgBinaryFileChanged {
 pub struct MissingControlFile(pub std::path::PathBuf);
 
 impl Problem for MissingControlFile {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-control-file".into()
     }
 
@@ -488,7 +488,7 @@ impl std::fmt::Display for MissingControlFile {
 pub struct UnknownMercurialExtraFields(pub String);
 
 impl Problem for UnknownMercurialExtraFields {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unknown-mercurial-extra-fields".into()
     }
 
@@ -517,7 +517,7 @@ impl std::fmt::Display for UnknownMercurialExtraFields {
 pub struct UpstreamPGPSignatureVerificationFailed;
 
 impl Problem for UpstreamPGPSignatureVerificationFailed {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "upstream-pgp-signature-verification-failed".into()
     }
 
@@ -544,7 +544,7 @@ impl std::fmt::Display for UpstreamPGPSignatureVerificationFailed {
 pub struct UScanRequestVersionMissing(pub String);
 
 impl Problem for UScanRequestVersionMissing {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "uscan-request-version-missing".into()
     }
 
@@ -573,7 +573,7 @@ impl std::fmt::Display for UScanRequestVersionMissing {
 pub struct DebcargoFailure(pub String);
 
 impl Problem for DebcargoFailure {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "debcargo-failure".into()
     }
 
@@ -602,7 +602,7 @@ impl std::fmt::Display for DebcargoFailure {
 pub struct ChangelogParseError(pub String);
 
 impl Problem for ChangelogParseError {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "changelog-parse-error".into()
     }
 
@@ -631,7 +631,7 @@ impl std::fmt::Display for ChangelogParseError {
 pub struct UScanError(pub String);
 
 impl Problem for UScanError {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "uscan-error".into()
     }
 
@@ -665,7 +665,7 @@ pub struct UScanFailed {
 }
 
 impl Problem for UScanFailed {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "uscan-failed".into()
     }
 
@@ -700,7 +700,7 @@ pub struct InconsistentSourceFormat {
 }
 
 impl Problem for InconsistentSourceFormat {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "inconsistent-source-format".into()
     }
 
@@ -738,7 +738,7 @@ pub struct UpstreamMetadataFileParseError {
 }
 
 impl Problem for UpstreamMetadataFileParseError {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "debian-upstream-metadata-invalid".into()
     }
 
@@ -768,7 +768,7 @@ impl std::fmt::Display for UpstreamMetadataFileParseError {
 pub struct DpkgSourcePackFailed(pub String);
 
 impl Problem for DpkgSourcePackFailed {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "dpkg-source-pack-failed".into()
     }
 
@@ -802,7 +802,7 @@ pub struct DpkgBadVersion {
 }
 
 impl Problem for DpkgBadVersion {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "dpkg-bad-version".into()
     }
 
@@ -841,7 +841,7 @@ pub struct MissingDebcargoCrate {
 }
 
 impl Problem for MissingDebcargoCrate {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "debcargo-missing-crate".into()
     }
 
@@ -906,7 +906,7 @@ impl MissingDebcargoCrate {
 pub struct PristineTarTreeMissing(pub String);
 
 impl Problem for PristineTarTreeMissing {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "pristine-tar-missing-tree".into()
     }
 
@@ -935,7 +935,7 @@ impl std::fmt::Display for PristineTarTreeMissing {
 pub struct MissingRevision(pub Vec<u8>);
 
 impl Problem for MissingRevision {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "missing-revision".into()
     }
 
@@ -969,7 +969,7 @@ pub struct DebcargoUnacceptablePredicate {
 }
 
 impl Problem for DebcargoUnacceptablePredicate {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "debcargo-unacceptable-predicate".into()
     }
 
@@ -1008,7 +1008,7 @@ pub struct DebcargoUnacceptableComparator {
 }
 
 impl Problem for DebcargoUnacceptableComparator {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "debcargo-unacceptable-comparator".into()
     }
 
@@ -1042,7 +1042,7 @@ impl std::fmt::Display for DebcargoUnacceptableComparator {
 pub struct UScanTooManyRequests(pub String);
 
 impl Problem for UScanTooManyRequests {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "uscan-too-many-requests".into()
     }
 
@@ -1071,7 +1071,7 @@ impl std::fmt::Display for UScanTooManyRequests {
 pub struct UnsatisfiedAptConflicts(pub String);
 
 impl Problem for UnsatisfiedAptConflicts {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unsatisfied-apt-conflicts".into()
     }
 
@@ -1107,7 +1107,7 @@ pub struct ArchitectureNotInList {
 }
 
 impl Problem for ArchitectureNotInList {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "arch-not-in-list".into()
     }
 
@@ -1137,7 +1137,7 @@ impl std::fmt::Display for ArchitectureNotInList {
 pub struct UnsatisfiedAptDependencies(pub String);
 
 impl Problem for UnsatisfiedAptDependencies {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "unsatisfied-apt-dependencies".into()
     }
 
@@ -1171,7 +1171,7 @@ pub struct InsufficientDiskSpace {
 }
 
 impl Problem for InsufficientDiskSpace {
-    fn kind(&self) -> std::borrow::Cow<str> {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
         "insufficient-disk-space".into()
     }
 

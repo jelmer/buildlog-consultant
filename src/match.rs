@@ -271,7 +271,7 @@ mod tests {
     }
 
     impl Problem for TestProblem {
-        fn kind(&self) -> Cow<str> {
+        fn kind(&self) -> Cow<'_, str> {
             Cow::Borrowed("test")
         }
 
