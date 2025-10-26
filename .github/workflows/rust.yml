@@ -1,6 +1,7 @@
+---
 name: Rust
 
-on:
+"on":
   push:
   pull_request:
 
@@ -17,14 +18,14 @@ jobs:
       fail-fast: false
 
     steps:
-    - uses: actions/checkout@v5
-    - name: Build
-      run: cargo build --verbose
-      env:
-        RUSTFLAGS: -Dwarnings
-    - name: Build
-      run: cargo test --verbose
-      env:
-        RUSTFLAGS: -Dwarnings
-    - name: Check formatting
-      run: cargo fmt -- --check
+      - uses: actions/checkout@v5
+      - name: Build
+        run: cargo build --verbose
+        env:
+          RUSTFLAGS: -Dwarnings
+      - name: Build
+        run: cargo test --verbose
+        env:
+          RUSTFLAGS: -Dwarnings
+      - name: Check formatting
+        run: cargo fmt -- --check
