@@ -42,13 +42,13 @@ required-features = ["cli"]
 [dependencies]
 inventory = "0.3"
 regex = "1"
-lazy_static = "1"
-serde_json = "1"
+lazy_static = "1.4"
+serde_json = "1.0.118"
 serde = { version = "1", features = ["derive"] }
 shlex = "1"
 log = "0.4.20"
 text-size = "1.1.1"
-debversion = { version = ">=0.4,<0.6", features = ["serde"] }
+debversion = { version = ">=0.4.8,<0.6", features = ["serde"] }
 chrono = "0.4.31"
 fancy-regex = ">=0.14,< 0.17"
 lazy-regex = "3.0.2"
@@ -58,7 +58,7 @@ env_logger = { version = ">=0.10", optional = true }
 clap = { version = "4", optional = true, features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 serde_yaml = { version = "0.9" }
-debian-control = ">=0.1,<0.3"
+debian-control = "0.2"
 maplit = "1.0.2"
 pep508_rs = "0.9.1"
 
