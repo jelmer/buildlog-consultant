@@ -30,6 +30,7 @@ jobs:
           RUSTFLAGS: -Dwarnings
       - name: Check formatting
         run: cargo fmt -- --check
+
   minimal-versions:
     runs-on: ubuntu-latest
     steps:
