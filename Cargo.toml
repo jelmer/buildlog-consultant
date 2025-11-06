@@ -48,9 +48,9 @@ serde = { version = "1", features = ["derive"] }
 shlex = "1"
 log = "0.4.20"
 text-size = "1.1.1"
-debversion = { version = ">=0.4.8,<0.6", features = ["serde"] }
+debversion = { version = ">=0.4.7,<0.6", features = ["serde"] }
 chrono = "0.4.31"
-fancy-regex = ">=0.14,< 0.17"
+fancy-regex = ">=0.11,< 0.17"
 lazy-regex = "3.0.2"
 textwrap = "0.16.0"
 chatgpt_rs = { version = "1", optional = true }
