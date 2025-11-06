@@ -40,4 +40,4 @@ jobs:
       - name: Install cargo-minimal-versions
         run: cargo install cargo-minimal-versions
       - name: Test with minimal versions
-        run: cargo minimal-versions test
+        run: cargo minimal-versions --direct test
