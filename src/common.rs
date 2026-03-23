@@ -766,6 +766,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^xargs: (.*): No such file or directory", command_missing),
     regex_line_matcher!(r"^make\[[0-9]+\]: ([^/ :]+): No such file or directory", command_missing),
     regex_line_matcher!(r"^.*: failed to exec '(.*)': No such file or directory", command_missing),
+    regex_line_matcher!(r"^.*: failed to execute (.*): No such file or directory", command_missing),
     regex_line_matcher!(r"^No package '([^']+)' found", pkg_config_missing),
     regex_line_matcher!(r"^--\s* No package '([^']+)' found", pkg_config_missing),
     regex_line_matcher!(
@@ -4500,6 +4501,11 @@ arch:all and the other not)"#
             vec!["dbus-run-session: failed to exec 'xvfb-run': No such file or directory"],
             1,
             Some(MissingCommand("xvfb-run".to_owned())),
+        );
+        assert_match(
+            vec!["unshare: failed to execute python3: No such file or directory"],
+            1,
+            Some(MissingCommand("python3".to_owned())),
         );
         assert_match(
             vec!["/bin/sh: 1: ./configure: not found"],
