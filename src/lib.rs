@@ -25,6 +25,10 @@ pub mod problems;
 /// Module for interacting with ChatGPT for log analysis.
 pub mod chatgpt;
 
+#[cfg(feature = "claude")]
+/// Module for interacting with Claude for log analysis.
+pub mod claude;
+
 /// Common utilities and helpers for build log analysis.
 pub mod common;
 
