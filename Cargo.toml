@@ -13,17 +13,13 @@ exclude = [".github", "disperse.conf", ".gitignore", "MANIFEST", "MANIFEST.in"]
 default = ["cli"]
 chatgpt = ["dep:chatgpt_rs"]
 claude = ["dep:anthropic"]
+llm = ["chatgpt", "claude"]
 cli = ["dep:clap", "dep:env_logger"]
 
 [[bin]]
-name = "chatgpt-analyze-log"
-path = "src/bin/chatgpt-analyze-log.rs"
-required-features = ["chatgpt", "cli", "tokio"]
-
-[[bin]]
-name = "claude-analyze-log"
-path = "src/bin/claude-analyze-log.rs"
-required-features = ["claude", "cli", "tokio"]
+name = "llm-analyze-log"
+path = "src/bin/llm-analyze-log.rs"
+required-features = ["llm", "cli", "tokio"]
 
 [[bin]]
 name = "analyze-apt-log"
