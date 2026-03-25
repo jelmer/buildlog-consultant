@@ -111,11 +111,7 @@ pub fn truncate_lines<'a>(lines: &[&'a str]) -> (usize, Vec<&'a str>) {
 ///
 /// The response is expected to be a JSON object with `line`, `kind`, and `details` fields.
 /// Falls back to extracting just a line number if JSON parsing fails.
-pub fn parse_response(
-    response: &str,
-    lines: &Vec<&str>,
-    origin: &str,
-) -> Option<AnalysisResult> {
+pub fn parse_response(response: &str, lines: &Vec<&str>, origin: &str) -> Option<AnalysisResult> {
     // Strip markdown code fences if present
     let trimmed = response.trim();
     let trimmed = trimmed
@@ -141,18 +137,18 @@ pub fn parse_response(
             let offset = lineno - 1;
             let m = SingleLineMatch::from_lines(lines, offset, Some(origin));
 
-            let problem = json
-                .get("kind")
-                .and_then(|v| v.as_str())
-                .map(|kind| -> Box<dyn Problem> {
-                    Box::new(LlmProblem {
-                        kind: kind.to_string(),
-                        details: json
-                            .get("details")
-                            .cloned()
-                            .unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
-                    })
-                });
+            let problem =
+                json.get("kind")
+                    .and_then(|v| v.as_str())
+                    .map(|kind| -> Box<dyn Problem> {
+                        Box::new(LlmProblem {
+                            kind: kind.to_string(),
+                            details: json
+                                .get("details")
+                                .cloned()
+                                .unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
+                        })
+                    });
 
             return Some(AnalysisResult {
                 r#match: m,
@@ -225,8 +221,7 @@ mod tests {
     #[test]
     fn test_parse_response_json() {
         let lines = vec!["ok", "error: missing gcc", "ok"];
-        let response =
-            r#"{"line": 2, "kind": "command-missing", "details": {"command": "gcc"}}"#;
+        let response = r#"{"line": 2, "kind": "command-missing", "details": {"command": "gcc"}}"#;
         let result = parse_response(response, &lines, "test").unwrap();
         assert_eq!(result.r#match.offset(), 1);
         assert_eq!(result.r#match.line(), "error: missing gcc");

@@ -10,9 +10,7 @@ use anthropic::types::{ContentBlock, Message, MessagesRequestBuilder, Role};
 /// Fetches the list of available models and picks the cheapest suitable one.
 ///
 /// Prefers the cheapest model in this order: haiku, sonnet, opus.
-async fn pick_model(
-    client: &Client,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+async fn pick_model(client: &Client) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let resp = client
         .http_client
         .get(format!("{}/v1/models", client.api_base))

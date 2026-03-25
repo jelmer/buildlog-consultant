@@ -50,9 +50,11 @@ async fn pick_model(
         }
     }
 
-    if let Some(model) = models.iter().rev().find(|id| {
-        !id.contains("mini") && !id.contains("nano") && !id.contains("preview")
-    }) {
+    if let Some(model) = models
+        .iter()
+        .rev()
+        .find(|id| !id.contains("mini") && !id.contains("nano") && !id.contains("preview"))
+    {
         log::debug!("Selected OpenAI model: {}", model);
         return Ok(model.to_string());
     }
