@@ -116,7 +116,14 @@ pub fn parse_response(
     lines: &Vec<&str>,
     origin: &str,
 ) -> Option<AnalysisResult> {
+    // Strip markdown code fences if present
     let trimmed = response.trim();
+    let trimmed = trimmed
+        .strip_prefix("```json")
+        .or_else(|| trimmed.strip_prefix("```"))
+        .and_then(|s| s.strip_suffix("```"))
+        .map(|s| s.trim())
+        .unwrap_or(trimmed);
 
     // Try parsing as JSON first
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(trimmed) {
@@ -246,6 +253,16 @@ mod tests {
         let result = parse_response(response, &lines, "test").unwrap();
         assert_eq!(result.r#match.offset(), 1);
         assert!(result.problem.is_none());
+    }
+
+    #[test]
+    fn test_parse_response_json_in_code_fence() {
+        let lines = vec!["ok", "error: missing gcc", "ok"];
+        let response = "```json\n{\"line\": 2, \"kind\": \"command-missing\", \"details\": {\"command\": \"gcc\"}}\n```";
+        let result = parse_response(response, &lines, "test").unwrap();
+        assert_eq!(result.r#match.offset(), 1);
+        let problem = result.problem.unwrap();
+        assert_eq!(problem.kind().as_ref(), "command-missing");
     }
 
     #[test]
