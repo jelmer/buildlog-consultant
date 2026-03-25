@@ -21,6 +21,10 @@ pub mod lines;
 /// Module containing problem definitions for various build systems.
 pub mod problems;
 
+#[cfg(any(feature = "chatgpt", feature = "claude"))]
+/// Shared utilities for LLM-based build log analysis.
+pub mod llm;
+
 #[cfg(feature = "chatgpt")]
 /// Module for interacting with ChatGPT for log analysis.
 pub mod chatgpt;
