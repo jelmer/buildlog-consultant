@@ -496,6 +496,18 @@ pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
     }
 }
 
+/// Description of a known problem kind for documentation and LLM prompt generation.
+///
+/// Registered via `inventory` to allow automatic discovery of all problem kinds.
+pub struct ProblemKindInfo {
+    /// The problem kind identifier (e.g. "missing-file").
+    pub kind: &'static str,
+    /// Names of the JSON detail fields for this kind (e.g. &["path"]).
+    pub detail_fields: &'static [&'static str],
+}
+
+inventory::collect!(ProblemKindInfo);
+
 impl PartialEq for dyn Problem {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.json() == other.json()

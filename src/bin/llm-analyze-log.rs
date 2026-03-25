@@ -59,7 +59,7 @@ fn main() {
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let m = match backend {
+    let result = match backend {
         #[cfg(feature = "chatgpt")]
         Backend::Chatgpt => {
             let key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
@@ -72,8 +72,13 @@ fn main() {
         }
     };
 
-    match m {
-        Ok(Some(m)) => log::info!("match: {}", m),
+    match result {
+        Ok(Some(analysis)) => {
+            log::info!("match: {}", analysis.r#match);
+            if let Some(problem) = &analysis.problem {
+                log::info!("problem: {}", problem);
+            }
+        }
         Ok(None) => log::info!("No match found"),
         Err(e) => {
             log::error!("Failed to analyze log: {}", e);

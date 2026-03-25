@@ -41,6 +41,13 @@ impl Problem for MissingFile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-file",
+        detail_fields: &["path"],
+    }
+}
+
 impl Display for MissingFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Missing file: {}", self.path.display())
@@ -83,6 +90,13 @@ impl Problem for MissingBuildFile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-build-file",
+        detail_fields: &["filename"],
+    }
+}
+
 impl Display for MissingBuildFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Missing build file: {}", self.filename)
@@ -112,6 +126,13 @@ impl Problem for MissingCommandOrBuildFile {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-command-or-build-file",
+        detail_fields: &["filename"],
     }
 }
 
@@ -154,6 +175,13 @@ impl Problem for VcsControlDirectoryNeeded {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "vcs-control-directory-needed",
+        detail_fields: &["vcs"],
     }
 }
 
@@ -236,6 +264,13 @@ impl Problem for MissingPythonModule {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-python-module",
+        detail_fields: &["module", "python_version", "minimum_version"],
+    }
+}
+
 /// Problem representing a missing command-line executable.
 ///
 /// This struct is used when a required command is not available in the PATH.
@@ -261,6 +296,13 @@ impl Problem for MissingCommand {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "command-missing",
+        detail_fields: &["command"],
     }
 }
 
@@ -311,6 +353,13 @@ impl Problem for MissingPythonDistribution {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-python-distribution",
+        detail_fields: &["distribution", "python_version", "minimum_version"],
     }
 }
 
@@ -440,6 +489,13 @@ impl Problem for MissingHaskellModule {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-haskell-module",
+        detail_fields: &["module"],
+    }
+}
+
 /// Problem representing a missing system library.
 ///
 /// This struct is used when a required shared library (.so/.dll/.dylib) is not available.
@@ -465,6 +521,13 @@ impl Problem for MissingLibrary {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-library",
+        detail_fields: &["library"],
     }
 }
 
@@ -496,6 +559,13 @@ impl Problem for MissingIntrospectionTypelib {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-introspection-typelib",
+        detail_fields: &["library"],
+    }
+}
+
 /// Problem representing a missing pytest fixture.
 ///
 /// This struct is used when a pytest test requires a fixture that is not available.
@@ -521,6 +591,13 @@ impl Problem for MissingPytestFixture {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-pytest-fixture",
+        detail_fields: &["fixture"],
     }
 }
 
@@ -553,6 +630,13 @@ impl Problem for UnsupportedPytestConfigOption {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unsupported-pytest-config-option",
+        detail_fields: &["name"],
+    }
+}
+
 /// Problem representing unsupported pytest command-line arguments.
 ///
 /// This struct is used when pytest is invoked with command-line arguments
@@ -579,6 +663,13 @@ impl Problem for UnsupportedPytestArguments {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unsupported-pytest-arguments",
+        detail_fields: &["args"],
     }
 }
 
@@ -637,6 +728,13 @@ impl Problem for MissingRPackage {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-r-package",
+        detail_fields: &["package", "minimum_version"],
+    }
+}
+
 /// Problem representing a missing Go package.
 ///
 /// This struct is used when a required Go package is not installed
@@ -660,6 +758,13 @@ impl Problem for MissingGoPackage {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-go-package",
+        detail_fields: &["package"],
     }
 }
 
@@ -692,6 +797,13 @@ impl Problem for MissingCHeader {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-c-header",
+        detail_fields: &["header"],
     }
 }
 
@@ -737,6 +849,13 @@ impl Problem for MissingNodeModule {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-node-module",
+        detail_fields: &["module"],
+    }
+}
+
 impl Display for MissingNodeModule {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Node module: {}", self.0)
@@ -766,6 +885,13 @@ impl Problem for MissingNodePackage {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-node-package",
+        detail_fields: &["package"],
+    }
+}
+
 impl Display for MissingNodePackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Node package: {}", self.0)
@@ -790,6 +916,13 @@ impl Problem for MissingConfigure {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-configure",
+        detail_fields: &[],
     }
 }
 
@@ -852,6 +985,13 @@ impl Problem for MissingVagueDependency {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-vague-dependency",
+        detail_fields: &["name", "url", "minimum_version", "current_version"],
+    }
+}
+
 impl Display for MissingVagueDependency {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing dependency: {}", self.name)
@@ -879,6 +1019,13 @@ impl Problem for MissingQt {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-qt",
+        detail_fields: &[],
+    }
+}
+
 impl Display for MissingQt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Qt")
@@ -903,6 +1050,13 @@ impl Problem for MissingX11 {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-x11",
+        detail_fields: &[],
     }
 }
 
@@ -957,6 +1111,13 @@ impl Problem for MissingAutoconfMacro {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-autoconf-macro",
+        detail_fields: &["macro", "need_rebuild"],
+    }
+}
+
 impl Display for MissingAutoconfMacro {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing autoconf macro: {}", self.r#macro)
@@ -983,6 +1144,13 @@ impl Problem for DirectoryNonExistant {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "local-directory-not-existing",
+        detail_fields: &["path"],
     }
 }
 
@@ -1015,6 +1183,13 @@ impl Problem for MissingValaPackage {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-vala-package",
+        detail_fields: &["package"],
+    }
+}
+
 impl Display for MissingValaPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Vala package: {}", self.0)
@@ -1044,6 +1219,13 @@ impl Problem for UpstartFilePresent {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "upstart-file-present",
+        detail_fields: &["filename"],
+    }
+}
+
 impl Display for UpstartFilePresent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Upstart file present: {}", self.0)
@@ -1070,6 +1252,13 @@ impl Problem for MissingPostgresExtension {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-postgresql-extension",
+        detail_fields: &["extension"],
     }
 }
 
@@ -1105,6 +1294,13 @@ impl Problem for MissingPkgConfig {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-pkg-config-package",
+        detail_fields: &["module", "minimum_version"],
     }
 }
 
@@ -1176,6 +1372,13 @@ impl Problem for MissingHaskellDependencies {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-haskell-dependencies",
+        detail_fields: &["deps"],
+    }
+}
+
 impl Display for MissingHaskellDependencies {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Haskell dependencies: {:?}", self.0)
@@ -1212,6 +1415,13 @@ impl Problem for NoSpaceOnDevice {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "no-space-on-device",
+        detail_fields: &[],
+    }
+}
+
 impl Display for NoSpaceOnDevice {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "No space left on device")
@@ -1236,6 +1446,13 @@ impl Problem for MissingJRE {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-jre",
+        detail_fields: &[],
     }
 }
 
@@ -1281,6 +1498,13 @@ impl Problem for MissingJDK {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-jdk",
+        detail_fields: &["jdk_path"],
     }
 }
 
@@ -1333,6 +1557,13 @@ impl Problem for MissingJDKFile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-jdk-file",
+        detail_fields: &["jdk_path", "filename"],
+    }
+}
+
 impl Display for MissingJDKFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing JDK file {} at {}", self.filename, self.jdk_path)
@@ -1379,6 +1610,13 @@ impl Problem for MissingPerlFile {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-perl-file",
+        detail_fields: &["filename", "inc"],
     }
 }
 
@@ -1429,6 +1667,13 @@ impl Problem for MissingPerlModule {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-perl-module",
+        detail_fields: &["filename", "module", "inc", "minimum_version"],
     }
 }
 
@@ -1548,6 +1793,13 @@ impl Problem for MissingRustCompiler {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-rust-compiler",
+        detail_fields: &[],
+    }
+}
+
 impl Display for MissingRustCompiler {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Rust compiler")
@@ -1572,6 +1824,13 @@ impl Problem for MissingAssembler {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-assembler",
+        detail_fields: &[],
     }
 }
 
@@ -1607,6 +1866,13 @@ impl Problem for MissingCargoCrate {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-cargo-crate",
+        detail_fields: &["crate", "requirement"],
     }
 }
 
@@ -1658,6 +1924,13 @@ impl Problem for DhWithOrderIncorrect {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debhelper-argument-order",
+        detail_fields: &[],
     }
 }
 
@@ -1714,6 +1987,13 @@ impl Problem for UnsupportedDebhelperCompatLevel {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unsupported-debhelper-compat-level",
+        detail_fields: &["oldest_supported", "requested"],
+    }
+}
+
 impl Display for UnsupportedDebhelperCompatLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -1747,6 +2027,13 @@ impl Problem for SetuptoolScmVersionIssue {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "setuptools-scm-version-issue",
+        detail_fields: &[],
+    }
+}
+
 impl Display for SetuptoolScmVersionIssue {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "setuptools_scm was unable to find version")
@@ -1773,6 +2060,13 @@ impl Problem for MissingMavenArtifacts {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-maven-artifacts",
+        detail_fields: &["artifacts"],
     }
 }
 
@@ -1818,6 +2112,13 @@ impl Problem for NotExecutableFile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "not-executable-file",
+        detail_fields: &["path"],
+    }
+}
+
 impl Display for NotExecutableFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Command not executable: {}", self.0)
@@ -1860,6 +2161,13 @@ impl Problem for DhMissingUninstalled {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "dh-missing-uninstalled",
+        detail_fields: &["missing_file"],
+    }
+}
+
 impl Display for DhMissingUninstalled {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "dh_missing file not installed: {}", self.0)
@@ -1899,6 +2207,13 @@ impl Problem for DhLinkDestinationIsDirectory {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "dh-link-destination-is-directory",
+        detail_fields: &["path"],
     }
 }
 
@@ -1947,6 +2262,13 @@ impl Problem for MissingXmlEntity {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-xml-entity",
+        detail_fields: &["url"],
+    }
+}
+
 impl Display for MissingXmlEntity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing XML entity: {}", self.url)
@@ -1986,6 +2308,13 @@ impl Problem for CcacheError {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "ccache-error",
+        detail_fields: &["error"],
     }
 }
 
@@ -2034,6 +2363,13 @@ impl Problem for DebianVersionRejected {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debian-version-rejected",
+        detail_fields: &["version"],
+    }
+}
+
 impl Display for DebianVersionRejected {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Debian Version Rejected; {}", self.version)
@@ -2076,6 +2412,13 @@ impl Problem for PatchApplicationFailed {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "patch-application-failed",
+        detail_fields: &["patchname"],
     }
 }
 
@@ -2128,6 +2471,13 @@ impl Problem for NeedPgBuildExtUpdateControl {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "need-pg-buildext-updatecontrol",
+        detail_fields: &["generated_path", "template_path"],
     }
 }
 
@@ -2184,6 +2534,13 @@ impl Problem for DhAddonLoadFailure {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "dh-addon-load-failure",
+        detail_fields: &["name", "path"],
+    }
+}
+
 impl Display for DhAddonLoadFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "dh addon loading failed: {}", self.name)
@@ -2228,6 +2585,13 @@ impl Problem for DhUntilUnsupported {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "dh-until-unsupported",
+        detail_fields: &[],
     }
 }
 
@@ -2288,6 +2652,13 @@ impl Problem for DebhelperPatternNotFound {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debhelper-pattern-not-found",
+        detail_fields: &["pattern", "tool", "directories"],
+    }
+}
+
 impl Display for DebhelperPatternNotFound {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -2339,6 +2710,13 @@ impl Problem for MissingPerlManifest {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-perl-manifest",
+        detail_fields: &[],
+    }
+}
+
 impl Display for MissingPerlManifest {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "missing Perl MANIFEST")
@@ -2381,6 +2759,13 @@ impl Problem for ImageMagickDelegateMissing {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "imagemagick-delegate-missing",
+        detail_fields: &["delegate"],
     }
 }
 
@@ -2431,6 +2816,13 @@ impl Problem for Cancelled {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "cancelled",
+        detail_fields: &[],
+    }
+}
+
 impl Display for Cancelled {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Cancelled by runner or job manager")
@@ -2478,6 +2870,13 @@ impl Problem for DisappearedSymbols {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "disappeared-symbols",
+        detail_fields: &[],
+    }
+}
+
 impl Display for DisappearedSymbols {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Disappeared symbols")
@@ -2520,6 +2919,13 @@ impl Problem for DuplicateDHCompatLevel {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "duplicate-dh-compat-level",
+        detail_fields: &["command"],
     }
 }
 
@@ -2572,6 +2978,13 @@ impl Problem for MissingDHCompatLevel {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-dh-compat-level",
+        detail_fields: &["command"],
+    }
+}
+
 impl Display for MissingDHCompatLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing DH Compat Level (command: {})", self.command)
@@ -2616,6 +3029,13 @@ impl Problem for MissingJVM {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-jvm",
+        detail_fields: &[],
     }
 }
 
@@ -2679,6 +3099,13 @@ impl Problem for MissingRubyGem {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-ruby-gem",
+        detail_fields: &["gem", "version"],
+    }
+}
+
 impl Display for MissingRubyGem {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Some(version) = &self.version {
@@ -2730,6 +3157,13 @@ impl Problem for MissingJavaScriptRuntime {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "javascript-runtime-missing",
+        detail_fields: &[],
+    }
+}
+
 impl Display for MissingJavaScriptRuntime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing JavaScript Runtime")
@@ -2772,6 +3206,13 @@ impl Problem for MissingRubyFile {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-ruby-file",
+        detail_fields: &["filename"],
     }
 }
 
@@ -2833,6 +3274,13 @@ impl Problem for MissingPhpClass {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-php-class",
+        detail_fields: &["php_class"],
+    }
+}
+
 impl Display for MissingPhpClass {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "missing PHP class: {}", self.php_class)
@@ -2891,6 +3339,13 @@ impl Problem for MissingJavaClass {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-java-class",
+        detail_fields: &["classname"],
+    }
+}
+
 impl Display for MissingJavaClass {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "missing Java class: {}", self.classname)
@@ -2937,6 +3392,13 @@ impl Problem for MissingSprocketsFile {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-sprockets-file",
+        detail_fields: &["name", "content_type"],
     }
 }
 
@@ -2989,6 +3451,13 @@ impl Problem for MissingXfceDependency {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-xfce-dependency",
+        detail_fields: &["package"],
+    }
+}
+
 impl Display for MissingXfceDependency {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "missing XFCE build dependency: {}", self.package)
@@ -3013,6 +3482,13 @@ impl Problem for GnomeCommonMissing {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-gnome-common",
+        detail_fields: &[],
     }
 }
 
@@ -3124,6 +3600,13 @@ impl Problem for MissingGnomeCommonDependency {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-gnome-common-dependency",
+        detail_fields: &["package", "minimum_version"],
+    }
+}
+
 impl Display for MissingGnomeCommonDependency {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -3174,6 +3657,13 @@ impl Problem for MissingAutomakeInput {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-automake-input",
+        detail_fields: &["path"],
+    }
+}
+
 impl Display for MissingAutomakeInput {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "automake input file {} missing", self.path)
@@ -3217,6 +3707,13 @@ impl Problem for ChrootNotFound {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "chroot-not-found",
+        detail_fields: &["chroot"],
     }
 }
 
@@ -3267,6 +3764,13 @@ impl Problem for MissingLibtool {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-libtool",
+        detail_fields: &[],
+    }
+}
+
 impl Display for MissingLibtool {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Libtool is missing")
@@ -3299,6 +3803,13 @@ impl Problem for CMakeFilesMissing {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-cmake-files",
+        detail_fields: &["filenames", "version"],
     }
 }
 
@@ -3337,6 +3848,13 @@ impl Problem for MissingCMakeComponents {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-cmake-components",
+        detail_fields: &["name", "components"],
+    }
+}
+
 impl std::fmt::Display for MissingCMakeComponents {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing CMake components: {:?}", self.components)
@@ -3369,6 +3887,13 @@ impl Problem for MissingCMakeConfig {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-cmake-config",
+        detail_fields: &["name", "version"],
     }
 }
 
@@ -3421,6 +3946,13 @@ impl Problem for CMakeNeedExactVersion {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "cmake-exact-version-missing",
+        detail_fields: &["package", "version_found", "exact_version_needed", "path"],
+    }
+}
+
 impl std::fmt::Display for CMakeNeedExactVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -3460,6 +3992,13 @@ impl Problem for MissingStaticLibrary {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-static-library",
+        detail_fields: &["library", "filename"],
+    }
+}
+
 impl std::fmt::Display for MissingStaticLibrary {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "missing static library: {}", self.library)
@@ -3484,6 +4023,13 @@ impl Problem for MissingGoRuntime {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-go-runtime",
+        detail_fields: &[],
     }
 }
 
@@ -3516,6 +4062,13 @@ impl Problem for UnknownCertificateAuthority {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unknown-certificate-authority",
+        detail_fields: &["url"],
+    }
+}
+
 impl std::fmt::Display for UnknownCertificateAuthority {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Unknown Certificate Authority for {}", self.0)
@@ -3542,6 +4095,13 @@ impl Problem for MissingPerlPredeclared {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-perl-predeclared",
+        detail_fields: &["name"],
     }
 }
 
@@ -3572,6 +4132,13 @@ impl Problem for MissingGitIdentity {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-git-identity",
+        detail_fields: &[],
+    }
+}
+
 impl std::fmt::Display for MissingGitIdentity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Git Identity")
@@ -3599,6 +4166,13 @@ impl Problem for MissingSecretGpgKey {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "no-secret-gpg-key",
+        detail_fields: &[],
+    }
+}
+
 impl std::fmt::Display for MissingSecretGpgKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "No secret GPG key is present")
@@ -3623,6 +4197,13 @@ impl Problem for MissingVcVersionerVersion {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "no-vcversioner-version",
+        detail_fields: &[],
     }
 }
 
@@ -3671,6 +4252,13 @@ impl Problem for MissingLatexFile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-latex-file",
+        detail_fields: &["filename"],
+    }
+}
+
 impl std::fmt::Display for MissingLatexFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing LaTeX file: {}", self.0)
@@ -3695,6 +4283,13 @@ impl Problem for MissingXDisplay {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-x-display",
+        detail_fields: &[],
     }
 }
 
@@ -3727,6 +4322,13 @@ impl Problem for MissingFontspec {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-fontspec",
+        detail_fields: &["fontspec"],
+    }
+}
+
 impl std::fmt::Display for MissingFontspec {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing font spec: {}", self.0)
@@ -3756,6 +4358,13 @@ impl Problem for InactiveKilled {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "inactive-killed",
+        detail_fields: &["minutes"],
+    }
+}
+
 impl std::fmt::Display for InactiveKilled {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Killed due to inactivity after {} minutes", self.0)
@@ -3780,6 +4389,13 @@ impl Problem for MissingPauseCredentials {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-pause-credentials",
+        detail_fields: &[],
     }
 }
 
@@ -3818,6 +4434,13 @@ impl Problem for MismatchGettextVersions {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "mismatch-gettext-versions",
+        detail_fields: &["makefile_version", "autoconf_version"],
+    }
+}
+
 impl std::fmt::Display for MismatchGettextVersions {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -3851,6 +4474,13 @@ impl Problem for InvalidCurrentUser {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "invalid-current-user",
+        detail_fields: &["user"],
+    }
+}
+
 impl std::fmt::Display for InvalidCurrentUser {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Can not run as {}", self.0)
@@ -3880,6 +4510,13 @@ impl Problem for MissingGnulibDirectory {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-gnulib-directory",
+        detail_fields: &["directory"],
+    }
+}
+
 impl std::fmt::Display for MissingGnulibDirectory {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing gnulib directory: {}", self.0.display())
@@ -3906,6 +4543,13 @@ impl Problem for MissingLuaModule {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-lua-module",
+        detail_fields: &["module"],
     }
 }
 
@@ -3998,6 +4642,13 @@ impl Problem for CodeCoverageTooLow {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "code-coverage-too-low",
+        detail_fields: &["actual", "required"],
+    }
+}
+
 impl std::fmt::Display for CodeCoverageTooLow {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -4031,6 +4682,13 @@ impl Problem for ESModuleMustUseImport {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "esmodule-must-use-import",
+        detail_fields: &["path"],
+    }
+}
+
 impl std::fmt::Display for ESModuleMustUseImport {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "ESM-only module {} must use import()", self.0)
@@ -4060,6 +4718,13 @@ impl Problem for MissingPHPExtension {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-php-extension",
+        detail_fields: &["extension"],
+    }
+}
+
 impl std::fmt::Display for MissingPHPExtension {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing PHP Extension: {}", self.0)
@@ -4086,6 +4751,13 @@ impl Problem for MinimumAutoconfTooOld {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "minimum-autoconf-too-old",
+        detail_fields: &["minimum_version"],
     }
 }
 
@@ -4119,6 +4791,13 @@ impl Problem for MissingPerlDistributionFile {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-perl-distribution-file",
+        detail_fields: &["filename"],
     }
 }
 
@@ -4184,6 +4863,13 @@ impl Problem for ValaCompilerCannotCompile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "valac-cannot-compile",
+        detail_fields: &[],
+    }
+}
+
 impl std::fmt::Display for ValaCompilerCannotCompile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "valac can not compile")
@@ -4210,6 +4896,13 @@ impl Problem for MissingDebianBuildDep {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-debian-build-dep",
+        detail_fields: &["dep"],
     }
 }
 
@@ -4242,6 +4935,13 @@ impl Problem for MissingQtModules {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-qt-modules",
+        detail_fields: &["modules"],
+    }
+}
+
 impl std::fmt::Display for MissingQtModules {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing QT modules: {:?}", self.0)
@@ -4271,6 +4971,13 @@ impl Problem for MissingOCamlPackage {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-ocaml-package",
+        detail_fields: &["package"],
+    }
+}
+
 impl std::fmt::Display for MissingOCamlPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing OCaml package: {}", self.0)
@@ -4295,6 +5002,13 @@ impl Problem for TooManyOpenFiles {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "too-many-open-files",
+        detail_fields: &[],
     }
 }
 
@@ -4356,5 +5070,12 @@ impl Problem for MissingMakeTarget {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-make-target",
+        detail_fields: &["target", "required_by"],
     }
 }

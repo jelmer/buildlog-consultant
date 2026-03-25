@@ -3,8 +3,7 @@
 //! This module provides functionality to use the Anthropic Claude API to identify
 //! the most likely error line in a build log.
 
-use crate::llm;
-use crate::SingleLineMatch;
+use crate::llm::{self, AnalysisResult};
 use anthropic::client::ClientBuilder;
 use anthropic::types::{ContentBlock, Message, MessagesRequestBuilder, Role};
 
@@ -15,12 +14,12 @@ use anthropic::types::{ContentBlock, Message, MessagesRequestBuilder, Role};
 /// * `lines` - Vector of log lines to analyze
 ///
 /// # Returns
-/// A Result containing an optional `SingleLineMatch` pointing to the identified error line,
-/// or an error if the Claude API call fails.
+/// A Result containing an optional [`AnalysisResult`] with the identified error line
+/// and problem details, or an error if the Claude API call fails.
 pub async fn analyze(
     api_key: String,
     lines: Vec<&str>,
-) -> std::result::Result<Option<SingleLineMatch>, Box<dyn std::error::Error + Send + Sync>> {
+) -> std::result::Result<Option<AnalysisResult>, Box<dyn std::error::Error + Send + Sync>> {
     let client = ClientBuilder::default().api_key(api_key).build()?;
 
     let (offset, selected) = llm::truncate_lines(&lines);
@@ -32,10 +31,10 @@ pub async fn analyze(
     }];
 
     let request = MessagesRequestBuilder::default()
-        .model("claude-sonnet-4-20250514".to_string())
-        .system(llm::SYSTEM_PROMPT.to_string())
+        .model("claude-3-5-sonnet-20241022".to_string())
+        .system(llm::system_prompt())
         .messages(messages)
-        .max_tokens(32_usize)
+        .max_tokens(256_usize)
         .build()?;
 
     let response = client.messages(request).await?;
@@ -50,7 +49,7 @@ pub async fn analyze(
         .unwrap_or("");
 
     match llm::parse_response(text, &lines, "claude") {
-        Some(m) => Ok(Some(m)),
+        Some(result) => Ok(Some(result)),
         None => {
             log::debug!("Unable to parse claude response: {:?}", text);
             Ok(None)
