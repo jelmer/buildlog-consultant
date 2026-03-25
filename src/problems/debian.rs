@@ -24,6 +24,13 @@ impl Problem for DpkgError {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "dpkg-error",
+        detail_fields: &["msg"],
+    }
+}
+
 impl std::fmt::Display for DpkgError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "dpkg error: {}", self.0)
@@ -48,6 +55,13 @@ impl Problem for AptUpdateError {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "apt-update-error",
+        detail_fields: &[],
     }
 }
 
@@ -86,6 +100,13 @@ impl Problem for AptFetchFailure {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "apt-file-fetch-failure",
+        detail_fields: &["url", "error"],
+    }
+}
+
 impl std::fmt::Display for AptFetchFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Some(url) = &self.url {
@@ -119,6 +140,13 @@ impl Problem for AptMissingReleaseFile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-release-file",
+        detail_fields: &["url"],
+    }
+}
+
 impl std::fmt::Display for AptMissingReleaseFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "apt missing release file: {}", self.0)
@@ -145,6 +173,13 @@ impl Problem for AptPackageUnknown {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "apt-package-unknown",
+        detail_fields: &["package"],
     }
 }
 
@@ -183,6 +218,13 @@ impl Problem for AptBrokenPackages {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "apt-broken-packages",
+        detail_fields: &["description", "broken"],
+    }
+}
+
 impl std::fmt::Display for AptBrokenPackages {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "apt broken packages: {}", self.description)
@@ -215,6 +257,13 @@ impl Problem for UnableToFindUpstreamTarball {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unable-to-find-upstream-tarball",
+        detail_fields: &["package", "version"],
     }
 }
 
@@ -257,6 +306,13 @@ impl Problem for SourceFormatUnbuildable {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "source-format-unbuildable",
+        detail_fields: &["source_format", "reason"],
+    }
+}
+
 impl std::fmt::Display for SourceFormatUnbuildable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -290,6 +346,13 @@ impl Problem for SourceFormatUnsupported {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "source-format-unsupported",
+        detail_fields: &["source_format"],
+    }
+}
+
 impl std::fmt::Display for SourceFormatUnsupported {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Source format {} is unsupported", self.0)
@@ -316,6 +379,13 @@ impl Problem for PatchFileMissing {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "patch-file-missing",
+        detail_fields: &["path"],
     }
 }
 
@@ -351,6 +421,13 @@ impl Problem for DpkgSourceLocalChanges {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unexpected-local-upstream-changes",
+        detail_fields: &["diff_file", "files"],
     }
 }
 
@@ -391,6 +468,13 @@ impl Problem for DpkgSourceUnrepresentableChanges {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unrepresentable-local-changes",
+        detail_fields: &[],
+    }
+}
+
 impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Tree has unrepresentable changes")
@@ -415,6 +499,13 @@ impl Problem for DpkgUnwantedBinaryFiles {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unwanted-binary-files",
+        detail_fields: &[],
     }
 }
 
@@ -447,6 +538,13 @@ impl Problem for DpkgBinaryFileChanged {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "binary-file-changed",
+        detail_fields: &["files"],
+    }
+}
+
 impl std::fmt::Display for DpkgBinaryFileChanged {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Binary file changed")
@@ -471,6 +569,13 @@ impl Problem for MissingControlFile {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-control-file",
+        detail_fields: &[],
     }
 }
 
@@ -503,6 +608,13 @@ impl Problem for UnknownMercurialExtraFields {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unknown-mercurial-extra-fields",
+        detail_fields: &["field"],
+    }
+}
+
 impl std::fmt::Display for UnknownMercurialExtraFields {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Unknown Mercurial extra field: {}", self.0)
@@ -527,6 +639,13 @@ impl Problem for UpstreamPGPSignatureVerificationFailed {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "upstream-pgp-signature-verification-failed",
+        detail_fields: &[],
     }
 }
 
@@ -559,6 +678,13 @@ impl Problem for UScanRequestVersionMissing {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "uscan-request-version-missing",
+        detail_fields: &["version"],
+    }
+}
+
 impl std::fmt::Display for UScanRequestVersionMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "UScan request version missing: {}", self.0)
@@ -585,6 +711,13 @@ impl Problem for DebcargoFailure {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debcargo-failure",
+        detail_fields: &["reason"],
     }
 }
 
@@ -617,6 +750,13 @@ impl Problem for ChangelogParseError {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "changelog-parse-error",
+        detail_fields: &["reason"],
+    }
+}
+
 impl std::fmt::Display for ChangelogParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Changelog parse error: {}", self.0)
@@ -643,6 +783,13 @@ impl Problem for UScanError {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "uscan-error",
+        detail_fields: &["reason"],
     }
 }
 
@@ -681,6 +828,13 @@ impl Problem for UScanFailed {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "uscan-failed",
+        detail_fields: &["url", "reason"],
+    }
+}
+
 impl std::fmt::Display for UScanFailed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "UScan failed: {}", self.reason)
@@ -713,6 +867,13 @@ impl Problem for InconsistentSourceFormat {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "inconsistent-source-format",
+        detail_fields: &["version", "source_format"],
     }
 }
 
@@ -754,6 +915,13 @@ impl Problem for UpstreamMetadataFileParseError {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debian-upstream-metadata-invalid",
+        detail_fields: &["path", "reason"],
+    }
+}
+
 impl std::fmt::Display for UpstreamMetadataFileParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Upstream metadata file parse error: {}", self.reason)
@@ -780,6 +948,13 @@ impl Problem for DpkgSourcePackFailed {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "dpkg-source-pack-failed",
+        detail_fields: &["reason"],
     }
 }
 
@@ -815,6 +990,13 @@ impl Problem for DpkgBadVersion {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "dpkg-bad-version",
+        detail_fields: &["version", "reason"],
     }
 }
 
@@ -854,6 +1036,13 @@ impl Problem for MissingDebcargoCrate {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debcargo-missing-crate",
+        detail_fields: &["crate", "version"],
     }
 }
 
@@ -921,6 +1110,13 @@ impl Problem for PristineTarTreeMissing {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "pristine-tar-missing-tree",
+        detail_fields: &["treeish"],
+    }
+}
+
 impl std::fmt::Display for PristineTarTreeMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Pristine-tar tree missing: {}", self.0)
@@ -947,6 +1143,13 @@ impl Problem for MissingRevision {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-revision",
+        detail_fields: &["revision"],
     }
 }
 
@@ -982,6 +1185,13 @@ impl Problem for DebcargoUnacceptablePredicate {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debcargo-unacceptable-predicate",
+        detail_fields: &["crate", "predicate"],
     }
 }
 
@@ -1024,6 +1234,13 @@ impl Problem for DebcargoUnacceptableComparator {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "debcargo-unacceptable-comparator",
+        detail_fields: &["crate", "comparator"],
+    }
+}
+
 impl std::fmt::Display for DebcargoUnacceptableComparator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -1057,6 +1274,13 @@ impl Problem for UScanTooManyRequests {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "uscan-too-many-requests",
+        detail_fields: &["reason"],
+    }
+}
+
 impl std::fmt::Display for UScanTooManyRequests {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "UScan too many requests: {}", self.0)
@@ -1083,6 +1307,13 @@ impl Problem for UnsatisfiedAptConflicts {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unsatisfied-apt-conflicts",
+        detail_fields: &["relations"],
     }
 }
 
@@ -1123,6 +1354,13 @@ impl Problem for ArchitectureNotInList {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "arch-not-in-list",
+        detail_fields: &["arch", "arch_list"],
+    }
+}
+
 impl std::fmt::Display for ArchitectureNotInList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Architecture {} not a build arch", self.arch)
@@ -1149,6 +1387,13 @@ impl Problem for UnsatisfiedAptDependencies {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "unsatisfied-apt-dependencies",
+        detail_fields: &["relations"],
     }
 }
 
@@ -1184,6 +1429,13 @@ impl Problem for InsufficientDiskSpace {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "insufficient-disk-space",
+        detail_fields: &["needed", "free"],
     }
 }
 

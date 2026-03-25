@@ -46,6 +46,13 @@ impl Problem for AutopkgtestDepsUnsatisfiable {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "badpkg",
+        detail_fields: &["args"],
+    }
+}
+
 impl std::fmt::Display for AutopkgtestDepsUnsatisfiable {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "autopkgtest dependencies unsatisfiable: {:?}", self.0)
@@ -67,6 +74,13 @@ impl Problem for AutopkgtestTimedOut {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "timed-out",
+        detail_fields: &[],
     }
 }
 
@@ -93,6 +107,13 @@ impl Problem for XDGRunTimeNotSet {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "xdg-runtime-dir-not-set",
+        detail_fields: &[],
     }
 }
 
@@ -124,6 +145,13 @@ impl Problem for AutopkgtestTestbedFailure {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "testbed-failure",
+        detail_fields: &["reason"],
+    }
+}
+
 impl std::fmt::Display for AutopkgtestTestbedFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "autopkgtest testbed failure: {}", self.0)
@@ -148,6 +176,13 @@ impl Problem for AutopkgtestDepChrootDisappeared {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "testbed-chroot-disappeared",
+        detail_fields: &[],
     }
 }
 
@@ -179,6 +214,13 @@ impl Problem for AutopkgtestErroneousPackage {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "erroneous-package",
+        detail_fields: &["reason"],
+    }
+}
+
 impl std::fmt::Display for AutopkgtestErroneousPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "autopkgtest erroneous package: {}", self.0)
@@ -204,6 +246,13 @@ impl Problem for AutopkgtestStderrFailure {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "stderr-output",
+        detail_fields: &["stderr_line"],
     }
 }
 
@@ -242,6 +291,13 @@ impl Problem for AutopkgtestTestbedSetupFailure {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "testbed-setup-failure",
+        detail_fields: &["command", "exit_status", "error"],
     }
 }
 

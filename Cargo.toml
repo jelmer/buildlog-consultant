@@ -11,13 +11,15 @@ exclude = [".github", "disperse.conf", ".gitignore", "MANIFEST", "MANIFEST.in"]
 
 [features]
 default = ["cli"]
-chatgpt = ["dep:chatgpt_rs"]
+chatgpt = ["dep:chatgpt_rs", "dep:reqwest"]
+claude = ["dep:anthropic"]
+llm = ["chatgpt", "claude"]
 cli = ["dep:clap", "dep:env_logger"]
 
 [[bin]]
-name = "chatgpt-analyze-log"
-path = "src/bin/chatgpt-analyze-log.rs"
-required-features = ["chatgpt", "cli", "tokio"]
+name = "llm-analyze-log"
+path = "src/bin/llm-analyze-log.rs"
+required-features = ["llm", "cli", "tokio"]
 
 [[bin]]
 name = "analyze-apt-log"
@@ -54,6 +56,8 @@ fancy-regex = ">=0.11,< 0.18"
 lazy-regex = "3.0.2"
 textwrap = "0.16.0"
 chatgpt_rs = { version = "1", optional = true }
+reqwest = { version = "0.11", optional = true }
+anthropic = { version = "0.0.8", optional = true }
 env_logger = { version = ">=0.10", optional = true }
 clap = { version = ">=4.1", optional = true, features = ["derive"] }
 tokio = { version = "1.26.0", features = ["rt-multi-thread"], optional = true }

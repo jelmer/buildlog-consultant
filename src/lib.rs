@@ -21,9 +21,17 @@ pub mod lines;
 /// Module containing problem definitions for various build systems.
 pub mod problems;
 
+#[cfg(any(feature = "chatgpt", feature = "claude"))]
+/// Shared utilities for LLM-based build log analysis.
+pub mod llm;
+
 #[cfg(feature = "chatgpt")]
 /// Module for interacting with ChatGPT for log analysis.
 pub mod chatgpt;
+
+#[cfg(feature = "claude")]
+/// Module for interacting with Claude for log analysis.
+pub mod claude;
 
 /// Common utilities and helpers for build log analysis.
 pub mod common;
@@ -487,6 +495,18 @@ pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
         false
     }
 }
+
+/// Description of a known problem kind for documentation and LLM prompt generation.
+///
+/// Registered via `inventory` to allow automatic discovery of all problem kinds.
+pub struct ProblemKindInfo {
+    /// The problem kind identifier (e.g. "missing-file").
+    pub kind: &'static str,
+    /// Names of the JSON detail fields for this kind (e.g. &["path"]).
+    pub detail_fields: &'static [&'static str],
+}
+
+inventory::collect!(ProblemKindInfo);
 
 impl PartialEq for dyn Problem {
     fn eq(&self, other: &Self) -> bool {
