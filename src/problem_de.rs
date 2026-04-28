@@ -339,7 +339,134 @@ mod tests {
     }
 
     #[test]
-    fn roundtrip_unknown_kind_returns_none() {
+    fn roundtrip_missing_python_module_with_versions() {
+        roundtrip(&crate::problems::common::MissingPythonModule {
+            module: "django".into(),
+            python_version: Some(3),
+            minimum_version: Some("4.2".into()),
+        });
+    }
+
+    #[test]
+    fn roundtrip_missing_python_distribution_simple() {
+        roundtrip(&crate::problems::common::MissingPythonDistribution {
+            distribution: "twisted".into(),
+            python_version: None,
+            minimum_version: None,
+        });
+    }
+
+    #[test]
+    fn roundtrip_missing_pkg_config_no_version() {
+        roundtrip(&crate::problems::common::MissingPkgConfig {
+            module: "glib-2.0".into(),
+            minimum_version: None,
+        });
+    }
+
+    #[test]
+    fn roundtrip_missing_haskell_dependencies() {
+        roundtrip(&crate::problems::common::MissingHaskellDependencies(vec![
+            "aeson".into(),
+            "text".into(),
+        ]));
+    }
+
+    #[test]
+    fn roundtrip_missing_autoconf_macro_default() {
+        roundtrip(&crate::problems::common::MissingAutoconfMacro::new(
+            "AC_PROG_CC".into(),
+        ));
+    }
+
+    #[test]
+    fn roundtrip_missing_autoconf_macro_need_rebuild() {
+        let mut p = crate::problems::common::MissingAutoconfMacro::new("PKG_CHECK_MODULES".into());
+        p.need_rebuild = true;
+        roundtrip(&p);
+    }
+
+    #[test]
+    fn roundtrip_unsatisfied_apt_dependencies() {
+        roundtrip(&crate::problems::debian::UnsatisfiedAptDependencies(
+            "libssl-dev (>= 1.1)".into(),
+        ));
+    }
+
+    #[test]
+    fn roundtrip_apt_package_unknown() {
+        roundtrip(&crate::problems::debian::AptPackageUnknown(
+            "nonexistent-pkg".into(),
+        ));
+    }
+
+    #[test]
+    fn missing_haskell_dependencies_accepts_bare_array() {
+        // The deserializer accepts both {"deps": [...]} (the json() shape)
+        // and a bare array (legacy shape). Verify the bare-array path.
+        let v = serde_json::json!(["aeson", "text"]);
+        let p = crate::problem_from_json("missing-haskell-dependencies", &v)
+            .expect("bare array should deserialize");
+        assert_eq!(p.json(), serde_json::json!({"deps": ["aeson", "text"]}),);
+    }
+
+    #[test]
+    fn apt_package_unknown_accepts_bare_string() {
+        // The deserializer accepts both {"package": "..."} (the json() shape)
+        // and a bare JSON string. Verify the bare-string path.
+        let v = serde_json::json!("foo-pkg");
+        let p = crate::problem_from_json("apt-package-unknown", &v)
+            .expect("bare string should deserialize");
+        assert_eq!(p.json(), serde_json::json!({"package": "foo-pkg"}));
+    }
+
+    #[test]
+    fn missing_file_missing_path_returns_none() {
+        // Required field absent — deserializer should fail and the
+        // dispatcher should swallow the error into None.
+        let v = serde_json::json!({});
+        assert!(crate::problem_from_json("missing-file", &v).is_none());
+    }
+
+    #[test]
+    fn missing_file_wrong_type_returns_none() {
+        // Required field is the wrong JSON type — also rejected.
+        let v = serde_json::json!({"path": 42});
+        assert!(crate::problem_from_json("missing-file", &v).is_none());
+    }
+
+    #[test]
+    fn missing_python_module_only_required_field() {
+        // Optional fields absent (python_version, minimum_version) —
+        // deserializer should still succeed.
+        let v = serde_json::json!({"module": "numpy"});
+        let p = crate::problem_from_json("missing-python-module", &v)
+            .expect("optional fields should be optional");
+        assert_eq!(p.kind(), "missing-python-module");
+        assert_eq!(
+            p.json(),
+            serde_json::json!({
+                "module": "numpy",
+                "python_version": null,
+                "minimum_version": null,
+            }),
+        );
+    }
+
+    #[test]
+    fn missing_autoconf_macro_omits_need_rebuild() {
+        // need_rebuild is optional in the deserializer (defaults to false).
+        let v = serde_json::json!({"macro": "AC_PROG_CC"});
+        let p = crate::problem_from_json("missing-autoconf-macro", &v)
+            .expect("need_rebuild should be optional");
+        assert_eq!(
+            p.json(),
+            serde_json::json!({"macro": "AC_PROG_CC", "need_rebuild": false}),
+        );
+    }
+
+    #[test]
+    fn unknown_kind_returns_none() {
         let v = serde_json::json!({"foo": "bar"});
         assert!(crate::problem_from_json("not-a-real-kind", &v).is_none());
     }
