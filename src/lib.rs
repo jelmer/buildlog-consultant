@@ -21,9 +21,11 @@ pub mod lines;
 /// Module containing problem definitions for various build systems.
 pub mod problems;
 
-/// Registrations that teach `problem_from_json` how to
-/// reconstruct each `Problem` impl from its JSON details.
-mod problem_de;
+/// JSON-from-kind dispatcher for reconstructing `Problem` impls
+/// from their `Problem::json()` output.
+pub mod problem;
+
+pub use problem::{problem_from_json, ProblemDeserializer, ProblemFromJsonFn};
 
 #[cfg(any(feature = "chatgpt", feature = "claude"))]
 /// Shared utilities for LLM-based build log analysis.
@@ -511,100 +513,6 @@ pub struct ProblemKindInfo {
 }
 
 inventory::collect!(ProblemKindInfo);
-
-/// Function pointer that turns a JSON details payload back into a
-/// `Box<dyn Problem>`. Registered alongside [`ProblemKindInfo`] so
-/// callers can reconstruct a typed problem from
-/// `(kind: &str, details: &serde_json::Value)` — the shape the
-/// Janitor stores in `run.failure_details` and the Python original
-/// reconstructed via `problem_clses[kind].from_json(details)`.
-pub type ProblemFromJsonFn = fn(&serde_json::Value) -> Result<Box<dyn Problem>, serde_json::Error>;
-
-/// Pair of `(kind, deserializer)` used to power
-/// [`problem_from_json`]. Each `Problem` impl that wants to be
-/// reconstructable from JSON registers one of these via
-/// `inventory::submit!`. The crate ships registrations for the
-/// problem types we know how to round-trip; out-of-tree
-/// `Problem` impls can register their own.
-///
-/// The `register_problem_de!` macro generates this entry from a
-/// `serde::Deserialize` impl on the target struct.
-pub struct ProblemDeserializer {
-    /// The problem kind identifier (matches `ProblemKindInfo.kind`).
-    pub kind: &'static str,
-    /// Function that takes the JSON details and produces a typed
-    /// `Box<dyn Problem>` (or a `serde_json::Error` if the shape
-    /// doesn't match).
-    pub from_json: ProblemFromJsonFn,
-}
-
-inventory::collect!(ProblemDeserializer);
-
-/// Reconstruct a `Box<dyn Problem>` from a `(kind, details)`
-/// pair. Returns `None` when no deserializer is registered for
-/// `kind`, or when the registered deserializer rejects the JSON
-/// shape (the inner error is surfaced via `log::warn!`).
-///
-/// Mirrors Python's `problem_clses[kind].from_json(details)`.
-pub fn problem_from_json(kind: &str, details: &serde_json::Value) -> Option<Box<dyn Problem>> {
-    for entry in inventory::iter::<ProblemDeserializer> {
-        if entry.kind == kind {
-            match (entry.from_json)(details) {
-                Ok(p) => return Some(p),
-                Err(e) => {
-                    log::warn!(
-                        "buildlog-consultant: failed to deserialize problem of kind {:?}: {}",
-                        kind,
-                        e
-                    );
-                    return None;
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Helper macro for registering a `(kind, struct)` pair with the
-/// JSON-from-kind dispatcher. The struct must implement
-/// `serde::Deserialize` so the JSON details can round-trip
-/// through `serde_json::from_value`. The struct must also
-/// implement `Problem` so the boxed result satisfies the trait.
-///
-/// Use site:
-/// ```ignore
-/// crate::register_problem_de!(MissingFile, "missing-file");
-/// ```
-#[macro_export]
-macro_rules! register_problem_de {
-    ($ty:ty, $kind:expr) => {
-        ::inventory::submit! {
-            $crate::ProblemDeserializer {
-                kind: $kind,
-                from_json: |v| {
-                    ::serde_json::from_value::<$ty>(v.clone())
-                        .map(|p| Box::new(p) as Box<dyn $crate::Problem>)
-                },
-            }
-        }
-    };
-}
-
-/// Register a deserializer with a custom function — for
-/// problems whose JSON shape doesn't trivially round-trip
-/// through `serde::Deserialize` (e.g. fields renamed in
-/// `json()`, optional fields with defaults, etc.).
-#[macro_export]
-macro_rules! register_problem_de_fn {
-    ($kind:expr, $fn:expr) => {
-        ::inventory::submit! {
-            $crate::ProblemDeserializer {
-                kind: $kind,
-                from_json: $fn,
-            }
-        }
-    };
-}
 
 impl PartialEq for dyn Problem {
     fn eq(&self, other: &Self) -> bool {

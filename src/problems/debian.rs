@@ -183,6 +183,16 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("apt-package-unknown", |v| {
+    let pkg = v
+        .get("package")
+        .and_then(|m| m.as_str())
+        .or_else(|| v.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("package"))?
+        .to_string();
+    Ok(Box::new(AptPackageUnknown(pkg)) as Box<dyn crate::Problem>)
+});
+
 impl std::fmt::Display for AptPackageUnknown {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "apt package unknown: {}", self.0)
@@ -1396,6 +1406,15 @@ inventory::submit! {
         detail_fields: &["relations"],
     }
 }
+
+crate::register_problem_de_fn!("unsatisfied-apt-dependencies", |v| {
+    let relations = v
+        .get("relations")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("relations"))?
+        .to_string();
+    Ok(Box::new(UnsatisfiedAptDependencies(relations)) as Box<dyn crate::Problem>)
+});
 
 impl std::fmt::Display for UnsatisfiedAptDependencies {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

@@ -48,6 +48,15 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("missing-file", |v| {
+    let path: String = v
+        .get("path")
+        .and_then(|p| p.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("path"))?
+        .to_string();
+    Ok(Box::new(MissingFile { path: path.into() }) as Box<dyn crate::Problem>)
+});
+
 impl Display for MissingFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Missing file: {}", self.path.display())
@@ -185,6 +194,19 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("vcs-control-directory-needed", |v| {
+    let vcs: Vec<String> = v
+        .get("vcs")
+        .and_then(|x| x.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|s| s.as_str().map(String::from))
+                .collect()
+        })
+        .ok_or_else(|| serde::de::Error::missing_field("vcs"))?;
+    Ok(Box::new(VcsControlDirectoryNeeded { vcs }) as Box<dyn crate::Problem>)
+});
+
 impl VcsControlDirectoryNeeded {
     /// Creates a new VcsControlDirectoryNeeded instance.
     ///
@@ -271,6 +293,27 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("missing-python-module", |v| {
+    let module = v
+        .get("module")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("module"))?
+        .to_string();
+    let python_version = v
+        .get("python_version")
+        .and_then(|x| x.as_i64())
+        .map(|n| n as i32);
+    let minimum_version = v
+        .get("minimum_version")
+        .and_then(|x| x.as_str())
+        .map(String::from);
+    Ok(Box::new(MissingPythonModule {
+        module,
+        python_version,
+        minimum_version,
+    }) as Box<dyn crate::Problem>)
+});
+
 /// Problem representing a missing command-line executable.
 ///
 /// This struct is used when a required command is not available in the PATH.
@@ -305,6 +348,15 @@ inventory::submit! {
         detail_fields: &["command"],
     }
 }
+
+crate::register_problem_de_fn!("command-missing", |v| {
+    let cmd = v
+        .get("command")
+        .and_then(|c| c.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("command"))?
+        .to_string();
+    Ok(Box::new(MissingCommand(cmd)) as Box<dyn crate::Problem>)
+});
 
 /// Problem representing a missing Python package distribution.
 ///
@@ -362,6 +414,27 @@ inventory::submit! {
         detail_fields: &["distribution", "python_version", "minimum_version"],
     }
 }
+
+crate::register_problem_de_fn!("missing-python-distribution", |v| {
+    let distribution = v
+        .get("distribution")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("distribution"))?
+        .to_string();
+    let python_version = v
+        .get("python_version")
+        .and_then(|x| x.as_i64())
+        .map(|n| n as i32);
+    let minimum_version = v
+        .get("minimum_version")
+        .and_then(|x| x.as_str())
+        .map(String::from);
+    Ok(Box::new(MissingPythonDistribution {
+        distribution,
+        python_version,
+        minimum_version,
+    }) as Box<dyn crate::Problem>)
+});
 
 fn find_python_version(marker: Vec<Vec<pep508_rs::MarkerExpression>>) -> Option<i32> {
     let mut major_version = None;
@@ -496,6 +569,15 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("missing-haskell-module", |v| {
+    let module = v
+        .get("module")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("module"))?
+        .to_string();
+    Ok(Box::new(MissingHaskellModule::new(module)) as Box<dyn crate::Problem>)
+});
+
 /// Problem representing a missing system library.
 ///
 /// This struct is used when a required shared library (.so/.dll/.dylib) is not available.
@@ -530,6 +612,15 @@ inventory::submit! {
         detail_fields: &["library"],
     }
 }
+
+crate::register_problem_de_fn!("missing-library", |v| {
+    let l = v
+        .get("library")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("library"))?
+        .to_string();
+    Ok(Box::new(MissingLibrary(l)) as Box<dyn crate::Problem>)
+});
 
 /// Problem representing a missing GObject Introspection typelib.
 ///
@@ -768,6 +859,15 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("missing-go-package", |v| {
+    let package = v
+        .get("package")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("package"))?
+        .to_string();
+    Ok(Box::new(MissingGoPackage { package }) as Box<dyn crate::Problem>)
+});
+
 impl Display for MissingGoPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Go package: {}", self.package)
@@ -806,6 +906,15 @@ inventory::submit! {
         detail_fields: &["header"],
     }
 }
+
+crate::register_problem_de_fn!("missing-c-header", |v| {
+    let header = v
+        .get("header")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("header"))?
+        .to_string();
+    Ok(Box::new(MissingCHeader::new(header)) as Box<dyn crate::Problem>)
+});
 
 impl Display for MissingCHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -856,6 +965,15 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("missing-node-module", |v| {
+    let m = v
+        .get("module")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("module"))?
+        .to_string();
+    Ok(Box::new(MissingNodeModule(m)) as Box<dyn crate::Problem>)
+});
+
 impl Display for MissingNodeModule {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing Node module: {}", self.0)
@@ -891,6 +1009,15 @@ inventory::submit! {
         detail_fields: &["package"],
     }
 }
+
+crate::register_problem_de_fn!("missing-node-package", |v| {
+    let p = v
+        .get("package")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("package"))?
+        .to_string();
+    Ok(Box::new(MissingNodePackage(p)) as Box<dyn crate::Problem>)
+});
 
 impl Display for MissingNodePackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1118,6 +1245,21 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("missing-autoconf-macro", |v| {
+    let m = v
+        .get("macro")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("macro"))?
+        .to_string();
+    let need_rebuild = v
+        .get("need_rebuild")
+        .and_then(|x| x.as_bool())
+        .unwrap_or(false);
+    let mut p = MissingAutoconfMacro::new(m);
+    p.need_rebuild = need_rebuild;
+    Ok(Box::new(p) as Box<dyn crate::Problem>)
+});
+
 impl Display for MissingAutoconfMacro {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing autoconf macro: {}", self.r#macro)
@@ -1189,6 +1331,15 @@ inventory::submit! {
         detail_fields: &["package"],
     }
 }
+
+crate::register_problem_de_fn!("missing-vala-package", |v| {
+    let p = v
+        .get("package")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("package"))?
+        .to_string();
+    Ok(Box::new(MissingValaPackage(p)) as Box<dyn crate::Problem>)
+});
 
 impl Display for MissingValaPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1304,6 +1455,22 @@ inventory::submit! {
     }
 }
 
+crate::register_problem_de_fn!("missing-pkg-config-package", |v| {
+    let module = v
+        .get("module")
+        .and_then(|m| m.as_str())
+        .ok_or_else(|| serde::de::Error::missing_field("module"))?
+        .to_string();
+    let minimum_version = v
+        .get("minimum_version")
+        .and_then(|x| x.as_str())
+        .map(String::from);
+    Ok(Box::new(MissingPkgConfig {
+        module,
+        minimum_version,
+    }) as Box<dyn crate::Problem>)
+});
+
 impl Display for MissingPkgConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Some(minimum_version) = &self.minimum_version {
@@ -1378,6 +1545,28 @@ inventory::submit! {
         detail_fields: &["deps"],
     }
 }
+
+crate::register_problem_de_fn!("missing-haskell-dependencies", |v| {
+    let deps: Vec<String> = v
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|s| s.as_str().map(String::from))
+                .collect()
+        })
+        .or_else(|| {
+            // Some json() impls wrap in {"deps": [...]}. Accept that
+            // shape too so we round-trip whichever flavour the
+            // upstream emitted.
+            v.get("deps").and_then(|d| d.as_array()).map(|arr| {
+                arr.iter()
+                    .filter_map(|s| s.as_str().map(String::from))
+                    .collect()
+            })
+        })
+        .ok_or_else(|| serde::de::Error::missing_field("deps"))?;
+    Ok(Box::new(MissingHaskellDependencies(deps)) as Box<dyn crate::Problem>)
+});
 
 impl Display for MissingHaskellDependencies {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
