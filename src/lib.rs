@@ -21,6 +21,12 @@ pub mod lines;
 /// Module containing problem definitions for various build systems.
 pub mod problems;
 
+/// JSON-from-kind dispatcher for reconstructing `Problem` impls
+/// from their `Problem::json()` output.
+pub mod problem;
+
+pub use problem::{problem_from_json, ProblemDeserializer, ProblemFromJsonFn};
+
 #[cfg(any(feature = "chatgpt", feature = "claude"))]
 /// Shared utilities for LLM-based build log analysis.
 pub mod llm;
