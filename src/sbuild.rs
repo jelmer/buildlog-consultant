@@ -227,8 +227,24 @@ pub struct SbuildLog(pub Vec<SbuildLogSection>);
 
 impl SbuildLog {
     /// Get the first section with the given title, if it exists.
+    ///
+    /// Match is case-insensitive: real sbuild emits title-case
+    /// section headers (`"Build"`, `"Fetch source files"`,
+    /// `"Cleanup"`, …) but the per-stage `find_failure_*` helpers
+    /// historically passed lowercase tags here, so every lookup
+    /// silently returned `None` and the matching failure-pinpoint
+    /// logic never ran. Callers that need exact-case matching can
+    /// iterate [`Self::sections`] and compare titles directly.
     pub fn get_section(&self, title: Option<&str>) -> Option<&SbuildLogSection> {
-        self.0.iter().find(|s| s.title.as_deref() == title)
+        match title {
+            None => self.0.iter().find(|s| s.title.is_none()),
+            Some(needle) => self.0.iter().find(|s| {
+                s.title
+                    .as_deref()
+                    .map(|t| t.eq_ignore_ascii_case(needle))
+                    .unwrap_or(false)
+            }),
+        }
     }
 
     /// Get the lines of a section, if it exists.
@@ -1703,6 +1719,158 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
 
         let section = log.get_section(Some("NonExistent"));
         assert!(section.is_none());
+    }
+
+    /// Regression for the case-mismatch between title-case section
+    /// headers (sbuild emits `"Build"`, `"Cleanup"`, etc.) and the
+    /// lowercase tags `find_failure_*` calls `get_section` with.
+    /// Pre-fix every per-stage failure lookup silently returned
+    /// `None`, so `worker_failure_from_sbuild_log` came back with
+    /// `section: None` / `match: None` on actually-failing builds.
+    #[test]
+    fn test_sbuild_log_get_section_is_case_insensitive() {
+        let sections = vec![
+            SbuildLogSection {
+                title: Some("Build".to_string()),
+                offsets: (1, 5),
+                lines: vec!["dpkg-buildpackage: error: …".to_string()],
+            },
+            SbuildLogSection {
+                title: Some("Fetch source files".to_string()),
+                offsets: (6, 10),
+                lines: vec!["fetched".to_string()],
+            },
+        ];
+        let log = SbuildLog(sections);
+
+        // Lowercase lookup against title-case section header
+        // returns the actual title-case section, not a synthesized one.
+        assert_eq!(
+            log.get_section(Some("build"))
+                .and_then(|s| s.title.as_deref()),
+            Some("Build")
+        );
+        assert_eq!(
+            log.get_section(Some("BUILD"))
+                .and_then(|s| s.title.as_deref()),
+            Some("Build")
+        );
+        assert_eq!(
+            log.get_section(Some("fetch source files"))
+                .and_then(|s| s.title.as_deref()),
+            Some("Fetch source files")
+        );
+        // Exact-case still matches (we didn't break the fast path).
+        assert_eq!(
+            log.get_section(Some("Build"))
+                .and_then(|s| s.title.as_deref()),
+            Some("Build")
+        );
+        // Mismatched name still misses.
+        assert!(log.get_section(Some("install-deps")).is_none());
+    }
+
+    /// `get_section_lines` is the convenience wrapper most callers
+    /// (e.g. `find_failure_fetch_src`) reach for; it must inherit the
+    /// same case-insensitive matching as `get_section`.
+    #[test]
+    fn test_sbuild_log_get_section_lines_is_case_insensitive() {
+        let sections = vec![SbuildLogSection {
+            title: Some("Cleanup".to_string()),
+            offsets: (1, 3),
+            lines: vec!["line1".to_string(), "line2".to_string()],
+        }];
+        let log = SbuildLog(sections);
+
+        assert_eq!(
+            log.get_section_lines(Some("cleanup")),
+            Some(vec!["line1", "line2"])
+        );
+        assert_eq!(
+            log.get_section_lines(Some("CLEANUP")),
+            Some(vec!["line1", "line2"])
+        );
+        assert_eq!(log.get_section_lines(Some("nope")), None);
+    }
+
+    /// `get_section(None)` matches the unnamed (preamble) section,
+    /// independently of any title-bearing sections in the log. The
+    /// post-fix `match title { None => …, Some(_) => … }` arm is
+    /// what guarantees this; a naive `eq_ignore_ascii_case` over
+    /// `Option<&str>` would not.
+    #[test]
+    fn test_sbuild_log_get_section_none_matches_unnamed_section() {
+        let sections = vec![
+            SbuildLogSection {
+                title: None,
+                offsets: (1, 2),
+                lines: vec!["preamble".to_string()],
+            },
+            SbuildLogSection {
+                title: Some("Build".to_string()),
+                offsets: (3, 4),
+                lines: vec!["building".to_string()],
+            },
+        ];
+        let log = SbuildLog(sections);
+
+        let preamble = log.get_section(None).expect("unnamed section");
+        assert_eq!(preamble.title, None);
+        assert_eq!(preamble.lines, vec!["preamble".to_string()]);
+
+        // A `Some(_)` lookup must not match an unnamed section.
+        let only_unnamed = SbuildLog(vec![SbuildLogSection {
+            title: None,
+            offsets: (1, 1),
+            lines: vec!["x".to_string()],
+        }]);
+        assert!(only_unnamed.get_section(Some("anything")).is_none());
+    }
+
+    /// When several sections share a (case-insensitive) title — sbuild
+    /// occasionally emits the same banner twice on retry — the lookup
+    /// must keep returning the *first* match, matching the pre-fix
+    /// "first hit wins" semantics of the old `==` comparison.
+    #[test]
+    fn test_sbuild_log_get_section_returns_first_match() {
+        let sections = vec![
+            SbuildLogSection {
+                title: Some("Build".to_string()),
+                offsets: (1, 5),
+                lines: vec!["first".to_string()],
+            },
+            SbuildLogSection {
+                title: Some("BUILD".to_string()),
+                offsets: (6, 10),
+                lines: vec!["second".to_string()],
+            },
+        ];
+        let log = SbuildLog(sections);
+
+        let hit = log.get_section(Some("build")).expect("a match");
+        assert_eq!(hit.lines, vec!["first".to_string()]);
+        assert_eq!(hit.offsets, (1, 5));
+    }
+
+    /// Documents the ASCII-only boundary of `eq_ignore_ascii_case`:
+    /// non-ASCII bytes are compared exactly. Real sbuild headers are
+    /// ASCII so this is fine in practice — the test exists so a future
+    /// change to Unicode case-folding doesn't happen by accident.
+    #[test]
+    fn test_sbuild_log_get_section_only_folds_ascii() {
+        let sections = vec![SbuildLogSection {
+            title: Some("Café".to_string()),
+            offsets: (1, 1),
+            lines: vec![],
+        }];
+        let log = SbuildLog(sections);
+
+        // ASCII letters around the non-ASCII byte still fold.
+        assert!(log.get_section(Some("café")).is_some());
+        assert!(log.get_section(Some("CAFé")).is_some());
+        // The non-ASCII byte itself is not folded — a different
+        // Unicode case form does not match.
+        assert!(log.get_section(Some("cafÉ")).is_none());
     }
 
     #[test]
