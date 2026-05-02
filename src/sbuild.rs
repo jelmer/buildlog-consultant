@@ -338,6 +338,30 @@ impl SbuildLogSection {
     }
 }
 
+/// Strip the right-aligned timestamp sbuild stamps onto section
+/// headers. `Title      <padding>      Wed, 29 Apr 2026 ...`
+/// becomes just `Title`. Returns the input unchanged when no
+/// timestamp suffix matches (older sbuild releases — and the
+/// in-tree fixture log — emit headers without one).
+fn strip_section_header_timestamp(raw: &str) -> &str {
+    // RFC2822-ish: `Wkd, dd Mon YYYY HH:MM:SS [+-]HHMM`. Anchor
+    // the match so we only ever strip a trailing timestamp that
+    // sits at the end of the title, never one that happens to
+    // appear inside the title proper.
+    static TIMESTAMP_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let re = TIMESTAMP_RE.get_or_init(|| {
+        regex::Regex::new(
+            r"\s+[A-Z][a-z]{2},\s+\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+[+-]\d{4}$",
+        )
+        .unwrap()
+    });
+    if let Some(m) = re.find(raw) {
+        raw[..m.start()].trim_end()
+    } else {
+        raw
+    }
+}
+
 /// Parses an sbuild log file into sections.
 ///
 /// This function reads an sbuild log file and divides it into sections based on
@@ -405,7 +429,17 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
                     });
                 }
 
-                title = Some(l1_trimmed.trim_matches('|').trim().to_string());
+                // Strip the right-aligned RFC2822-ish timestamp
+                // sbuild appends to most section headers (e.g.
+                // `| Build      Wed, 29 Apr 2026 15:17:54 +0000 |`).
+                // Without this the title becomes the literal
+                // padded string and `get_section("Build")` misses
+                // every section sbuild produced after the first
+                // one. Older sbuild releases emit the bare title
+                // — the regex either matches or it doesn't, so
+                // untimestamped titles fall through unchanged.
+                let raw = l1_trimmed.trim_matches('|').trim();
+                title = Some(strip_section_header_timestamp(raw).to_string());
                 begin_offset = lineno;
             } else {
                 lines.push(line);
@@ -1719,6 +1753,41 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
 
         let section = log.get_section(Some("NonExistent"));
         assert!(section.is_none());
+    }
+
+    /// Regression for the timestamp suffix sbuild adds to most
+    /// section headers (`| Build      Wed, 29 Apr 2026 15:17:54
+    /// +0000 |`). Without stripping it, the parsed title is the
+    /// whole padded string and lookups by name miss every section
+    /// after the first — the in-tree fixture is from an older
+    /// sbuild that emits bare titles, which masked the issue.
+    #[test]
+    fn test_strip_section_header_timestamp() {
+        // Real sbuild header forms.
+        assert_eq!(
+            strip_section_header_timestamp(
+                "Build                                      Wed, 29 Apr 2026 15:17:54 +0000"
+            ),
+            "Build"
+        );
+        assert_eq!(
+            strip_section_header_timestamp(
+                "Update chroot                                Wed,  3 Jan 2024 09:01:02 -0800"
+            ),
+            "Update chroot"
+        );
+        // Old-style header without a timestamp passes through.
+        assert_eq!(strip_section_header_timestamp("Build"), "Build");
+        assert_eq!(
+            strip_section_header_timestamp("Build environment"),
+            "Build environment"
+        );
+        // Anchored match: a timestamp earlier in the string isn't
+        // a suffix and must NOT be stripped.
+        assert_eq!(
+            strip_section_header_timestamp("Note Wed, 29 Apr 2026 15:17:54 +0000 was today"),
+            "Note Wed, 29 Apr 2026 15:17:54 +0000 was today"
+        );
     }
 
     /// Regression for the case-mismatch between title-case section
