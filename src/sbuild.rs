@@ -863,6 +863,14 @@ pub enum Phase {
     /// Session creation phase.
     #[serde(rename = "create-session")]
     CreateSession,
+
+    /// Source unpack phase (dpkg-source extract / repack).
+    #[serde(rename = "unpack")]
+    Unpack,
+
+    /// `apt-get update` phase before package installation.
+    #[serde(rename = "apt-get-update")]
+    AptGetUpdate,
 }
 
 impl std::fmt::Display for Phase {
@@ -872,6 +880,8 @@ impl std::fmt::Display for Phase {
             Phase::Build => write!(f, "build"),
             Phase::BuildEnv => write!(f, "build-env"),
             Phase::CreateSession => write!(f, "create-session"),
+            Phase::Unpack => write!(f, "unpack"),
+            Phase::AptGetUpdate => write!(f, "apt-get-update"),
         }
     }
 }
@@ -1096,7 +1106,7 @@ pub fn find_failure_unpack(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<
                 error: Some(error),
                 section: Some(section.clone()),
                 r#match,
-                phase: None,
+                phase: Some(Phase::Unpack),
             });
         }
     }
@@ -1105,7 +1115,7 @@ pub fn find_failure_unpack(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<
         stage: Some(failed_stage.to_string()),
         description: Some(description),
         error: None,
-        phase: None,
+        phase: Some(Phase::Unpack),
         section: section.cloned(),
         r#match: None,
     })
@@ -1176,7 +1186,7 @@ pub fn find_failure_apt_get_update(
         stage: Some(failed_stage.to_string()),
         description: Some(description),
         error,
-        phase: None,
+        phase: Some(Phase::AptGetUpdate),
         section: sbuildlog.get_section(focus_section.as_deref()).cloned(),
         r#match,
     })
@@ -2024,5 +2034,83 @@ Line4
 
         let section2 = log.get_section(Some("Section2")).unwrap();
         assert_eq!(section2.lines(), vec!["Line3\n", "Line4\n"]);
+    }
+
+    /// Regression: an unpack-stage failure with a recognised preamble error
+    /// (here `dpkg-source: error: aborting due to unexpected upstream changes`)
+    /// must surface `Phase::Unpack`. Previously it left `phase: None`, which
+    /// downstream tooling reports as "missing-phase".
+    #[test]
+    fn test_find_failure_unpack_sets_phase() {
+        let lines = vec![
+            "dpkg-source: info: local changes detected, the modified files are:".to_string(),
+            " setup.cfg".to_string(),
+            "dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff"
+                .to_string(),
+            "E: Failed to package source directory /build/area/foo-1.0".to_string(),
+        ];
+        let section = SbuildLogSection {
+            title: Some("build".to_string()),
+            offsets: (1, lines.len()),
+            lines,
+        };
+        let log = SbuildLog(vec![section]);
+        let failure = find_failure_unpack(&log, "unpack").expect("failure surfaced");
+        assert_eq!(failure.phase, Some(Phase::Unpack));
+        assert_eq!(failure.stage.as_deref(), Some("unpack"));
+        assert!(failure.error.is_some(), "preamble error attached");
+    }
+
+    /// Even when `find_failure_unpack` cannot pin down a specific preamble
+    /// error, the phase must still be set so the failure is not classified
+    /// as missing-phase.
+    #[test]
+    fn test_find_failure_unpack_sets_phase_without_preamble_match() {
+        let section = SbuildLogSection {
+            title: Some("build".to_string()),
+            offsets: (1, 1),
+            lines: vec!["something inscrutable went wrong".to_string()],
+        };
+        let log = SbuildLog(vec![section]);
+        let failure = find_failure_unpack(&log, "unpack").expect("failure surfaced");
+        assert_eq!(failure.phase, Some(Phase::Unpack));
+        assert!(failure.error.is_none());
+    }
+
+    /// Parallel regression for `apt-get update` failures: the phase must
+    /// be `AptGetUpdate` rather than `None`.
+    #[test]
+    fn test_find_failure_apt_get_update_sets_phase() {
+        let section = SbuildLogSection {
+            title: Some("update chroot".to_string()),
+            offsets: (1, 1),
+            lines: vec!["E: Failed to fetch http://deb.debian.org/debian/dists/sid/InRelease  Connection failed".to_string()],
+        };
+        let log = SbuildLog(vec![section]);
+        let failure =
+            find_failure_apt_get_update(&log, "apt-get-update").expect("failure surfaced");
+        assert_eq!(failure.phase, Some(Phase::AptGetUpdate));
+    }
+
+    /// `Phase::Unpack` and `Phase::AptGetUpdate` round-trip through serde
+    /// with the kebab-case wire names downstream consumers expect.
+    #[test]
+    fn test_phase_unpack_and_apt_get_update_serde() {
+        assert_eq!(
+            serde_json::to_string(&Phase::Unpack).unwrap(),
+            r#""unpack""#
+        );
+        assert_eq!(
+            serde_json::to_string(&Phase::AptGetUpdate).unwrap(),
+            r#""apt-get-update""#
+        );
+        assert_eq!(
+            serde_json::from_str::<Phase>(r#""unpack""#).unwrap(),
+            Phase::Unpack
+        );
+        assert_eq!(
+            serde_json::from_str::<Phase>(r#""apt-get-update""#).unwrap(),
+            Phase::AptGetUpdate
+        );
     }
 }
