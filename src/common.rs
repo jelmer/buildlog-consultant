@@ -747,6 +747,18 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^.*: line \d+: ([^ ]+): command not found", command_missing),
     regex_line_matcher!(r"^.*: line \d+: ([^ ]+): Permission denied"),
     regex_line_matcher!(r"^make\[[0-9]+\]: .*: Permission denied"),
+    // Unprivileged-build environment (sbuild --chroot-mode=unshare): the
+    // upstream Makefile insists on chown/install -o root and fails. Match
+    // both forms so the actual cause wins over the trailing
+    // `make[2]: *** [Makefile:N: install] Error 1`.
+    regex_line_matcher!(
+        r"^chown: changing ownership of '(.*)': Operation not permitted",
+        |_| Ok(None)
+    ),
+    regex_line_matcher!(
+        r"^install: cannot change ownership of '(.*)': Operation not permitted",
+        |_| Ok(None)
+    ),
     regex_line_matcher!(r"^/usr/bin/texi2dvi: TeX neither supports -recorder nor outputs \\openout lines in its log file"),
     regex_line_matcher!(r"^/bin/sh: \d+: ([^ ]+): not found", command_missing),
     regex_line_matcher!(r"^sh: \d+: ([^ ]+): not found", command_missing),
@@ -1457,6 +1469,15 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"\/usr\/bin\/ld: (.*): undefined reference to symbol \'(.*)\'", |_| Ok(None)),
     regex_line_matcher!(
         r"\/usr\/bin\/ld: (.*): relocation (.*) against symbol `(.*)\' can not be used when making a shared object; recompile with -fPIC",
+        |_| Ok(None)
+    ),
+    // Cross-toolchain linkers (e.g. `/usr/bin/x86_64-linux-gnu-ld.bfd:`)
+    // emit the same diagnostic but with an arch-prefixed binary name and
+    // sometimes use a back-tick or single quote inconsistently. Match
+    // both forms so the actual cause wins over a downstream
+    // `collect2: error: ld returned 1 exit status` fallback.
+    regex_line_matcher!(
+        r"\/usr\/bin\/[A-Za-z0-9_.-]+ld(?:\.bfd|\.gold)?: (.*): relocation (.*) against symbol [`']?(.*?)[`']? can not be used when making a shared object; recompile with -fPIC",
         |_| Ok(None)
     ),
     regex_line_matcher!(
@@ -3297,8 +3318,11 @@ lazy_static::lazy_static! {
     r"install: failed to access \'(.*)\': (.*)"),
     secondary_matcher!(
     r"MSBUILD: error MSBUILD[0-9]+: Project file \'(.*)\' not found."),
+    // Anchor the leading `E: ` so we don't accidentally match a line
+    // like `RECOMPILE: main.cc` whose substring `E: main.cc` would
+    // otherwise win over the actual compile error a few lines below.
     secondary_matcher!(
-    r"E: (.*)"),
+    r"^E: (.*)"),
     secondary_matcher!(
     r"(.*)\(([0-9]+),([0-9]+)\): Error: .*"),
     // C #
@@ -5705,6 +5729,69 @@ Call Stack (most recent call first):
         assert!(
             super::find_secondary_build_failure(&["Unknown option --foo, ignoring."], 10).is_none()
         );
+    }
+
+    /// Regression: the `E: (.*)` secondary fallback used to match anywhere
+    /// in a line, so a debhelper status line like `RECOMPILE: main.cc`
+    /// (which contains the substring `E: main.cc`) won over the actual
+    /// compile error a few lines below. Anchoring with `^` keeps the
+    /// fallback for genuine apt-style `E: ...` lines while ignoring this
+    /// false-positive class.
+    #[test]
+    fn test_secondary_e_prefix_is_anchored() {
+        assert!(super::find_secondary_build_failure(&["RECOMPILE: main.cc"], 10).is_none());
+        assert!(super::find_secondary_build_failure(&["E: Build failed"], 10).is_some());
+    }
+
+    /// Regression for unprivileged-build (sbuild --chroot-mode=unshare)
+    /// failures: the upstream Makefile insists on `chown` / `install -o`
+    /// and fails. Pre-fix the only line buildlog-consultant could pin
+    /// down was the trailing `make: *** [...] Error 1`, which selected
+    /// the wrong section. The new primary matchers surface the actual
+    /// cause line so downstream tooling can at least display it.
+    #[test]
+    fn test_chown_operation_not_permitted_matches() {
+        let lines = vec![
+            "chmod 4755 debian/tcptraceroute/usr/bin/tcptraceroute.mt",
+            "chown root:root debian/tcptraceroute/usr/bin/tcptraceroute.mt",
+            "chown: changing ownership of 'debian/tcptraceroute/usr/bin/tcptraceroute.mt': Operation not permitted",
+            "make[1]: *** [debian/rules:23: override_dh_auto_install] Error 1",
+        ];
+        let (m, err) = super::find_build_failure_description(lines.clone());
+        assert!(err.is_none(), "no Problem expected for this matcher");
+        let m = m.expect("chown line should be picked over the trailing make error");
+        assert_eq!(m.line(), lines[2]);
+    }
+
+    #[test]
+    fn test_install_cannot_change_ownership_matches() {
+        let lines = vec![
+            "INSTALL bin/physlock",
+            "install: cannot change ownership of '/build/reproducible-path/physlock-13/debian/physlock/usr/bin/physlock': Operation not permitted",
+            "make[2]: *** [Makefile:55: install] Error 1",
+        ];
+        let (m, err) = super::find_build_failure_description(lines.clone());
+        assert!(err.is_none(), "no Problem expected for this matcher");
+        let m = m.expect("install line should be picked over the trailing make error");
+        assert_eq!(m.line(), lines[1]);
+    }
+
+    /// Regression: cross-toolchain linkers (`/usr/bin/x86_64-linux-gnu-ld.bfd`)
+    /// emit the `recompile with -fPIC` diagnostic with an arch-prefixed
+    /// binary name. Pre-fix only the `/usr/bin/ld:` form was matched, so
+    /// the picked line was the trailing `collect2: error: ld returned 1
+    /// exit status` instead of the actual relocation cause.
+    #[test]
+    fn test_arch_prefixed_ld_recompile_with_fpic_matches() {
+        let lines = vec![
+            "/usr/bin/x86_64-linux-gnu-ld.bfd: build/dpiGlobal.o: relocation R_X86_64_PC32 against symbol `dpiDebugLevel' can not be used when making a shared object; recompile with -fPIC",
+            "/usr/bin/x86_64-linux-gnu-ld.bfd: final link failed: bad value",
+            "collect2: error: ld returned 1 exit status",
+        ];
+        let (m, err) = super::find_build_failure_description(lines.clone());
+        assert!(err.is_none(), "no Problem expected for this matcher");
+        let m = m.expect("PIC line should be picked over the collect2 fallback");
+        assert_eq!(m.line(), lines[0]);
     }
 
     #[test]
