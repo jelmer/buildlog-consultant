@@ -1429,7 +1429,12 @@ pub fn find_failure_autopkgtest(
         let (r#match, testname, error, description) =
             crate::autopkgtest::find_autopkgtest_failure_description(section.lines());
         let description = description.or_else(|| error.as_ref().map(|x| x.to_string()));
-        let phase = testname.map(Phase::AutoPkgTest);
+        // testname is None when the testbed dies before any test runs;
+        // we're still in the autopkgtest section, so emit the phase
+        // anyway so callers don't drop it as MissingPhase.
+        let phase = Some(Phase::AutoPkgTest(
+            testname.unwrap_or_else(|| "<setup>".to_string()),
+        ));
         (description, error, r#match, phase)
     } else {
         (None, None, None, None)
@@ -2090,6 +2095,70 @@ Line4
         let failure =
             find_failure_apt_get_update(&log, "apt-get-update").expect("failure surfaced");
         assert_eq!(failure.phase, Some(Phase::AptGetUpdate));
+    }
+
+    /// Regression: an autopkgtest section that fails before any
+    /// individual test runs (e.g. testbed setup error like `eof from
+    /// the virtualisation server`) must still get a phase. Returning
+    /// `phase=None` here let downstream consumers (ognibuild's
+    /// `iterate_with_build_fixers`) collapse the failure to
+    /// `MissingPhase` and discard the recognised problem +
+    /// description.
+    #[test]
+    fn test_find_failure_autopkgtest_sets_phase_without_testname() {
+        let section = SbuildLogSection {
+            title: Some("post build".to_string()),
+            offsets: (1, 2),
+            lines: vec![
+                "autopkgtest [01:50:23]: starting date and time: 2026-05-06 01:50:23+0000".to_string(),
+                "autopkgtest [01:50:23]: ERROR: testbed failure: eof from the virtualisation server".to_string(),
+            ],
+        };
+        let log = SbuildLog(vec![section]);
+        let failure = find_failure_autopkgtest(&log, "post-build").expect("failure surfaced");
+        match failure.phase.as_ref().expect("phase must not be None") {
+            Phase::AutoPkgTest(name) => {
+                assert!(
+                    !name.is_empty(),
+                    "phase name must be a non-empty sentinel; got {:?}",
+                    name
+                );
+            }
+            other => panic!("expected Phase::AutoPkgTest, got {:?}", other),
+        }
+        assert!(
+            failure.error.is_some(),
+            "AutopkgtestTestbedFailure problem must survive into the SbuildFailure"
+        );
+        let desc = failure.description.as_deref().unwrap_or_default();
+        assert!(
+            desc.contains("eof from the virtualisation server"),
+            "description must surface the testbed failure reason; got {:?}",
+            desc
+        );
+    }
+
+    /// When a test was running before the section ended, the phase
+    /// must carry that test name (existing behaviour — pin it so the
+    /// `<setup>` fallback above doesn't accidentally overwrite a real
+    /// testname).
+    #[test]
+    fn test_find_failure_autopkgtest_keeps_testname_when_present() {
+        let section = SbuildLogSection {
+            title: Some("autopkgtest".to_string()),
+            offsets: (1, 3),
+            lines: vec![
+                "autopkgtest [10:00:00]: test command1: preparing testbed".to_string(),
+                "autopkgtest [10:00:01]: test command1: [-----------------------".to_string(),
+                "autopkgtest [10:00:02]: ERROR: testbed failure: eof from the virtualisation server".to_string(),
+            ],
+        };
+        let log = SbuildLog(vec![section]);
+        let failure = find_failure_autopkgtest(&log, "autopkgtest").expect("failure surfaced");
+        match failure.phase.as_ref().expect("phase must be set") {
+            Phase::AutoPkgTest(name) => assert_eq!(name, "command1"),
+            other => panic!("expected Phase::AutoPkgTest(command1), got {:?}", other),
+        }
     }
 
     /// `Phase::Unpack` and `Phase::AptGetUpdate` round-trip through serde
