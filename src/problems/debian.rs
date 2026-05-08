@@ -1468,6 +1468,228 @@ impl std::fmt::Display for InsufficientDiskSpace {
     }
 }
 
+/// Problem representing brz failing because the workspace contains a
+/// nested tree (a `bzr-revtree` containing another working tree, e.g.
+/// vendored upstream source). brz emits
+/// `brz: ERROR: The nested tree for <name> can not be resolved.` and
+/// stops; without a matcher this surfaced as `unidentified` in
+/// janitor.debian.net.
+#[derive(Debug, Clone)]
+pub struct NestedTreeUnresolvable {
+    /// The name of the nested tree brz couldn't resolve.
+    pub name: String,
+}
+
+impl Problem for NestedTreeUnresolvable {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
+        "nested-tree-unresolvable".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({"name": self.name})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "nested-tree-unresolvable",
+        detail_fields: &["name"],
+    }
+}
+
+impl std::fmt::Display for NestedTreeUnresolvable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Nested tree for {} cannot be resolved", self.name)
+    }
+}
+
+/// Problem representing dulwich refusing to traverse a git submodule
+/// during a brz operation. brz emits
+/// `brz: ERROR: dulwich.objects.SubmoduleEncountered: (path, sha)`;
+/// the package needs `--include-submodules` or the submodule needs
+/// resolving manually before the run can proceed.
+#[derive(Debug, Clone)]
+pub struct SubmoduleEncountered {
+    /// Path of the submodule inside the working tree.
+    pub path: String,
+    /// Submodule commit SHA brz reported.
+    pub sha: String,
+}
+
+impl Problem for SubmoduleEncountered {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
+        "submodule-encountered".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({"path": self.path, "sha": self.sha})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "submodule-encountered",
+        detail_fields: &["path", "sha"],
+    }
+}
+
+impl std::fmt::Display for SubmoduleEncountered {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Submodule encountered at {} ({})", self.path, self.sha)
+    }
+}
+
+/// Problem representing UScan finding the upstream watchfile lists a
+/// version that doesn't match the version from `debian/changelog`.
+/// The brz wrapper formats this as
+/// `UScan failed to run: Newest version of <pkg> on remote site is
+/// <remote>, specified download version is <wanted>.`. Distinct from
+/// `UScanRequestVersionMissing` (matches "no matching files for
+/// version"); this fires when uscan *did* find files but for a
+/// different version label.
+#[derive(Debug, Clone)]
+pub struct UScanRemoteVersionMismatch {
+    /// Source package name uscan reported.
+    pub package: String,
+    /// Newest version on the upstream watchfile target.
+    pub remote_version: String,
+    /// Version brz/uscan was asked to download (from changelog).
+    pub wanted_version: String,
+}
+
+impl Problem for UScanRemoteVersionMismatch {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
+        "uscan-remote-version-mismatch".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "package": self.package,
+            "remote_version": self.remote_version,
+            "wanted_version": self.wanted_version,
+        })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "uscan-remote-version-mismatch",
+        detail_fields: &["package", "remote_version", "wanted_version"],
+    }
+}
+
+impl std::fmt::Display for UScanRemoteVersionMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "uscan: {} latest is {}, wanted {}",
+            self.package, self.remote_version, self.wanted_version
+        )
+    }
+}
+
+/// Problem representing UScan refusing to parse a malformed paragraph
+/// in `debian/watch`. brz emits
+/// `UScan failed to run: The following paragraph isn't well formatted,
+/// skipping it: <text>`; surface it explicitly so the failure is
+/// classified as a watchfile-format issue (actionable: fix
+/// debian/watch) rather than `unidentified`.
+#[derive(Debug, Clone)]
+pub struct UScanWatchfileMalformed {
+    /// The raw paragraph text uscan rejected (may be multi-line).
+    pub paragraph: String,
+}
+
+impl Problem for UScanWatchfileMalformed {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
+        "uscan-watchfile-malformed".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({"paragraph": self.paragraph})
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "uscan-watchfile-malformed",
+        detail_fields: &["paragraph"],
+    }
+}
+
+impl std::fmt::Display for UScanWatchfileMalformed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "uscan rejected malformed debian/watch paragraph")
+    }
+}
+
+/// Problem representing brz crashing with an uncaught exception
+/// (typically a Python AssertionError or similar deep stack
+/// trace). The brz crash banner ("Breezy has encountered an internal
+/// error") is what we want to surface; treating these as
+/// `unidentified` masks real upstream brz bugs that need filing.
+#[derive(Debug, Clone)]
+pub struct BrzInternalError {
+    /// The exception type (e.g. `AssertionError`, `AttributeError`).
+    pub exception_type: String,
+    /// The exception message; may be empty (assertion errors often are).
+    pub exception_message: String,
+}
+
+impl Problem for BrzInternalError {
+    fn kind(&self) -> std::borrow::Cow<'_, str> {
+        "brz-internal-error".into()
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "exception_type": self.exception_type,
+            "exception_message": self.exception_message,
+        })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "brz-internal-error",
+        detail_fields: &["exception_type", "exception_message"],
+    }
+}
+
+impl std::fmt::Display for BrzInternalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.exception_message.is_empty() {
+            write!(f, "brz internal error: {}", self.exception_type)
+        } else {
+            write!(
+                f,
+                "brz internal error: {}: {}",
+                self.exception_type, self.exception_message
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
