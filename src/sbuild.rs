@@ -1540,9 +1540,21 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
             (r#match, error) = find_build_failure_description(s.lines());
             if let Some(r#match) = r#match.as_ref() {
                 description = Some(r#match.line().trim_end_matches('\n').to_string());
-            } else if let Some((e, d)) = crate::brz::find_brz_build_error(s.lines()) {
-                description = Some(d.to_string());
-                error = e;
+            }
+            // If we couldn't attach a specific Problem (either no match at
+            // all, or a generic fallback like the `ERROR: .*` secondary
+            // regex), check for a `brz: ERROR:` line which usually carries
+            // a more identifiable cause (uscan failures, missing tarballs,
+            // etc.).
+            if error.is_none() {
+                if let Some((e, d)) = crate::brz::find_brz_build_error(s.lines()) {
+                    if e.is_some() {
+                        description = Some(d.to_string());
+                        error = e;
+                    } else if r#match.is_none() {
+                        description = Some(d.to_string());
+                    }
+                }
             }
         }
         section = Some(s);
@@ -2159,6 +2171,31 @@ Line4
             Phase::AutoPkgTest(name) => assert_eq!(name, "command1"),
             other => panic!("expected Phase::AutoPkgTest(command1), got {:?}", other),
         }
+    }
+
+    #[test]
+    fn test_worker_failure_falls_back_to_brz_parser_after_generic_match() {
+        let lines = vec![
+            "Building using working tree".to_string(),
+            "Building package in normal mode".to_string(),
+            "Looking for upstream tarball in local branch.".to_string(),
+            "Using uscan to look for the upstream tarball.".to_string(),
+            "uscan warn: In debian/watch no matching files for version 1.2.0 in watch line"
+                .to_string(),
+            "brz: ERROR: UScan failed to run: In debian/watch no matching files for version 1.2.0 in watch line."
+                .to_string(),
+        ];
+        let section = SbuildLogSection {
+            title: None,
+            offsets: (1, lines.len()),
+            lines,
+        };
+        let log = SbuildLog(vec![section]);
+        let failure = worker_failure_from_sbuild_log(&log);
+        let error = failure
+            .error
+            .expect("brz parser should attach a Problem on the fallback path");
+        assert_eq!(error.kind(), "uscan-request-version-missing");
     }
 
     /// `Phase::Unpack` and `Phase::AptGetUpdate` round-trip through serde
