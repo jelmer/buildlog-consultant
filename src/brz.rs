@@ -441,8 +441,8 @@ mod tests {
             err,
             Some(Box::new(BrzInternalError {
                 exception_type: "AttributeError".to_string(),
-                exception_message:
-                    "'RemoteGitRepository' object has no attribute '_git'".to_string(),
+                exception_message: "'RemoteGitRepository' object has no attribute '_git'"
+                    .to_string(),
             }) as Box<dyn Problem>)
         );
         assert_eq!(
