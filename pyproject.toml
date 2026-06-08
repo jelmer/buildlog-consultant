@@ -33,7 +33,7 @@ Repository = "https://github.com/jelmer/buildlog-consultant.git"
 
 [project.optional-dependencies]
 chatgpt = ["openai"]
-dev = ["ruff==0.15.15"]
+dev = ["ruff==0.15.16"]
 
 [tool.setuptools]
 include-package-data = false
