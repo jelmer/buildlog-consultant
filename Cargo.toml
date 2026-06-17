@@ -1,7 +1,7 @@
 [package]
 name = "buildlog-consultant"
 version = "0.1.10"
-authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>",]
+authors = ["Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"
 description = "buildlog parser and analyser"
@@ -47,7 +47,7 @@ regex = "1.10.4"
 lazy_static = "1.4"
 serde_json = "1.0.118"
 serde = { version = "1.0.210", features = ["derive"] }
-shlex = "1"
+shlex = ">=1,<3"
 log = "0.4.20"
 text-size = "1.1.1"
 debversion = { version = ">=0.4.7,<0.6", features = ["serde"] }
@@ -56,7 +56,7 @@ fancy-regex = ">=0.11,< 0.18"
 lazy-regex = "3.0.2"
 textwrap = "0.16.0"
 chatgpt_rs = { version = "1", optional = true }
-reqwest = { version = "0.11", optional = true }
+reqwest = { version = ">=0.11,<0.14", optional = true }
 anthropic = { version = "0.0.8", optional = true }
 env_logger = { version = ">=0.10", optional = true }
 clap = { version = ">=4.1", optional = true, features = ["derive"] }
