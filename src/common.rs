@@ -567,6 +567,9 @@ lazy_static::lazy_static! {
         regex_line_matcher!(
             "^INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: (.*)$",
             |m| Ok(Some(Box::new(UnsupportedPytestConfigOption(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(
+            "PytestConfigWarning: Unknown config (?:ini key|option): (.*)$",
+            |m| Ok(Some(Box::new(UnsupportedPytestConfigOption(m.get(1).unwrap().as_str().to_string()))))),
         regex_line_matcher!("^E   ImportError: cannot import name '(.*)' from '(.*)'", |m| {
             let name = m.get(1).unwrap().as_str();
             let module = m.get(2).unwrap().as_str();
@@ -5513,6 +5516,17 @@ error: invalid command 'test'
             vec!["INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: asyncio_mode"],
             1,
             Some(UnsupportedPytestConfigOption("asyncio_mode".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_pytest_config_ini_key_warning() {
+        assert_match(
+            vec![
+                "  /usr/lib/python3/dist-packages/_pytest/config/__init__.py:1148: PytestConfigWarning: Unknown config ini key: pep8maxlinelength",
+            ],
+            1,
+            Some(UnsupportedPytestConfigOption("pep8maxlinelength".to_owned())),
         );
     }
 
