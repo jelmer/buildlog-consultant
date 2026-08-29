@@ -56,7 +56,7 @@ fancy-regex = ">=0.11,< 0.18"
 lazy-regex = "3.0.2"
 textwrap = "0.16.0"
 chatgpt_rs = { version = "1", optional = true }
-reqwest = { version = ">=0.11,<0.14", optional = true }
+reqwest = { version = ">=0.11,<0.14", features = ["json"], optional = true }
 anthropic = { version = "0.0.8", optional = true }
 env_logger = { version = ">=0.10", optional = true }
 clap = { version = ">=4.1", optional = true, features = ["derive"] }
