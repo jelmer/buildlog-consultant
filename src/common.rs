@@ -2650,11 +2650,10 @@ lazy_static::lazy_static! {
         ),
         regex_para_matcher!(r#"Could not find a package configuration file provided by\s"(.*)" \(requested\sversion\s(.*)\)\swith\sany\s+of\s+the\s+following\snames:\n\n(  .*\n)+\n.*$"#,
             |m| {
-                let package = m.get(1).unwrap().as_str().to_string();
                 let version = m.get(2).unwrap().as_str().to_string();
-                let _names = m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect::<Vec<_>>();
-                Ok(Some(Box::new(MissingCMakeConfig{
-                    name: package,
+                let filenames = m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect::<Vec<_>>();
+                Ok(Some(Box::new(CMakeFilesMissing {
+                    filenames,
                     version: Some(version),
                 })))
             }
@@ -2720,11 +2719,10 @@ lazy_static::lazy_static! {
         ),
         regex_para_matcher!(
             r#".*Could not find a package configuration file provided by "(.*)"\s\(requested\sversion\s(.+\))\swith\sany\sof\sthe\sfollowing\snames:\n\n(  .*\n)+\n.*$"#, |m| {
-                let package = m.get(1).unwrap().as_str().to_string();
                 let versions = m.get(2).unwrap().as_str().to_string();
-                let _names = m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect::<Vec<_>>();
-                Ok(Some(Box::new(MissingCMakeConfig {
-                    name: package,
+                let filenames = m.get(3).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect::<Vec<_>>();
+                Ok(Some(Box::new(CMakeFilesMissing {
+                    filenames,
                     version: Some(versions),
                 })))
             }
@@ -5735,6 +5733,46 @@ Call Stack (most recent call first):
             5,
             Some(MissingVagueDependency::simple("GPGME")),
         );
+    }
+
+    /// Regression: https://github.com/jelmer/ognibuild/issues/309
+    /// The CMake matcher was producing MissingVagueDependency { name: "a" }
+    /// from "asked CMake to find a package configuration file...".
+    #[test]
+    fn test_cmake_qt6_config_not_ambiguous_a() {
+        let log = r#"CMake Error at libs/QHotkey/CMakeLists.txt:20 (find_package):
+  By not providing "FindQt6.cmake" in CMAKE_MODULE_PATH this project has
+  asked CMake to find a package configuration file provided by "Qt6", but
+  CMake did not find one.
+
+  Could not find a package configuration file provided by "Qt6" (requested
+  version 6.2.0) with any of the following names:
+
+    Qt6Config.cmake
+    qt6-config.cmake
+
+  Add the installation prefix of "Qt6" to CMAKE_PREFIX_PATH or set "Qt6_DIR"
+  to a directory containing one of the above files.  If "Qt6" provides a
+  separate development package or SDK, be sure it has been installed.
+
+
+-- Configuring incomplete, errors occurred!
+"#;
+        let lines: Vec<&str> = log.split_inclusive('\n').collect();
+        let (_m, err) = super::find_build_failure_description(lines);
+        let err = err.expect("expected some problem");
+        let cfm = err
+            .as_any()
+            .downcast_ref::<CMakeFilesMissing>()
+            .expect("expected CMakeFilesMissing");
+        assert_eq!(
+            cfm.filenames,
+            vec![
+                "Qt6Config.cmake".to_string(),
+                "qt6-config.cmake".to_string()
+            ]
+        );
+        assert_eq!(cfm.version.as_deref(), Some("6.2.0"));
     }
 
     #[test]
