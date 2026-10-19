@@ -7,7 +7,7 @@
 use crate::lines::Lines;
 use crate::problems::autopkgtest::*;
 use crate::r#match::Error;
-use crate::{Failure, Problem, SingleLineMatch};
+use crate::{Failure, Problem};
 use std::collections::HashMap;
 
 /// A failure found in an autopkgtest log.
@@ -370,10 +370,7 @@ pub fn find_autopkgtest_failure_description(
                         let error =
                             Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>);
                         return Ok(Some(AutopkgtestFailure {
-                            failure: Failure::new(
-                                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
-                                error,
-                            ),
+                            failure: Failure::at_line(lines, i, "direct regex", error),
                             testname: last_test,
                             description: Some(stderr.to_owned()),
                         }));
@@ -394,12 +391,10 @@ pub fn find_autopkgtest_failure_description(
                         )? {
                             let description = m.line().to_string();
                             return Ok(Some(AutopkgtestFailure {
-                                failure: Failure::new(
-                                    SingleLineMatch::from_lines(
-                                        lines,
-                                        test_output[&field].offsets[m.offset()],
-                                        Some("direct regex"),
-                                    ),
+                                failure: Failure::at_line(
+                                    lines,
+                                    test_output[&field].offsets[m.offset()],
+                                    "direct regex",
                                     Some(error),
                                 ),
                                 testname: last_test.map(|x| x.to_owned()),
@@ -447,8 +442,10 @@ pub fn find_autopkgtest_failure_description(
                             }));
                         }
                         return Ok(Some(AutopkgtestFailure {
-                            failure: Failure::new(
-                                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+                            failure: Failure::at_line(
+                                lines,
+                                i,
+                                "direct regex",
                                 Some(Box::new(crate::problems::debian::AptFetchFailure {
                                     url: None,
                                     error: testbed_failure_reason.to_owned(),
@@ -459,8 +456,10 @@ pub fn find_autopkgtest_failure_description(
                         }));
                     }
                     return Ok(Some(AutopkgtestFailure {
-                        failure: Failure::new(
-                            SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+                        failure: Failure::at_line(
+                            lines,
+                            i,
+                            "direct regex",
                             Some(Box::new(AutopkgtestTestbedFailure {
                                 reason: testbed_failure_reason.to_owned(),
                             }) as Box<dyn Problem>),
@@ -484,8 +483,10 @@ pub fn find_autopkgtest_failure_description(
                         }));
                     }
                     return Ok(Some(AutopkgtestFailure {
-                        failure: Failure::new(
-                            SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+                        failure: Failure::at_line(
+                            lines,
+                            i,
+                            "direct regex",
                             Some(Box::new(AutopkgtestErroneousPackage {
                                 reason: pkg.to_string(),
                             }) as Box<dyn Problem>),
@@ -517,12 +518,10 @@ pub fn find_autopkgtest_failure_description(
                         if let Some(test_output_entry) = test_output.get(current_field) {
                             let description = m.line().to_string();
                             return Ok(Some(AutopkgtestFailure {
-                                failure: Failure::new(
-                                    SingleLineMatch::from_lines(
-                                        lines,
-                                        test_output_entry.offsets[m.offset()],
-                                        Some("direct regex"),
-                                    ),
+                                failure: Failure::at_line(
+                                    lines,
+                                    test_output_entry.offsets[m.offset()],
+                                    "direct regex",
                                     Some(e),
                                 ),
                                 testname: last_test.map(|x| x.to_owned()),
@@ -541,8 +540,10 @@ pub fn find_autopkgtest_failure_description(
                     // at the ERROR line itself when outside of any field.
                     let offset = current_field.as_ref().map_or(i, |f| test_output[f].start);
                     return Ok(Some(AutopkgtestFailure {
-                        failure: Failure::new(
-                            SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
+                        failure: Failure::at_line(
+                            lines,
+                            offset,
+                            "direct regex",
                             Some(Box::new(AutopkgtestTimedOut) as Box<dyn Problem>),
                         ),
                         testname: last_test.map(|x| x.to_owned()),
@@ -550,10 +551,7 @@ pub fn find_autopkgtest_failure_description(
                     }));
                 }
                 return Ok(Some(AutopkgtestFailure {
-                    failure: Failure::new(
-                        SingleLineMatch::from_lines(lines, i, Some("direct regex")),
-                        None,
-                    ),
+                    failure: Failure::at_line(lines, i, "direct regex", None),
                     testname: last_test.map(|x| x.to_owned()),
                     description: Some(msg),
                 }));
@@ -639,10 +637,7 @@ pub fn find_autopkgtest_failure_description(
             return Ok(None);
         };
         return Ok(Some(AutopkgtestFailure {
-            failure: Failure::new(
-                SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
-                None,
-            ),
+            failure: Failure::at_line(lines, offset, "direct regex", None),
             testname: Some(lines[offset].to_string()),
             description: None,
         }));
@@ -656,10 +651,7 @@ pub fn find_autopkgtest_failure_description(
         if packet.reason.as_deref() == Some("timed out") {
             let error = Some(Box::new(AutopkgtestTimedOut) as Box<dyn Problem>);
             return Ok(Some(AutopkgtestFailure {
-                failure: Failure::new(
-                    SingleLineMatch::from_lines(lines, packet_offset, Some("direct regex")),
-                    error,
-                ),
+                failure: Failure::at_line(lines, packet_offset, "direct regex", error),
                 testname: Some(packet.name),
                 description: packet.reason,
             }));
@@ -720,10 +712,7 @@ pub fn find_autopkgtest_failure_description(
                 )
             });
             return Ok(Some(AutopkgtestFailure {
-                failure: Failure::new(
-                    SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
-                    Some(error),
-                ),
+                failure: Failure::at_line(lines, offset, "direct regex", Some(error)),
                 testname: Some(packet.name),
                 description: Some(description),
             }));
@@ -736,12 +725,10 @@ pub fn find_autopkgtest_failure_description(
                 }) = crate::apt::find_apt_get_failure(&output.lines)
                 {
                     return Ok(Some(AutopkgtestFailure {
-                        failure: Failure::new(
-                            SingleLineMatch::from_lines(
-                                lines,
-                                output.offsets[m.offset()],
-                                Some("direct regex"),
-                            ),
+                        failure: Failure::at_line(
+                            lines,
+                            output.offsets[m.offset()],
+                            "direct regex",
                             Some(e),
                         ),
                         testname: Some(packet.name),
@@ -786,12 +773,10 @@ pub fn find_autopkgtest_failure_description(
 
             let error = blame.map(|(_, blame)| Box::new(blame) as Box<dyn Problem>);
             return Ok(Some(AutopkgtestFailure {
-                failure: Failure::new(
-                    SingleLineMatch::from_lines(
-                        lines,
-                        summary.offsets[packet.offset() + extra_offset],
-                        Some("direct regex"),
-                    ),
+                failure: Failure::at_line(
+                    lines,
+                    summary.offsets[packet.offset() + extra_offset],
+                    "direct regex",
                     error,
                 ),
                 testname: Some(packet.name),
@@ -815,10 +800,7 @@ pub fn find_autopkgtest_failure_description(
                 format!("Test {} failed", packet.name)
             };
             return Ok(Some(AutopkgtestFailure {
-                failure: Failure::new(
-                    SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
-                    error,
-                ),
+                failure: Failure::at_line(lines, offset, "direct regex", error),
                 testname: Some(packet.name),
                 description: Some(description),
             }));
@@ -851,15 +833,19 @@ pub fn find_testbed_setup_failure(lines: &[&str]) -> Result<Option<Failure>, Err
             if let Some((_, chroot)) =
                 lazy_regex::regex_captures!(r"E: (.*): Chroot not found\\n", stderr)
             {
-                return Ok(Some(Failure::new(
-                    SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+                return Ok(Some(Failure::at_line(
+                    lines,
+                    i,
+                    "direct regex",
                     Some(Box::new(crate::problems::common::ChrootNotFound {
                         chroot: chroot.to_owned(),
                     }) as Box<dyn Problem>),
                 )));
             }
-            return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+            return Ok(Some(Failure::at_line(
+                lines,
+                i,
+                "direct regex",
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
                     command: command.to_string(),
                     exit_status: status_code
@@ -877,13 +863,17 @@ pub fn find_testbed_setup_failure(lines: &[&str]) -> Result<Option<Failure>, Err
                 r"W: /var/lib/schroot/session/(.*): Failed to stat file: No such file or directory",
                 stderr_group
             ) {
-                return Ok(Some(Failure::new(
-                    SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+                return Ok(Some(Failure::at_line(
+                    lines,
+                    i,
+                    "direct regex",
                     Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>),
                 )));
             }
-            return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+            return Ok(Some(Failure::at_line(
+                lines,
+                i,
+                "direct regex",
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
                     command: command.to_string(),
                     exit_status: 1,

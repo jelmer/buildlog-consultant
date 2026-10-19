@@ -9,7 +9,7 @@ use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
 use crate::r#match::Error;
 use crate::sbuild::SectionFailure;
-use crate::{Failure, MultiLineMatch, Problem, SingleLineMatch};
+use crate::{Failure, MultiLineMatch, Problem};
 use debian_control::lossless::relations::{Entry, Relations};
 
 /// Analyzes APT output to identify failures and their causes.
@@ -38,15 +38,14 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
                         error: msg.to_string(),
                     })
                 };
-                return Some(Failure::new(
-                    SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+                return Some(Failure::at_line(
+                    lines,
+                    lineno,
+                    "direct regex",
                     Some(problem),
                 ));
             }
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
-                None,
-            ));
+            return Some(Failure::at_line(lines, lineno, "direct regex", None));
         }
         if line == "E: Broken packages" {
             // The preceding line describes the problem; fall back to this one
@@ -56,10 +55,7 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
                 description: lines[offset].trim().to_string(),
                 broken: None,
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, offset, Some("direct match")),
-                error,
-            ));
+            return Some(Failure::at_line(lines, offset, "direct match", error));
         }
         if line == "E: Unable to correct problems, you have held broken packages." {
             let mut offsets = vec![];
@@ -99,8 +95,10 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
             "E: The repository '([^']+)' does not have a Release file.",
             line
         ) {
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                lineno,
+                "direct regex",
                 Some(Box::new(AptMissingReleaseFile {
                     url: repo.to_string(),
                 })),
@@ -110,50 +108,59 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
             "dpkg-deb: error: unable to write file '(.*)': No space left on device",
             line
         ) {
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                lineno,
+                "direct regex",
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
         if let Some((_, _path)) =
             lazy_regex::regex_captures!(r"E: You don't have enough free space in (.*)\.", line)
         {
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                lineno,
+                "direct regex",
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
         if line.starts_with("E: ") && ret.is_none() {
-            ret = Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
-                None,
-            ));
+            ret = Some(Failure::at_line(lines, lineno, "direct regex", None));
         }
         if let Some((_, pkg)) =
             lazy_regex::regex_captures!(r"E: Unable to locate package (.*)", line)
         {
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                lineno,
+                "direct regex",
                 Some(Box::new(AptPackageUnknown {
                     package: pkg.to_string(),
                 })),
             ));
         }
         if line == "E: Write error - write (28: No space left on device)" {
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                lineno,
+                "direct regex",
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
         if let Some((_, msg)) = lazy_regex::regex_captures!(r"dpkg: error: (.*)", line) {
             if msg.ends_with(": No space left on device") {
-                return Some(Failure::new(
-                    SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+                return Some(Failure::at_line(
+                    lines,
+                    lineno,
+                    "direct regex",
                     Some(Box::new(NoSpaceOnDevice)),
                 ));
             }
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                lineno,
+                "direct regex",
                 Some(Box::new(DpkgError {
                     msg: msg.to_string(),
                 })),
@@ -169,8 +176,10 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
             } else {
                 lineno
             };
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                offset,
+                "direct regex",
                 Some(Box::new(DpkgError {
                     msg: format!("processing package {} ({})", pkg, msg),
                 })),
@@ -183,14 +192,18 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
             r" cannot copy extracted data for '(.*)' to '(.*)': failed to write \(No space left on device\)",
             line,
         ) {
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                i,
+                "direct regex",
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
         if lazy_regex::regex_is_match!(r" .*: No space left on device", line) {
-            return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
+            return Some(Failure::at_line(
+                lines,
+                i,
+                "direct regex",
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }

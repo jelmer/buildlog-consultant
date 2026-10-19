@@ -530,6 +530,19 @@ impl Failure {
         }
     }
 
+    /// Creates a failure for the single line at `offset` in `lines`.
+    pub(crate) fn at_line(
+        lines: &[&str],
+        offset: usize,
+        origin: &str,
+        problem: Option<Box<dyn Problem>>,
+    ) -> Self {
+        Self::new(
+            SingleLineMatch::from_lines(lines, offset, Some(origin)),
+            problem,
+        )
+    }
+
     /// Splits an optional failure into its optional match and problem.
     #[allow(clippy::type_complexity)]
     pub(crate) fn split(
