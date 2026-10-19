@@ -390,7 +390,7 @@ pub fn find_autopkgtest_failure_description(
 
                     if testbed_failure_reason == "cannot send to testbed: [Errno 32] Broken pipe" {
                         if let Some(failure) =
-                            find_testbed_setup_failure(lines).filter(|f| f.problem.is_some())
+                            find_testbed_setup_failure(lines)?.filter(|f| f.problem.is_some())
                         {
                             let description = failure.r#match.line().to_string();
                             return Ok(Some(AutopkgtestFailure {
@@ -810,8 +810,9 @@ pub fn find_autopkgtest_failure_description(
 /// * `lines` - Log lines to analyze
 ///
 /// # Returns
-/// The failure, if one was found
-pub fn find_testbed_setup_failure(lines: &[&str]) -> Option<Failure> {
+/// The failure, if one was found, or an error if a matching line could not
+/// be interpreted
+pub fn find_testbed_setup_failure(lines: &[&str]) -> Result<Option<Failure>, Error> {
     for (i, line) in lines.enumerate_backward(None) {
         if let Some((_, command, status_code, stderr)) = lazy_regex::regex_captures!(
             r"\[(.*)\] failed \(exit status ([0-9]+), stderr \'(.*)\'\)\n",
@@ -820,21 +821,23 @@ pub fn find_testbed_setup_failure(lines: &[&str]) -> Option<Failure> {
             if let Some((_, chroot)) =
                 lazy_regex::regex_captures!(r"E: (.*): Chroot not found\\n", stderr)
             {
-                return Some(Failure::new(
+                return Ok(Some(Failure::new(
                     SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                     Some(Box::new(crate::problems::common::ChrootNotFound {
                         chroot: chroot.to_owned(),
                     }) as Box<dyn Problem>),
-                ));
+                )));
             }
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
                     command: command.to_string(),
-                    exit_status: status_code.parse().unwrap(),
+                    exit_status: status_code
+                        .parse()
+                        .map_err(|e| Error::from(e).or_offset(i))?,
                     error: stderr.to_string(),
                 }) as Box<dyn Problem>),
-            ));
+            )));
         }
         if let Some((_, command, stderr_group)) = lazy_regex::regex_captures!(
             r"<VirtSubproc>: failure: \['(.*)'\] unexpectedly produced stderr output `(.*)\n",
@@ -844,22 +847,22 @@ pub fn find_testbed_setup_failure(lines: &[&str]) -> Option<Failure> {
                 r"W: /var/lib/schroot/session/(.*): Failed to stat file: No such file or directory",
                 stderr_group
             ) {
-                return Some(Failure::new(
+                return Ok(Some(Failure::new(
                     SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                     Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>),
-                ));
+                )));
             }
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
                     command: command.to_string(),
                     exit_status: 1,
                     error: stderr_group.to_string(),
                 }) as Box<dyn Problem>),
-            ));
+            )));
         }
     }
-    None
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -932,6 +935,17 @@ mod tests {
         let error = super::find_autopkgtest_failure_description(&[
             "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
             "unit-tests           FAIL stderr: E: Build killed with signal TERM after 99999999999999999999 minutes of inactivity\n",
+        ])
+        .unwrap_err();
+        assert_eq!(error.message(), "invalid integer");
+        assert_eq!(error.offset(), Some(0));
+    }
+
+    #[test]
+    fn test_testbed_setup_exit_status_overflow() {
+        let error = super::find_autopkgtest_failure_description(&[
+            "[schroot -c foo] failed (exit status 99999999999, stderr 'boom')\n",
+            "autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 32] Broken pipe\n",
         ])
         .unwrap_err();
         assert_eq!(error.message(), "invalid integer");
