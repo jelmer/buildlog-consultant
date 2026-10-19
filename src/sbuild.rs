@@ -394,14 +394,16 @@ pub fn parse_sbuild_log<R: BufRead>(
     // We'll store our sections in this Vec and return it as an iterator at the end.
     let mut sections = Vec::new();
 
-    loop {
-        let mut line = String::new();
-
-        // Read a line from the file. Break if EOF.
-        if reader.read_line(&mut line)? == 0 {
-            break;
+    // Build logs can hold bytes that are not UTF-8; replace them.
+    let read_line = |reader: &mut R| -> std::io::Result<Option<String>> {
+        let mut buf = Vec::new();
+        if reader.read_until(b'\n', &mut buf)? == 0 {
+            return Ok(None);
         }
+        Ok(Some(String::from_utf8_lossy(&buf).into_owned()))
+    };
 
+    while let Some(line) = read_line(&mut reader)? {
         lineno += 1;
 
         // Trim trailing whitespace and newline characters.
@@ -409,11 +411,8 @@ pub fn parse_sbuild_log<R: BufRead>(
 
         if line_trimmed == sep {
             // Read next two lines
-            let mut l1 = String::new();
-            let mut l2 = String::new();
-
-            reader.read_line(&mut l1)?;
-            reader.read_line(&mut l2)?;
+            let l1 = read_line(&mut reader)?.unwrap_or_default();
+            let l2 = read_line(&mut reader)?.unwrap_or_default();
 
             lineno += 2;
 
