@@ -248,7 +248,10 @@ pub(crate) fn find_cudf_output(
     let start = offset;
     let mut output = vec![];
     let mut offsets = vec![];
-    while !lines[offset].trim().is_empty() {
+    while lines
+        .get(offset)
+        .is_some_and(|line| !line.trim().is_empty())
+    {
         offsets.push(offset);
         output.push(lines[offset]);
         offset += 1;
@@ -753,6 +756,24 @@ mod tests {
         let err = find_cudf_output(&lines).unwrap_err();
         assert_eq!(err.message(), "invalid dose3 output");
         assert_eq!(err.offset(), Some(0));
+    }
+
+    #[test]
+    fn test_find_cudf_output_at_end() {
+        let lines = vec![
+            "output-version: 1.2\n",
+            "native-architecture: amd64\n",
+            "report:\n",
+            " -\n",
+            "  package: sbuild-build-depends-main-dummy\n",
+            "  version: 0.invalid.0\n",
+            "  architecture: amd64\n",
+            "  status: broken\n",
+            "  reasons: []\n",
+        ];
+        let (offsets, cudf) = find_cudf_output(&lines).unwrap().unwrap();
+        assert_eq!(offsets, (0..lines.len()).collect::<Vec<_>>());
+        assert_eq!(cudf.report.len(), 1);
     }
 
     #[test]
