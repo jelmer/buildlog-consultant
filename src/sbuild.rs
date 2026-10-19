@@ -715,9 +715,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
         }
 
         if let Some((_, patchname)) =
-            lazy_regex::regex_captures!("Patch (.*) does not apply \\(enforce with -f\\)\n", line)
+            lazy_regex::regex_captures!(r"Patch (.*) does not apply \(enforce with -f\)", line)
         {
-            let patchname = patchname.rsplit_once('/').unwrap().1;
+            let patchname = patchname.rsplit_once('/').map_or(patchname, |(_, n)| n);
             let err = Some(Box::new(PatchApplicationFailed {
                 patchname: patchname.to_string(),
             }) as Box<dyn Problem>);
@@ -2218,5 +2218,37 @@ Line4
             serde_json::from_str::<Phase>(r#""apt-get-update""#).unwrap(),
             Phase::AptGetUpdate
         );
+    }
+
+    #[test]
+    fn test_find_preamble_failure_quilt_patch_does_not_apply() {
+        let lines = vec![
+            "Applying patch debian/patches/foo.patch\n",
+            "patching file src/foo.c\n",
+            "Hunk #1 FAILED at 10.\n",
+            "1 out of 1 hunk FAILED -- rejects in file src/foo.c\n",
+            "Patch debian/patches/foo.patch does not apply (enforce with -f)\n",
+        ];
+        let (m, error) = find_preamble_failure_description(lines);
+        let m = m.expect("match");
+        assert_eq!(m.lineno(), 5);
+        let error = error.expect("problem");
+        assert_eq!(error.kind(), "patch-application-failed");
+        assert_eq!(error.json(), serde_json::json!({"patchname": "foo.patch"}));
+    }
+
+    #[test]
+    fn test_find_preamble_failure_quilt_patch_without_directory() {
+        let lines = vec![
+            "Applying patch foo.patch\n",
+            "patching file src/foo.c\n",
+            "Hunk #1 FAILED at 10.\n",
+            "1 out of 1 hunk FAILED -- rejects in file src/foo.c\n",
+            "Patch foo.patch does not apply (enforce with -f)\n",
+        ];
+        let (_, error) = find_preamble_failure_description(lines);
+        let error = error.expect("problem");
+        assert_eq!(error.kind(), "patch-application-failed");
+        assert_eq!(error.json(), serde_json::json!({"patchname": "foo.patch"}));
     }
 }
