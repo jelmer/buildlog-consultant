@@ -1001,7 +1001,7 @@ impl std::fmt::Display for BrzInternalError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::problem::assert_wire_format;
+    use crate::problem::{assert_wire_format, assert_wire_format_no_deserializer};
     use crate::Problem;
     use serde_json::json;
     use std::path::PathBuf;
@@ -1166,7 +1166,7 @@ mod tests {
             json!({"files": ["f0-a", "f0-b"]}),
             "Binary file changed",
         );
-        assert_wire_format(
+        assert_wire_format_no_deserializer(
             &MissingControlFile {
                 path: PathBuf::from("/srv/f0"),
             },

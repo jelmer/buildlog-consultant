@@ -4,12 +4,12 @@
 //! It includes regex-based matchers and a matcher group for combining multiple matchers.
 
 use crate::SingleLineMatch;
-use crate::{Match, Origin, Problem};
+use crate::{Failure, Origin, Problem};
 use regex::{Captures, Regex};
 use std::fmt::Display;
 
-/// Type alias for the result of extracting a match and optional problem
-pub type MatchResult = Result<Option<(Box<dyn Match>, Option<Box<dyn Problem>>)>, Error>;
+/// Result of trying to extract a failure from a log
+pub type MatchResult = Result<Option<Failure>, Error>;
 
 /// Type alias for a callback function that processes regex captures
 pub type RegexCallback =
@@ -55,7 +55,7 @@ pub trait Matcher: Sync {
     /// * `offset` - The line offset to analyze
     ///
     /// # Returns
-    /// * `Ok(Some((match, problem)))` - A match was found along with an optional problem
+    /// * `Ok(Some(failure))` - A match was found along with an optional problem
     /// * `Ok(None)` - No match was found
     /// * `Err(error)` - An error occurred during matching
     fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult;
@@ -121,7 +121,7 @@ impl Matcher for RegexLineMatcher {
                 line: line.to_string(),
                 origin: self.origin(),
             };
-            return Ok(Some((Box::new(m), problem)));
+            return Ok(Some(Failure::new(m, problem)));
         }
         Ok(None)
     }
@@ -241,7 +241,7 @@ impl MatcherGroup {
     /// * `offset` - The line offset to analyze
     ///
     /// # Returns
-    /// * `Ok(Some((match, problem)))` - A match was found by one of the matchers
+    /// * `Ok(Some(failure))` - A match was found by one of the matchers
     /// * `Ok(None)` - No match was found by any matcher
     /// * `Err(error)` - An error occurred during matching
     pub fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
@@ -371,7 +371,10 @@ mod tests {
         let lines = vec!["line 1", "test line", "line 3"];
         let result = matcher.extract_from_lines(&lines, 1).unwrap();
         assert!(result.is_some());
-        let (m, problem) = result.unwrap();
+        let Failure {
+            r#match: m,
+            problem,
+        } = result.unwrap();
         assert_eq!(m.line(), "test line");
         assert_eq!(m.offset(), 1);
         assert!(problem.is_some());
@@ -415,7 +418,10 @@ mod tests {
         let lines = vec!["line 1", "test2 line", "line 3"];
         let result = group.extract_from_lines(&lines, 1).unwrap();
         assert!(result.is_some());
-        let (m, problem) = result.unwrap();
+        let Failure {
+            r#match: m,
+            problem,
+        } = result.unwrap();
         assert_eq!(m.line(), "test2 line");
         assert_eq!(m.offset(), 1);
         assert!(problem.is_some());
@@ -465,7 +471,7 @@ mod tests {
         let lines = vec!["line 1", "test line", "line 3"];
         let result = matcher.extract_from_lines(&lines, 1).unwrap();
         assert!(result.is_some());
-        let (_m, problem) = result.unwrap();
+        let problem = result.unwrap().problem;
         assert!(problem.is_none());
     }
 }

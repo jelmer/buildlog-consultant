@@ -36,30 +36,31 @@ fn main() {
 
     let lines = log.split('\n').collect::<Vec<_>>();
 
-    let (r#match, testname, error, description) =
+    let result =
         buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(lines.clone());
 
     if args.json {
         let mut ret = serde_json::json!({
-            "testname": testname,
-            "error": error,
-            "description": description
+            "testname": result.as_ref().and_then(|r| r.testname.as_ref()),
+            "error": result.as_ref().and_then(|r| r.failure.problem.as_ref()),
+            "description": result.as_ref().and_then(|r| r.description.as_ref()),
         });
-        if let Some(ref r#match) = r#match {
-            ret["offset"] = serde_json::value::Value::Number(r#match.offset().into());
+        if let Some(r) = result.as_ref() {
+            ret["offset"] = serde_json::value::Value::Number(r.failure.r#match.offset().into());
         }
         std::io::stdout()
             .write_all(serde_json::to_string_pretty(&ret).unwrap().as_bytes())
             .unwrap();
     }
 
-    if let Some(testname) = testname {
+    let Some(result) = result else {
+        return;
+    };
+    if let Some(testname) = result.testname {
         log::info!("Test name: {}", testname);
     }
-    if let Some(error) = error {
+    if let Some(error) = result.failure.problem {
         log::info!("Error: {}", error);
     }
-    if let Some(r#match) = r#match {
-        buildlog_consultant::highlight_lines(&lines, r#match.as_ref(), args.context);
-    }
+    buildlog_consultant::highlight_lines(&lines, result.failure.r#match.as_ref(), args.context);
 }

@@ -27,13 +27,13 @@ fn main() {
 
     let lines = log.split_inclusive('\n').collect::<Vec<_>>();
 
-    let (r#match, error) = buildlog_consultant::apt::find_apt_get_failure(lines.clone());
+    let Some(failure) = buildlog_consultant::apt::find_apt_get_failure(lines.clone()) else {
+        return;
+    };
 
-    if let Some(error) = error.as_ref() {
+    if let Some(error) = failure.problem.as_ref() {
         log::info!("Error: {}", error);
     }
 
-    if let Some(r#match) = r#match {
-        buildlog_consultant::highlight_lines(&lines, r#match.as_ref(), args.context);
-    }
+    buildlog_consultant::highlight_lines(&lines, failure.r#match.as_ref(), args.context);
 }

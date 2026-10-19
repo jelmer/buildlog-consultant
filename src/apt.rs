@@ -7,18 +7,9 @@
 use crate::lines::Lines;
 use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
-use crate::{Match, MultiLineMatch, Problem, SingleLineMatch};
+use crate::sbuild::SectionFailure;
+use crate::{Failure, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::lossless::relations::{Entry, Relations};
-
-/// Type alias for APT failure result
-pub type AptFailureResult = (Option<Box<dyn Match>>, Option<Box<dyn Problem>>);
-
-/// Type alias for APT dependency failure result
-pub type AptDependencyResult = (
-    Option<String>,
-    Option<Box<dyn Match>>,
-    Option<Box<dyn Problem>>,
-);
 
 /// Analyzes APT output to identify failures and their causes.
 ///
@@ -29,11 +20,9 @@ pub type AptDependencyResult = (
 /// * `lines` - Vector of lines from an APT log
 ///
 /// # Returns
-/// A tuple containing:
-/// * An optional match with the location of the error
-/// * An optional problem description
-pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
-    let mut ret: AptFailureResult = (None, None);
+/// The failure, if one was found
+pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
+    let mut ret = None;
     for (lineno, line) in lines.enumerate_backward(Some(50)) {
         let line = line.trim_end_matches('\n');
         if line.starts_with("E: Failed to fetch ") {
@@ -48,37 +37,25 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
                         error: msg.to_string(),
                     })
                 };
-                return (
-                    Some(Box::new(SingleLineMatch::from_lines(
-                        &lines,
-                        lineno,
-                        Some("direct regex"),
-                    )) as Box<dyn Match>),
+                return Some(Failure::new(
+                    SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                     Some(problem),
-                );
+                ));
             }
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 None,
-            );
+            ));
         }
         if line == "E: Broken packages" {
             let error = Some(Box::new(AptBrokenPackages {
                 description: lines[lineno - 1].trim().to_string(),
                 broken: None,
             }) as Box<dyn Problem>);
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno - 1,
-                    Some("direct match"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno - 1, Some("direct match")),
                 error,
-            );
+            ));
         }
         if line == "E: Unable to correct problems, you have held broken packages." {
             let mut offsets = vec![];
@@ -107,122 +84,84 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
                 broken: Some(broken),
             }) as Box<dyn Problem>);
             offsets.push(lineno);
-            let r#match = Some(Box::new(MultiLineMatch::from_lines(
-                &lines,
-                offsets,
-                Some("direct match"),
-            )) as Box<dyn Match>);
-            return (r#match, error);
+            return Some(Failure::new(
+                MultiLineMatch::from_lines(&lines, offsets, Some("direct match")),
+                error,
+            ));
         }
         if let Some((_, repo)) = lazy_regex::regex_captures!(
             "E: The repository '([^']+)' does not have a Release file.",
             line
         ) {
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 Some(Box::new(AptMissingReleaseFile {
                     url: repo.to_string(),
                 })),
-            );
+            ));
         }
         if let Some((_, _path)) = lazy_regex::regex_captures!(
             "dpkg-deb: error: unable to write file '(.*)': No space left on device",
             line
         ) {
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
-            );
+            ));
         }
         if let Some((_, _path)) =
             lazy_regex::regex_captures!(r"E: You don't have enough free space in (.*)\.", line)
         {
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
-            );
+            ));
         }
-        if line.starts_with("E: ") && ret.0.is_none() {
-            ret = (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+        if line.starts_with("E: ") && ret.is_none() {
+            ret = Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 None,
-            );
+            ));
         }
         if let Some((_, pkg)) =
             lazy_regex::regex_captures!(r"E: Unable to locate package (.*)", line)
         {
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 Some(Box::new(AptPackageUnknown {
                     package: pkg.to_string(),
                 })),
-            );
+            ));
         }
         if line == "E: Write error - write (28: No space left on device)" {
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
-            );
+            ));
         }
         if let Some((_, msg)) = lazy_regex::regex_captures!(r"dpkg: error: (.*)", line) {
             if msg.ends_with(": No space left on device") {
-                return (
-                    Some(Box::new(SingleLineMatch::from_lines(
-                        &lines,
-                        lineno,
-                        Some("direct regex"),
-                    )) as Box<dyn Match>),
+                return Some(Failure::new(
+                    SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                     Some(Box::new(NoSpaceOnDevice)),
-                );
+                ));
             }
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 Some(Box::new(DpkgError {
                     msg: msg.to_string(),
                 })),
-            );
+            ));
         }
         if let Some((_, pkg, msg)) =
             lazy_regex::regex_captures!(r"dpkg: error processing package (.*) \((.*)\):", line)
         {
-            return (
-                Some(Box::new(SingleLineMatch::from_lines(
-                    &lines,
-                    lineno + 1,
-                    Some("direct regex"),
-                )) as Box<dyn Match>),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno + 1, Some("direct regex")),
                 Some(Box::new(DpkgError {
                     msg: format!("processing package {} ({})", pkg, msg),
                 })),
-            );
+            ));
         }
     }
 
@@ -231,22 +170,16 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
             r" cannot copy extracted data for '(.*)' to '(.*)': failed to write \(No space left on device\)",
             line,
         ) {
-            return (
-                Some(
-                    Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
-                        as Box<dyn Match>,
-                ),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
-            );
+            ));
         }
         if lazy_regex::regex_is_match!(r" .*: No space left on device", line) {
-            return (
-                Some(
-                    Box::new(SingleLineMatch::from_lines(&lines, i, Some("direct regex")))
-                        as Box<dyn Match>,
-                ),
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
-            );
+            ));
         }
     }
     ret
@@ -261,15 +194,16 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
 /// * `sbuildlog` - The sbuild log to analyze
 ///
 /// # Returns
-/// A tuple containing:
-/// * An optional section name where the failure was found
-/// * An optional match with the location of the error
-/// * An optional problem description
-pub fn find_apt_get_update_failure(sbuildlog: &crate::sbuild::SbuildLog) -> AptDependencyResult {
+/// The section that was analyzed and the failure found in it, if any
+pub fn find_apt_get_update_failure(
+    sbuildlog: &crate::sbuild::SbuildLog,
+) -> SectionFailure<'static> {
     let focus_section = "update chroot";
     let lines = sbuildlog.get_section_lines(Some(focus_section));
-    let (match_, problem) = find_apt_get_failure(lines.unwrap());
-    (Some(focus_section.to_string()), match_, problem)
+    SectionFailure {
+        section: Some(focus_section),
+        failure: find_apt_get_failure(lines.unwrap()),
+    }
 }
 
 /// Finds and parses CUDF output in a log.
@@ -368,7 +302,7 @@ mod tests {
     use super::*;
 
     fn assert_just_match(lines: Vec<&str>, lineno: usize) {
-        let (r#match, actual_err) = super::find_apt_get_failure(lines.clone());
+        let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(lines.clone()));
         assert!(actual_err.is_none());
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
@@ -379,7 +313,7 @@ mod tests {
     }
 
     fn assert_match(lines: Vec<&str>, lineno: usize, mut expected: Option<impl Problem + 'static>) {
-        let (r#match, actual_err) = super::find_apt_get_failure(lines.clone());
+        let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(lines.clone()));
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
             assert_eq!(lineno, r#match.lineno());
@@ -498,7 +432,7 @@ mod tests {
             "subprocess installed post-installation script returned error exit status 1",
         ];
 
-        let (match_result, problem) = find_apt_get_failure(lines);
+        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -518,7 +452,7 @@ mod tests {
             "E: Broken packages",
         ];
 
-        let (match_result, problem) = find_apt_get_failure(lines);
+        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -538,7 +472,7 @@ mod tests {
     fn test_unable_to_locate_package_direct() {
         let lines = vec!["E: Unable to locate package nonexistent-package"];
 
-        let (match_result, problem) = find_apt_get_failure(lines);
+        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -558,7 +492,7 @@ mod tests {
             "some text after"
         ];
 
-        let (match_result, problem) = find_apt_get_failure(lines);
+        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -575,7 +509,7 @@ mod tests {
             "some text after",
         ];
 
-        let (match_result, problem) = find_apt_get_failure(lines);
+        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());

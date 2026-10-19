@@ -508,6 +508,33 @@ pub trait Problem: std::fmt::Display + Send + Sync + std::fmt::Debug {
     }
 }
 
+/// A failure found in a log: the matched lines and, if identified, the problem.
+#[derive(Debug)]
+pub struct Failure {
+    /// The lines that identify the failure.
+    pub r#match: Box<dyn Match>,
+    /// The problem, if it could be identified.
+    pub problem: Option<Box<dyn Problem>>,
+}
+
+impl Failure {
+    /// Creates a failure from a match and an optional problem.
+    pub fn new(m: impl Match + 'static, problem: Option<Box<dyn Problem>>) -> Self {
+        Self {
+            r#match: Box::new(m),
+            problem,
+        }
+    }
+
+    /// Splits an optional failure into its optional match and problem.
+    #[allow(clippy::type_complexity)]
+    pub(crate) fn split(
+        failure: Option<Self>,
+    ) -> (Option<Box<dyn Match>>, Option<Box<dyn Problem>>) {
+        failure.map_or((None, None), |f| (Some(f.r#match), f.problem))
+    }
+}
+
 /// Description of a known problem kind for documentation and LLM prompt generation.
 ///
 /// Registered via `inventory` to allow automatic discovery of all problem kinds.
