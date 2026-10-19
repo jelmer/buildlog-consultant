@@ -508,7 +508,8 @@ impl Serialize for SbuildFailure {
             &self
                 .section
                 .as_ref()
-                .map(|s| s.offsets.0 + self.r#match.as_ref().unwrap().lineno()),
+                .zip(self.r#match.as_ref())
+                .map(|(s, m)| s.offsets.0 + m.lineno()),
         )?;
         if let Some(error) = &self.error {
             state.serialize_field("kind", &error.kind())?;
@@ -2171,6 +2172,29 @@ Line4
         };
         assert_eq!(error.message(), "invalid integer");
         assert_eq!(error.offset(), Some(0));
+    }
+
+    #[test]
+    fn test_serialize_failure_with_section_without_match() {
+        let section = SbuildLogSection {
+            title: Some("build".to_string()),
+            offsets: (1, 1),
+            lines: vec!["something inscrutable went wrong".to_string()],
+        };
+        let log = SbuildLog(vec![section]);
+        let failure = find_failure_unpack(&log, "unpack")
+            .unwrap()
+            .expect("failure surfaced");
+        assert_eq!(
+            serde_json::to_value(&failure).unwrap(),
+            serde_json::json!({
+                "stage": "unpack",
+                "phase": "unpack",
+                "section": "build",
+                "origin": null,
+                "lineno": null,
+            })
+        );
     }
 
     /// `Phase::Unpack` and `Phase::AptGetUpdate` round-trip through serde
