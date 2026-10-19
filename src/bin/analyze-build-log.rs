@@ -1,5 +1,5 @@
 use buildlog_consultant::common::find_build_failure_description;
-use buildlog_consultant::{Match, Problem};
+use buildlog_consultant::Failure;
 use clap::Parser;
 use std::cmp::min;
 use std::path::PathBuf;
@@ -20,9 +20,10 @@ struct Args {
     path: Option<PathBuf>,
 }
 
-fn as_json(m: Option<&dyn Match>, problem: Option<&dyn Problem>) -> serde_json::Value {
+fn as_json(failure: Option<&Failure>) -> serde_json::Value {
     let mut ret = serde_json::Map::new();
-    if let Some(m) = m {
+    if let Some(failure) = failure {
+        let m = &failure.r#match;
         ret.insert(
             "lineno".to_string(),
             serde_json::Value::Number(serde_json::Number::from(m.lineno())),
@@ -35,13 +36,13 @@ fn as_json(m: Option<&dyn Match>, problem: Option<&dyn Problem>) -> serde_json::
             "origin".to_string(),
             serde_json::Value::String(m.origin().to_string()),
         );
-    }
-    if let Some(problem) = problem {
-        ret.insert(
-            "problem".to_string(),
-            serde_json::Value::String(problem.kind().to_string()),
-        );
-        ret.insert("details".to_string(), problem.json());
+        if let Some(problem) = failure.problem.as_ref() {
+            ret.insert(
+                "problem".to_string(),
+                serde_json::Value::String(problem.kind().to_string()),
+            );
+            ret.insert("details".to_string(), problem.json());
+        }
     }
     serde_json::Value::Object(ret)
 }
@@ -76,16 +77,13 @@ pub fn main() -> Result<(), i8> {
 
     let lines = log.split_inclusive('\n').collect::<Vec<_>>();
 
-    let (m, problem) = find_build_failure_description(lines.clone());
+    let failure = find_build_failure_description(lines.clone());
 
     if args.json {
-        let ret = as_json(
-            m.as_ref().map(|m| m.as_ref()),
-            problem.as_ref().map(|p| p.as_ref()),
-        );
+        let ret = as_json(failure.as_ref());
         serde_json::to_writer_pretty(std::io::stdout(), &ret).expect("Failed to write JSON");
     } else {
-        if let Some(m) = m {
+        if let Some(m) = failure.as_ref().map(|f| &f.r#match) {
             if m.linenos().len() == 1 {
                 log::info!("Issue found at line {}:", m.lineno());
             } else {
@@ -109,7 +107,7 @@ pub fn main() -> Result<(), i8> {
             log::info!("No issues found");
         }
 
-        if let Some(problem) = problem {
+        if let Some(problem) = failure.as_ref().and_then(|f| f.problem.as_ref()) {
             log::info!("Identified issue: {}: {}", problem.kind(), problem);
         }
     }
