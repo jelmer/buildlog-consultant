@@ -1579,7 +1579,6 @@ lazy_static::lazy_static! {
             Ok(Some(Box::new(DirectoryNonExistant { path: parent.display().to_string() })))
         }
     ),
-    regex_line_matcher!(r"dh: Unknown sequence (.*) \(choose from: .*\)", |_| Ok(None)),
     regex_line_matcher!(r".*\.vala:[0-9]+\.[0-9]+-[0-9]+.[0-9]+: error: (.*)", |_| Ok(None)),
     regex_line_matcher!(
         r"error: Package `(.*)\' not found in specified Vala API directories or GObject-Introspection GIR directories",
