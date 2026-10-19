@@ -911,10 +911,9 @@ pub fn find_failure_fetch_src(
         return Ok(None);
     };
     let section_lines = section.lines();
-    let section_lines = if section_lines[0].trim().is_empty() {
-        &section_lines[1..]
-    } else {
-        &section_lines[..]
+    let section_lines = match section_lines.split_first() {
+        Some((first, rest)) if first.trim().is_empty() => rest,
+        _ => &section_lines[..],
     };
     if section_lines.len() == 1 && section_lines[0].starts_with("E: Could not find ") {
         let Some(lines) = sbuildlog.get_section_lines(None) else {
@@ -2044,6 +2043,24 @@ Line4
             .expect("failure surfaced");
         assert_eq!(failure.phase, Some(Phase::Unpack));
         assert!(failure.error.is_none());
+    }
+
+    #[test]
+    fn test_find_failure_fetch_src_empty_section() {
+        let sep = format!("+{}+", "-".repeat(78));
+        let log: SbuildLog = format!("{sep}\n| Fetch source files |\n{sep}\n")
+            .parse()
+            .unwrap();
+        let failure = find_failure_fetch_src(&log, "fetch-src")
+            .unwrap()
+            .expect("failure surfaced");
+        assert_eq!(failure.stage.as_deref(), Some("fetch-src"));
+        assert_eq!(
+            failure.description.as_deref(),
+            Some("build failed stage fetch-src")
+        );
+        assert!(failure.error.is_none());
+        assert!(failure.r#match.is_none());
     }
 
     /// Parallel regression for `apt-get update` failures: the phase must
