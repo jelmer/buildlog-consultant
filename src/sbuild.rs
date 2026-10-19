@@ -1206,26 +1206,29 @@ pub fn find_failure_arch_check(sbuildlog: &SbuildLog, failed_stage: &str) -> Opt
 /// * `failed_stage` - The stage name that failed
 ///
 /// # Returns
-/// An optional SbuildFailure structure with information about the failure
+/// An optional SbuildFailure structure with information about the failure, or
+/// an error if the log could not be interpreted
 pub fn find_failure_check_space(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
-) -> Option<SbuildFailure> {
-    let section = sbuildlog.get_section(Some("cleanup"))?;
-    let (r#match, error) = Failure::split(find_check_space_failure_description(&section.lines()));
+) -> Result<Option<SbuildFailure>, Error> {
+    let Some(section) = sbuildlog.get_section(Some("cleanup")) else {
+        return Ok(None);
+    };
+    let (r#match, error) = Failure::split(find_check_space_failure_description(&section.lines())?);
     let description = if let Some(ref error) = error {
         error.to_string()
     } else {
         format!("build failed stage {}", failed_stage)
     };
-    Some(SbuildFailure {
+    Ok(Some(SbuildFailure {
         stage: Some(failed_stage.to_string()),
         description: Some(description),
         error,
         phase: None,
         section: Some(section.clone()),
         r#match,
-    })
+    }))
 }
 
 /// Section title for dose3 dependency resolution logs.
@@ -1445,7 +1448,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
             find_failure_apt_get_update(sbuildlog, failed_stage)
         }
         Some(failed_stage @ "arch-check") => find_failure_arch_check(sbuildlog, failed_stage),
-        Some(failed_stage @ "check-space") => find_failure_check_space(sbuildlog, failed_stage),
+        Some(failed_stage @ "check-space") => find_failure_check_space(sbuildlog, failed_stage)?,
         Some(failed_stage @ ("install-deps" | "explain-bd-uninstallable")) => {
             find_failure_install_deps(sbuildlog, failed_stage)
         }
@@ -1532,28 +1535,28 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
 ///
 /// # Returns
 /// The failure, if one was found
-fn find_check_space_failure_description(lines: &[&str]) -> Option<Failure> {
+fn find_check_space_failure_description(lines: &[&str]) -> Result<Option<Failure>, Error> {
     for (offset, line) in lines.enumerate_forward(None) {
         if line == "E: Disk space is probably not sufficient for building.\n" {
             if let Some((_, needed, free)) = lazy_regex::regex_captures!(
                 "I: Source needs ([0-9]+) KiB, while ([0-9]+) KiB is free.\n",
                 lines[offset + 1]
             ) {
-                return Some(Failure::new(
+                return Ok(Some(Failure::new(
                     SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                     Some(Box::new(InsufficientDiskSpace {
-                        needed: needed.parse().unwrap(),
-                        free: free.parse().unwrap(),
+                        needed: needed.parse()?,
+                        free: free.parse()?,
                     }) as Box<dyn Problem>),
-                ));
+                )));
             }
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(lines, offset, Some("direct match")),
                 None,
-            ));
+            )));
         }
     }
-    None
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -2222,5 +2225,18 @@ Line4
         let error = error.expect("problem");
         assert_eq!(error.kind(), "patch-application-failed");
         assert_eq!(error.json(), serde_json::json!({"patchname": "foo.patch"}));
+    }
+
+    #[test]
+    fn test_check_space_failure_description_overflow() {
+        let lines = [
+            "E: Disk space is probably not sufficient for building.\n",
+            "I: Source needs 99999999999999999999 KiB, while 500 KiB is free.\n",
+        ];
+        let err = find_check_space_failure_description(&lines).unwrap_err();
+        assert_eq!(
+            std::error::Error::source(&err).unwrap().to_string(),
+            "number too large to fit in target type"
+        );
     }
 }
