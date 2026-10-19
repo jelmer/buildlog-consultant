@@ -412,10 +412,9 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                                 as Box<dyn Match>,
                         ),
                         last_test.map(|x| x.to_owned()),
-                        Some(
-                            Box::new(AutopkgtestTestbedFailure(testbed_failure_reason.to_owned()))
-                                as Box<dyn Problem>,
-                        ),
+                        Some(Box::new(AutopkgtestTestbedFailure {
+                            reason: testbed_failure_reason.to_owned(),
+                        }) as Box<dyn Problem>),
                         None,
                     );
                 }
@@ -439,8 +438,9 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                                 as Box<dyn Match>,
                         ),
                         last_test.map(|x| x.to_owned()),
-                        Some(Box::new(AutopkgtestErroneousPackage(pkg.to_string()))
-                            as Box<dyn Problem>),
+                        Some(Box::new(AutopkgtestErroneousPackage {
+                            reason: pkg.to_string(),
+                        }) as Box<dyn Problem>),
                         None,
                     );
                 }
@@ -672,8 +672,11 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                 };
             }
             let offset = offset.unwrap_or_else(|| summary_offset + packet.offset());
-            let error =
-                error.unwrap_or_else(|| Box::new(AutopkgtestStderrFailure(output.to_owned())));
+            let error = error.unwrap_or_else(|| {
+                Box::new(AutopkgtestStderrFailure {
+                    stderr_line: output.to_owned(),
+                })
+            });
             let description = description.unwrap_or_else(|| {
                 format!(
                     "Test {} failed due to unauthorized stderr output: {}",
@@ -930,7 +933,7 @@ mod tests {
 
     #[test]
     fn test_deps() {
-        let error = AutopkgtestDepsUnsatisfiable(vec![
+        let error = AutopkgtestDepsUnsatisfiable { args: vec![
                 (
                     Some("arg".to_string()),
                     "/home/janitor/tmp/tmppvupofwl/build-area/bcolz-doc_1.2.1+ds2-4~jan+lint1_all.deb".to_string(),
@@ -960,8 +963,7 @@ mod tests {
                     None,
                     "/home/janitor/tmp/tmppvupofwl/build-area/bcolz_1.2.1+ds2-4~jan+lint1.dsc".to_string(),
                 ),
-            ]
-        );
+            ] };
 
         let lines = vec![
                     "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
@@ -972,7 +974,7 @@ mod tests {
 
         assert_autopkgtest_match(lines, vec![2], Some("python-bcolz"), Some(Box::new(error)), Some("Test python-bcolz failed: Test dependencies are unsatisfiable. A common reason is that your testbed is out of date with respect to the archive, and you need to use a current testbed or run apt-get update or use -U."));
 
-        let error = AutopkgtestDepsUnsatisfiable(vec![
+        let error = AutopkgtestDepsUnsatisfiable { args: vec![
                 (
                     Some("arg".to_string()),
                     "/home/janitor/tmp/tmpgbn5jhou/build-area/cmake-extras_1.3+17.04.20170310-6~jan+unchanged1_all.deb".to_string(),
@@ -982,8 +984,7 @@ mod tests {
                     None,
                     "/home/janitor/tmp/tmpgbn5jhou/build-area/cmake-extras_1.3+17.04.20170310-6~jan.dsc".to_string(),
                 ),
-            ]
-        );
+            ] };
         let lines = vec![
                     "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
                     "intltool             FAIL badpkg",
@@ -996,14 +997,16 @@ mod tests {
 
     #[test]
     fn test_deps_badpkg_before_blame() {
-        let error = AutopkgtestDepsUnsatisfiable(vec![
-            (Some("deb".to_string()), "cmake-extras".to_string()),
-            (
-                None,
-                "/home/janitor/tmp/tmpgbn5jhou/build-area/cmake-extras_1.3+17.04.20170310-6~jan.dsc"
-                    .to_string(),
-            ),
-        ]);
+        let error = AutopkgtestDepsUnsatisfiable {
+            args: vec![
+                (Some("deb".to_string()), "cmake-extras".to_string()),
+                (
+                    None,
+                    "/home/janitor/tmp/tmpgbn5jhou/build-area/cmake-extras_1.3+17.04.20170310-6~jan.dsc"
+                        .to_string(),
+                ),
+            ],
+        };
         let lines = vec![
             "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
             "intltool             FAIL badpkg\n",
@@ -1046,7 +1049,9 @@ mod tests {
 
     #[test]
     fn test_stderr() {
-        let error = AutopkgtestStderrFailure("some output".to_string());
+        let error = AutopkgtestStderrFailure {
+            stderr_line: "some output".to_string(),
+        };
         let lines = vec![
             "intltool            FAIL stderr: some output",
             "autopkgtest [20:49:00]: test intltool:  - - - - - - - - - - stderr - - - - - - - - - -",
@@ -1070,7 +1075,9 @@ mod tests {
                     "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary",
                     "intltool            FAIL stderr: /tmp/bla: 12: ss: not found",
                 ];
-        let error = MissingCommand("ss".to_owned());
+        let error = MissingCommand {
+            command: "ss".to_owned(),
+        };
         assert_autopkgtest_match(
             lines,
             vec![1],
@@ -1084,7 +1091,9 @@ mod tests {
             r#"command10            FAIL stderr: Can't exec "uptime": No such file or directory at /usr/lib/nagios/plugins/check_uptime line 529."#,
         ];
 
-        let error = MissingCommand("uptime".to_owned());
+        let error = MissingCommand {
+            command: "uptime".to_owned(),
+        };
         assert_autopkgtest_match(
             lines,
             vec![1],
@@ -1098,9 +1107,7 @@ mod tests {
 
     #[test]
     fn test_testbed_failure() {
-        let error = AutopkgtestTestbedFailure(
-            "sent `copyup /tmp/autopkgtest.9IStGJ/build.0Pm/src/ /tmp/autopkgtest.output.icg0g8e6/tests-tree/', got `timeout', expected `ok...'".to_owned()
-        );
+        let error = AutopkgtestTestbedFailure { reason: "sent `copyup /tmp/autopkgtest.9IStGJ/build.0Pm/src/ /tmp/autopkgtest.output.icg0g8e6/tests-tree/', got `timeout', expected `ok...'".to_owned() };
         let lines = vec![
                     "autopkgtest [12:46:18]: ERROR: testbed failure: sent `copyup /tmp/autopkgtest.9IStGJ/build.0Pm/src/ /tmp/autopkgtest.output.icg0g8e6/tests-tree/', got `timeout', expected `ok...'\n"
                 ];
@@ -1110,8 +1117,9 @@ mod tests {
 
     #[test]
     fn test_testbed_failure_with_test() {
-        let error =
-            AutopkgtestTestbedFailure("testbed auxverb failed with exit code 255".to_owned());
+        let error = AutopkgtestTestbedFailure {
+            reason: "testbed auxverb failed with exit code 255".to_owned(),
+        };
 
         let lines = vec!["Removing autopkgtest-satdep (0) ...\n",
         "autopkgtest [06:59:00]: test phpunit: [-----------------------\n",

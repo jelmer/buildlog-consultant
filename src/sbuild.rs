@@ -612,7 +612,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
             "dpkg-source: error: cannot read (.*/debian/control): No such file or directory",
             line,
         ) {
-            let err = Some(Box::new(MissingControlFile(path.into())) as Box<dyn Problem>);
+            let err = Some(Box::new(MissingControlFile { path: path.into() }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -648,8 +648,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
             "dpkg-source: error: cannot represent change to (.*): binary file contents changed",
             line
         ) {
-            let err =
-                Some(Box::new(DpkgBinaryFileChanged(vec![path.to_string()])) as Box<dyn Problem>);
+            let err = Some(Box::new(DpkgBinaryFileChanged {
+                files: vec![path.to_string()],
+            }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -664,8 +665,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
             r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC contains: (.*)\) at \(eval [0-9]+\) line [0-9]+\.",
             line
         ) {
-            let err =
-                Some(Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>);
+            let err = Some(Box::new(SourceFormatUnsupported {
+                source_format: format.to_string(),
+            }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -679,7 +681,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
         if let Some((_, reason)) =
             lazy_regex::regex_captures!("E: Failed to package source directory (.*)", line)
         {
-            let err = Some(Box::new(DpkgSourcePackFailed(reason.to_string())) as Box<dyn Problem>);
+            let err = Some(Box::new(DpkgSourcePackFailed {
+                reason: reason.to_string(),
+            }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -768,7 +772,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
             line
         ) {
             let _patchname = path.rsplit_once('/').unwrap().1;
-            let err = Some(Box::new(PatchFileMissing(path.into())) as Box<dyn Problem>);
+            let err = Some(Box::new(PatchFileMissing { path: path.into() }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -784,7 +788,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
         ) {
             let (_, p) = find_build_failure_description(vec![msg]);
             let p = p.unwrap_or_else(|| {
-                Box::new(SourceFormatUnsupported(format.to_string())) as Box<dyn Problem>
+                Box::new(SourceFormatUnsupported {
+                    source_format: format.to_string(),
+                }) as Box<dyn Problem>
             });
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
@@ -799,8 +805,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
             "breezy.errors.NoSuchRevision: (.*) has no revision b'(.*)'",
             line
         ) {
-            let err =
-                Some(Box::new(MissingRevision(revid.as_bytes().to_vec())) as Box<dyn Problem>);
+            let err = Some(Box::new(MissingRevision {
+                revision: revid.as_bytes().to_vec(),
+            }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -815,7 +822,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
             r"fatal: ambiguous argument \'(.*)\': unknown revision or path not in the working tree.",
             line
         ) {
-            let err = Some(Box::new(PristineTarTreeMissing(arg.to_string())) as Box<dyn Problem>);
+            let err = Some(Box::new(PristineTarTreeMissing {
+                treeish: arg.to_string(),
+            }) as Box<dyn Problem>);
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
@@ -827,7 +836,9 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> SbuildFailureResul
         }
 
         if let Some((_, msg)) = lazy_regex::regex_captures!("dpkg-source: error: (.*)", line) {
-            let err = Some(Box::new(DpkgSourcePackFailed(msg.to_string())) as Box<dyn Problem>);
+            let err = Some(Box::new(DpkgSourcePackFailed {
+                reason: msg.to_string(),
+            }) as Box<dyn Problem>);
             ret = (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,

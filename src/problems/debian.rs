@@ -1,39 +1,21 @@
-use crate::Problem;
 use debversion::Version;
+use serde::{Deserialize, Serialize};
 
 /// Problem representing a generic dpkg error.
 ///
 /// This struct is used for errors reported by the dpkg package manager
 /// that don't fit into more specific categories.
-#[derive(Debug)]
-pub struct DpkgError(pub String);
-
-impl Problem for DpkgError {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "dpkg-error".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "msg": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DpkgError {
+    /// The error message from dpkg.
+    pub msg: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "dpkg-error",
-        detail_fields: &["msg"],
-    }
-}
+crate::problem!(DpkgError, "dpkg-error", ["msg"]);
 
 impl std::fmt::Display for DpkgError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "dpkg error: {}", self.0)
+        write!(f, "dpkg error: {}", self.msg)
     }
 }
 
@@ -41,29 +23,10 @@ impl std::fmt::Display for DpkgError {
 ///
 /// This struct is used when the apt package database update process
 /// fails for any reason.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AptUpdateError;
 
-impl Problem for AptUpdateError {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "apt-update-error".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "apt-update-error",
-        detail_fields: &[],
-    }
-}
+crate::problem!(AptUpdateError, "apt-update-error", {});
 
 impl std::fmt::Display for AptUpdateError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -75,7 +38,7 @@ impl std::fmt::Display for AptUpdateError {
 ///
 /// This struct is used when apt cannot download a package or repository
 /// data from the specified URL.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AptFetchFailure {
     /// The URL that apt was trying to fetch from, if available.
     pub url: Option<String>,
@@ -83,29 +46,7 @@ pub struct AptFetchFailure {
     pub error: String,
 }
 
-impl Problem for AptFetchFailure {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "apt-file-fetch-failure".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "url": self.url,
-            "error": self.error,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "apt-file-fetch-failure",
-        detail_fields: &["url", "error"],
-    }
-}
+crate::problem!(AptFetchFailure, "apt-file-fetch-failure", ["url", "error"]);
 
 impl std::fmt::Display for AptFetchFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -121,35 +62,17 @@ impl std::fmt::Display for AptFetchFailure {
 ///
 /// This struct is used when apt cannot find the Release file for a repository,
 /// which typically indicates a misconfigured or unavailable repository.
-#[derive(Debug, Clone)]
-pub struct AptMissingReleaseFile(pub String);
-
-impl Problem for AptMissingReleaseFile {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-release-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "url": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AptMissingReleaseFile {
+    /// The URL of the missing Release file.
+    pub url: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-release-file",
-        detail_fields: &["url"],
-    }
-}
+crate::problem!(AptMissingReleaseFile, "missing-release-file", ["url"]);
 
 impl std::fmt::Display for AptMissingReleaseFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "apt missing release file: {}", self.0)
+        write!(f, "apt missing release file: {}", self.url)
     }
 }
 
@@ -157,45 +80,35 @@ impl std::fmt::Display for AptMissingReleaseFile {
 ///
 /// This struct is used when apt cannot find a requested package in any
 /// of the configured repositories.
-#[derive(Debug, Clone)]
-pub struct AptPackageUnknown(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "AptPackageUnknownDetails")]
+pub struct AptPackageUnknown {
+    /// The name of the unknown package.
+    pub package: String,
+}
 
-impl Problem for AptPackageUnknown {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "apt-package-unknown".into()
-    }
+/// The details may also be a bare string.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum AptPackageUnknownDetails {
+    Object { package: String },
+    Bare(String),
+}
 
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+impl From<AptPackageUnknownDetails> for AptPackageUnknown {
+    fn from(details: AptPackageUnknownDetails) -> Self {
+        match details {
+            AptPackageUnknownDetails::Object { package }
+            | AptPackageUnknownDetails::Bare(package) => Self { package },
+        }
     }
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "apt-package-unknown",
-        detail_fields: &["package"],
-    }
-}
-
-crate::register_problem_de_fn!("apt-package-unknown", |v| {
-    let pkg = v
-        .get("package")
-        .and_then(|m| m.as_str())
-        .or_else(|| v.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("package"))?
-        .to_string();
-    Ok(Box::new(AptPackageUnknown(pkg)) as Box<dyn crate::Problem>)
-});
+crate::problem!(AptPackageUnknown, "apt-package-unknown", ["package"]);
 
 impl std::fmt::Display for AptPackageUnknown {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "apt package unknown: {}", self.0)
+        write!(f, "apt package unknown: {}", self.package)
     }
 }
 
@@ -203,7 +116,7 @@ impl std::fmt::Display for AptPackageUnknown {
 ///
 /// This struct is used when apt reports broken packages in the dependency
 /// resolution process, which can occur when packages have incompatible dependencies.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AptBrokenPackages {
     /// A description of the broken package situation.
     pub description: String,
@@ -211,29 +124,11 @@ pub struct AptBrokenPackages {
     pub broken: Option<Vec<String>>,
 }
 
-impl Problem for AptBrokenPackages {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "apt-broken-packages".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "description": self.description,
-            "broken": self.broken,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "apt-broken-packages",
-        detail_fields: &["description", "broken"],
-    }
-}
+crate::problem!(
+    AptBrokenPackages,
+    "apt-broken-packages",
+    ["description", "broken"]
+);
 
 impl std::fmt::Display for AptBrokenPackages {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -245,7 +140,7 @@ impl std::fmt::Display for AptBrokenPackages {
 ///
 /// This struct is used when the build process cannot find the upstream
 /// source tarball for a package, which is required for the build.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UnableToFindUpstreamTarball {
     /// The name of the package.
     pub package: String,
@@ -253,29 +148,11 @@ pub struct UnableToFindUpstreamTarball {
     pub version: Version,
 }
 
-impl Problem for UnableToFindUpstreamTarball {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "unable-to-find-upstream-tarball".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package,
-            "version": self.version.to_string(),
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unable-to-find-upstream-tarball",
-        detail_fields: &["package", "version"],
-    }
-}
+crate::problem!(
+    UnableToFindUpstreamTarball,
+    "unable-to-find-upstream-tarball",
+    ["package", "version"]
+);
 
 impl std::fmt::Display for UnableToFindUpstreamTarball {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -291,7 +168,7 @@ impl std::fmt::Display for UnableToFindUpstreamTarball {
 ///
 /// This struct is used when the source package format specified in
 /// debian/source/format cannot be built for some reason.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceFormatUnbuildable {
     /// The source format that can't be built (e.g., "3.0 (quilt)").
     pub source_format: String,
@@ -299,29 +176,11 @@ pub struct SourceFormatUnbuildable {
     pub reason: String,
 }
 
-impl Problem for SourceFormatUnbuildable {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "source-format-unbuildable".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "source_format": self.source_format,
-            "reason": self.reason,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "source-format-unbuildable",
-        detail_fields: &["source_format", "reason"],
-    }
-}
+crate::problem!(
+    SourceFormatUnbuildable,
+    "source-format-unbuildable",
+    ["source_format", "reason"]
+);
 
 impl std::fmt::Display for SourceFormatUnbuildable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -337,35 +196,21 @@ impl std::fmt::Display for SourceFormatUnbuildable {
 ///
 /// This struct is used when the source package format specified in
 /// debian/source/format is not supported by the build environment.
-#[derive(Debug, Clone)]
-pub struct SourceFormatUnsupported(pub String);
-
-impl Problem for SourceFormatUnsupported {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "source-format-unsupported".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "source_format": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SourceFormatUnsupported {
+    /// The unsupported source format.
+    pub source_format: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "source-format-unsupported",
-        detail_fields: &["source_format"],
-    }
-}
+crate::problem!(
+    SourceFormatUnsupported,
+    "source-format-unsupported",
+    ["source_format"]
+);
 
 impl std::fmt::Display for SourceFormatUnsupported {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Source format {} is unsupported", self.0)
+        write!(f, "Source format {} is unsupported", self.source_format)
     }
 }
 
@@ -373,35 +218,17 @@ impl std::fmt::Display for SourceFormatUnsupported {
 ///
 /// This struct is used when a build requires a patch file that is
 /// referenced in the debian/patches directory but is not found.
-#[derive(Debug, Clone)]
-pub struct PatchFileMissing(pub std::path::PathBuf);
-
-impl Problem for PatchFileMissing {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "patch-file-missing".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "path": self.0.display().to_string(),
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PatchFileMissing {
+    /// The path to the missing patch file.
+    pub path: std::path::PathBuf,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "patch-file-missing",
-        detail_fields: &["path"],
-    }
-}
+crate::problem!(PatchFileMissing, "patch-file-missing", ["path"]);
 
 impl std::fmt::Display for PatchFileMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Patch file missing: {}", self.0.display())
+        write!(f, "Patch file missing: {}", self.path.display())
     }
 }
 
@@ -409,7 +236,7 @@ impl std::fmt::Display for PatchFileMissing {
 ///
 /// This struct is used when dpkg-source detects unexpected local changes
 /// to upstream source code, which should be represented as patches instead.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DpkgSourceLocalChanges {
     /// Path to the diff file showing the changes, if available.
     pub diff_file: Option<String>,
@@ -417,29 +244,11 @@ pub struct DpkgSourceLocalChanges {
     pub files: Option<Vec<String>>,
 }
 
-impl Problem for DpkgSourceLocalChanges {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "unexpected-local-upstream-changes".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "diff_file": self.diff_file,
-            "files": self.files,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unexpected-local-upstream-changes",
-        detail_fields: &["diff_file", "files"],
-    }
-}
+crate::problem!(
+    DpkgSourceLocalChanges,
+    "unexpected-local-upstream-changes",
+    ["diff_file", "files"]
+);
 
 impl std::fmt::Display for DpkgSourceLocalChanges {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -461,29 +270,14 @@ impl std::fmt::Display for DpkgSourceLocalChanges {
 ///
 /// This struct is used when dpkg-source detects changes that cannot be
 /// represented in the chosen source format, such as mode changes in some formats.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DpkgSourceUnrepresentableChanges;
 
-impl Problem for DpkgSourceUnrepresentableChanges {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "unrepresentable-local-changes".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::Value::Null
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unrepresentable-local-changes",
-        detail_fields: &[],
-    }
-}
+crate::problem!(
+    DpkgSourceUnrepresentableChanges,
+    "unrepresentable-local-changes",
+    []
+);
 
 impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -495,29 +289,10 @@ impl std::fmt::Display for DpkgSourceUnrepresentableChanges {
 ///
 /// This struct is used when dpkg-source detects binary files in the source
 /// package that are not allowed, which can happen when the source is dirty.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DpkgUnwantedBinaryFiles;
 
-impl Problem for DpkgUnwantedBinaryFiles {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "unwanted-binary-files".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::Value::Null
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unwanted-binary-files",
-        detail_fields: &[],
-    }
-}
+crate::problem!(DpkgUnwantedBinaryFiles, "unwanted-binary-files", []);
 
 impl std::fmt::Display for DpkgUnwantedBinaryFiles {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -529,31 +304,13 @@ impl std::fmt::Display for DpkgUnwantedBinaryFiles {
 ///
 /// This struct is used when dpkg-source detects that binary files have been
 /// changed, which cannot be properly represented in source package formats.
-#[derive(Debug, Clone)]
-pub struct DpkgBinaryFileChanged(pub Vec<String>);
-
-impl Problem for DpkgBinaryFileChanged {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "binary-file-changed".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "files": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DpkgBinaryFileChanged {
+    /// The binary files that changed.
+    pub files: Vec<String>,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "binary-file-changed",
-        detail_fields: &["files"],
-    }
-}
+crate::problem!(DpkgBinaryFileChanged, "binary-file-changed", ["files"]);
 
 impl std::fmt::Display for DpkgBinaryFileChanged {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -565,33 +322,22 @@ impl std::fmt::Display for DpkgBinaryFileChanged {
 ///
 /// This struct is used when the debian/control file, which is required for
 /// any Debian package, is missing from the source package.
-#[derive(Debug, Clone)]
-pub struct MissingControlFile(pub std::path::PathBuf);
-
-impl Problem for MissingControlFile {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-control-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::Value::Null
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MissingControlFile {
+    /// The path to the missing control file.
+    pub path: std::path::PathBuf,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-control-file",
-        detail_fields: &[],
-    }
-}
+crate::problem!(
+    MissingControlFile,
+    "missing-control-file",
+    [],
+    json = |_| serde_json::Value::Null
+);
 
 impl std::fmt::Display for MissingControlFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Missing control file: {}", self.0.display())
+        write!(f, "Missing control file: {}", self.path.display())
     }
 }
 
@@ -599,35 +345,21 @@ impl std::fmt::Display for MissingControlFile {
 ///
 /// This struct is used when the build process encounters unknown extra fields
 /// in Mercurial version control metadata.
-#[derive(Debug, Clone)]
-pub struct UnknownMercurialExtraFields(pub String);
-
-impl Problem for UnknownMercurialExtraFields {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "unknown-mercurial-extra-fields".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "field": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnknownMercurialExtraFields {
+    /// The unknown extra field.
+    pub field: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unknown-mercurial-extra-fields",
-        detail_fields: &["field"],
-    }
-}
+crate::problem!(
+    UnknownMercurialExtraFields,
+    "unknown-mercurial-extra-fields",
+    ["field"]
+);
 
 impl std::fmt::Display for UnknownMercurialExtraFields {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Unknown Mercurial extra field: {}", self.0)
+        write!(f, "Unknown Mercurial extra field: {}", self.field)
     }
 }
 
@@ -635,29 +367,14 @@ impl std::fmt::Display for UnknownMercurialExtraFields {
 ///
 /// This struct is used when the build process cannot verify the PGP signature
 /// of an upstream source tarball, which may indicate a security issue.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpstreamPGPSignatureVerificationFailed;
 
-impl Problem for UpstreamPGPSignatureVerificationFailed {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "upstream-pgp-signature-verification-failed".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::Value::Null
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "upstream-pgp-signature-verification-failed",
-        detail_fields: &[],
-    }
-}
+crate::problem!(
+    UpstreamPGPSignatureVerificationFailed,
+    "upstream-pgp-signature-verification-failed",
+    []
+);
 
 impl std::fmt::Display for UpstreamPGPSignatureVerificationFailed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -669,35 +386,21 @@ impl std::fmt::Display for UpstreamPGPSignatureVerificationFailed {
 ///
 /// This struct is used when the uscan tool (which checks for upstream versions)
 /// cannot find a specifically requested version.
-#[derive(Debug, Clone)]
-pub struct UScanRequestVersionMissing(pub String);
-
-impl Problem for UScanRequestVersionMissing {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "uscan-request-version-missing".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "version": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UScanRequestVersionMissing {
+    /// The requested version.
+    pub version: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "uscan-request-version-missing",
-        detail_fields: &["version"],
-    }
-}
+crate::problem!(
+    UScanRequestVersionMissing,
+    "uscan-request-version-missing",
+    ["version"]
+);
 
 impl std::fmt::Display for UScanRequestVersionMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "UScan request version missing: {}", self.0)
+        write!(f, "UScan request version missing: {}", self.version)
     }
 }
 
@@ -705,35 +408,17 @@ impl std::fmt::Display for UScanRequestVersionMissing {
 ///
 /// This struct is used when the debcargo tool, which is used to package
 /// Rust crates as Debian packages, encounters an error.
-#[derive(Debug, Clone)]
-pub struct DebcargoFailure(pub String);
-
-impl Problem for DebcargoFailure {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "debcargo-failure".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "reason": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DebcargoFailure {
+    /// The reason for the failure.
+    pub reason: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debcargo-failure",
-        detail_fields: &["reason"],
-    }
-}
+crate::problem!(DebcargoFailure, "debcargo-failure", ["reason"]);
 
 impl std::fmt::Display for DebcargoFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Debcargo failure: {}", self.0)
+        write!(f, "Debcargo failure: {}", self.reason)
     }
 }
 
@@ -741,35 +426,17 @@ impl std::fmt::Display for DebcargoFailure {
 ///
 /// This struct is used when the build process encounters a syntax error
 /// or other issue when parsing the debian/changelog file.
-#[derive(Debug, Clone)]
-pub struct ChangelogParseError(pub String);
-
-impl Problem for ChangelogParseError {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "changelog-parse-error".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "reason": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangelogParseError {
+    /// The reason the changelog could not be parsed.
+    pub reason: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "changelog-parse-error",
-        detail_fields: &["reason"],
-    }
-}
+crate::problem!(ChangelogParseError, "changelog-parse-error", ["reason"]);
 
 impl std::fmt::Display for ChangelogParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Changelog parse error: {}", self.0)
+        write!(f, "Changelog parse error: {}", self.reason)
     }
 }
 
@@ -777,35 +444,17 @@ impl std::fmt::Display for ChangelogParseError {
 ///
 /// This struct is used when the uscan tool, which checks for upstream versions,
 /// encounters an error that doesn't fit into more specific categories.
-#[derive(Debug, Clone)]
-pub struct UScanError(pub String);
-
-impl Problem for UScanError {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "uscan-error".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "reason": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UScanError {
+    /// The error reported by uscan.
+    pub reason: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "uscan-error",
-        detail_fields: &["reason"],
-    }
-}
+crate::problem!(UScanError, "uscan-error", ["reason"]);
 
 impl std::fmt::Display for UScanError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "UScan error: {}", self.0)
+        write!(f, "UScan error: {}", self.reason)
     }
 }
 
@@ -813,7 +462,7 @@ impl std::fmt::Display for UScanError {
 ///
 /// This struct is used when the uscan tool fails to find or process
 /// upstream versions from a specific URL.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UScanFailed {
     /// The URL that uscan was trying to process.
     pub url: String,
@@ -821,29 +470,7 @@ pub struct UScanFailed {
     pub reason: String,
 }
 
-impl Problem for UScanFailed {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "uscan-failed".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "url": self.url,
-            "reason": self.reason,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "uscan-failed",
-        detail_fields: &["url", "reason"],
-    }
-}
+crate::problem!(UScanFailed, "uscan-failed", ["url", "reason"]);
 
 impl std::fmt::Display for UScanFailed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -855,7 +482,7 @@ impl std::fmt::Display for UScanFailed {
 ///
 /// This struct is used when there's an inconsistency between the source format
 /// specified in debian/source/format and the version numbering scheme.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InconsistentSourceFormat {
     /// Whether the version is inconsistent with the source format.
     pub version: bool,
@@ -863,29 +490,11 @@ pub struct InconsistentSourceFormat {
     pub source_format: bool,
 }
 
-impl Problem for InconsistentSourceFormat {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "inconsistent-source-format".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "version": self.version,
-            "source_format": self.source_format,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "inconsistent-source-format",
-        detail_fields: &["version", "source_format"],
-    }
-}
+crate::problem!(
+    InconsistentSourceFormat,
+    "inconsistent-source-format",
+    ["version", "source_format"]
+);
 
 impl std::fmt::Display for InconsistentSourceFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -900,7 +509,7 @@ impl std::fmt::Display for InconsistentSourceFormat {
 ///
 /// This struct is used when the build process cannot parse the
 /// debian/upstream/metadata file, which contains information about the upstream project.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpstreamMetadataFileParseError {
     /// The path to the metadata file.
     pub path: std::path::PathBuf,
@@ -908,29 +517,11 @@ pub struct UpstreamMetadataFileParseError {
     pub reason: String,
 }
 
-impl Problem for UpstreamMetadataFileParseError {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "debian-upstream-metadata-invalid".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "path": self.path.display().to_string(),
-            "reason": self.reason,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debian-upstream-metadata-invalid",
-        detail_fields: &["path", "reason"],
-    }
-}
+crate::problem!(
+    UpstreamMetadataFileParseError,
+    "debian-upstream-metadata-invalid",
+    ["path", "reason"]
+);
 
 impl std::fmt::Display for UpstreamMetadataFileParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -942,35 +533,17 @@ impl std::fmt::Display for UpstreamMetadataFileParseError {
 ///
 /// This struct is used when dpkg-source cannot package the source files
 /// into a source package for various reasons.
-#[derive(Debug, Clone)]
-pub struct DpkgSourcePackFailed(pub String);
-
-impl Problem for DpkgSourcePackFailed {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "dpkg-source-pack-failed".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "reason": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DpkgSourcePackFailed {
+    /// The reason packing the source failed.
+    pub reason: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "dpkg-source-pack-failed",
-        detail_fields: &["reason"],
-    }
-}
+crate::problem!(DpkgSourcePackFailed, "dpkg-source-pack-failed", ["reason"]);
 
 impl std::fmt::Display for DpkgSourcePackFailed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Dpkg source pack failed: {}", self.0)
+        write!(f, "Dpkg source pack failed: {}", self.reason)
     }
 }
 
@@ -978,7 +551,7 @@ impl std::fmt::Display for DpkgSourcePackFailed {
 ///
 /// This struct is used when dpkg encounters a version string that
 /// doesn't follow the Debian version format rules.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DpkgBadVersion {
     /// The invalid version string.
     pub version: String,
@@ -986,29 +559,7 @@ pub struct DpkgBadVersion {
     pub reason: Option<String>,
 }
 
-impl Problem for DpkgBadVersion {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "dpkg-bad-version".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "version": self.version,
-            "reason": self.reason,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "dpkg-bad-version",
-        detail_fields: &["version", "reason"],
-    }
-}
+crate::problem!(DpkgBadVersion, "dpkg-bad-version", ["version", "reason"]);
 
 impl std::fmt::Display for DpkgBadVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1024,37 +575,20 @@ impl std::fmt::Display for DpkgBadVersion {
 ///
 /// This struct is used when debcargo cannot find a Rust crate
 /// that is required for the build.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingDebcargoCrate {
     /// The name of the missing Rust crate.
+    #[serde(rename = "crate")]
     pub cratename: String,
     /// The version of the crate that is required, if specified.
     pub version: Option<String>,
 }
 
-impl Problem for MissingDebcargoCrate {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "debcargo-missing-crate".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "crate": self.cratename,
-            "version": self.version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debcargo-missing-crate",
-        detail_fields: &["crate", "version"],
-    }
-}
+crate::problem!(
+    MissingDebcargoCrate,
+    "debcargo-missing-crate",
+    ["crate", "version"]
+);
 
 impl std::fmt::Display for MissingDebcargoCrate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1101,35 +635,21 @@ impl MissingDebcargoCrate {
 ///
 /// This struct is used when a pristine-tar operation cannot find
 /// a referenced tree in the git repository.
-#[derive(Debug, Clone)]
-pub struct PristineTarTreeMissing(pub String);
-
-impl Problem for PristineTarTreeMissing {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "pristine-tar-missing-tree".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "treeish": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PristineTarTreeMissing {
+    /// The tree-ish that could not be found.
+    pub treeish: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "pristine-tar-missing-tree",
-        detail_fields: &["treeish"],
-    }
-}
+crate::problem!(
+    PristineTarTreeMissing,
+    "pristine-tar-missing-tree",
+    ["treeish"]
+);
 
 impl std::fmt::Display for PristineTarTreeMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Pristine-tar tree missing: {}", self.0)
+        write!(f, "Pristine-tar tree missing: {}", self.treeish)
     }
 }
 
@@ -1137,35 +657,34 @@ impl std::fmt::Display for PristineTarTreeMissing {
 ///
 /// This struct is used when a build process references a revision
 /// in version control that does not exist.
-#[derive(Debug, Clone)]
-pub struct MissingRevision(pub Vec<u8>);
-
-impl Problem for MissingRevision {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-revision".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "revision": String::from_utf8_lossy(&self.0),
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MissingRevision {
+    /// The missing revision identifier.
+    #[serde(with = "lossy_utf8")]
+    pub revision: Vec<u8>,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-revision",
-        detail_fields: &["revision"],
+crate::problem!(MissingRevision, "missing-revision", ["revision"]);
+
+mod lossy_utf8 {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(bytes: &[u8], s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&String::from_utf8_lossy(bytes))
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
+        Ok(String::deserialize(d)?.into_bytes())
     }
 }
 
 impl std::fmt::Display for MissingRevision {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Missing revision: {}", String::from_utf8_lossy(&self.0))
+        write!(
+            f,
+            "Missing revision: {}",
+            String::from_utf8_lossy(&self.revision)
+        )
     }
 }
 
@@ -1173,37 +692,20 @@ impl std::fmt::Display for MissingRevision {
 ///
 /// This struct is used when debcargo cannot represent a predicate in a Rust
 /// crate dependency, such as certain prerelease version constraints.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebcargoUnacceptablePredicate {
     /// The name of the crate with the unacceptable predicate.
+    #[serde(rename = "crate")]
     pub cratename: String,
     /// The predicate that cannot be represented.
     pub predicate: String,
 }
 
-impl Problem for DebcargoUnacceptablePredicate {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "debcargo-unacceptable-predicate".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "crate": self.cratename,
-            "predicate": self.predicate,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debcargo-unacceptable-predicate",
-        detail_fields: &["crate", "predicate"],
-    }
-}
+crate::problem!(
+    DebcargoUnacceptablePredicate,
+    "debcargo-unacceptable-predicate",
+    ["crate", "predicate"]
+);
 
 impl std::fmt::Display for DebcargoUnacceptablePredicate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1219,37 +721,20 @@ impl std::fmt::Display for DebcargoUnacceptablePredicate {
 ///
 /// This struct is used when debcargo cannot represent a version comparison operator
 /// in a Rust crate dependency, such as certain complex version constraints.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebcargoUnacceptableComparator {
     /// The name of the crate with the unacceptable comparator.
+    #[serde(rename = "crate")]
     pub cratename: String,
     /// The comparator that cannot be represented.
     pub comparator: String,
 }
 
-impl Problem for DebcargoUnacceptableComparator {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "debcargo-unacceptable-comparator".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "crate": self.cratename,
-            "comparator": self.comparator,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debcargo-unacceptable-comparator",
-        detail_fields: &["crate", "comparator"],
-    }
-}
+crate::problem!(
+    DebcargoUnacceptableComparator,
+    "debcargo-unacceptable-comparator",
+    ["crate", "comparator"]
+);
 
 impl std::fmt::Display for DebcargoUnacceptableComparator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1265,35 +750,17 @@ impl std::fmt::Display for DebcargoUnacceptableComparator {
 ///
 /// This struct is used when uscan receives a rate limiting response
 /// from a server it is checking for upstream versions.
-#[derive(Debug)]
-pub struct UScanTooManyRequests(pub String);
-
-impl Problem for UScanTooManyRequests {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "uscan-too-many-requests".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "reason": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UScanTooManyRequests {
+    /// The error reported by uscan.
+    pub reason: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "uscan-too-many-requests",
-        detail_fields: &["reason"],
-    }
-}
+crate::problem!(UScanTooManyRequests, "uscan-too-many-requests", ["reason"]);
 
 impl std::fmt::Display for UScanTooManyRequests {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "UScan too many requests: {}", self.0)
+        write!(f, "UScan too many requests: {}", self.reason)
     }
 }
 
@@ -1301,35 +768,21 @@ impl std::fmt::Display for UScanTooManyRequests {
 ///
 /// This struct is used when apt cannot resolve package conflicts
 /// during the dependency resolution process.
-#[derive(Debug)]
-pub struct UnsatisfiedAptConflicts(pub String);
-
-impl Problem for UnsatisfiedAptConflicts {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "unsatisfied-apt-conflicts".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "relations": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnsatisfiedAptConflicts {
+    /// The conflicting relations.
+    pub relations: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unsatisfied-apt-conflicts",
-        detail_fields: &["relations"],
-    }
-}
+crate::problem!(
+    UnsatisfiedAptConflicts,
+    "unsatisfied-apt-conflicts",
+    ["relations"]
+);
 
 impl std::fmt::Display for UnsatisfiedAptConflicts {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unsatisfied apt conflicts: {}", self.0)
+        write!(f, "unsatisfied apt conflicts: {}", self.relations)
     }
 }
 
@@ -1339,7 +792,7 @@ impl std::error::Error for UnsatisfiedAptConflicts {}
 ///
 /// This struct is used when a build is attempted for an architecture that
 /// is not in the list of architectures supported by the package.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArchitectureNotInList {
     /// The architecture being built for.
     pub arch: String,
@@ -1347,29 +800,11 @@ pub struct ArchitectureNotInList {
     pub arch_list: Vec<String>,
 }
 
-impl Problem for ArchitectureNotInList {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "arch-not-in-list".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "arch": self.arch,
-            "arch_list": self.arch_list,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "arch-not-in-list",
-        detail_fields: &["arch", "arch_list"],
-    }
-}
+crate::problem!(
+    ArchitectureNotInList,
+    "arch-not-in-list",
+    ["arch", "arch_list"]
+);
 
 impl std::fmt::Display for ArchitectureNotInList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1381,44 +816,21 @@ impl std::fmt::Display for ArchitectureNotInList {
 ///
 /// This struct is used when apt cannot satisfy the dependencies
 /// required for a package installation.
-#[derive(Debug)]
-pub struct UnsatisfiedAptDependencies(pub String);
-
-impl Problem for UnsatisfiedAptDependencies {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "unsatisfied-apt-dependencies".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "relations": self.0
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnsatisfiedAptDependencies {
+    /// The unsatisfied relations.
+    pub relations: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unsatisfied-apt-dependencies",
-        detail_fields: &["relations"],
-    }
-}
-
-crate::register_problem_de_fn!("unsatisfied-apt-dependencies", |v| {
-    let relations = v
-        .get("relations")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("relations"))?
-        .to_string();
-    Ok(Box::new(UnsatisfiedAptDependencies(relations)) as Box<dyn crate::Problem>)
-});
+crate::problem!(
+    UnsatisfiedAptDependencies,
+    "unsatisfied-apt-dependencies",
+    ["relations"]
+);
 
 impl std::fmt::Display for UnsatisfiedAptDependencies {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unsatisfied apt dependencies: {}", self.0)
+        write!(f, "unsatisfied apt dependencies: {}", self.relations)
     }
 }
 
@@ -1426,7 +838,7 @@ impl std::fmt::Display for UnsatisfiedAptDependencies {
 ///
 /// This struct is used when a build process determines that there is
 /// not enough disk space available to complete the build.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InsufficientDiskSpace {
     /// The amount of disk space needed for the build in KiB.
     pub needed: i64,
@@ -1434,29 +846,11 @@ pub struct InsufficientDiskSpace {
     pub free: i64,
 }
 
-impl Problem for InsufficientDiskSpace {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "insufficient-disk-space".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "needed": self.needed,
-            "free": self.free,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "insufficient-disk-space",
-        detail_fields: &["needed", "free"],
-    }
-}
+crate::problem!(
+    InsufficientDiskSpace,
+    "insufficient-disk-space",
+    ["needed", "free"]
+);
 
 impl std::fmt::Display for InsufficientDiskSpace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1474,32 +868,13 @@ impl std::fmt::Display for InsufficientDiskSpace {
 /// `brz: ERROR: The nested tree for <name> can not be resolved.` and
 /// stops; without a matcher this surfaced as `unidentified` in
 /// janitor.debian.net.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NestedTreeUnresolvable {
     /// The name of the nested tree brz couldn't resolve.
     pub name: String,
 }
 
-impl Problem for NestedTreeUnresolvable {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "nested-tree-unresolvable".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({"name": self.name})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "nested-tree-unresolvable",
-        detail_fields: &["name"],
-    }
-}
+crate::problem!(NestedTreeUnresolvable, "nested-tree-unresolvable", ["name"]);
 
 impl std::fmt::Display for NestedTreeUnresolvable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1512,7 +887,7 @@ impl std::fmt::Display for NestedTreeUnresolvable {
 /// `brz: ERROR: dulwich.objects.SubmoduleEncountered: (path, sha)`;
 /// the package needs `--include-submodules` or the submodule needs
 /// resolving manually before the run can proceed.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubmoduleEncountered {
     /// Path of the submodule inside the working tree.
     pub path: String,
@@ -1520,26 +895,11 @@ pub struct SubmoduleEncountered {
     pub sha: String,
 }
 
-impl Problem for SubmoduleEncountered {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "submodule-encountered".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({"path": self.path, "sha": self.sha})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "submodule-encountered",
-        detail_fields: &["path", "sha"],
-    }
-}
+crate::problem!(
+    SubmoduleEncountered,
+    "submodule-encountered",
+    ["path", "sha"]
+);
 
 impl std::fmt::Display for SubmoduleEncountered {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1555,7 +915,7 @@ impl std::fmt::Display for SubmoduleEncountered {
 /// `UScanRequestVersionMissing` (matches "no matching files for
 /// version"); this fires when uscan *did* find files but for a
 /// different version label.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UScanRemoteVersionMismatch {
     /// Source package name uscan reported.
     pub package: String,
@@ -1565,30 +925,11 @@ pub struct UScanRemoteVersionMismatch {
     pub wanted_version: String,
 }
 
-impl Problem for UScanRemoteVersionMismatch {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "uscan-remote-version-mismatch".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package,
-            "remote_version": self.remote_version,
-            "wanted_version": self.wanted_version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "uscan-remote-version-mismatch",
-        detail_fields: &["package", "remote_version", "wanted_version"],
-    }
-}
+crate::problem!(
+    UScanRemoteVersionMismatch,
+    "uscan-remote-version-mismatch",
+    ["package", "remote_version", "wanted_version"]
+);
 
 impl std::fmt::Display for UScanRemoteVersionMismatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1606,32 +947,17 @@ impl std::fmt::Display for UScanRemoteVersionMismatch {
 /// skipping it: <text>`; surface it explicitly so the failure is
 /// classified as a watchfile-format issue (actionable: fix
 /// debian/watch) rather than `unidentified`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UScanWatchfileMalformed {
     /// The raw paragraph text uscan rejected (may be multi-line).
     pub paragraph: String,
 }
 
-impl Problem for UScanWatchfileMalformed {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "uscan-watchfile-malformed".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({"paragraph": self.paragraph})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "uscan-watchfile-malformed",
-        detail_fields: &["paragraph"],
-    }
-}
+crate::problem!(
+    UScanWatchfileMalformed,
+    "uscan-watchfile-malformed",
+    ["paragraph"]
+);
 
 impl std::fmt::Display for UScanWatchfileMalformed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1644,7 +970,7 @@ impl std::fmt::Display for UScanWatchfileMalformed {
 /// trace). The brz crash banner ("Breezy has encountered an internal
 /// error") is what we want to surface; treating these as
 /// `unidentified` masks real upstream brz bugs that need filing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BrzInternalError {
     /// The exception type (e.g. `AssertionError`, `AttributeError`).
     pub exception_type: String,
@@ -1652,29 +978,11 @@ pub struct BrzInternalError {
     pub exception_message: String,
 }
 
-impl Problem for BrzInternalError {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "brz-internal-error".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "exception_type": self.exception_type,
-            "exception_message": self.exception_message,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "brz-internal-error",
-        detail_fields: &["exception_type", "exception_message"],
-    }
-}
+crate::problem!(
+    BrzInternalError,
+    "brz-internal-error",
+    ["exception_type", "exception_message"]
+);
 
 impl std::fmt::Display for BrzInternalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1693,7 +1001,10 @@ impl std::fmt::Display for BrzInternalError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::problem::assert_wire_format;
     use crate::Problem;
+    use serde_json::json;
+    use std::path::PathBuf;
 
     #[test]
     fn test_dpkg_source_local_changes_trait() {
@@ -1708,8 +1019,404 @@ mod tests {
 
     #[test]
     fn test_uscan_too_many_requests_trait() {
-        let problem = UScanTooManyRequests("rate limit exceeded".to_string());
+        let problem = UScanTooManyRequests {
+            reason: "rate limit exceeded".to_string(),
+        };
         let json = problem.json();
         assert_eq!(json["reason"], "rate limit exceeded");
+    }
+
+    #[test]
+    fn wire_format() {
+        assert_wire_format(
+            &DpkgError {
+                msg: "f0-value".to_string(),
+            },
+            "dpkg-error",
+            json!({"msg": "f0-value"}),
+            "dpkg error: f0-value",
+        );
+        assert_wire_format(
+            &AptUpdateError,
+            "apt-update-error",
+            json!({}),
+            "apt update error",
+        );
+        assert_wire_format(
+            &AptFetchFailure {
+                url: Some("url-value".to_string()),
+                error: "error-value".to_string(),
+            },
+            "apt-file-fetch-failure",
+            json!({"error": "error-value", "url": "url-value"}),
+            "apt fetch failure: url-value (error-value)",
+        );
+        assert_wire_format(
+            &AptFetchFailure {
+                url: None,
+                error: "error-value".to_string(),
+            },
+            "apt-file-fetch-failure",
+            json!({"error": "error-value", "url": null}),
+            "apt fetch failure: error-value",
+        );
+        assert_wire_format(
+            &AptMissingReleaseFile {
+                url: "f0-value".to_string(),
+            },
+            "missing-release-file",
+            json!({"url": "f0-value"}),
+            "apt missing release file: f0-value",
+        );
+        assert_wire_format(
+            &AptPackageUnknown {
+                package: "f0-value".to_string(),
+            },
+            "apt-package-unknown",
+            json!({"package": "f0-value"}),
+            "apt package unknown: f0-value",
+        );
+        assert_wire_format(
+            &AptBrokenPackages {
+                description: "description-value".to_string(),
+                broken: Some(vec!["broken-a".to_string(), "broken-b".to_string()]),
+            },
+            "apt-broken-packages",
+            json!({"broken": ["broken-a", "broken-b"], "description": "description-value"}),
+            "apt broken packages: description-value",
+        );
+        assert_wire_format(
+            &AptBrokenPackages {
+                description: "description-value".to_string(),
+                broken: None,
+            },
+            "apt-broken-packages",
+            json!({"broken": null, "description": "description-value"}),
+            "apt broken packages: description-value",
+        );
+        assert_wire_format(
+            &UnableToFindUpstreamTarball {
+                package: "package-value".to_string(),
+                version: "1.2-3".parse().unwrap(),
+            },
+            "unable-to-find-upstream-tarball",
+            json!({"package": "package-value", "version": "1.2-3"}),
+            "Unable to find upstream tarball for package-value 1.2-3",
+        );
+        assert_wire_format(
+            &SourceFormatUnbuildable {
+                source_format: "source_format-value".to_string(),
+                reason: "reason-value".to_string(),
+            },
+            "source-format-unbuildable",
+            json!({"reason": "reason-value", "source_format": "source_format-value"}),
+            "Source format source_format-value is unbuildable: reason-value",
+        );
+        assert_wire_format(
+            &SourceFormatUnsupported {
+                source_format: "f0-value".to_string(),
+            },
+            "source-format-unsupported",
+            json!({"source_format": "f0-value"}),
+            "Source format f0-value is unsupported",
+        );
+        assert_wire_format(
+            &PatchFileMissing {
+                path: PathBuf::from("/srv/f0"),
+            },
+            "patch-file-missing",
+            json!({"path": "/srv/f0"}),
+            "Patch file missing: /srv/f0",
+        );
+        assert_wire_format(
+            &DpkgSourceLocalChanges {
+                diff_file: Some("diff_file-value".to_string()),
+                files: Some(vec!["files-a".to_string(), "files-b".to_string()]),
+            },
+            "unexpected-local-upstream-changes",
+            json!({"diff_file": "diff_file-value", "files": ["files-a", "files-b"]}),
+            "Tree has local changes: [\"files-a\", \"files-b\"]",
+        );
+        assert_wire_format(
+            &DpkgSourceLocalChanges {
+                diff_file: None,
+                files: None,
+            },
+            "unexpected-local-upstream-changes",
+            json!({"diff_file": null, "files": null}),
+            "Tree has local changes",
+        );
+        assert_wire_format(
+            &DpkgSourceUnrepresentableChanges,
+            "unrepresentable-local-changes",
+            json!(null),
+            "Tree has unrepresentable changes",
+        );
+        assert_wire_format(
+            &DpkgUnwantedBinaryFiles,
+            "unwanted-binary-files",
+            json!(null),
+            "Tree has unwanted binary files",
+        );
+        assert_wire_format(
+            &DpkgBinaryFileChanged {
+                files: vec!["f0-a".to_string(), "f0-b".to_string()],
+            },
+            "binary-file-changed",
+            json!({"files": ["f0-a", "f0-b"]}),
+            "Binary file changed",
+        );
+        assert_wire_format(
+            &MissingControlFile {
+                path: PathBuf::from("/srv/f0"),
+            },
+            "missing-control-file",
+            json!(null),
+            "Missing control file: /srv/f0",
+        );
+        assert_wire_format(
+            &UnknownMercurialExtraFields {
+                field: "f0-value".to_string(),
+            },
+            "unknown-mercurial-extra-fields",
+            json!({"field": "f0-value"}),
+            "Unknown Mercurial extra field: f0-value",
+        );
+        assert_wire_format(
+            &UpstreamPGPSignatureVerificationFailed,
+            "upstream-pgp-signature-verification-failed",
+            json!(null),
+            "Upstream PGP signature verification failed",
+        );
+        assert_wire_format(
+            &UScanRequestVersionMissing {
+                version: "f0-value".to_string(),
+            },
+            "uscan-request-version-missing",
+            json!({"version": "f0-value"}),
+            "UScan request version missing: f0-value",
+        );
+        assert_wire_format(
+            &DebcargoFailure {
+                reason: "f0-value".to_string(),
+            },
+            "debcargo-failure",
+            json!({"reason": "f0-value"}),
+            "Debcargo failure: f0-value",
+        );
+        assert_wire_format(
+            &ChangelogParseError {
+                reason: "f0-value".to_string(),
+            },
+            "changelog-parse-error",
+            json!({"reason": "f0-value"}),
+            "Changelog parse error: f0-value",
+        );
+        assert_wire_format(
+            &UScanError {
+                reason: "f0-value".to_string(),
+            },
+            "uscan-error",
+            json!({"reason": "f0-value"}),
+            "UScan error: f0-value",
+        );
+        assert_wire_format(
+            &UScanFailed {
+                url: "url-value".to_string(),
+                reason: "reason-value".to_string(),
+            },
+            "uscan-failed",
+            json!({"reason": "reason-value", "url": "url-value"}),
+            "UScan failed: reason-value",
+        );
+        assert_wire_format(
+            &InconsistentSourceFormat {
+                version: true,
+                source_format: true,
+            },
+            "inconsistent-source-format",
+            json!({"source_format": true, "version": true}),
+            "Inconsistent source format between version and source format",
+        );
+        assert_wire_format(
+            &UpstreamMetadataFileParseError {
+                path: PathBuf::from("/srv/path"),
+                reason: "reason-value".to_string(),
+            },
+            "debian-upstream-metadata-invalid",
+            json!({"path": "/srv/path", "reason": "reason-value"}),
+            "Upstream metadata file parse error: reason-value",
+        );
+        assert_wire_format(
+            &DpkgSourcePackFailed {
+                reason: "f0-value".to_string(),
+            },
+            "dpkg-source-pack-failed",
+            json!({"reason": "f0-value"}),
+            "Dpkg source pack failed: f0-value",
+        );
+        assert_wire_format(
+            &DpkgBadVersion {
+                version: "version-value".to_string(),
+                reason: Some("reason-value".to_string()),
+            },
+            "dpkg-bad-version",
+            json!({"reason": "reason-value", "version": "version-value"}),
+            "Version version-value is invalid: reason-value",
+        );
+        assert_wire_format(
+            &DpkgBadVersion {
+                version: "version-value".to_string(),
+                reason: None,
+            },
+            "dpkg-bad-version",
+            json!({"reason": null, "version": "version-value"}),
+            "Version version-value is invalid",
+        );
+        assert_wire_format(
+            &MissingDebcargoCrate {
+                cratename: "cratename-value".to_string(),
+                version: Some("version-value".to_string()),
+            },
+            "debcargo-missing-crate",
+            json!({"crate": "cratename-value", "version": "version-value"}),
+            "debcargo can't find crate cratename-value (version: version-value)",
+        );
+        assert_wire_format(
+            &MissingDebcargoCrate {
+                cratename: "cratename-value".to_string(),
+                version: None,
+            },
+            "debcargo-missing-crate",
+            json!({"crate": "cratename-value", "version": null}),
+            "debcargo can't find crate cratename-value",
+        );
+        assert_wire_format(
+            &PristineTarTreeMissing {
+                treeish: "f0-value".to_string(),
+            },
+            "pristine-tar-missing-tree",
+            json!({"treeish": "f0-value"}),
+            "Pristine-tar tree missing: f0-value",
+        );
+        assert_wire_format(
+            &MissingRevision {
+                revision: b"deadbeef".to_vec(),
+            },
+            "missing-revision",
+            json!({"revision": "deadbeef"}),
+            "Missing revision: deadbeef",
+        );
+        assert_wire_format(
+            &DebcargoUnacceptablePredicate {
+                cratename: "cratename-value".to_string(),
+                predicate: "predicate-value".to_string(),
+            },
+            "debcargo-unacceptable-predicate",
+            json!({"crate": "cratename-value", "predicate": "predicate-value"}),
+            "Cannot represent prerelease part of dependency: predicate-value",
+        );
+        assert_wire_format(
+            &DebcargoUnacceptableComparator {
+                cratename: "cratename-value".to_string(),
+                comparator: "comparator-value".to_string(),
+            },
+            "debcargo-unacceptable-comparator",
+            json!({"comparator": "comparator-value", "crate": "cratename-value"}),
+            "Cannot represent prerelease part of dependency: comparator-value",
+        );
+        assert_wire_format(
+            &UScanTooManyRequests {
+                reason: "f0-value".to_string(),
+            },
+            "uscan-too-many-requests",
+            json!({"reason": "f0-value"}),
+            "UScan too many requests: f0-value",
+        );
+        assert_wire_format(
+            &UnsatisfiedAptConflicts {
+                relations: "f0-value".to_string(),
+            },
+            "unsatisfied-apt-conflicts",
+            json!({"relations": "f0-value"}),
+            "unsatisfied apt conflicts: f0-value",
+        );
+        assert_wire_format(
+            &ArchitectureNotInList {
+                arch: "arch-value".to_string(),
+                arch_list: vec!["arch_list-a".to_string(), "arch_list-b".to_string()],
+            },
+            "arch-not-in-list",
+            json!({"arch": "arch-value", "arch_list": ["arch_list-a", "arch_list-b"]}),
+            "Architecture arch-value not a build arch",
+        );
+        assert_wire_format(
+            &UnsatisfiedAptDependencies {
+                relations: "f0-value".to_string(),
+            },
+            "unsatisfied-apt-dependencies",
+            json!({"relations": "f0-value"}),
+            "unsatisfied apt dependencies: f0-value",
+        );
+        assert_wire_format(
+            &InsufficientDiskSpace {
+                needed: 42,
+                free: 42,
+            },
+            "insufficient-disk-space",
+            json!({"free": 42, "needed": 42}),
+            "Insufficient disk space for build. Need: 42 KiB, free: 42 KiB",
+        );
+        assert_wire_format(
+            &NestedTreeUnresolvable {
+                name: "name-value".to_string(),
+            },
+            "nested-tree-unresolvable",
+            json!({"name": "name-value"}),
+            "Nested tree for name-value cannot be resolved",
+        );
+        assert_wire_format(
+            &SubmoduleEncountered {
+                path: "path-value".to_string(),
+                sha: "sha-value".to_string(),
+            },
+            "submodule-encountered",
+            json!({"path": "path-value", "sha": "sha-value"}),
+            "Submodule encountered at path-value (sha-value)",
+        );
+        assert_wire_format(
+            &UScanRemoteVersionMismatch {
+                package: "package-value".to_string(),
+                remote_version: "remote_version-value".to_string(),
+                wanted_version: "wanted_version-value".to_string(),
+            },
+            "uscan-remote-version-mismatch",
+            json!({
+                "package": "package-value",
+                "remote_version": "remote_version-value",
+                "wanted_version": "wanted_version-value",
+            }),
+            "uscan: package-value latest is remote_version-value, wanted wanted_version-value",
+        );
+        assert_wire_format(
+            &UScanWatchfileMalformed {
+                paragraph: "paragraph-value".to_string(),
+            },
+            "uscan-watchfile-malformed",
+            json!({"paragraph": "paragraph-value"}),
+            "uscan rejected malformed debian/watch paragraph",
+        );
+        assert_wire_format(
+            &BrzInternalError {
+                exception_type: "exception_type-value".to_string(),
+                exception_message: "exception_message-value".to_string(),
+            },
+            "brz-internal-error",
+            json!({
+                "exception_message": "exception_message-value",
+                "exception_type": "exception_type-value",
+            }),
+            "brz internal error: exception_type-value: exception_message-value",
+        );
     }
 }

@@ -1,8 +1,11 @@
-use crate::Problem;
+use serde::{Deserialize, Serialize};
 
 /// Problem representing unsatisfiable dependencies in autopkgtest.
-#[derive(Debug, Clone)]
-pub struct AutopkgtestDepsUnsatisfiable(pub Vec<(Option<String>, String)>);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutopkgtestDepsUnsatisfiable {
+    /// The unsatisfiable dependencies, as (package, reason) pairs.
+    pub args: Vec<(Option<String>, String)>,
+}
 
 impl AutopkgtestDepsUnsatisfiable {
     /// Creates a new instance from a blame line string.
@@ -26,63 +29,23 @@ impl AutopkgtestDepsUnsatisfiable {
                 }
             }
         }
-        Self(args)
+        Self { args }
     }
 }
 
-impl Problem for AutopkgtestDepsUnsatisfiable {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "badpkg".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "args": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "badpkg",
-        detail_fields: &["args"],
-    }
-}
+crate::problem!(AutopkgtestDepsUnsatisfiable, "badpkg", ["args"]);
 
 impl std::fmt::Display for AutopkgtestDepsUnsatisfiable {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "autopkgtest dependencies unsatisfiable: {:?}", self.0)
+        write!(f, "autopkgtest dependencies unsatisfiable: {:?}", self.args)
     }
 }
 
 /// Problem representing an autopkgtest test that timed out during execution.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AutopkgtestTimedOut;
 
-impl Problem for AutopkgtestTimedOut {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "timed-out".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "timed-out",
-        detail_fields: &[],
-    }
-}
+crate::problem!(AutopkgtestTimedOut, "timed-out", {});
 
 impl std::fmt::Display for AutopkgtestTimedOut {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -93,29 +56,10 @@ impl std::fmt::Display for AutopkgtestTimedOut {
 /// Problem representing a missing XDG_RUNTIME_DIR environment variable.
 ///
 /// This issue typically occurs when running GUI tests in autopkgtest.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct XDGRunTimeNotSet;
 
-impl Problem for XDGRunTimeNotSet {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "xdg-runtime-dir-not-set".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "xdg-runtime-dir-not-set",
-        detail_fields: &[],
-    }
-}
+crate::problem!(XDGRunTimeNotSet, "xdg-runtime-dir-not-set", {});
 
 impl std::fmt::Display for XDGRunTimeNotSet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -126,35 +70,17 @@ impl std::fmt::Display for XDGRunTimeNotSet {
 /// Problem representing a failure in the autopkgtest testbed.
 ///
 /// Contains a string describing the specific reason for the testbed failure.
-#[derive(Debug, Clone)]
-pub struct AutopkgtestTestbedFailure(pub String);
-
-impl Problem for AutopkgtestTestbedFailure {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "testbed-failure".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "reason": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutopkgtestTestbedFailure {
+    /// The reason for the testbed failure.
+    pub reason: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "testbed-failure",
-        detail_fields: &["reason"],
-    }
-}
+crate::problem!(AutopkgtestTestbedFailure, "testbed-failure", ["reason"]);
 
 impl std::fmt::Display for AutopkgtestTestbedFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "autopkgtest testbed failure: {}", self.0)
+        write!(f, "autopkgtest testbed failure: {}", self.reason)
     }
 }
 
@@ -162,29 +88,14 @@ impl std::fmt::Display for AutopkgtestTestbedFailure {
 ///
 /// This occurs when the chroot environment used for dependency resolution
 /// becomes unavailable during testing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AutopkgtestDepChrootDisappeared;
 
-impl Problem for AutopkgtestDepChrootDisappeared {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "testbed-chroot-disappeared".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "testbed-chroot-disappeared",
-        detail_fields: &[],
-    }
-}
+crate::problem!(
+    AutopkgtestDepChrootDisappeared,
+    "testbed-chroot-disappeared",
+    {}
+);
 
 impl std::fmt::Display for AutopkgtestDepChrootDisappeared {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -195,70 +106,34 @@ impl std::fmt::Display for AutopkgtestDepChrootDisappeared {
 /// Problem representing an erroneous package in autopkgtest.
 ///
 /// Contains a string describing the specific package error encountered.
-#[derive(Debug, Clone)]
-pub struct AutopkgtestErroneousPackage(pub String);
-
-impl Problem for AutopkgtestErroneousPackage {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "erroneous-package".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "reason": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutopkgtestErroneousPackage {
+    /// The reason the package is erroneous.
+    pub reason: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "erroneous-package",
-        detail_fields: &["reason"],
-    }
-}
+crate::problem!(AutopkgtestErroneousPackage, "erroneous-package", ["reason"]);
 
 impl std::fmt::Display for AutopkgtestErroneousPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "autopkgtest erroneous package: {}", self.0)
+        write!(f, "autopkgtest erroneous package: {}", self.reason)
     }
 }
 
 /// Problem representing a failure detected from stderr output in autopkgtest.
 ///
 /// Contains the stderr line that indicates the failure.
-#[derive(Debug, Clone)]
-pub struct AutopkgtestStderrFailure(pub String);
-
-impl Problem for AutopkgtestStderrFailure {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "stderr-output".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "stderr_line": self.0,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutopkgtestStderrFailure {
+    /// The stderr line that caused the failure.
+    pub stderr_line: String,
 }
 
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "stderr-output",
-        detail_fields: &["stderr_line"],
-    }
-}
+crate::problem!(AutopkgtestStderrFailure, "stderr-output", ["stderr_line"]);
 
 impl std::fmt::Display for AutopkgtestStderrFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "autopkgtest output on stderr: {}", self.0)
+        write!(f, "autopkgtest output on stderr: {}", self.stderr_line)
     }
 }
 
@@ -266,7 +141,7 @@ impl std::fmt::Display for AutopkgtestStderrFailure {
 ///
 /// Contains details about the command that failed, its exit status,
 /// and the error message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AutopkgtestTestbedSetupFailure {
     /// The command that failed to execute properly.
     pub command: String,
@@ -276,30 +151,11 @@ pub struct AutopkgtestTestbedSetupFailure {
     pub error: String,
 }
 
-impl Problem for AutopkgtestTestbedSetupFailure {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "testbed-setup-failure".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "command": self.command,
-            "exit_status": self.exit_status,
-            "error": self.error,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "testbed-setup-failure",
-        detail_fields: &["command", "exit_status", "error"],
-    }
-}
+crate::problem!(
+    AutopkgtestTestbedSetupFailure,
+    "testbed-setup-failure",
+    ["command", "exit_status", "error"]
+);
 
 impl std::fmt::Display for AutopkgtestTestbedSetupFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -314,7 +170,9 @@ impl std::fmt::Display for AutopkgtestTestbedSetupFailure {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::problem::assert_wire_format;
     use crate::Problem;
+    use serde_json::json;
 
     #[test]
     fn test_autopkgtest_testbed_setup_failure_trait() {
@@ -327,5 +185,72 @@ mod tests {
         assert_eq!(json["command"], "apt-get update");
         assert_eq!(json["exit_status"], 100);
         assert_eq!(json["error"], "Failed to fetch");
+    }
+
+    #[test]
+    fn wire_format() {
+        assert_wire_format(
+            &AutopkgtestDepsUnsatisfiable {
+                args: vec![
+                    (Some("a".to_string()), "x".to_string()),
+                    (None, "y".to_string()),
+                ],
+            },
+            "badpkg",
+            json!({"args": [["a", "x"], [null, "y"]]}),
+            "autopkgtest dependencies unsatisfiable: [(Some(\"a\"), \"x\"), (None, \"y\")]",
+        );
+        assert_wire_format(
+            &AutopkgtestTimedOut,
+            "timed-out",
+            json!({}),
+            "autopkgtest timed out",
+        );
+        assert_wire_format(
+            &XDGRunTimeNotSet,
+            "xdg-runtime-dir-not-set",
+            json!({}),
+            "XDG_RUNTIME_DIR not set",
+        );
+        assert_wire_format(
+            &AutopkgtestTestbedFailure {
+                reason: "f0-value".to_string(),
+            },
+            "testbed-failure",
+            json!({"reason": "f0-value"}),
+            "autopkgtest testbed failure: f0-value",
+        );
+        assert_wire_format(
+            &AutopkgtestDepChrootDisappeared,
+            "testbed-chroot-disappeared",
+            json!({}),
+            "autopkgtest dependency chroot disappeared",
+        );
+        assert_wire_format(
+            &AutopkgtestErroneousPackage {
+                reason: "f0-value".to_string(),
+            },
+            "erroneous-package",
+            json!({"reason": "f0-value"}),
+            "autopkgtest erroneous package: f0-value",
+        );
+        assert_wire_format(
+            &AutopkgtestStderrFailure {
+                stderr_line: "f0-value".to_string(),
+            },
+            "stderr-output",
+            json!({"stderr_line": "f0-value"}),
+            "autopkgtest output on stderr: f0-value",
+        );
+        assert_wire_format(
+            &AutopkgtestTestbedSetupFailure {
+                command: "command-value".to_string(),
+                exit_status: 3,
+                error: "error-value".to_string(),
+            },
+            "testbed-setup-failure",
+            json!({"command": "command-value", "error": "error-value", "exit_status": 3}),
+            "autopkgtest testbed setup failure: command-value exited with status 3: error-value",
+        );
     }
 }
