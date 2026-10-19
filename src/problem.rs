@@ -222,10 +222,11 @@ pub(crate) fn assert_wire_format(
     assert_eq!(p.json(), details, "json() of {}", kind);
     assert_eq!(p.to_string(), display, "Display of {}", kind);
 
-    if let Some(info) = inventory::iter::<crate::ProblemKindInfo>
-        .into_iter()
-        .find(|info| info.kind == kind)
     {
+        let info = inventory::iter::<crate::ProblemKindInfo>
+            .into_iter()
+            .find(|info| info.kind == kind)
+            .unwrap_or_else(|| panic!("{} has no ProblemKindInfo", kind));
         let mut fields = info.detail_fields.to_vec();
         fields.sort();
         let mut keys: Vec<&str> = details
@@ -274,7 +275,9 @@ mod tests {
 
     #[test]
     fn roundtrip_missing_command() {
-        roundtrip(&crate::problems::common::MissingCommand("foo".into()));
+        roundtrip(&crate::problems::common::MissingCommand {
+            command: "foo".into(),
+        });
     }
 
     #[test]
@@ -316,24 +319,30 @@ mod tests {
 
     #[test]
     fn roundtrip_missing_node_module() {
-        roundtrip(&crate::problems::common::MissingNodeModule("foo".into()));
+        roundtrip(&crate::problems::common::MissingNodeModule {
+            module: "foo".into(),
+        });
     }
 
     #[test]
     fn roundtrip_missing_node_package() {
-        roundtrip(&crate::problems::common::MissingNodePackage("foo".into()));
+        roundtrip(&crate::problems::common::MissingNodePackage {
+            package: "foo".into(),
+        });
     }
 
     #[test]
     fn roundtrip_missing_vala_package() {
-        roundtrip(&crate::problems::common::MissingValaPackage(
-            "foo-1.0".into(),
-        ));
+        roundtrip(&crate::problems::common::MissingValaPackage {
+            package: "foo-1.0".into(),
+        });
     }
 
     #[test]
     fn roundtrip_missing_library() {
-        roundtrip(&crate::problems::common::MissingLibrary("foo".into()));
+        roundtrip(&crate::problems::common::MissingLibrary {
+            library: "foo".into(),
+        });
     }
 
     #[test]
@@ -379,10 +388,9 @@ mod tests {
 
     #[test]
     fn roundtrip_missing_haskell_dependencies() {
-        roundtrip(&crate::problems::common::MissingHaskellDependencies(vec![
-            "aeson".into(),
-            "text".into(),
-        ]));
+        roundtrip(&crate::problems::common::MissingHaskellDependencies {
+            deps: vec!["aeson".into(), "text".into()],
+        });
     }
 
     #[test]
@@ -401,16 +409,16 @@ mod tests {
 
     #[test]
     fn roundtrip_unsatisfied_apt_dependencies() {
-        roundtrip(&crate::problems::debian::UnsatisfiedAptDependencies(
-            "libssl-dev (>= 1.1)".into(),
-        ));
+        roundtrip(&crate::problems::debian::UnsatisfiedAptDependencies {
+            relations: "libssl-dev (>= 1.1)".into(),
+        });
     }
 
     #[test]
     fn roundtrip_apt_package_unknown() {
-        roundtrip(&crate::problems::debian::AptPackageUnknown(
-            "nonexistent-pkg".into(),
-        ));
+        roundtrip(&crate::problems::debian::AptPackageUnknown {
+            package: "nonexistent-pkg".into(),
+        });
     }
 
     #[test]
@@ -476,6 +484,43 @@ mod tests {
             p.json(),
             serde_json::json!({"macro": "AC_PROG_CC", "need_rebuild": false}),
         );
+    }
+
+    #[test]
+    fn non_string_list_entry_is_rejected() {
+        let v = serde_json::json!({"vcs": ["git", 1]});
+        assert!(crate::problem_from_json("vcs-control-directory-needed", &v).is_none());
+        let v = serde_json::json!({"deps": ["aeson", null]});
+        assert!(crate::problem_from_json("missing-haskell-dependencies", &v).is_none());
+    }
+
+    #[test]
+    fn wrongly_typed_optional_field_is_rejected() {
+        let v = serde_json::json!({"module": "numpy", "python_version": "3"});
+        assert!(crate::problem_from_json("missing-python-module", &v).is_none());
+        let v = serde_json::json!({"module": "glib-2.0", "minimum_version": 2});
+        assert!(crate::problem_from_json("missing-pkg-config-package", &v).is_none());
+    }
+
+    #[test]
+    fn non_bool_need_rebuild_is_rejected() {
+        let v = serde_json::json!({"macro": "AC_PROG_CC", "need_rebuild": "yes"});
+        assert!(crate::problem_from_json("missing-autoconf-macro", &v).is_none());
+    }
+
+    #[test]
+    fn empty_details_must_be_object() {
+        let p = crate::problem_from_json("missing-qt", &serde_json::json!({}))
+            .expect("empty object should deserialize");
+        assert_eq!(p.json(), serde_json::json!({}));
+        assert!(crate::problem_from_json("missing-qt", &serde_json::json!(null)).is_none());
+    }
+
+    #[test]
+    fn roundtrip_missing_revision() {
+        roundtrip(&crate::problems::debian::MissingRevision {
+            revision: b"abc".to_vec(),
+        });
     }
 
     #[test]

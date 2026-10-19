@@ -124,7 +124,9 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
-                Some(Box::new(AptMissingReleaseFile(repo.to_string()))),
+                Some(Box::new(AptMissingReleaseFile {
+                    url: repo.to_string(),
+                })),
             );
         }
         if let Some((_, _path)) = lazy_regex::regex_captures!(
@@ -171,7 +173,9 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
-                Some(Box::new(AptPackageUnknown(pkg.to_string()))),
+                Some(Box::new(AptPackageUnknown {
+                    package: pkg.to_string(),
+                })),
             );
         }
         if line == "E: Write error - write (28: No space left on device)" {
@@ -201,7 +205,9 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
                     lineno,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
-                Some(Box::new(DpkgError(msg.to_string()))),
+                Some(Box::new(DpkgError {
+                    msg: msg.to_string(),
+                })),
             );
         }
         if let Some((_, pkg, msg)) =
@@ -213,10 +219,9 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> AptFailureResult {
                     lineno + 1,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
-                Some(Box::new(DpkgError(format!(
-                    "processing package {} ({})",
-                    pkg, msg
-                )))),
+                Some(Box::new(DpkgError {
+                    msg: format!("processing package {} ({})", pkg, msg),
+                })),
             );
         }
     }
@@ -345,11 +350,15 @@ pub(crate) fn error_from_dose3_reports(
     }
     if !missing.is_empty() {
         let missing: Relations = missing.into();
-        return Some(Box::new(UnsatisfiedAptDependencies(missing.to_string())) as Box<dyn Problem>);
+        return Some(Box::new(UnsatisfiedAptDependencies {
+            relations: missing.to_string(),
+        }) as Box<dyn Problem>);
     }
     if !conflict.is_empty() {
         let conflict: Relations = conflict.into();
-        return Some(Box::new(UnsatisfiedAptConflicts(conflict.to_string())) as Box<dyn Problem>);
+        return Some(Box::new(UnsatisfiedAptConflicts {
+            relations: conflict.to_string(),
+        }) as Box<dyn Problem>);
     }
     None
 }
@@ -413,7 +422,7 @@ mod tests {
                 "E: The repository 'https://janitor.debian.net/ blah/ Release' does not have a Release file.",
             ],
             1,
-            Some(AptMissingReleaseFile("https://janitor.debian.net/ blah/ Release".to_owned()))
+            Some(AptMissingReleaseFile { url: "https://janitor.debian.net/ blah/ Release".to_owned() })
         );
     }
 
@@ -476,7 +485,9 @@ mod tests {
         assert_match(
             vec!["dpkg: error: some other error occurred"],
             1,
-            Some(DpkgError("some other error occurred".to_string())),
+            Some(DpkgError {
+                msg: "some other error occurred".to_string(),
+            }),
         );
     }
 
@@ -495,7 +506,7 @@ mod tests {
             let dpkg_error = problem.as_any().downcast_ref::<DpkgError>();
             assert!(dpkg_error.is_some());
             let dpkg_error = dpkg_error.unwrap();
-            assert_eq!(dpkg_error.0, "processing package hello (--configure)");
+            assert_eq!(dpkg_error.msg, "processing package hello (--configure)");
         }
     }
 
@@ -535,7 +546,7 @@ mod tests {
             let pkg_unknown = problem.as_any().downcast_ref::<AptPackageUnknown>();
             assert!(pkg_unknown.is_some());
             let pkg_unknown = pkg_unknown.unwrap();
-            assert_eq!(pkg_unknown.0, "nonexistent-package");
+            assert_eq!(pkg_unknown.package, "nonexistent-package");
         }
     }
 
@@ -646,7 +657,7 @@ mod tests {
             .as_any()
             .downcast_ref::<UnsatisfiedAptConflicts>()
             .unwrap();
-        assert_eq!(problem.0, "libfoo:amd64 (<< 2.0)");
+        assert_eq!(problem.relations, "libfoo:amd64 (<< 2.0)");
     }
 
     #[test]

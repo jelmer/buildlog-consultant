@@ -29,9 +29,9 @@ fn node_module_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     if c.get(1).unwrap().as_str().starts_with("./") {
         return Ok(None);
     }
-    Ok(Some(Box::new(MissingNodeModule(
-        c.get(1).unwrap().as_str().to_string(),
-    ))))
+    Ok(Some(Box::new(MissingNodeModule {
+        module: c.get(1).unwrap().as_str().to_string(),
+    })))
 }
 
 fn file_not_found(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
@@ -93,9 +93,9 @@ fn interpreter_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     if c.get(1).unwrap().as_str().contains('/') {
         return Ok(None);
     }
-    Ok(Some(Box::new(MissingCommand(
-        c.get(1).unwrap().as_str().to_string(),
-    ))))
+    Ok(Some(Box::new(MissingCommand {
+        command: c.get(1).unwrap().as_str().to_string(),
+    })))
 }
 
 fn pkg_config_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
@@ -130,7 +130,9 @@ fn command_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     if command == "debian/rules" {
         return Ok(None);
     }
-    Ok(Some(Box::new(MissingCommand(command.to_string()))))
+    Ok(Some(Box::new(MissingCommand {
+        command: command.to_string(),
+    })))
 }
 
 lazy_static::lazy_static! {
@@ -229,7 +231,7 @@ impl Matcher for HaskellMissingDependencyMatcher {
             offsets: offsets.clone(),
             lines: offsets.iter().map(|i| lines[*i].to_string()).collect(),
         };
-        let p = MissingHaskellDependencies(deps);
+        let p = MissingHaskellDependencies { deps };
         Ok(Some((Box::new(m), Some(Box::new(p)))))
     }
 }
@@ -264,7 +266,9 @@ impl Matcher for SetupPyCommandMissingMatcher {
                     lines: vec![lines[first_offset].to_string()],
                 };
 
-                let p = MissingSetupPyCommand(command.to_string());
+                let p = MissingSetupPyCommand {
+                    command: command.to_string(),
+                };
                 return Ok(Some((Box::new(m), Some(Box::new(p)))));
             }
         }
@@ -294,7 +298,9 @@ impl Matcher for PythonFileNotFoundErrorMatcher {
                         offset,
                         line: lines[offset].to_string(),
                     }),
-                    Some(Box::new(MissingCommand(name.to_string()))),
+                    Some(Box::new(MissingCommand {
+                        command: name.to_string(),
+                    })),
                 )));
             } else {
                 return Ok(Some((
@@ -439,7 +445,7 @@ fn maven_missing_artifact(m: &regex::Captures) -> Result<Option<Box<dyn Problem>
         .split(',')
         .map(|s| s.trim().to_string())
         .collect::<Vec<_>>();
-    Ok(Some(Box::new(MissingMavenArtifacts(artifacts))))
+    Ok(Some(Box::new(MissingMavenArtifacts { artifacts })))
 }
 
 fn r_missing_package(m: &regex::Captures) -> Result<Option<Box<dyn Problem>>, Error> {
@@ -507,7 +513,7 @@ lazy_static::lazy_static! {
             |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None))))),
         regex_line_matcher!(
             r"^Please install cmake version >= (.*) and re-run setup$",
-            |_| Ok(Some(Box::new(MissingCommand("cmake".to_string()))))),
+            |_| Ok(Some(Box::new(MissingCommand { command: "cmake".to_string() })))),
         regex_line_matcher!(
             r"^pluggy.manager.PluginValidationError: Plugin '.*' could not be loaded: \(.* \(/usr/lib/python2.[0-9]/dist-packages\), Requirement.parse\('(.*)'\)\)!$",
             |c| {
@@ -535,9 +541,9 @@ lazy_static::lazy_static! {
             python_version: None,
             minimum_version: None
         })))),
-        regex_line_matcher!(r"^ImportError: could not find any library for ([^ ]+) .*$", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
-        regex_line_matcher!(r"^ImportError: cannot import name (.*), introspection typelib not found$", |m| Ok(Some(Box::new(MissingIntrospectionTypelib(m.get(1).unwrap().as_str().to_string()))))),
-        regex_line_matcher!(r"^ValueError: Namespace (.*) not available$", |m| Ok(Some(Box::new(MissingIntrospectionTypelib(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!(r"^ImportError: could not find any library for ([^ ]+) .*$", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
+        regex_line_matcher!(r"^ImportError: cannot import name (.*), introspection typelib not found$", |m| Ok(Some(Box::new(MissingIntrospectionTypelib { library: m.get(1).unwrap().as_str().to_string() })))),
+        regex_line_matcher!(r"^ValueError: Namespace (.*) not available$", |m| Ok(Some(Box::new(MissingIntrospectionTypelib { library: m.get(1).unwrap().as_str().to_string() })))),
         regex_line_matcher!(r"^  namespace '(.*)' ([^ ]+) is being loaded, but >= ([^ ]+) is required$", |m| {
             let package = m.get(1).unwrap().as_str();
             let min_version = m.get(3).unwrap().as_str();
@@ -558,17 +564,17 @@ lazy_static::lazy_static! {
                 minimum_version: None,
             })))
         }),
-        regex_line_matcher!("^E       fixture '(.*)' not found$", |m| Ok(Some(Box::new(MissingPytestFixture(m.get(1).unwrap().as_str().to_string()))))),
+        regex_line_matcher!("^E       fixture '(.*)' not found$", |m| Ok(Some(Box::new(MissingPytestFixture { fixture: m.get(1).unwrap().as_str().to_string() })))),
         regex_line_matcher!("^pytest: error: unrecognized arguments: (.*)$", |m| {
             let args = shlex::split(m.get(1).unwrap().as_str()).unwrap();
-            Ok(Some(Box::new(UnsupportedPytestArguments(args))))
+            Ok(Some(Box::new(UnsupportedPytestArguments { args })))
         }),
         regex_line_matcher!(
             "^INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: (.*)$",
-            |m| Ok(Some(Box::new(UnsupportedPytestConfigOption(m.get(1).unwrap().as_str().to_string()))))),
+            |m| Ok(Some(Box::new(UnsupportedPytestConfigOption { name: m.get(1).unwrap().as_str().to_string() })))),
         regex_line_matcher!(
             "PytestConfigWarning: Unknown config (?:ini key|option): (.*)$",
-            |m| Ok(Some(Box::new(UnsupportedPytestConfigOption(m.get(1).unwrap().as_str().to_string()))))),
+            |m| Ok(Some(Box::new(UnsupportedPytestConfigOption { name: m.get(1).unwrap().as_str().to_string() })))),
         regex_line_matcher!("^E   ImportError: cannot import name '(.*)' from '(.*)'", |m| {
             let name = m.get(1).unwrap().as_str();
             let module = m.get(2).unwrap().as_str();
@@ -680,9 +686,9 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^\s*Error: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!(r"^>> Error: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!(r"^>> Error: Cannot find module '(.*)' from '.*'", node_module_missing),
-    regex_line_matcher!(r"^Error: Failed to load parser '.*' declared in '.*': Cannot find module '(.*)'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"^    Cannot find module '(.*)' from '.*'", |m| Ok(Some(Box::new(MissingNodeModule(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"^>> Error: Grunt attempted to load a \.coffee file but CoffeeScript was not installed\.", |_| Ok(Some(Box::new(MissingNodePackage("coffeescript".to_string()))))),
+    regex_line_matcher!(r"^Error: Failed to load parser '.*' declared in '.*': Cannot find module '(.*)'", |m| Ok(Some(Box::new(MissingNodeModule { module: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"^    Cannot find module '(.*)' from '.*'", |m| Ok(Some(Box::new(MissingNodeModule { module: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"^>> Error: Grunt attempted to load a \.coffee file but CoffeeScript was not installed\.", |_| Ok(Some(Box::new(MissingNodePackage { package: "coffeescript".to_string() })))),
     regex_line_matcher!(r"^>> Got an unexpected exception from the coffee-script compiler. The original exception was: Error: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!(r"^\s*Module not found: Error: Can't resolve '(.*)' in '(.*)'", node_module_missing),
     regex_line_matcher!(r"^  Module (.*) in the transform option was not found\.", node_module_missing),
@@ -701,32 +707,32 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"^configure: error: The Java compiler javac failed.*",
-        |_| Ok(Some(Box::new(MissingCommand("javac".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "javac".to_string() })))
     ),
     regex_line_matcher!(
         r"^configure: error: No ([^ ]+) command found",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"^ERROR: InvocationError for command could not find executable (.*)",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"^  \*\*\* The (.*) script could not be found\. .*",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"^(.*)" command could not be found. (.*)"#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"^configure: error: cannot find lib ([^ ]+)",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r#"^>> Local Npm module "(.*)" not found. Is it installed?"#, node_module_missing),
     regex_line_matcher!(
         r"^npm ERR! CLI for webpack must be installed.",
-        |_| Ok(Some(Box::new(MissingNodePackage("webpack-cli".to_string()))))
+        |_| Ok(Some(Box::new(MissingNodePackage { package: "webpack-cli".to_string() })))
     ),
     regex_line_matcher!(r"^npm ERR! \[!\] Error: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!(
@@ -739,7 +745,7 @@ lazy_static::lazy_static! {
         node_module_missing
     ),
     regex_line_matcher!(r"^npm ERR! sh: [0-9]+: (.*): not found", command_missing),
-    regex_line_matcher!(r"^npm ERR! (.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: Cannot find module '(.*)' or its corresponding type declarations.", |m| Ok(Some(Box::new(MissingNodeModule(m.get(2).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^npm ERR! (.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: Cannot find module '(.*)' or its corresponding type declarations.", |m| Ok(Some(Box::new(MissingNodeModule { module: m.get(2).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"^npm ERR! Error: spawn (.*) ENOENT", command_missing),
 
     regex_line_matcher!(
@@ -765,7 +771,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^/bin/sh: \d+: ([^ ]+): not found", command_missing),
     regex_line_matcher!(r"^sh: \d+: ([^ ]+): not found", command_missing),
     regex_line_matcher!(r"^.*\.sh: \d+: ([^ ]+): not found", command_missing),
-    regex_line_matcher!(r"^.*: 1: cd: can't cd to (.*)", |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^.*: 1: cd: can't cd to (.*)", |m| Ok(Some(Box::new(DirectoryNonExistant { path: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"^/bin/bash: (.*): command not found", command_missing),
     regex_line_matcher!(r"^bash: ([^ ]+): command not found", command_missing),
     regex_line_matcher!(r"^env: ‘(.*)’: No such file or directory", interpreter_missing),
@@ -785,43 +791,43 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^--\s* No package '([^']+)' found", pkg_config_missing),
     regex_line_matcher!(
         r"^\-\- Please install Git, make sure it is in your path, and then try again.",
-        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))
     ),
     regex_line_matcher!(
         r#"^\+ERROR:  could not access file "(.*)": No such file or directory"#,
-        |m| Ok(Some(Box::new(MissingPostgresExtension(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingPostgresExtension { extension: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"^configure: error: (Can't|Cannot) find "(.*)" in your PATH.*"#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(2).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(2).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"^configure: error: Cannot find (.*) in your system path",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"^> Cannot run program "(.*)": error=2, No such file or directory"#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
-    regex_line_matcher!(r"^(.*) binary '(.*)' not available .*", |m| Ok(Some(Box::new(MissingCommand(m.get(2).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^(.*) binary '(.*)' not available .*", |m| Ok(Some(Box::new(MissingCommand { command: m.get(2).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"^An error has occurred: FatalError: git failed\. Is it installed, and are you in a Git repository directory\?",
-     |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+     |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))),
     regex_line_matcher!("^Please install '(.*)' seperately and try again.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
     regex_line_matcher!(
-        r"^> A problem occurred starting process 'command '(.*)''", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        r"^> A problem occurred starting process 'command '(.*)''", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"^vcver.scm.git.GitCommandError: 'git .*' returned an error code 127",
-        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))
     ),
     Box::new(MultiLineConfigureErrorMatcher),
     Box::new(MultiLinePerlMissingModulesErrorMatcher),
     Box::new(MultiLineVignetteErrorMatcher),
     regex_line_matcher!(r"^configure: error: No package '([^']+)' found", pkg_config_missing),
-    regex_line_matcher!(r"^configure: error: (doxygen|asciidoc) is not available and maintainer mode is enabled", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"^configure: error: Documentation enabled but rst2html not found.", |_| Ok(Some(Box::new(MissingCommand("rst2html".to_string()))))),
-    regex_line_matcher!(r"^cannot run pkg-config to check .* version at (.*) line [0-9]+\.", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
-    regex_line_matcher!(r"^Error: pkg-config not found!", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(r"^configure: error: (doxygen|asciidoc) is not available and maintainer mode is enabled", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"^configure: error: Documentation enabled but rst2html not found.", |_| Ok(Some(Box::new(MissingCommand { command: "rst2html".to_string() })))),
+    regex_line_matcher!(r"^cannot run pkg-config to check .* version at (.*) line [0-9]+\.", |_| Ok(Some(Box::new(MissingCommand { command: "pkg-config".to_string() })))),
+    regex_line_matcher!(r"^Error: pkg-config not found!", |_| Ok(Some(Box::new(MissingCommand { command: "pkg-config".to_string() })))),
     regex_line_matcher!(r"^\*\*\* pkg-config (.*) or newer\. You can download pkg-config", |m| Ok(Some(Box::new(MissingVagueDependency {
         name: "pkg-config".to_string(),
         minimum_version: Some(m.get(1).unwrap().as_str().to_string()),
@@ -829,44 +835,44 @@ lazy_static::lazy_static! {
         current_version: None
     })))),
     // Tox
-    regex_line_matcher!(r"^ERROR: InterpreterNotFound: (.*)", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"^ERROR: unable to find python", |_| Ok(Some(Box::new(MissingCommand("python".to_string()))))),
-    regex_line_matcher!(r"^ ERROR: BLAS not found!", |_| Ok(Some(Box::new(MissingLibrary("blas".to_string()))))),
+    regex_line_matcher!(r"^ERROR: InterpreterNotFound: (.*)", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"^ERROR: unable to find python", |_| Ok(Some(Box::new(MissingCommand { command: "python".to_string() })))),
+    regex_line_matcher!(r"^ ERROR: BLAS not found!", |_| Ok(Some(Box::new(MissingLibrary { library: "blas".to_string() })))),
     Box::new(AutoconfUnexpectedMacroMatcher),
     regex_line_matcher!(r"^\./configure: [0-9]+: \.: Illegal option .*"),
     regex_line_matcher!(r"^Requested '(.*)' but version of ([^ ]+) is ([^ ]+)", pkg_config_missing),
     regex_line_matcher!(r"^.*configure: error: Package requirements \((.*)\) were not met:", pkg_config_missing),
     regex_line_matcher!(r"^configure: error: [a-z0-9_-]+-pkg-config (.*) couldn't be found", pkg_config_missing),
     regex_line_matcher!(r#"^configure: error: C preprocessor "/lib/cpp" fails sanity check"#),
-    regex_line_matcher!(r"^configure: error: .*\. Please install (bison|flex)", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^configure: error: .*\. Please install (bison|flex)", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"^configure: error: No C\# compiler found. You need to install either mono \(>=(.*)\) or \.Net", |_| Ok(Some(Box::new(MissingCSharpCompiler)))),
     regex_line_matcher!(r"^configure: error: No C\# compiler found", |_| Ok(Some(Box::new(MissingCSharpCompiler)))),
     regex_line_matcher!(r"^error: can't find Rust compiler", |_| Ok(Some(Box::new(MissingRustCompiler)))),
     regex_line_matcher!(r"^Found no assembler", |_| Ok(Some(Box::new(MissingAssembler)))),
     regex_line_matcher!(r"^error: failed to get `(.*)` as a dependency of package `(.*)`", |m| Ok(Some(Box::new(MissingCargoCrate::simple(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r"^configure: error: (.*) requires libkqueue \(or system kqueue\). .*", |_| Ok(Some(Box::new(MissingPkgConfig::simple("libkqueue".to_string()))))),
-    regex_line_matcher!(r"^Did not find pkg-config by name 'pkg-config'", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
-    regex_line_matcher!(r"^configure: error: Required (.*) binary is missing. Please install (.*).", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"^Did not find pkg-config by name 'pkg-config'", |_| Ok(Some(Box::new(MissingCommand { command: "pkg-config".to_string() })))),
+    regex_line_matcher!(r"^configure: error: Required (.*) binary is missing. Please install (.*).", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r#".*meson.build:([0-9]+):([0-9]+): ERROR: Dependency "(.*)" not found"#, |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Problem encountered: No XSLT processor found, .*", |_| Ok(Some(Box::new(MissingVagueDependency::simple("xsltproc"))))),
-    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): Unknown compiler\(s\): \[\['(.*)'.*\]", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): Unknown compiler\(s\): \[\['(.*)'.*\]", |m| Ok(Some(Box::new(MissingCommand { command: m.get(3).unwrap().as_str().to_string() })))),
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: python3 \"(.*)\" missing", |m| Ok(Some(Box::new(MissingPythonModule {
         module: m.get(3).unwrap().as_str().to_string(),
         python_version: Some(3),
         minimum_version: None,
     })))),
-    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Program \'(.*)\' not found", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Git program not found, .*", |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Program \'(.*)\' not found", |m| Ok(Some(Box::new(MissingCommand { command: m.get(3).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Git program not found, .*", |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))),
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C header \'(.*)\' not found", |m| Ok(Some(Box::new(MissingCHeader::new(m.get(3).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r"^configure: error: (.+\.h) could not be found\. Please set CPPFLAGS\.", |m| Ok(Some(Box::new(MissingCHeader::new(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \['(.*)'\]", |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Unknown compiler\(s\): \['(.*)'\]", |m| Ok(Some(Box::new(MissingCommand { command: m.get(3).unwrap().as_str().to_string() })))),
     regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Dependency \"(.*)\" not found, tried pkgconfig", |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(3).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r#".*meson.build:([0-9]+):([0-9]+): ERROR: Could not execute Vala compiler "(.*)""#, |m| Ok(Some(Box::new(MissingCommand(m.get(3).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r#".*meson.build:([0-9]+):([0-9]+): ERROR: Could not execute Vala compiler "(.*)""#, |m| Ok(Some(Box::new(MissingCommand { command: m.get(3).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: python3 is missing modules: (.*)", |m| Ok(Some(Box::new(MissingPythonModule::simple(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r".*meson.build:([0-9]+):([0-9]+): ERROR: Invalid version of dependency, need '([^']+)' \['>=\s*([^']+)'\] found '([^']+)'\.", |m| Ok(Some(Box::new(MissingPkgConfig::new(m.get(3).unwrap().as_str().to_string(), Some(m.get(4).unwrap().as_str().to_string())))))),
-    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C shared or static library '(.*)' not found", |m| Ok(Some(Box::new(MissingLibrary(m.get(3).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C\\+\\++ shared or static library '(.*)' not found", |m| Ok(Some(Box::new(MissingLibrary(m.get(3).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Pkg-config binary for machine .* not found. Giving up.", |_| Ok(Some(Box::new(MissingCommand("pkg-config".to_string()))))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C shared or static library '(.*)' not found", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(3).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: C\\+\\++ shared or static library '(.*)' not found", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(3).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(".*meson.build:([0-9]+):([0-9]+): ERROR: Pkg-config binary for machine .* not found. Giving up.", |_| Ok(Some(Box::new(MissingCommand { command: "pkg-config".to_string() })))),
     regex_line_matcher!(".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) require (.*) >= (.*), (.*) which were not found.", |m| Ok(Some(Box::new(MissingVagueDependency{name: m.get(4).unwrap().as_str().to_string(), current_version: None, url: None, minimum_version: Some(m.get(5).unwrap().as_str().to_string())})))),
     regex_line_matcher!(".*meson.build([0-9]+):([0-9]+): ERROR: Problem encountered: (.*) is required to .*", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(4).unwrap().as_str()))))),
     regex_line_matcher!(r"^ERROR: (.*) is not installed\. Install at least (.*) version (.+) to continue\.", |m| Ok(Some(Box::new(MissingVagueDependency {
@@ -936,13 +942,13 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"configure: error: ([^ ]+) or greater is required.*", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
     regex_line_matcher!(
         r"configure: error: (.*) library is required",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"configure: error: (.*) library is not installed\.",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"configure: error: OpenSSL developer library 'libssl-dev' or 'openssl-devel' not installed; cannot continue.",
-        |_m| Ok(Some(Box::new(MissingLibrary("ssl".to_string()))))),
+        |_m| Ok(Some(Box::new(MissingLibrary { library: "ssl".to_string() })))),
     regex_line_matcher!(
         r"configure: error: \*\*\* Cannot find (.*)",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
@@ -1162,7 +1168,7 @@ lazy_static::lazy_static! {
         r"^LookupError: setuptools-scm was unable to detect version for .*\.",
         |_| Ok(Some(Box::new(SetuptoolScmVersionIssue)))
     ),
-    regex_line_matcher!(r"^OSError: 'git' was not found", |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+    regex_line_matcher!(r"^OSError: 'git' was not found", |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))),
     regex_line_matcher!(r"^OSError: No such file (.*)", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
     regex_line_matcher!(
         r"^Could not open '(.*)': No such file or directory at /usr/share/perl/[0-9.]+/ExtUtils/MM_Unix.pm line [0-9]+.",
@@ -1184,15 +1190,15 @@ lazy_static::lazy_static! {
         format!("{}{}", MAVEN_ERROR_PREFIX, r"Failed to execute goal on project .*: Could not resolve dependencies for project .*: The following artifacts could not be resolved: (.*): Cannot access central \(https://repo\.maven\.apache\.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before..*").as_str(), maven_missing_artifact
     ),
     regex_line_matcher!(
-        format!("{}{}", MAVEN_ERROR_PREFIX, r"Unresolveable build extension: Plugin (.*) or one of its dependencies could not be resolved: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before. @").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))),
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Unresolveable build extension: Plugin (.*) or one of its dependencies could not be resolved: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before. @").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts { artifacts: vec![m.get(1).unwrap().as_str().to_string()] })))),
     regex_line_matcher!(
         format!("{}{}", MAVEN_ERROR_PREFIX, r"Non-resolvable import POM: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact (.*) has not been downloaded from it before. @ line [0-9]+, column [0-9]+").as_str(), maven_missing_artifact),
     regex_line_matcher!(
         r"\[FATAL\] Non-resolvable parent POM for .*: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact (.*) has not been downloaded from it before. .*", maven_missing_artifact),
     regex_line_matcher!(
-        format!("{}{}", MAVEN_ERROR_PREFIX,r"Plugin (.*) or one of its dependencies could not be resolved: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before. -> \[Help 1\]").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))),
+        format!("{}{}", MAVEN_ERROR_PREFIX,r"Plugin (.*) or one of its dependencies could not be resolved: Cannot access central \(https://repo.maven.apache.org/maven2\) in offline mode and the artifact .* has not been downloaded from it before. -> \[Help 1\]").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts { artifacts: vec![m.get(1).unwrap().as_str().to_string()] })))),
     regex_line_matcher!(
-        format!("{}{}", MAVEN_ERROR_PREFIX, r"Plugin (.+) or one of its dependencies could not be resolved: Failed to read artifact descriptor for (.*): (.*)").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))),
+        format!("{}{}", MAVEN_ERROR_PREFIX, r"Plugin (.+) or one of its dependencies could not be resolved: Failed to read artifact descriptor for (.*): (.*)").as_str(), |m| Ok(Some(Box::new(MissingMavenArtifacts { artifacts: vec![m.get(1).unwrap().as_str().to_string()] })))),
     regex_line_matcher!(
         format!("{}{}", MAVEN_ERROR_PREFIX, r"Failed to execute goal on project .*: Could not resolve dependencies for project .*: Cannot access .* \([^\)]+\) in offline mode and the artifact (.*) has not been downloaded from it before. -> \[Help 1\]").as_str(), maven_missing_artifact),
     regex_line_matcher!(
@@ -1200,15 +1206,15 @@ lazy_static::lazy_static! {
     regex_line_matcher!(format!("{}{}", MAVEN_ERROR_PREFIX, "Failed to execute goal (.*) on project (.*): (.*)").as_str(), |_| Ok(None)),
     regex_line_matcher!(
         format!("{}{}", MAVEN_ERROR_PREFIX, r"Error resolving version for plugin \'(.*)\' from the repositories \[.*\]: Plugin not found in any plugin repository -> \[Help 1\]").as_str(),
-        |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![m.get(1).unwrap().as_str().to_string()]))))
+        |m| Ok(Some(Box::new(MissingMavenArtifacts { artifacts: vec![m.get(1).unwrap().as_str().to_string()] })))
     ),
     regex_line_matcher!(
         r"E: eatmydata: unable to find '(.*)' in PATH",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"'(.*)' not found in PATH at (.*) line ([0-9]+)\.",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"/usr/bin/eatmydata: [0-9]+: exec: (.*): not found",
@@ -1216,11 +1222,11 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"/usr/bin/eatmydata: [0-9]+: exec: (.*): Permission denied",
-        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(NotExecutableFile { path: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"(.*): exec: "(.*)": executable file not found in \$PATH"#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(2).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(2).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"Can't exec "(.*)": No such file or directory at (.*) line ([0-9]+)\."#,
@@ -1228,14 +1234,14 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"dh_missing: (warning: )?(.*) exists in debian/.* but is not installed to anywhere",
-        |m| Ok(Some(Box::new(DhMissingUninstalled(m.get(2).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(DhMissingUninstalled { missing_file: m.get(2).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r"dh_link: link destination (.*) is a directory",
-                        |m| Ok(Some(Box::new(DhLinkDestinationIsDirectory(m.get(1).unwrap().as_str().to_string()))))),
+                        |m| Ok(Some(Box::new(DhLinkDestinationIsDirectory { path: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"I/O error : Attempt to load network entity (.*)",
                         |m| Ok(Some(Box::new(MissingXmlEntity::new(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(r"ccache: error: (.*)",
-    |m| Ok(Some(Box::new(CcacheError(m.get(1).unwrap().as_str().to_string()))))),
+    |m| Ok(Some(Box::new(CcacheError { error: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"dh: The --until option is not supported any longer \(#932537\). Use override targets instead.",
         |_| Ok(Some(Box::new(DhUntilUnsupported::new())))
@@ -1292,11 +1298,11 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r#"Can\'t exec "(.*)": Permission denied at (.*) line [0-9]+\."#,
-        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(NotExecutableFile { path: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"/usr/bin/fakeroot: [0-9]+: (.*): Permission denied",
-        |m| Ok(Some(Box::new(NotExecutableFile(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(NotExecutableFile { path: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r".*: error: (.*) command not found", command_missing),
     regex_line_matcher!(r"error: command '(.*)' failed: No such file or directory",
@@ -1313,10 +1319,10 @@ lazy_static::lazy_static! {
     // A Python error, but not likely to be actionable. The previous line will have the actual line that failed.
     regex_line_matcher!(r"ImportError: cannot import name (.*)", |_| Ok(None)),
     // Rust ?
-    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"\s*= note: /usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+): .*", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"/usr/bin/ld: cannot find -l([^ ]+)", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"Could not find gem \'([^ ]+) \(([^)]+)\)\', which is required by gem.*",
         ruby_missing_gem
@@ -1339,7 +1345,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"Exception: (.*) not in path[!.]*",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"Exception: Building sdist requires that ([^ ]+) be installed\.",
@@ -1356,7 +1362,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"Caused by: java.lang.ClassNotFoundException: (.*)", |m| Ok(Some(Box::new(MissingJavaClass::simple(m.get(1).unwrap().as_str().to_string()))))),
     regex_line_matcher!(
         r"\[(.*)\] \t\t:: (.*)\#(.*);\$\{(.*)\}: not found",
-        |m| Ok(Some(Box::new(MissingMavenArtifacts(vec![format!("{}:{}:jar:debian", m.get(2).unwrap().as_str(), m.get(3).unwrap().as_str())]))))
+        |m| Ok(Some(Box::new(MissingMavenArtifacts { artifacts: vec![format!("{}:{}:jar:debian", m.get(2).unwrap().as_str(), m.get(3).unwrap().as_str())] })))
     ),
     regex_line_matcher!(
         r"Caused by: java.lang.IllegalArgumentException: Cannot find JAR \'(.*)\' required by module \'(.*)\' using classpath or distribution directory \'(.*)\'",
@@ -1368,15 +1374,15 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r#"checking for (.*)\.\.\. configure: error: "Cannot check for existence of module (.*) without pkgconf""#,
-        |_| Ok(Some(Box::new(MissingCommand("pkgconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "pkgconf".to_string() })))
     ),
     regex_line_matcher!(
         r"configure: error: Could not find '(.*)' in path\.",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"autoreconf was not found; .*",
-        |_| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "autoreconf".to_string() })))
     ),
     regex_line_matcher!(r"^g\+\+: error: (.*): No such file or directory", file_not_found),
     regex_line_matcher!(r"strip: \'(.*)\': No such file", file_not_found),
@@ -1390,19 +1396,19 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"autogen.sh: You must have GNU autoconf installed.",
-        |_| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "autoconf".to_string() })))
     ),
     regex_line_matcher!(
         r"\s*You must have (autoconf|automake|aclocal|libtool|libtoolize) installed to compile (.*)\.",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"It appears that Autotools is not correctly installed on this system.",
-        |_| Ok(Some(Box::new(MissingCommand("autoconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "autoconf".to_string() })))
     ),
     regex_line_matcher!(
         r"\*\*\* No autoreconf found \*\*\*",
-        |_| Ok(Some(Box::new(MissingCommand("autoreconf".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "autoreconf".to_string() })))
     ),
     regex_line_matcher!(r"You need to install gnome-common module and make.*", |_| Ok(Some(Box::new(GnomeCommonMissing)))),
     regex_line_matcher!(r"You need to install the gnome-common module and make.*", |_| Ok(Some(Box::new(GnomeCommonMissing)))),
@@ -1513,7 +1519,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r".*meson.build:[0-9]+:[0-9]: ERROR: Git program not found\.",
-        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))
     ),
     regex_line_matcher!(
         r"Failed: [pytest] section in setup.cfg files is no longer supported, change to [tool:pytest] instead.",
@@ -1567,26 +1573,26 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"Can\'t find (.*) directory in (.*)", |_| Ok(None)),
     regex_line_matcher!(
         r"/bin/sh: [0-9]: cannot create (.*): Directory nonexistent",
-        |m|  Ok(Some(Box::new(DirectoryNonExistant(std::path::Path::new(m.get(1).unwrap().as_str()).to_path_buf().parent().unwrap().display().to_string()))))
+        |m|  Ok(Some(Box::new(DirectoryNonExistant { path: std::path::Path::new(m.get(1).unwrap().as_str()).to_path_buf().parent().unwrap().display().to_string() })))
     ),
     regex_line_matcher!(r"dh: Unknown sequence (.*) \(choose from: .*\)", |_| Ok(None)),
     regex_line_matcher!(r".*\.vala:[0-9]+\.[0-9]+-[0-9]+.[0-9]+: error: (.*)", |_| Ok(None)),
     regex_line_matcher!(
         r"error: Package `(.*)\' not found in specified Vala API directories or GObject-Introspection GIR directories",
-        |m| Ok(Some(Box::new(MissingValaPackage(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingValaPackage { package: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r".*.scala:[0-9]+: error: (.*)", |_| Ok(None)),
     // JavaScript
     regex_line_matcher!(r"error TS6053: File \'(.*)\' not found.", file_not_found),
     // Mocha
-    regex_line_matcher!(r"Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' imported from (.*)", |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' imported from (.*)", |m| Ok(Some(Box::new(MissingNodePackage { package: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"\s*Uncaught Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package '(.*)' imported from (.*)",
-    |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))),
+    |m| Ok(Some(Box::new(MissingNodePackage { package: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"(.*\.ts)\([0-9]+,[0-9]+\): error TS[0-9]+: (.*)", |_| Ok(None)),
     regex_line_matcher!(r"(.*.nim)\([0-9]+, [0-9]+\) Error: .*", |_| Ok(None)),
     regex_line_matcher!(
         r"dh_installinit: upstart jobs are no longer supported\!  Please remove (.*) and check if you need to add a conffile removal",
-        |m| Ok(Some(Box::new(UpstartFilePresent(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(UpstartFilePresent { filename: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"dh_installinit: --no-restart-on-upgrade has been renamed to --no-stop-on-upgrade",
@@ -1595,7 +1601,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"find: paths must precede expression: .*", |_| Ok(None)),
     regex_line_matcher!(r"find: ‘(.*)’: No such file or directory", file_not_found),
     regex_line_matcher!(r"ninja: fatal: posix_spawn: Argument list too long", |_| Ok(None)),
-    regex_line_matcher!("ninja: fatal: chdir to '(.*)' - No such file or directory", |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!("ninja: fatal: chdir to '(.*)' - No such file or directory", |m| Ok(Some(Box::new(DirectoryNonExistant { path: m.get(1).unwrap().as_str().to_string() })))),
     // Java
     regex_line_matcher!(r"error: Source option [0-9] is no longer supported. Use [0-9] or later.", |_| Ok(None)),
     regex_line_matcher!(
@@ -1653,8 +1659,8 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"error: option .* not recognized", |_| Ok(None)),
     // Invalid option from go
     regex_line_matcher!(r"flag provided but not defined: .*", |_| Ok(None)),
-    regex_line_matcher!(r#"CMake Error: The source directory "(.*)" does not exist."#, |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r".*: [0-9]+: cd: can\'t cd to (.*)", |m| Ok(Some(Box::new(DirectoryNonExistant(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r#"CMake Error: The source directory "(.*)" does not exist."#, |m| Ok(Some(Box::new(DirectoryNonExistant { path: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r".*: [0-9]+: cd: can\'t cd to (.*)", |m| Ok(Some(Box::new(DirectoryNonExistant { path: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(r"/bin/sh: 0: Can\'t open (.*)", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
     regex_line_matcher!(r"/bin/sh: [0-9]+: cannot open (.*): No such file", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
     regex_line_matcher!(r".*: line [0-9]+: (.*): No such file or directory", |m| file_not_found_maybe_executable(m.get(1).unwrap().as_str())),
@@ -1714,7 +1720,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"RuntimeError: The (.*) executable cannot be found\. Please check if it is in the system path\.",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_lowercase()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_lowercase() })))
     ),
     regex_line_matcher!(
         r".*: [0-9]+: cannot open (.*): No such file",
@@ -1722,11 +1728,11 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"Cannot find Git. Git is required for .*",
-        |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))
     ),
     regex_line_matcher!(
         r"E ImportError: Bad (.*) executable\.",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         "RuntimeError: (.*) is missing",
@@ -1734,7 +1740,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"(OSError|RuntimeError): Could not find (.*) library\..*",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(2).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(2).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"(OSError|RuntimeError): We need package (.*), but not importable",
@@ -1814,11 +1820,11 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"dpkg: error: .*: No space left on device", |_| Ok(Some(Box::new(NoSpaceOnDevice)))),
     regex_line_matcher!(
         r"You need the GNU readline library\(ftp://ftp.gnu.org/gnu/readline/\s+\) to build",
-        |_| Ok(Some(Box::new(MissingLibrary("readline".to_string()))))
+        |_| Ok(Some(Box::new(MissingLibrary { library: "readline".to_string() })))
     ),
     regex_line_matcher!(
         r"configure: error: Could not find lib(.*)",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"    Could not find module ‘(.*)’",
@@ -1882,24 +1888,24 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"\%Error: '(.*)' must be installed to build",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"configure: error: "Could not find (.*) in PATH"#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
-    regex_line_matcher!(r"Could not find executable (.*)", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"Could not find executable (.*)", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r#"go: .*: Get \"(.*)\": x509: certificate signed by unknown authority"#,
-        |m| Ok(Some(Box::new(UnknownCertificateAuthority(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(UnknownCertificateAuthority { url: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#".*.go:[0-9]+:[0-9]+: .*: Get \"(.*)\": x509: certificate signed by unknown authority"#,
-        |m| Ok(Some(Box::new(UnknownCertificateAuthority(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(UnknownCertificateAuthority { url: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
-        |m| Ok(Some(Box::new(UnknownCertificateAuthority(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(UnknownCertificateAuthority { url: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"curl: \(77\) error setting certificate verify locations:  CAfile: (.*) CApath: (.*)",
@@ -1907,15 +1913,15 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"\t\(Do you need to predeclare (.*)\?\)",
-        |m| Ok(Some(Box::new(MissingPerlPredeclared(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingPerlPredeclared { name: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"Bareword \"(.*)\" not allowed while \"strict subs\" in use at Makefile.PL line ([0-9]+)."#,
-        |m| Ok(Some(Box::new(MissingPerlPredeclared(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingPerlPredeclared { name: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"String found where operator expected at Makefile.PL line ([0-9]+), near "([a-z0-9_]+).*""#,
-        |m| Ok(Some(Box::new(MissingPerlPredeclared(m.get(2).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingPerlPredeclared { name: m.get(2).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r"  vignette builder 'knitr' not found", |_| Ok(Some(Box::new(MissingRPackage::simple("knitr"))))),
     regex_line_matcher!(
@@ -1951,7 +1957,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"You don't have a working TeX binary \(tex\) installed anywhere in",
-        |_m| Ok(Some(Box::new(MissingCommand("tex".to_string()))))
+        |_m| Ok(Some(Box::new(MissingCommand { command: "tex".to_string() })))
     ),
     regex_line_matcher!(
         r"# Module \'(.*)\' is not installed",
@@ -1975,7 +1981,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"configure: error: Missing lib(.*)\.",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"OSError: (.*): cannot open shared object file: No such file or directory",
@@ -1983,19 +1989,19 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r#"The "(.*)" executable has not been found\."#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"  '\! LaTeX Error: File `(.*)' not found.'",
-        |m| Ok(Some(Box::new(MissingLatexFile(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLatexFile { filename: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"\! LaTeX Error: File `(.*)\' not found\.",
-        |m| Ok(Some(Box::new(MissingLatexFile(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLatexFile { filename: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"(\!|.*:[0-9]+:) Package fontspec Error: The font \"(.*)\" cannot be found\."#,
-        |m| Ok(Some(Box::new(MissingFontspec(m.get(2).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingFontspec { fontspec: m.get(2).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r"  vignette builder \'(.*)\' not found", |m| Ok(Some(Box::new(MissingRPackage::simple(m.get(1).unwrap().as_str()))))),
     regex_line_matcher!(
@@ -2016,7 +2022,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"E: Build killed with signal TERM after ([0-9]+) minutes of inactivity",
-        |m| Ok(Some(Box::new(InactiveKilled(m.get(1).unwrap().as_str().parse().unwrap()))))
+        |m| Ok(Some(Box::new(InactiveKilled { minutes: m.get(1).unwrap().as_str().parse().unwrap() })))
     ),
     regex_line_matcher!(
         r#"\[.*Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! Please set it or specify an authority for this plugin. at inline delegation in Dist::Zilla::Plugin::Authority for logger->log_fatal \(attribute declared in /usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\."#, |_m| Ok(Some(Box::new(MissingPauseCredentials)))
@@ -2051,7 +2057,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"pg_ctl: cannot be run as (.*)",
-        |m| Ok(Some(Box::new(InvalidCurrentUser(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(InvalidCurrentUser { user: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"([^ ]+) \(for section ([^ ]+)\) does not appear to be installed",
@@ -2088,24 +2094,24 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"configure: error: no suitable Python interpreter found",
-        |_| Ok(Some(Box::new(MissingCommand("python".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "python".to_string() })))
     ),
-    regex_line_matcher!(r#"Could not find external command "(.*)""#, |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r#"Could not find external command "(.*)""#, |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"  Failed to find (.*) development headers\.",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
     ),
     regex_line_matcher!(
         r"\*\*\* \Subdirectory \'(.*)\' does not yet exist. Use \'./gitsub.sh pull\' to create it, or set the environment variable GNULIB_SRCDIR\.",
-        |m| Ok(Some(Box::new(MissingGnulibDirectory(m.get(1).unwrap().as_str().into()))))
+        |m| Ok(Some(Box::new(MissingGnulibDirectory { directory: m.get(1).unwrap().as_str().into() })))
     ),
     regex_line_matcher!(
         r"configure: error: Cap\'n Proto compiler \(capnp\) not found.",
-        |_| Ok(Some(Box::new(MissingCommand("capnp".to_string()))))
+        |_| Ok(Some(Box::new(MissingCommand { command: "capnp".to_string() })))
     ),
     regex_line_matcher!(
         r"lua: (.*):(\d+): module \'(.*)\' not found:",
-        |m| Ok(Some(Box::new(MissingLuaModule(m.get(3).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLuaModule { module: m.get(3).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r"Unknown key\(s\) in sphinx_gallery_conf:"),
     regex_line_matcher!(r"(.+\.gir):In (.*): error: (.*)"),
@@ -2143,15 +2149,15 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r".*\.py:[0-9]+:[0-9]+: [A-Z][0-9][0-9][0-9] .*"),
     regex_line_matcher!(
         r#"PHPUnit requires the "(.*)" extension\."#,
-        |m| Ok(Some(Box::new(MissingPHPExtension(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingPHPExtension { extension: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"     \[exec\] PHPUnit requires the "(.*)" extension\."#,
-        |m| Ok(Some(Box::new(MissingPHPExtension(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingPHPExtension { extension: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r".*/gnulib-tool: \*\*\* minimum supported autoconf version is (.*)\. ",
-        |m| Ok(Some(Box::new(MinimumAutoconfTooOld(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MinimumAutoconfTooOld { minimum_version: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"configure.(ac|in):[0-9]+: error: Autoconf version (.*) or higher is required",
@@ -2164,7 +2170,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r#"# Error: The file "(MANIFEST|META.yml)" is missing from this distribution\\. .*"#,
-        |m| Ok(Some(Box::new(MissingPerlDistributionFile(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingPerlDistributionFile { filename: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r"^  ([^ ]+) does not exist$", file_not_found),
     regex_line_matcher!(
@@ -2173,7 +2179,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"Unable to find the \'(.*)\' executable\. .*",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"\[@RSRCHBOY\/CopyrightYearFromGit\]  -  412 No \.git subdirectory found",
@@ -2189,20 +2195,20 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r#""(.*)" failed to start: "No such file or directory" at .*.pm line [0-9]+\."#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
-    regex_line_matcher!(r"Can\'t find ([^ ]+)\.", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
-    regex_line_matcher!(r"Error: spawn (.*) ENOENT", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"Can\'t find ([^ ]+)\.", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
+    regex_line_matcher!(r"Error: spawn (.*) ENOENT", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"E ImportError: Failed to initialize: Bad (.*) executable\.",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r#"ESLint couldn\'t find the config "(.*)" to extend from\. Please check that the name of the config is correct\."#
     ),
     regex_line_matcher!(
         r#"E OSError: no library called "cairo-2" was found"#,
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"ERROR: \[Errno 2\] No such file or directory: '(.*)'",
@@ -2233,7 +2239,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"Error \[ERR_REQUIRE_ESM\]: Must use import to load ES Module: (.*)",
-        |m| Ok(Some(Box::new(ESModuleMustUseImport(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(ESModuleMustUseImport { path: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r".* (/<<BUILDDIR>>/.*): No such file or directory", file_not_found),
     regex_line_matcher!(
@@ -2250,12 +2256,12 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"/bin/bash: (.*): No such file or directory", file_not_found),
     regex_line_matcher!(
         r#"\(The package "(.*)" was not found when loaded as a Node module from the directory ".*"\.\)"#,
-        |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingNodePackage { package: m.get(1).unwrap().as_str().to_string() })))
     ),
-    regex_line_matcher!(r"\+\-\- UNMET DEPENDENCY (.*)", |m| Ok(Some(Box::new(MissingNodePackage(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"\+\-\- UNMET DEPENDENCY (.*)", |m| Ok(Some(Box::new(MissingNodePackage { package: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"Project ERROR: Unknown module\(s\) in QT: (.*)",
-        |m| Ok(Some(Box::new(MissingQtModules(m.get(1).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect()))))
+        |m| Ok(Some(Box::new(MissingQtModules { modules: m.get(1).unwrap().as_str().split_whitespace().map(|s| s.to_string()).collect() })))
     ),
     regex_line_matcher!(
         r"(.*):(\d+):(\d+): ERROR: Vala compiler \'.*\' can not compile programs",
@@ -2263,7 +2269,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"(.*):(\d+):(\d+): ERROR: Problem encountered: Cannot load ([^ ]+) library\. (.*)",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(4).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(4).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"go: (.*)@(.*): missing go.sum entry; to add it:",
@@ -2274,7 +2280,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"E: pybuild pybuild:(.*): configure: plugin (.*) failed with: PEP517 plugin dependencies are not available\. Please Build-Depend on (.*)\.",
-        |m| Ok(Some(Box::new(MissingDebianBuildDep(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingDebianBuildDep { dep: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"^make\[[0-9]+\]: \*\*\* No rule to make target '(.*)', needed by '(.*)'\.  Stop\.$",
@@ -2286,7 +2292,7 @@ lazy_static::lazy_static! {
     // ADD NEW REGEXES ABOVE THIS LINE
     regex_line_matcher!(
         r#"configure: error: Can not find "(.*)" .* in your PATH"#,
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     // Intentionally at the bottom of the list.
     regex_line_matcher!(
@@ -2301,10 +2307,10 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r".*(No space left on device).*", |_m| Ok(Some(Box::new(NoSpaceOnDevice)))),
     regex_line_matcher!(
         r"ocamlfind: Package `(.*)\' not found",
-        |m| Ok(Some(Box::new(MissingOCamlPackage(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingOCamlPackage { package: m.get(1).unwrap().as_str().to_string() })))
     ),
     // Not a very unique ocaml-specific pattern :(
-    regex_line_matcher!(r#"Error: Library "(.*)" not found."#, |m| Ok(Some(Box::new(MissingOCamlPackage(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r#"Error: Library "(.*)" not found."#, |m| Ok(Some(Box::new(MissingOCamlPackage { package: m.get(1).unwrap().as_str().to_string() })))),
     // ADD NEW REGEXES ABOVE THIS LINE
     // Intentionally at the bottom of the list, since they're quite broad.
     regex_line_matcher!(
@@ -2321,7 +2327,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         "configure: error: '(.*)' command was not found",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"configure: error: (.*) not present.*",
@@ -2518,7 +2524,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"ERROR: Unable to locate (.*)\.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
     regex_line_matcher!(
         r"ERROR: Cannot find command \'(.*)\' - do you have \'(.*)\' installed and in your PATH\?",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"ValueError: no ([^ ]+) installed, .*",
@@ -2529,20 +2535,20 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
     ),
     regex_line_matcher!(r"ValueError: Unable to find (.+)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
-    regex_line_matcher!(r"([^ ]+) executable not found\. .*", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"([^ ]+) executable not found\. .*", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"ERROR: InvocationError for command could not find executable (.*)",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"E ImportError: Unable to find ([^ ]+) shared library",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"\s*([^ ]+) library not found on the system",
-        |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))
     ),
-    regex_line_matcher!(r"\s*([^ ]+) library not found(\.?)", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"\s*([^ ]+) library not found(\.?)", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r".*Please install ([^ ]+) libraries\.",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
@@ -2561,11 +2567,11 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"Please install ([^ ]+) so that it is on the PATH and try again\.",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
         r"configure: error: No (.*) binary found in (.*)",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r"Could not find ([A-Za-z-]+)$", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
     regex_line_matcher!(
@@ -2576,7 +2582,7 @@ lazy_static::lazy_static! {
         r"Required library (.*) not found\.",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
     ),
-    regex_line_matcher!(r"Missing ([^ ]+) boost library, .*", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+    regex_line_matcher!(r"Missing ([^ ]+) boost library, .*", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
     regex_line_matcher!(
         r"configure: error: ([^ ]+) needed\!",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
@@ -2632,7 +2638,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"ERROR: could not locate the \'([^ ]+)\' utility",
-        |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+        |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(r"Can\'t find (.*) libs. Exiting", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
     ]);
@@ -2729,7 +2735,7 @@ lazy_static::lazy_static! {
         ),
         regex_para_matcher!(
             r#"No CMAKE_(.*)_COMPILER could be found.\n\nTell CMake where to find the compiler by setting either\sthe\senvironment\svariable\s"(.*)"\sor\sthe\sCMake\scache\sentry\sCMAKE_(.*)_COMPILER\sto\sthe\sfull\spath\sto\sthe\scompiler,\sor\sto\sthe\scompiler\sname\sif\sit\sis\sin\sthe\sPATH.\n"#,
-            |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_lowercase()))))
+            |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_lowercase() })))
         ),
         regex_para_matcher!(r#"file INSTALL cannot find\s"(.*)".\n"#, |m| Ok(Some(Box::new(MissingFile::new(m.get(1).unwrap().as_str().into()))))),
         regex_para_matcher!(
@@ -2745,7 +2751,7 @@ lazy_static::lazy_static! {
         regex_para_matcher!(r#"file INSTALL cannot copy file\n"(.*)"\nto\n"(.*)"\.\n"#),
         regex_para_matcher!(
             r#"Missing (.*)\.  Either your\nlib(.*) version is too old, or lib(.*) wasn\'t found in the place you\nsaid."#,
-            |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))
+            |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))
         ),
         regex_para_matcher!(
             r"need (.*) of version (.*)",
@@ -2762,10 +2768,10 @@ lazy_static::lazy_static! {
         ),
         regex_para_matcher!(r"\[([^ ]+)\] not found", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
         regex_para_matcher!(r"([^ ]+) not found", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
-        regex_para_matcher!(r"error: could not find git .*", |_m| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+        regex_para_matcher!(r"error: could not find git .*", |_m| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))),
         regex_para_matcher!(
             r"Could not find \'(.*)\' executable[\!,].*",
-            |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+            |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
         ),
         regex_para_matcher!(
             r"Could not find (.*)_STATIC_LIBRARIES using the following names: ([a-zA-z0-9_.]+)",
@@ -2809,9 +2815,9 @@ lazy_static::lazy_static! {
         ),
         regex_para_matcher!(
             r"(.*) executable not found\! Please install (.*)\.",
-            |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))
+            |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))
         ),
-        regex_para_matcher!(r"(.*) tool not found", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(r"(.*) tool not found", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
         regex_para_matcher!(
             r"--   Requested \'(.*) >= (.*)\' but version of (.*) is (.*)",
             |m| Ok(Some(Box::new(MissingPkgConfig{
@@ -2820,14 +2826,14 @@ lazy_static::lazy_static! {
             })))
         ),
         regex_para_matcher!(r"--   No package \'(.*)\' found", |m| Ok(Some(Box::new(MissingPkgConfig{minimum_version: None, module: m.get(1).unwrap().as_str().to_string()})))),
-        regex_para_matcher!(r"([^ ]+) library not found\.", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(r"([^ ]+) library not found\.", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
         regex_para_matcher!(
             r"Please install (.*) so that it is on the PATH and try again\.",
             command_missing
         ),
         regex_para_matcher!(
             r"-- Unable to find git\.  Setting git revision to \'unknown\'\.",
-            |_| Ok(Some(Box::new(MissingCommand("git".to_string()))))
+            |_| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))
         ),
         regex_para_matcher!(
             r"(.*) must be installed before configuration \& building can proceed",
@@ -2892,7 +2898,7 @@ lazy_static::lazy_static! {
             })))
         ),
         regex_para_matcher!(r"(.*) requires (.*) to build", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(2).unwrap().as_str()))))),
-        regex_para_matcher!(r"(.*) library missing", |m| Ok(Some(Box::new(MissingLibrary(m.get(1).unwrap().as_str().to_string()))))),
+        regex_para_matcher!(r"(.*) library missing", |m| Ok(Some(Box::new(MissingLibrary { library: m.get(1).unwrap().as_str().to_string() })))),
         regex_para_matcher!(r"(.*) requires (.*)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(2).unwrap().as_str()))))),
         regex_para_matcher!(r"Could not find ([A-Za-z-]+)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
         regex_para_matcher!(r"(.+) is required for (.*)\.", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
@@ -2910,8 +2916,8 @@ lazy_static::lazy_static! {
             })))
         ),
         regex_para_matcher!(r"\s*([^ ]+) is required", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
-        regex_para_matcher!(r"([^ ]+) binary not found\!", |m| Ok(Some(Box::new(MissingCommand(m.get(1).unwrap().as_str().to_string()))))),
-        regex_para_matcher!(r"error: could not find git for clone of .*", |_m| Ok(Some(Box::new(MissingCommand("git".to_string()))))),
+        regex_para_matcher!(r"([^ ]+) binary not found\!", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
+        regex_para_matcher!(r"error: could not find git for clone of .*", |_m| Ok(Some(Box::new(MissingCommand { command: "git".to_string() })))),
         regex_para_matcher!(r"Did not find ([^\s]+)", |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))),
         regex_para_matcher!(
             r"Could not find the ([^ ]+) external dependency\.",
@@ -3463,7 +3469,9 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> BuildFailureResult {
                         lineno,
                         Some("direct regex"),
                     )) as Box<dyn Match>),
-                    Some(Box::new(MissingCommand(target.to_lowercase())) as Box<dyn Problem>),
+                    Some(Box::new(MissingCommand {
+                        command: target.to_lowercase(),
+                    }) as Box<dyn Problem>),
                 );
             }
             if let Some((_, _target)) = lazy_regex::regex_captures!(
@@ -3631,7 +3639,7 @@ mod tests {
                 "dh_installinit: upstart jobs are no longer supported!  Please remove debian/sddm.upstart and check if you need to add a conffile removal"
             ],
             1,
-            Some(UpstartFilePresent("debian/sddm.upstart".into())),
+            Some(UpstartFilePresent { filename: "debian/sddm.upstart".into() }),
         );
     }
 
@@ -3661,7 +3669,9 @@ mod tests {
         assert_match(
             vec!["debian/components/build: 19: cd: can't cd to rollup-plugin"],
             1,
-            Some(DirectoryNonExistant("rollup-plugin".to_owned())),
+            Some(DirectoryNonExistant {
+                path: "rollup-plugin".to_owned(),
+            }),
         );
     }
 
@@ -4003,7 +4013,9 @@ mod tests {
         assert_match(
             vec!["meson.build:13:0: ERROR: Git program not found."],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
     }
 
@@ -4012,7 +4024,9 @@ mod tests {
         assert_match(
             vec!["meson.build:85:0: ERROR: C++ shared or static library 'vulkan-1' not found"],
             1,
-            Some(MissingLibrary("vulkan-1".to_owned())),
+            Some(MissingLibrary {
+                library: "vulkan-1".to_owned(),
+            }),
         );
     }
 
@@ -4021,7 +4035,9 @@ mod tests {
         assert_match(
             vec![r#"Error: Library "camlp-streams" not found."#],
             1,
-            Some(MissingOCamlPackage("camlp-streams".to_owned())),
+            Some(MissingOCamlPackage {
+                package: "camlp-streams".to_owned(),
+            }),
         );
     }
 
@@ -4068,7 +4084,9 @@ mod tests {
                 "dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args",
             ],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
     }
 
@@ -4296,9 +4314,7 @@ mod tests {
                 "dh_link: link destination debian/r-cran-crosstalk/usr/lib/R/site-library/crosstalk/lib/ionrangeslider is a directory"
             ],
             1,
-            Some(DhLinkDestinationIsDirectory(
-                "debian/r-cran-crosstalk/usr/lib/R/site-library/crosstalk/lib/ionrangeslider".to_owned()
-            )),
+            Some(DhLinkDestinationIsDirectory { path: "debian/r-cran-crosstalk/usr/lib/R/site-library/crosstalk/lib/ionrangeslider".to_owned() }),
         );
     }
 
@@ -4403,9 +4419,7 @@ arch:all and the other not)"#
                 "ccache: error: Failed to create directory /sbuild-nonexistent/.ccache/tmp: Permission denied"
             ],
             1,
-            Some(CcacheError(
-                "Failed to create directory /sbuild-nonexistent/.ccache/tmp: Permission denied".to_owned()
-            ))
+            Some(CcacheError { error: "Failed to create directory /sbuild-nonexistent/.ccache/tmp: Permission denied".to_owned() })
         );
     }
 
@@ -4425,7 +4439,9 @@ arch:all and the other not)"#
         assert_match(
             vec!["/usr/bin/ld: cannot find -lpthreads"],
             1,
-            Some(MissingLibrary("pthreads".to_owned())),
+            Some(MissingLibrary {
+                library: "pthreads".to_owned(),
+            }),
         );
         assert_just_match(
             vec!["./testFortranCompiler.f:4: undefined reference to `sgemm_'"],
@@ -4447,92 +4463,124 @@ arch:all and the other not)"#
         assert_match(
             vec!["./ylwrap: line 176: yacc: command not found"],
             1,
-            Some(MissingCommand("yacc".to_owned())),
+            Some(MissingCommand {
+                command: "yacc".to_owned(),
+            }),
         );
         assert_match(
             vec!["/bin/sh: 1: cmake: not found"],
             1,
-            Some(MissingCommand("cmake".to_owned())),
+            Some(MissingCommand {
+                command: "cmake".to_owned(),
+            }),
         );
         assert_match(
             vec!["sh: 1: git: not found"],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
         assert_match(
             vec!["/usr/bin/env: ‘python3’: No such file or directory"],
             1,
-            Some(MissingCommand("python3".to_owned())),
+            Some(MissingCommand {
+                command: "python3".to_owned(),
+            }),
         );
         assert_match(
             vec!["%Error: 'flex' must be installed to build"],
             1,
-            Some(MissingCommand("flex".to_owned())),
+            Some(MissingCommand {
+                command: "flex".to_owned(),
+            }),
         );
         assert_match(
             vec![r#"pkg-config: exec: "pkg-config": executable file not found in $PATH"#],
             1,
-            Some(MissingCommand("pkg-config".to_owned())),
+            Some(MissingCommand {
+                command: "pkg-config".to_owned(),
+            }),
         );
         assert_match(
             vec![r#"Can't exec "git": No such file or directory at Makefile.PL line 25."#],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
         assert_match(
             vec![
                 "vcver.scm.git.GitCommandError: 'git describe --tags --match 'v*' --abbrev=0' returned an error code 127"
             ],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand { command: "git".to_owned() }),
         );
         assert_match(
             vec!["make[1]: docker: Command not found"],
             1,
-            Some(MissingCommand("docker".to_owned())),
+            Some(MissingCommand {
+                command: "docker".to_owned(),
+            }),
         );
         assert_match(
             vec!["make[1]: git: Command not found"],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
         assert_just_match(vec!["make[1]: ./docker: Command not found"], 1);
         assert_match(
             vec!["make: dh_elpa: Command not found"],
             1,
-            Some(MissingCommand("dh_elpa".to_owned())),
+            Some(MissingCommand {
+                command: "dh_elpa".to_owned(),
+            }),
         );
         assert_match(
             vec!["/bin/bash: valac: command not found"],
             1,
-            Some(MissingCommand("valac".to_owned())),
+            Some(MissingCommand {
+                command: "valac".to_owned(),
+            }),
         );
         assert_match(
             vec!["E: Failed to execute “python3”: No such file or directory"],
             1,
-            Some(MissingCommand("python3".to_owned())),
+            Some(MissingCommand {
+                command: "python3".to_owned(),
+            }),
         );
         assert_match(
             vec![
                 r#"Can't exec "cmake": No such file or directory at /usr/share/perl5/Debian/Debhelper/Dh_Lib.pm line 484."#,
             ],
             1,
-            Some(MissingCommand("cmake".to_owned())),
+            Some(MissingCommand {
+                command: "cmake".to_owned(),
+            }),
         );
         assert_match(
             vec!["Invalid gemspec in [unicorn.gemspec]: No such file or directory - git"],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
         assert_match(
             vec!["dbus-run-session: failed to exec 'xvfb-run': No such file or directory"],
             1,
-            Some(MissingCommand("xvfb-run".to_owned())),
+            Some(MissingCommand {
+                command: "xvfb-run".to_owned(),
+            }),
         );
         assert_match(
             vec!["unshare: failed to execute python3: No such file or directory"],
             1,
-            Some(MissingCommand("python3".to_owned())),
+            Some(MissingCommand {
+                command: "python3".to_owned(),
+            }),
         );
         assert_match(
             vec!["/bin/sh: 1: ./configure: not found"],
@@ -4542,19 +4590,23 @@ arch:all and the other not)"#
         assert_match(
             vec!["xvfb-run: error: xauth command not found"],
             1,
-            Some(MissingCommand("xauth".to_owned())),
+            Some(MissingCommand {
+                command: "xauth".to_owned(),
+            }),
         );
         assert_match(
             vec!["meson.build:39:2: ERROR: Program(s) ['wrc'] not found or not executable"],
             1,
-            Some(MissingCommand("wrc".to_owned())),
+            Some(MissingCommand {
+                command: "wrc".to_owned(),
+            }),
         );
         assert_match(
             vec![
                 "/tmp/autopkgtest.FnbV06/build.18W/src/debian/tests/blas-testsuite: 7: dpkg-architecture: not found"
             ],
             1,
-            Some(MissingCommand("dpkg-architecture".to_owned())),
+            Some(MissingCommand { command: "dpkg-architecture".to_owned() }),
         );
         assert_match(
             vec![
@@ -4578,27 +4630,35 @@ arch:all and the other not)"#
                 "FileNotFoundError: [Errno 2] No such file or directory: 'git'",
             ],
             18,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand { command: "git".to_owned() }),
         );
         assert_match(
             vec![r#"> Cannot run program "git": error=2, No such file or directory"#],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
         assert_match(
             vec!["E ImportError: Bad git executable"],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
         assert_match(
             vec!["E ImportError: Bad git executable."],
             1,
-            Some(MissingCommand("git".to_owned())),
+            Some(MissingCommand {
+                command: "git".to_owned(),
+            }),
         );
         assert_match(
             vec![r#"Could not find external command "java""#],
             1,
-            Some(MissingCommand("java".to_owned())),
+            Some(MissingCommand {
+                command: "java".to_owned(),
+            }),
         );
     }
 
@@ -4699,7 +4759,7 @@ arch:all and the other not)"#
         assert_match(
             vec!["checking for LAPACK... configure: error: \"Cannot check for existence of module lapack without pkgconf\""],
             1,
-            Some(MissingCommand("pkgconf".to_owned())),
+            Some(MissingCommand { command: "pkgconf".to_owned() }),
         );
     }
 
@@ -4815,48 +4875,46 @@ arch:all and the other not)"#
                 "[ERROR] Failed to execute goal on project byteman-bmunit5: Could not resolve dependencies for project org.jboss.byteman:byteman-bmunit5:jar:4.0.7: The following artifacts could not be resolved: org.junit.jupiter:junit-jupiter-api:jar:5.4.0, org.junit.jupiter:junit-jupiter-params:jar:5.4.0, org.junit.jupiter:junit-jupiter-engine:jar:5.4.0: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.junit.jupiter:junit-jupiter-api:jar:5.4.0 has not been downloaded from it before. -> [Help 1]"
             ],
             1,
-            Some(MissingMavenArtifacts(
-                vec![
+            Some(MissingMavenArtifacts { artifacts: vec![
                     "org.junit.jupiter:junit-jupiter-api:jar:5.4.0".to_string(),
                     "org.junit.jupiter:junit-jupiter-params:jar:5.4.0".to_string(),
                     "org.junit.jupiter:junit-jupiter-engine:jar:5.4.0".to_string(),
-                ]
-            )),
+                ] }),
         );
         assert_match(
             vec![
                 "[ERROR] Failed to execute goal on project opennlp-uima: Could not resolve dependencies for project org.apache.opennlp:opennlp-uima:jar:1.9.2-SNAPSHOT: Cannot access ApacheIncubatorRepository (http://people.apache.org/repo/m2-incubating-repository/) in offline mode and the artifact org.apache.opennlp:opennlp-tools:jar:debian has not been downloaded from it before. -> [Help 1]"
             ],
             1,
-            Some(MissingMavenArtifacts(vec!["org.apache.opennlp:opennlp-tools:jar:debian".to_string()])),
+            Some(MissingMavenArtifacts { artifacts: vec!["org.apache.opennlp:opennlp-tools:jar:debian".to_string()] }),
         );
         assert_match(
             vec![
                 "[ERROR] Failed to execute goal on project bookkeeper-server: Could not resolve dependencies for project org.apache.bookkeeper:bookkeeper-server:jar:4.4.0: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact io.netty:netty:jar:debian has not been downloaded from it before. -> [Help 1]"
             ],
             1,
-            Some(MissingMavenArtifacts(vec!["io.netty:netty:jar:debian".to_string()])),
+            Some(MissingMavenArtifacts { artifacts: vec!["io.netty:netty:jar:debian".to_string()] }),
         );
         assert_match(
             vec![
                 "[ERROR] Unresolveable build extension: Plugin org.apache.felix:maven-bundle-plugin:2.3.7 or one of its dependencies could not be resolved: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.felix:maven-bundle-plugin:jar:2.3.7 has not been downloaded from it before. @"
             ],
             1,
-            Some(MissingMavenArtifacts(vec!["org.apache.felix:maven-bundle-plugin:2.3.7".to_string()])),
+            Some(MissingMavenArtifacts { artifacts: vec!["org.apache.felix:maven-bundle-plugin:2.3.7".to_string()] }),
         );
         assert_match(
             vec![
                 "[ERROR] Plugin org.apache.maven.plugins:maven-jar-plugin:2.6 or one of its dependencies could not be resolved: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.plugins:maven-jar-plugin:jar:2.6 has not been downloaded from it before. -> [Help 1]"
             ],
             1,
-            Some(MissingMavenArtifacts(vec!["org.apache.maven.plugins:maven-jar-plugin:2.6".to_string()])),
+            Some(MissingMavenArtifacts { artifacts: vec!["org.apache.maven.plugins:maven-jar-plugin:2.6".to_string()] }),
         );
 
         assert_match(
             vec![
                 "[FATAL] Non-resolvable parent POM for org.joda:joda-convert:2.2.1: Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.joda:joda-parent:pom:1.4.0 has not been downloaded from it before. and 'parent.relativePath' points at wrong local POM @ line 8, column 10"],
             1,
-            Some(MissingMavenArtifacts(vec!["org.joda:joda-parent:pom:1.4.0".to_string()])),
+            Some(MissingMavenArtifacts { artifacts: vec!["org.joda:joda-parent:pom:1.4.0".to_string()] }),
         );
 
         assert_match(
@@ -4864,18 +4922,14 @@ arch:all and the other not)"#
                 "[ivy:retrieve] \t\t:: com.carrotsearch.randomizedtesting#junit4-ant;${/com.carrotsearch.randomizedtesting/junit4-ant}: not found"
             ],
             1,
-            Some(MissingMavenArtifacts(
-                vec!["com.carrotsearch.randomizedtesting:junit4-ant:jar:debian".to_string()]
-            )),
+            Some(MissingMavenArtifacts { artifacts: vec!["com.carrotsearch.randomizedtesting:junit4-ant:jar:debian".to_string()] }),
         );
         assert_match(
             vec![
                 "[ERROR] Plugin org.apache.maven.plugins:maven-compiler-plugin:3.10.1 or one of its dependencies could not be resolved: Failed to read artifact descriptor for org.apache.maven.plugins:maven-compiler-plugin:jar:3.10.1: 1 problem was encountered while building the effective model for org.apache.maven.plugins:maven-compiler-plugin:3.10.1"
             ],
             1,
-            Some(MissingMavenArtifacts(
-                vec!["org.apache.maven.plugins:maven-compiler-plugin:3.10.1".to_string()]
-            )),
+            Some(MissingMavenArtifacts { artifacts: vec!["org.apache.maven.plugins:maven-compiler-plugin:3.10.1".to_string()] }),
         );
     }
 
@@ -4895,7 +4949,7 @@ arch:all and the other not)"#
                 "dh_missing --fail-missing", "dh_missing: usr/share/man/man1/florence_applet.1 exists in debian/tmp but is not installed to anywhere", "dh_missing: usr/lib/x86_64-linux-gnu/libflorence-1.0.la exists in debian/tmp but is not installed to anywhere", "dh_missing: missing files, aborting",
             ],
             3,
-            Some(DhMissingUninstalled("usr/lib/x86_64-linux-gnu/libflorence-1.0.la".to_owned())),
+            Some(DhMissingUninstalled { missing_file: "usr/lib/x86_64-linux-gnu/libflorence-1.0.la".to_owned() }),
         );
     }
 
@@ -5057,14 +5111,14 @@ arch:all and the other not)"#
                 "syntax error at Makefile.PL line 13, near \"author_tests 'xt'\"", r#""strict subs" in use at Makefile.PL line 13."#,
             ],
             2,
-            Some(MissingPerlPredeclared("author_tests".to_owned())),
+            Some(MissingPerlPredeclared { name: "author_tests".to_owned() }),
         );
         assert_match(
             vec![
                 "String found where operator expected at Makefile.PL line 8, near \"readme_from    'lib/URL/Encode.pod'\""
             ],
             1,
-            Some(MissingPerlPredeclared("readme_from".to_owned())),
+            Some(MissingPerlPredeclared { name: "readme_from".to_owned() }),
         );
 
         assert_match(
@@ -5072,7 +5126,9 @@ arch:all and the other not)"#
                 r#"Bareword "use_test_base" not allowed while "strict subs" in use at Makefile.PL line 12."#,
             ],
             1,
-            Some(MissingPerlPredeclared("use_test_base".to_owned())),
+            Some(MissingPerlPredeclared {
+                name: "use_test_base".to_owned(),
+            }),
         );
     }
 
@@ -5083,10 +5139,10 @@ arch:all and the other not)"#
                 r#"go: github.com/golangci/golangci-lint@v1.24.0: Get "https://proxy.golang.org/github.com/golangci/golangci-lint/@v/v1.24.0.mod": x509: certificate signed by unknown authority"#,
             ],
             1,
-            Some(UnknownCertificateAuthority(
-                "https://proxy.golang.org/github.com/golangci/golangci-lint/@v/v1.24.0.mod"
+            Some(UnknownCertificateAuthority {
+                url: "https://proxy.golang.org/github.com/golangci/golangci-lint/@v/v1.24.0.mod"
                     .to_owned(),
-            )),
+            }),
         );
     }
 
@@ -5164,7 +5220,7 @@ vec![
                 "error: Package `glib-2.0' not found in specified Vala API directories or GObject-Introspection GIR directories"
             ],
             1,
-            Some(MissingValaPackage("glib-2.0".to_owned())),
+            Some(MissingValaPackage { package: "glib-2.0".to_owned() }),
         );
     }
 
@@ -5173,7 +5229,9 @@ vec![
         assert_match(
             vec!["ValueError: Namespace GnomeDesktop not available"],
             1,
-            Some(MissingIntrospectionTypelib("GnomeDesktop".to_owned())),
+            Some(MissingIntrospectionTypelib {
+                library: "GnomeDesktop".to_owned(),
+            }),
         );
     }
 
@@ -5252,7 +5310,9 @@ Call Stack (most recent call first):
         assert_match(
             vec!["Error: Cannot find module 'tape'"],
             1,
-            Some(MissingNodeModule("tape".to_owned())),
+            Some(MissingNodeModule {
+                module: "tape".to_owned(),
+            }),
         );
         assert_just_match(
             vec!["✖ [31mERROR:[39m Cannot find module '/<<PKGBUILDDIR>>/test'"],
@@ -5261,17 +5321,23 @@ Call Stack (most recent call first):
         assert_match(
             vec!["npm ERR! [!] Error: Cannot find module '@rollup/plugin-buble'"],
             1,
-            Some(MissingNodeModule("@rollup/plugin-buble".to_owned())),
+            Some(MissingNodeModule {
+                module: "@rollup/plugin-buble".to_owned(),
+            }),
         );
         assert_match(
             vec!["npm ERR! Error: Cannot find module 'fs-extra'"],
             1,
-            Some(MissingNodeModule("fs-extra".to_owned())),
+            Some(MissingNodeModule {
+                module: "fs-extra".to_owned(),
+            }),
         );
         assert_match(
             vec!["\x1b[1m\x1b[31m[!] \x1b[1mError: Cannot find module '@rollup/plugin-buble'"],
             1,
-            Some(MissingNodeModule("@rollup/plugin-buble".to_owned())),
+            Some(MissingNodeModule {
+                module: "@rollup/plugin-buble".to_owned(),
+            }),
         );
     }
 
@@ -5292,7 +5358,7 @@ usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
 error: invalid command 'test'
 """#.split_inclusive('\n').collect::<Vec<&str>>(),
             12,
-            Some(MissingSetupPyCommand("test".to_owned())),
+            Some(MissingSetupPyCommand { command: "test".to_owned() }),
         );
     }
 
@@ -5318,7 +5384,9 @@ error: invalid command 'test'
         assert_eq!(m.offsets(), vec![1]);
         assert_eq!(
             p.as_deref(),
-            Some(&MissingSetupPyCommand("foo".to_owned()) as &dyn Problem)
+            Some(&MissingSetupPyCommand {
+                command: "foo".to_owned()
+            } as &dyn Problem)
         );
     }
 
@@ -5476,7 +5544,9 @@ error: invalid command 'test'
         assert_match(
             vec!["! LaTeX Error: File `fancyvrb.sty' not found."],
             1,
-            Some(MissingLatexFile("fancyvrb.sty".to_owned())),
+            Some(MissingLatexFile {
+                filename: "fancyvrb.sty".to_owned(),
+            }),
         );
     }
 
@@ -5526,13 +5596,11 @@ error: invalid command 'test'
                 "pytest: error: unrecognized arguments: --cov=janitor --cov-report=html --cov-report=term-missing:skip-covered"
             ],
             1,
-            Some(UnsupportedPytestArguments(
-                vec![
+            Some(UnsupportedPytestArguments { args: vec![
                     "--cov=janitor".to_owned(),
                     "--cov-report=html".to_owned(),
                     "--cov-report=term-missing:skip-covered".to_owned(),
-                ]
-            )),
+                ] }),
         );
     }
 
@@ -5541,7 +5609,9 @@ error: invalid command 'test'
         assert_match(
             vec!["INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: asyncio_mode"],
             1,
-            Some(UnsupportedPytestConfigOption("asyncio_mode".to_owned())),
+            Some(UnsupportedPytestConfigOption {
+                name: "asyncio_mode".to_owned(),
+            }),
         );
     }
 
@@ -5552,7 +5622,7 @@ error: invalid command 'test'
                 "  /usr/lib/python3/dist-packages/_pytest/config/__init__.py:1148: PytestConfigWarning: Unknown config ini key: pep8maxlinelength",
             ],
             1,
-            Some(UnsupportedPytestConfigOption("pep8maxlinelength".to_owned())),
+            Some(UnsupportedPytestConfigOption { name: "pep8maxlinelength".to_owned() }),
         );
     }
 
@@ -5954,7 +6024,9 @@ Call Stack (most recent call first):
 
     #[test]
     fn test_missing_haskell_dependencies_trait() {
-        let problem = MissingHaskellDependencies(vec!["base".to_string(), "text".to_string()]);
+        let problem = MissingHaskellDependencies {
+            deps: vec!["base".to_string(), "text".to_string()],
+        };
         assert_eq!(problem.kind(), "missing-haskell-dependencies");
         let json = problem.json();
         assert_eq!(json["deps"], serde_json::json!(["base", "text"]));
@@ -5977,7 +6049,9 @@ Call Stack (most recent call first):
 
     #[test]
     fn test_missing_latex_file_trait() {
-        let problem = MissingLatexFile("article.cls".to_string());
+        let problem = MissingLatexFile {
+            filename: "article.cls".to_string(),
+        };
         assert_eq!(problem.kind(), "missing-latex-file");
     }
 
@@ -6001,7 +6075,9 @@ Call Stack (most recent call first):
 
     #[test]
     fn test_missing_ocaml_package_trait() {
-        let problem = MissingOCamlPackage("lwt".to_string());
+        let problem = MissingOCamlPackage {
+            package: "lwt".to_string(),
+        };
         let json = problem.json();
         assert_eq!(json["package"], "lwt");
     }
@@ -6025,7 +6101,9 @@ Call Stack (most recent call first):
 
     #[test]
     fn test_unknown_certificate_authority_trait() {
-        let problem = UnknownCertificateAuthority("https://example.com".to_string());
+        let problem = UnknownCertificateAuthority {
+            url: "https://example.com".to_string(),
+        };
         assert_eq!(problem.kind(), "unknown-certificate-authority");
     }
 

@@ -90,9 +90,9 @@ fn parse_debcargo_failure(_: &regex::Captures, prior_lines: Vec<&str>) -> Option
             ) {
                 return Some(Box::new(MissingDebcargoCrate::from_string(n)));
             } else {
-                return Some(Box::new(DpkgSourcePackFailed(
-                    extra[extra.len() - 2].to_owned(),
-                )));
+                return Some(Box::new(DpkgSourcePackFailed {
+                    reason: extra[extra.len() - 2].to_owned(),
+                }));
             }
         } else if !extra.is_empty() {
             if let Some((_, d, p)) = lazy_regex::regex_captures!(
@@ -113,13 +113,15 @@ fn parse_debcargo_failure(_: &regex::Captures, prior_lines: Vec<&str>) -> Option
                 }));
             }
         } else {
-            return Some(Box::new(DebcargoFailure(extra.join(""))));
+            return Some(Box::new(DebcargoFailure {
+                reason: extra.join(""),
+            }));
         }
     }
 
-    Some(Box::new(DebcargoFailure(
-        "Debcargo failed to run".to_string(),
-    )))
+    Some(Box::new(DebcargoFailure {
+        reason: "Debcargo failed to run".to_string(),
+    }))
 }
 
 macro_rules! regex_line_matcher {
@@ -132,12 +134,12 @@ lazy_static::lazy_static! {
     static ref BRZ_ERRORS: BrzErrorHandler = vec![
         regex_line_matcher!("Unable to find the needed upstream tarball for package (.*), version (.*)\\.",
         |m, _| Some(Box::new(UnableToFindUpstreamTarball{package: m.get(1).unwrap().as_str().to_string(), version: m.get(2).unwrap().as_str().parse().unwrap()}))),
-        regex_line_matcher!("Unknown mercurial extra fields in (.*): b'(.*)'.", |m, _| Some(Box::new(UnknownMercurialExtraFields(m.get(2).unwrap().as_str().to_string())))),
-        regex_line_matcher!("UScan failed to run: In watchfile (.*), reading webpage (.*) failed: 429 too many requests\\.", |m, _| Some(Box::new(UScanTooManyRequests(m.get(2).unwrap().as_str().to_string())))),
+        regex_line_matcher!("Unknown mercurial extra fields in (.*): b'(.*)'.", |m, _| Some(Box::new(UnknownMercurialExtraFields { field: m.get(2).unwrap().as_str().to_string() }))),
+        regex_line_matcher!("UScan failed to run: In watchfile (.*), reading webpage (.*) failed: 429 too many requests\\.", |m, _| Some(Box::new(UScanTooManyRequests { reason: m.get(2).unwrap().as_str().to_string() }))),
         regex_line_matcher!("UScan failed to run: OpenPGP signature did not verify..", |_, _| Some(Box::new(UpstreamPGPSignatureVerificationFailed))),
         regex_line_matcher!(r"Inconsistency between source format and version: version is( not)? native, format is( not)? native\.", |m, _| Some(Box::new(InconsistentSourceFormat{version: m.get(1).is_some(), source_format: m.get(2).is_some()}))),
-        regex_line_matcher!(r"UScan failed to run: In (.*) no matching hrefs for version (.*) in watch line", |m, _| Some(Box::new(UScanRequestVersionMissing(m.get(2).unwrap().as_str().to_string())))),
-        regex_line_matcher!(r"UScan failed to run: In (.*) no matching files for version (.*) in watch line", |m, _| Some(Box::new(UScanRequestVersionMissing(m.get(2).unwrap().as_str().to_string())))),
+        regex_line_matcher!(r"UScan failed to run: In (.*) no matching hrefs for version (.*) in watch line", |m, _| Some(Box::new(UScanRequestVersionMissing { version: m.get(2).unwrap().as_str().to_string() }))),
+        regex_line_matcher!(r"UScan failed to run: In (.*) no matching files for version (.*) in watch line", |m, _| Some(Box::new(UScanRequestVersionMissing { version: m.get(2).unwrap().as_str().to_string() }))),
         regex_line_matcher!(r"UScan failed to run: In directory ., downloading (.*) failed: (.*)", |m, _| Some(Box::new(UScanFailed{url: m.get(1).unwrap().as_str().to_string(), reason: m.get(2).unwrap().as_str().to_string()}))),
         regex_line_matcher!(r"UScan failed to run: In directory \., downloading\n  (.*) failed: (.*)", |m, _| Some(Box::new(UScanFailed{url: m.get(1).unwrap().as_str().to_string(), reason: m.get(2).unwrap().as_str().to_string()}))),
         regex_line_matcher!(r"UScan failed to run: In watchfile debian/watch, reading webpage\n  (.*) failed: (.*)", |m, _| Some(Box::new(UScanFailed{url: m.get(1).unwrap().as_str().to_string(), reason: m.get(2).unwrap().as_str().to_string()}))),
@@ -234,15 +236,17 @@ pub fn parse_brz_error<'a>(
     }
     if let Some(suffix) = line.strip_prefix("UScan failed to run: ") {
         return (
-            Some(Box::new(UScanError(suffix.to_owned()))),
+            Some(Box::new(UScanError {
+                reason: suffix.to_owned(),
+            })),
             line.to_string(),
         );
     }
     if let Some(suffix) = line.strip_prefix("Unable to parse changelog: ") {
         return (
-            Some(Box::new(ChangelogParseError(
-                suffix.to_string().to_string(),
-            ))),
+            Some(Box::new(ChangelogParseError {
+                reason: suffix.to_string().to_string(),
+            })),
             line.to_string(),
         );
     }
@@ -303,7 +307,9 @@ mod tests {
         let (err, _line) = find_brz_build_error(lines).unwrap();
         assert_eq!(
             err,
-            Some(Box::new(UScanRequestVersionMissing("1.2.0".to_string())) as Box<dyn Problem>)
+            Some(Box::new(UScanRequestVersionMissing {
+                version: "1.2.0".to_string()
+            }) as Box<dyn Problem>)
         );
     }
 
