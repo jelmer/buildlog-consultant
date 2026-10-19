@@ -209,10 +209,12 @@ pub fn find_apt_get_update_failure(
     sbuildlog: &crate::sbuild::SbuildLog,
 ) -> SectionFailure<'static> {
     let focus_section = "update chroot";
-    let lines = sbuildlog.get_section_lines(Some(focus_section));
+    let failure = sbuildlog
+        .get_section_lines(Some(focus_section))
+        .and_then(|lines| find_apt_get_failure(&lines));
     SectionFailure {
         section: Some(focus_section),
-        failure: find_apt_get_failure(&lines.unwrap()),
+        failure,
     }
 }
 
@@ -567,6 +569,23 @@ mod tests {
         if let Some(problem) = problem {
             assert!(problem.as_any().is::<NoSpaceOnDevice>());
         }
+    }
+
+    #[test]
+    fn test_find_apt_get_update_failure_missing_section() {
+        use crate::sbuild::{SbuildLog, SbuildLogSection};
+        let log = SbuildLog(vec![SbuildLogSection {
+            title: Some("cleanup".to_string()),
+            offsets: (1, 1),
+            lines: vec![
+                "E: Failed to fetch http://example.com/InRelease  Connection failed".to_string(),
+            ],
+        }]);
+
+        let section_failure = find_apt_get_update_failure(&log);
+
+        assert_eq!(section_failure.section, Some("update chroot"));
+        assert!(section_failure.failure.is_none());
     }
 
     #[test]
