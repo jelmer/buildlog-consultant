@@ -15,22 +15,111 @@ pub type MatchResult = Result<Option<Failure>, Error>;
 pub type RegexCallback =
     Box<dyn Fn(&Captures) -> Result<Option<Box<dyn Problem>>, Error> + Send + Sync>;
 
-/// Error type for matchers.
-///
-/// Used when pattern matching or problem extraction fails.
+/// Error raised by a matcher when log content can not be interpreted.
 #[derive(Debug)]
 pub struct Error {
-    /// Error message describing what went wrong.
-    pub message: String,
+    message: String,
+    source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    offset: Option<usize>,
+    origin: Option<Origin>,
+}
+
+impl Error {
+    /// Creates a new error with the given message.
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            source: None,
+            offset: None,
+            origin: None,
+        }
+    }
+
+    /// Creates a new error with the given message, caused by `source`.
+    pub fn with_source(
+        message: impl Into<String>,
+        source: impl std::error::Error + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            source: Some(Box::new(source)),
+            ..Self::new(message)
+        }
+    }
+
+    /// Returns the error message, without context.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Returns the offset of the line that was being matched, if known.
+    ///
+    /// The offset is relative to the lines passed to the matcher.
+    pub fn offset(&self) -> Option<usize> {
+        self.offset
+    }
+
+    /// Returns the origin of the matcher that failed, if known.
+    pub fn origin(&self) -> Option<&Origin> {
+        self.origin.as_ref()
+    }
+
+    /// Records the offset, unless a more specific one is already known.
+    pub(crate) fn or_offset(mut self, offset: usize) -> Self {
+        self.offset.get_or_insert(offset);
+        self
+    }
+
+    /// Records the origin, unless a more specific one is already known.
+    pub(crate) fn or_origin(mut self, origin: impl FnOnce() -> Origin) -> Self {
+        self.origin.get_or_insert_with(origin);
+        self
+    }
+
+    /// Replaces the offset, e.g. when the error came from matching synthesized text.
+    pub(crate) fn at_offset(mut self, offset: usize) -> Self {
+        self.offset = Some(offset);
+        self
+    }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.message.fmt(f)
+        f.write_str(&self.message)?;
+        if let Some(offset) = self.offset {
+            write!(f, " at line {}", offset + 1)?;
+        }
+        if let Some(origin) = &self.origin {
+            write!(f, " ({})", origin)?;
+        }
+        Ok(())
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_deref()
+            .map(|e| e as &(dyn std::error::Error + 'static))
+    }
+}
+
+impl From<std::num::ParseIntError> for Error {
+    fn from(e: std::num::ParseIntError) -> Self {
+        Self::with_source("invalid integer", e)
+    }
+}
+
+impl From<std::num::ParseFloatError> for Error {
+    fn from(e: std::num::ParseFloatError) -> Self {
+        Self::with_source("invalid number", e)
+    }
+}
+
+impl From<pep508_rs::Pep508Error> for Error {
+    fn from(e: pep508_rs::Pep508Error) -> Self {
+        Self::with_source("invalid PEP 508 requirement", e)
+    }
+}
 
 /// A matcher that uses regular expressions to find patterns in single lines.
 ///
@@ -96,11 +185,10 @@ impl RegexLineMatcher {
     /// * `Ok(None)` - No match was found
     /// * `Err(error)` - An error occurred during matching or problem extraction
     pub fn extract_from_line(&self, line: &str) -> Result<Option<Option<Box<dyn Problem>>>, Error> {
-        let c = self.regex.captures(line);
-        if let Some(c) = c {
-            return Ok(Some((self.callback)(&c)?));
-        }
-        Ok(None)
+        self.regex
+            .captures(line)
+            .map(|c| (self.callback)(&c).map_err(|e| e.or_origin(|| self.origin())))
+            .transpose()
     }
 
     /// Creates an origin identifier for matches from this matcher.
@@ -115,7 +203,10 @@ impl RegexLineMatcher {
 impl Matcher for RegexLineMatcher {
     fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
         let line = lines[offset];
-        if let Some(problem) = self.extract_from_line(line)? {
+        if let Some(problem) = self
+            .extract_from_line(line)
+            .map_err(|e| e.or_offset(offset))?
+        {
             let m = SingleLineMatch {
                 offset,
                 line: line.to_string(),
@@ -246,7 +337,10 @@ impl MatcherGroup {
     /// * `Err(error)` - An error occurred during matching
     pub fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
         for matcher in self.0.iter() {
-            if let Some(p) = matcher.extract_from_lines(lines, offset)? {
+            if let Some(p) = matcher
+                .extract_from_lines(lines, offset)
+                .map_err(|e| e.or_offset(offset))?
+            {
                 return Ok(Some(p));
             }
         }
@@ -288,10 +382,66 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let error = Error {
-            message: "test error".to_string(),
-        };
+        let error = Error::new("test error");
         assert_eq!(error.to_string(), "test error");
+        assert_eq!(error.message(), "test error");
+        assert_eq!(error.offset(), None);
+        assert!(error.origin().is_none());
+        assert!(std::error::Error::source(&error).is_none());
+    }
+
+    #[test]
+    fn test_error_from_parse_int() {
+        let error: Error = "x".parse::<u32>().unwrap_err().into();
+        assert_eq!(error.to_string(), "invalid integer");
+        assert_eq!(
+            std::error::Error::source(&error).unwrap().to_string(),
+            "invalid digit found in string"
+        );
+    }
+
+    fn failing_matcher() -> RegexLineMatcher {
+        RegexLineMatcher::new(
+            Regex::new(r"^fail$").unwrap(),
+            Box::new(|_| Err(Error::new("broken"))),
+        )
+    }
+
+    #[test]
+    fn test_regex_line_matcher_error_context() {
+        let lines = vec!["line 1", "fail"];
+        let error = failing_matcher().extract_from_lines(&lines, 1).unwrap_err();
+        assert_eq!(error.message(), "broken");
+        assert_eq!(error.offset(), Some(1));
+        assert_eq!(error.origin().unwrap().as_str(), "direct regex (^fail$)");
+        assert_eq!(
+            error.to_string(),
+            "broken at line 2 (direct regex (^fail$))"
+        );
+    }
+
+    #[test]
+    fn test_matcher_group_error() {
+        let group = MatcherGroup::new(vec![Box::new(failing_matcher())]);
+        let lines = vec!["fail"];
+        let error = group.extract_from_lines(&lines, 0).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "broken at line 1 (direct regex (^fail$))"
+        );
+    }
+
+    #[test]
+    fn test_matcher_group_error_adds_offset() {
+        struct Failing;
+        impl Matcher for Failing {
+            fn extract_from_lines(&self, _lines: &[&str], _offset: usize) -> MatchResult {
+                Err(Error::new("broken"))
+            }
+        }
+        let group = MatcherGroup::new(vec![Box::new(Failing)]);
+        let error = group.extract_from_lines(&["a", "b"], 1).unwrap_err();
+        assert_eq!(error.to_string(), "broken at line 2");
     }
 
     #[test]

@@ -87,7 +87,13 @@ pub fn main() -> Result<(), i8> {
 
     let failed_stage = sbuildlog.get_failed_stage();
 
-    let failure = worker_failure_from_sbuild_log(&sbuildlog);
+    let failure = worker_failure_from_sbuild_log(&sbuildlog).unwrap_or_else(|e| {
+        log::error!("Failed to analyze log: {}", e);
+        if let Some(source) = std::error::Error::source(&e) {
+            log::error!("Caused by: {}", source);
+        }
+        std::process::exit(1);
+    });
 
     if args.json {
         let ret = as_json(

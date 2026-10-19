@@ -77,7 +77,13 @@ pub fn main() -> Result<(), i8> {
 
     let lines = log.split_inclusive('\n').collect::<Vec<_>>();
 
-    let failure = find_build_failure_description(lines.clone());
+    let failure = find_build_failure_description(lines.clone()).unwrap_or_else(|e| {
+        log::error!("Failed to analyze log: {}", e);
+        if let Some(source) = std::error::Error::source(&e) {
+            log::error!("Caused by: {}", source);
+        }
+        std::process::exit(1);
+    });
 
     if args.json {
         let ret = as_json(failure.as_ref());

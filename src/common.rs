@@ -2645,7 +2645,7 @@ lazy_static::lazy_static! {
             r#"The (.+) compiler\n\n  "(.*)"\n\nis not able to compile a simple test program\.\n\nIt fails with the following output:\n\n(.*)\n\nCMake will not be able to correctly generate this project.\n$"#,
             |m| {
                 let compiler_output = textwrap::dedent(m.get(3).unwrap().as_str());
-                Ok(find_build_failure_description(compiler_output.split_inclusive('\n').collect())
+                Ok(find_build_failure_description(compiler_output.split_inclusive('\n').collect())?
                     .and_then(|f| f.problem))
             }
         ),
@@ -2946,8 +2946,11 @@ impl Matcher for CMakeErrorMatcher {
 
         let r#match = MultiLineMatch::new(Origin("CMake".to_string()), linenos, actual_lines);
 
+        // The matchers run on the extracted error text, so report the offset
+        // of the CMake error in the original log instead.
         let problem = CMAKE_ERROR_MATCHERS
-            .extract_from_lines(&[&error_string], 0)?
+            .extract_from_lines(&[&error_string], 0)
+            .map_err(|e| e.at_offset(offset))?
             .and_then(|f| f.problem);
         Ok(Some(Failure::new(r#match, problem)))
     }
@@ -3395,8 +3398,9 @@ pub fn find_secondary_build_failure(
 /// Find the key failure line in build output.
 ///
 /// # Returns
-/// The failure, if one was found
-pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
+/// The failure, if one was found, or an error if a matcher could not interpret
+/// the log
+pub fn find_build_failure_description(lines: Vec<&str>) -> Result<Option<Failure>, Error> {
     pub const OFFSET: usize = 250;
     // Is this cmake-specific, or rather just kf5 / qmake ?
     let mut cmake = false;
@@ -3405,8 +3409,8 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
         if line.contains("cmake") {
             cmake = true;
         }
-        if let Some(failure) = match_lines(lines.as_slice(), lineno).unwrap() {
-            return Some(failure);
+        if let Some(failure) = match_lines(lines.as_slice(), lineno)? {
+            return Ok(Some(failure));
         }
     }
 
@@ -3418,12 +3422,12 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
             if let Some((_, target)) =
                 lazy_regex::regex_captures!(r"  Could NOT find (.*) \(missing: .*\)", line)
             {
-                return Some(Failure::new(
+                return Ok(Some(Failure::new(
                     SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                     Some(Box::new(MissingCommand {
                         command: target.to_lowercase(),
                     }) as Box<dyn Problem>),
-                ));
+                )));
             }
             if let Some((_, _target)) = lazy_regex::regex_captures!(
                 r#"\s*The imported target "(.*)" references the file"#,
@@ -3443,12 +3447,12 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
                     let filename_line = filename_line.trim_end_matches('\n');
                     let filename = lazy_regex::regex_captures!(r#"^\s*"(.*)"$"#, filename_line)
                         .map_or(filename_line, |(_, entry)| entry);
-                    return Some(Failure::new(
+                    return Ok(Some(Failure::new(
                         SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                         Some(Box::new(MissingFile {
                             path: filename.into(),
                         }) as Box<dyn Problem>),
-                    ));
+                    )));
                 }
                 continue;
             }
@@ -3461,9 +3465,9 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
                             filenames.push(lines[lineno + i].trim().to_string());
                             i += 1;
                         }
-                        return Some(Failure::new(SingleLineMatch::from_lines(
+                        return Ok(Some(Failure::new(SingleLineMatch::from_lines(
                                 &lines, lineno, Some("direct regex (cmake)")
-                            ), Some(Box::new(CMakeFilesMissing{filenames, version: None}) as Box<dyn Problem>)))
+                            ), Some(Box::new(CMakeFilesMissing{filenames, version: None}) as Box<dyn Problem>))))
                     }
                 }
             }
@@ -3473,10 +3477,10 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
     // And forwards for vague ("secondary") errors.
     let m = find_secondary_build_failure(lines.as_slice(), OFFSET);
     if let Some(m) = m {
-        return Some(Failure::new(m, None));
+        return Ok(Some(Failure::new(m, None)));
     }
 
-    None
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -3485,7 +3489,7 @@ mod tests {
 
     fn assert_just_match(lines: Vec<&str>, lineno: usize) {
         let (r#match, actual_err) =
-            Failure::split(super::find_build_failure_description(lines.clone()));
+            Failure::split(super::find_build_failure_description(lines.clone()).unwrap());
         assert!(actual_err.is_none());
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
@@ -3497,7 +3501,7 @@ mod tests {
 
     fn assert_match(lines: Vec<&str>, lineno: usize, mut expected: Option<impl Problem + 'static>) {
         let (r#match, actual_err) =
-            Failure::split(super::find_build_failure_description(lines.clone()));
+            Failure::split(super::find_build_failure_description(lines.clone()).unwrap());
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
             assert_eq!(lineno, r#match.lineno());
@@ -5630,7 +5634,7 @@ error: invalid command 'test'
     #[test]
     fn test_pip_wheel_python_version() {
         let line = pip_wheel_line("python3.11");
-        let (m, err) = Failure::split(super::find_build_failure_description(vec![&line]));
+        let (m, err) = Failure::split(super::find_build_failure_description(vec![&line]).unwrap());
         assert_eq!(m.expect("match expected").line(), line);
         assert_eq!(
             err.as_ref().map(|x| x.as_ref()),
@@ -5646,7 +5650,8 @@ error: invalid command 'test'
     fn test_pip_wheel_malformed_python_version() {
         for python in ["python.", "python.3", "python99999999999999999999"] {
             let line = pip_wheel_line(python);
-            let (m, err) = Failure::split(super::find_build_failure_description(vec![&line]));
+            let (m, err) =
+                Failure::split(super::find_build_failure_description(vec![&line]).unwrap());
             assert_eq!(m.expect("generic match expected").line(), line);
             assert!(err.is_none(), "{}: unexpected problem {:?}", python, err);
         }
@@ -5716,7 +5721,7 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             "dh_auto_configure: error: cd obj-x86_64-linux-gnu && cmake .. returned exit code 1\n",
         );
         let lines: Vec<&str> = log.split_inclusive('\n').collect();
-        let (m, problem) = Failure::split(find_build_failure_description(lines));
+        let (m, problem) = Failure::split(find_build_failure_description(lines).unwrap());
         let m = m.expect("expected a match");
         assert_eq!(4, m.lineno());
         assert_eq!("     \"/usr/lib/x86_64-linux-gnu/libfoo.so\"\n", m.line());
@@ -5733,7 +5738,7 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             "-- Found cmake\n  The imported target \"Foo::Bar\" references the file\n\n     \"/usr/lib/libfoo.so\"\n",
         ] {
             let lines: Vec<&str> = log.split_inclusive('\n').collect();
-            let (m, problem) = Failure::split(find_build_failure_description(lines));
+            let (m, problem) = Failure::split(find_build_failure_description(lines).unwrap());
             assert!(m.is_none());
             assert!(problem.is_none());
         }
@@ -5881,7 +5886,7 @@ Call Stack (most recent call first):
 -- Configuring incomplete, errors occurred!
 "#;
         let lines: Vec<&str> = log.split_inclusive('\n').collect();
-        let (_m, err) = Failure::split(super::find_build_failure_description(lines));
+        let (_m, err) = Failure::split(super::find_build_failure_description(lines).unwrap());
         let err = err.expect("expected some problem");
         let cfm = err
             .as_any()
@@ -5931,7 +5936,8 @@ Call Stack (most recent call first):
             "chown: changing ownership of 'debian/tcptraceroute/usr/bin/tcptraceroute.mt': Operation not permitted",
             "make[1]: *** [debian/rules:23: override_dh_auto_install] Error 1",
         ];
-        let (m, err) = Failure::split(super::find_build_failure_description(lines.clone()));
+        let (m, err) =
+            Failure::split(super::find_build_failure_description(lines.clone()).unwrap());
         assert!(err.is_none(), "no Problem expected for this matcher");
         let m = m.expect("chown line should be picked over the trailing make error");
         assert_eq!(m.line(), lines[2]);
@@ -5944,7 +5950,8 @@ Call Stack (most recent call first):
             "install: cannot change ownership of '/build/reproducible-path/physlock-13/debian/physlock/usr/bin/physlock': Operation not permitted",
             "make[2]: *** [Makefile:55: install] Error 1",
         ];
-        let (m, err) = Failure::split(super::find_build_failure_description(lines.clone()));
+        let (m, err) =
+            Failure::split(super::find_build_failure_description(lines.clone()).unwrap());
         assert!(err.is_none(), "no Problem expected for this matcher");
         let m = m.expect("install line should be picked over the trailing make error");
         assert_eq!(m.line(), lines[1]);
@@ -5962,7 +5969,8 @@ Call Stack (most recent call first):
             "/usr/bin/x86_64-linux-gnu-ld.bfd: final link failed: bad value",
             "collect2: error: ld returned 1 exit status",
         ];
-        let (m, err) = Failure::split(super::find_build_failure_description(lines.clone()));
+        let (m, err) =
+            Failure::split(super::find_build_failure_description(lines.clone()).unwrap());
         assert!(err.is_none(), "no Problem expected for this matcher");
         let m = m.expect("PIC line should be picked over the collect2 fallback");
         assert_eq!(m.line(), lines[0]);
