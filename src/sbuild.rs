@@ -1576,6 +1576,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_parse_sbuild_log_invalid_utf8() {
+        let sections: Vec<Vec<String>> =
+            parse_sbuild_log(&b"sbuild (Debian sbuild) 0.85.0\ncaf\xe9\n"[..])
+                .unwrap()
+                .map(|s| s.lines)
+                .collect();
+        assert_eq!(
+            sections,
+            vec![vec![
+                "sbuild (Debian sbuild) 0.85.0\n".to_string(),
+                "caf\u{fffd}\n".to_string()
+            ]]
+        );
+    }
+
+    #[test]
     fn test_parse_sbuild_log() {
         let log = include_str!("testdata/sbuild.0.log");
         let sbuild_log: SbuildLog = log.parse().unwrap();
