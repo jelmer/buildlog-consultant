@@ -7,6 +7,7 @@
 use crate::lines::Lines;
 use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
+use crate::r#match::Error;
 use crate::sbuild::SectionFailure;
 use crate::{Failure, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::lossless::relations::{Entry, Relations};
@@ -256,55 +257,71 @@ pub(crate) fn find_cudf_output(lines: &[&str]) -> Option<(Vec<usize>, crate::cud
 /// * `reports` - Slice of CUDF reports from DOSE3
 ///
 /// # Returns
-/// An optional problem description extracted from the reports
+/// An optional problem description extracted from the reports, or an error if
+/// the reports do not have the expected structure
 pub(crate) fn error_from_dose3_reports(
     reports: &[crate::cudf::Report],
-) -> Option<Box<dyn Problem>> {
-    let packages = reports
-        .iter()
-        .map(|report| &report.package)
-        .collect::<Vec<_>>();
-    assert_eq!(packages, ["sbuild-build-depends-main-dummy"]);
-    if reports[0].status != crate::cudf::Status::Broken {
-        return None;
+) -> Result<Option<Box<dyn Problem>>, Error> {
+    let report = match reports {
+        [report] if report.package == "sbuild-build-depends-main-dummy" => report,
+        _ => {
+            let packages = reports
+                .iter()
+                .map(|report| &report.package)
+                .collect::<Vec<_>>();
+            return Err(Error::new(format!(
+                "unexpected packages in dose3 report: {:?}",
+                packages
+            )));
+        }
+    };
+    if report.status != crate::cudf::Status::Broken {
+        return Ok(None);
     }
     let mut missing = vec![];
     let mut conflict = vec![];
-    for reason in &reports[0].reasons {
+    for reason in &report.reasons {
         if let Some(this_missing) = &reason.missing {
-            let relation: Entry = this_missing
-                .pkg
-                .unsat_dependency
-                .as_ref()
-                .unwrap()
-                .parse()
-                .unwrap();
+            let relation: Entry = parse_dose3_relation(
+                this_missing.pkg.unsat_dependency.as_deref(),
+                "unsat-dependency",
+            )?;
             missing.push(relation);
         }
         if let Some(this_conflict) = &reason.conflict {
-            let relation: Relations = this_conflict
-                .pkg1
-                .unsat_conflict
-                .as_ref()
-                .unwrap()
-                .parse()
-                .unwrap();
+            let relation: Relations = parse_dose3_relation(
+                this_conflict.pkg1.unsat_conflict.as_deref(),
+                "unsat-conflict",
+            )?;
             conflict.extend(relation.entries());
         }
     }
     if !missing.is_empty() {
         let missing: Relations = missing.into();
-        return Some(Box::new(UnsatisfiedAptDependencies {
+        return Ok(Some(Box::new(UnsatisfiedAptDependencies {
             relations: missing.to_string(),
-        }) as Box<dyn Problem>);
+        }) as Box<dyn Problem>));
     }
     if !conflict.is_empty() {
         let conflict: Relations = conflict.into();
-        return Some(Box::new(UnsatisfiedAptConflicts {
+        return Ok(Some(Box::new(UnsatisfiedAptConflicts {
             relations: conflict.to_string(),
-        }) as Box<dyn Problem>);
+        }) as Box<dyn Problem>));
     }
-    None
+    Ok(None)
+}
+
+fn parse_dose3_relation<T: std::str::FromStr<Err = String>>(
+    text: Option<&str>,
+    field: &str,
+) -> Result<T, Error> {
+    let text = text.ok_or_else(|| Error::new(format!("dose3 reason without {}", field)))?;
+    text.parse().map_err(|e| {
+        Error::new(format!(
+            "invalid {} {:?} in dose3 report: {}",
+            field, text, e
+        ))
+    })
 }
 
 #[cfg(test)]
@@ -637,7 +654,7 @@ mod tests {
             conflict.pkg1.unsat_conflict.as_deref(),
             Some("libfoo:amd64 (<< 2.0)")
         );
-        let problem = error_from_dose3_reports(&cudf.report).unwrap();
+        let problem = error_from_dose3_reports(&cudf.report).unwrap().unwrap();
         let problem = problem
             .as_any()
             .downcast_ref::<UnsatisfiedAptConflicts>()
@@ -669,7 +686,7 @@ mod tests {
             }],
         }];
 
-        let problem = error_from_dose3_reports(&missing_reports);
+        let problem = error_from_dose3_reports(&missing_reports).unwrap();
         assert!(problem.is_some());
         let problem = problem.unwrap();
         assert!(problem.as_any().is::<UnsatisfiedAptDependencies>());
@@ -701,7 +718,7 @@ mod tests {
             }],
         }];
 
-        let problem = error_from_dose3_reports(&conflict_reports);
+        let problem = error_from_dose3_reports(&conflict_reports).unwrap();
         assert!(problem.is_some());
         let problem = problem.unwrap();
         assert!(problem.as_any().is::<UnsatisfiedAptConflicts>());
@@ -715,7 +732,111 @@ mod tests {
             reasons: vec![],        // Empty reasons meaning it's actually "ok" for our test
         }];
 
-        let problem = error_from_dose3_reports(&ok_reports);
+        let problem = error_from_dose3_reports(&ok_reports).unwrap();
         assert!(problem.is_none());
+    }
+
+    fn dose3_pkg(
+        package: &str,
+        unsat_dependency: Option<&str>,
+        unsat_conflict: Option<&str>,
+    ) -> crate::cudf::Pkg {
+        crate::cudf::Pkg {
+            package: package.to_string(),
+            version: "0.invalid.0".parse().unwrap(),
+            architecture: "amd64".to_string(),
+            unsat_dependency: unsat_dependency.map(str::to_string),
+            unsat_conflict: unsat_conflict.map(str::to_string),
+        }
+    }
+
+    fn dose3_report(package: &str, reasons: Vec<crate::cudf::Reason>) -> crate::cudf::Report {
+        crate::cudf::Report {
+            package: package.to_string(),
+            version: "0.invalid.0".parse().unwrap(),
+            architecture: "amd64".to_string(),
+            status: crate::cudf::Status::Broken,
+            reasons,
+        }
+    }
+
+    fn dose3_missing(unsat_dependency: Option<&str>) -> crate::cudf::Reason {
+        crate::cudf::Reason {
+            missing: Some(crate::cudf::Missing {
+                pkg: dose3_pkg("sbuild-build-depends-main-dummy", unsat_dependency, None),
+            }),
+            conflict: None,
+        }
+    }
+
+    fn dose3_conflict(unsat_conflict: Option<&str>) -> crate::cudf::Reason {
+        crate::cudf::Reason {
+            missing: None,
+            conflict: Some(crate::cudf::Conflict {
+                pkg1: dose3_pkg("sbuild-build-depends-main-dummy", None, unsat_conflict),
+                pkg2: dose3_pkg("libfoo", None, None),
+            }),
+        }
+    }
+
+    #[test]
+    fn test_error_from_dose3_reports_no_reports() {
+        let err = error_from_dose3_reports(&[]).unwrap_err();
+        assert_eq!(err.message(), "unexpected packages in dose3 report: []");
+    }
+
+    #[test]
+    fn test_error_from_dose3_reports_unexpected_package() {
+        let err = error_from_dose3_reports(&[dose3_report("libfoo", vec![])]).unwrap_err();
+        assert_eq!(
+            err.message(),
+            "unexpected packages in dose3 report: [\"libfoo\"]"
+        );
+    }
+
+    #[test]
+    fn test_error_from_dose3_reports_missing_without_dependency() {
+        let reports = [dose3_report(
+            "sbuild-build-depends-main-dummy",
+            vec![dose3_missing(None)],
+        )];
+        let err = error_from_dose3_reports(&reports).unwrap_err();
+        assert_eq!(err.message(), "dose3 reason without unsat-dependency");
+    }
+
+    #[test]
+    fn test_error_from_dose3_reports_invalid_dependency() {
+        let reports = [dose3_report(
+            "sbuild-build-depends-main-dummy",
+            vec![dose3_missing(Some("libfoo (>= 1.0"))],
+        )];
+        let err = error_from_dose3_reports(&reports).unwrap_err();
+        assert_eq!(
+            err.message(),
+            "invalid unsat-dependency \"libfoo (>= 1.0\" in dose3 report: Expected ')'"
+        );
+    }
+
+    #[test]
+    fn test_error_from_dose3_reports_conflict_without_conflict() {
+        let reports = [dose3_report(
+            "sbuild-build-depends-main-dummy",
+            vec![dose3_conflict(None)],
+        )];
+        let err = error_from_dose3_reports(&reports).unwrap_err();
+        assert_eq!(err.message(), "dose3 reason without unsat-conflict");
+    }
+
+    #[test]
+    fn test_error_from_dose3_reports_invalid_conflict() {
+        let reports = [dose3_report(
+            "sbuild-build-depends-main-dummy",
+            vec![dose3_conflict(Some("libfoo (<< 2.0"))],
+        )];
+        let err = error_from_dose3_reports(&reports).unwrap_err();
+        assert_eq!(
+            err.message(),
+            "invalid unsat-conflict \"libfoo (<< 2.0\" in dose3 report: Expected ')'"
+        );
     }
 }
