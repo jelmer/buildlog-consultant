@@ -36,8 +36,14 @@ fn main() {
 
     let lines = log.split('\n').collect::<Vec<_>>();
 
-    let result =
-        buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(lines.clone());
+    let result = buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(&lines)
+        .unwrap_or_else(|e| {
+            log::error!("Failed to analyze log: {}", e);
+            if let Some(source) = std::error::Error::source(&e) {
+                log::error!("Caused by: {}", source);
+            }
+            std::process::exit(1);
+        });
 
     if args.json {
         let mut ret = serde_json::json!({

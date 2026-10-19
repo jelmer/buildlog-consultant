@@ -11,7 +11,7 @@ use crate::Problem;
 /// Type alias for brz error handler
 pub type BrzErrorHandler = Vec<(
     regex::Regex,
-    fn(&regex::Captures, Vec<&str>) -> Option<Box<dyn Problem>>,
+    fn(&regex::Captures, &[&str]) -> Option<Box<dyn Problem>>,
 )>;
 
 /// Searches for Bazaar (brz) build errors in log lines.
@@ -19,13 +19,13 @@ pub type BrzErrorHandler = Vec<(
 /// This function scans log lines for Bazaar errors and extracts problem information.
 ///
 /// # Arguments
-/// * `lines` - Vector of log lines to analyze
+/// * `lines` - Log lines to analyze
 ///
 /// # Returns
 /// An optional tuple containing:
 /// * An optional problem description
 /// * A string representation of the error
-pub fn find_brz_build_error(lines: Vec<&str>) -> Option<(Option<Box<dyn Problem>>, String)> {
+pub fn find_brz_build_error(lines: &[&str]) -> Option<(Option<Box<dyn Problem>>, String)> {
     for (i, line) in lines.enumerate_backward(None) {
         if let Some(suffix) = line.strip_prefix("brz: ERROR: ") {
             // Section lines retain their trailing newline. Strip it before
@@ -41,7 +41,7 @@ pub fn find_brz_build_error(lines: Vec<&str>) -> Option<(Option<Box<dyn Problem>
                     .map(|n| n.trim_end_matches('\n').to_string()),
             );
             let reflowed = rest.join("\n");
-            let (err, line) = parse_brz_error(&reflowed, lines[..i].to_vec());
+            let (err, line) = parse_brz_error(&reflowed, &lines[..i]);
             return Some((err, line.to_string()));
         }
     }
@@ -59,7 +59,7 @@ pub fn find_brz_build_error(lines: Vec<&str>) -> Option<(Option<Box<dyn Problem>
 ///
 /// # Returns
 /// An optional problem description
-fn parse_debcargo_failure(_: &regex::Captures, prior_lines: Vec<&str>) -> Option<Box<dyn Problem>> {
+fn parse_debcargo_failure(_: &regex::Captures, prior_lines: &[&str]) -> Option<Box<dyn Problem>> {
     const MORE_TAIL: &str = "\x1b[0m\n";
     const MORE_HEAD1: &str = "\x1b[1;31mSomething failed: ";
     const MORE_HEAD2: &str = "\x1b[1;31mdebcargo failed: ";
@@ -216,16 +216,13 @@ lazy_static::lazy_static! {
 ///
 /// # Arguments
 /// * `line` - The error message to parse
-/// * `prior_lines` - Vector of lines preceding the error message in the log
+/// * `prior_lines` - Lines preceding the error message in the log
 ///
 /// # Returns
 /// A tuple containing:
 /// * An optional problem description if the error is recognized
 /// * A string representation of the error
-pub fn parse_brz_error<'a>(
-    line: &'a str,
-    prior_lines: Vec<&'a str>,
-) -> (Option<Box<dyn Problem>>, String) {
+pub fn parse_brz_error(line: &str, prior_lines: &[&str]) -> (Option<Box<dyn Problem>>, String) {
     let line = line.trim();
     for (re, f) in BRZ_ERRORS.iter() {
         if let Some(m) = re.captures(line) {
@@ -261,7 +258,7 @@ mod tests {
     fn test_inconsistent_source_format() {
         let (err, line) = parse_brz_error(
                 "Inconsistency between source format and version: version is not native, format is native.",
-                vec![]);
+                &[]);
         assert_eq!(
             line,
             "Inconsistent source format between version and source format",
@@ -283,7 +280,7 @@ mod tests {
             "Try `debcargo update` to update the crates.io index.\x1b[0m\n",
             "brz: ERROR: Debcargo failed to run.\n",
         ];
-        let (err, line) = find_brz_build_error(lines).unwrap();
+        let (err, line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             line,
             "debcargo can't find crate version-check (version: 0.9.2)"
@@ -304,7 +301,7 @@ mod tests {
             "uscan warn: In debian/watch no matching files for version 1.2.0 in watch line\n",
             "brz: ERROR: UScan failed to run: In debian/watch no matching files for version 1.2.0 in watch line.\n",
         ];
-        let (err, _line) = find_brz_build_error(lines).unwrap();
+        let (err, _line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(UScanRequestVersionMissing {
@@ -327,7 +324,7 @@ mod tests {
             "brz: ERROR: UScan failed to run: In watchfile debian/watch, reading webpage\n",
             "  https://example.com/dist/ failed: 404 Not Found.\n",
         ];
-        let (err, _line) = find_brz_build_error(lines).unwrap();
+        let (err, _line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(UScanFailed {
@@ -345,7 +342,7 @@ mod tests {
     #[test]
     fn test_brz_error_nested_tree_unresolvable() {
         let lines = vec!["brz: ERROR: The nested tree for lib can not be resolved.\n"];
-        let (err, line) = find_brz_build_error(lines).unwrap();
+        let (err, line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(NestedTreeUnresolvable {
@@ -370,7 +367,7 @@ mod tests {
             "Using uscan to look for the upstream tarball.\n",
             "brz: ERROR: UScan failed to run: Newest version of td1.8.11 on remote site is 1.8.0+git20260425.8fc2344, specified download version is 1.8.11~git20230202.3179d35.\n",
         ];
-        let (err, line) = find_brz_build_error(lines).unwrap();
+        let (err, line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(UScanRemoteVersionMismatch {
@@ -393,7 +390,7 @@ mod tests {
         let lines = vec![
             "brz: ERROR: UScan failed to run: The following paragraph isn't well formatted, skipping it: << ==EOF==\n",
         ];
-        let (err, line) = find_brz_build_error(lines).unwrap();
+        let (err, line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(UScanWatchfileMalformed {
@@ -409,7 +406,7 @@ mod tests {
         let lines = vec![
             "brz: ERROR: dulwich.objects.SubmoduleEncountered: (b'subprojects/libcmatrix', b'6c260ee37bd2eff096ee44c29690f30718566c1c')\n",
         ];
-        let (err, _line) = find_brz_build_error(lines).unwrap();
+        let (err, _line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(SubmoduleEncountered {
@@ -425,7 +422,7 @@ mod tests {
     #[test]
     fn test_brz_error_internal_assertion_error_empty() {
         let lines = vec!["brz: ERROR: AssertionError: \n"];
-        let (err, line) = find_brz_build_error(lines).unwrap();
+        let (err, line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(BrzInternalError {
@@ -442,7 +439,7 @@ mod tests {
         let lines = vec![
             "brz: ERROR: AttributeError: 'RemoteGitRepository' object has no attribute '_git'\n",
         ];
-        let (err, line) = find_brz_build_error(lines).unwrap();
+        let (err, line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             err,
             Some(Box::new(BrzInternalError {
@@ -470,7 +467,7 @@ mod tests {
             "Try `debcargo update` to update the crates.io index.\x1b[0m\n",
             "brz: ERROR: Debcargo failed to run.\n",
         ];
-        let (err, line) = find_brz_build_error(lines).unwrap();
+        let (err, line) = find_brz_build_error(&lines).unwrap();
         assert_eq!(
             line,
             "debcargo can't find crate utf8parse (version: 0.10.1)"

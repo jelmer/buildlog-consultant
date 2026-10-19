@@ -17,11 +17,11 @@ use debian_control::lossless::relations::{Entry, Relations};
 /// along with a problem description.
 ///
 /// # Arguments
-/// * `lines` - Vector of lines from an APT log
+/// * `lines` - Lines from an APT log
 ///
 /// # Returns
 /// The failure, if one was found
-pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
+pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
     let mut ret = None;
     for (lineno, line) in lines.enumerate_backward(Some(50)) {
         let line = line.trim_end_matches('\n');
@@ -38,12 +38,12 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
                     })
                 };
                 return Some(Failure::new(
-                    SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                     Some(problem),
                 ));
             }
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 None,
             ));
         }
@@ -53,7 +53,7 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
                 broken: None,
             }) as Box<dyn Problem>);
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno - 1, Some("direct match")),
+                SingleLineMatch::from_lines(lines, lineno - 1, Some("direct match")),
                 error,
             ));
         }
@@ -85,7 +85,7 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
             }) as Box<dyn Problem>);
             offsets.push(lineno);
             return Some(Failure::new(
-                MultiLineMatch::from_lines(&lines, offsets, Some("direct match")),
+                MultiLineMatch::from_lines(lines, offsets, Some("direct match")),
                 error,
             ));
         }
@@ -94,7 +94,7 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
             line
         ) {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 Some(Box::new(AptMissingReleaseFile {
                     url: repo.to_string(),
                 })),
@@ -105,7 +105,7 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
             line
         ) {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
@@ -113,13 +113,13 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
             lazy_regex::regex_captures!(r"E: You don't have enough free space in (.*)\.", line)
         {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
         if line.starts_with("E: ") && ret.is_none() {
             ret = Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 None,
             ));
         }
@@ -127,7 +127,7 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
             lazy_regex::regex_captures!(r"E: Unable to locate package (.*)", line)
         {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 Some(Box::new(AptPackageUnknown {
                     package: pkg.to_string(),
                 })),
@@ -135,19 +135,19 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
         }
         if line == "E: Write error - write (28: No space left on device)" {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
         if let Some((_, msg)) = lazy_regex::regex_captures!(r"dpkg: error: (.*)", line) {
             if msg.ends_with(": No space left on device") {
                 return Some(Failure::new(
-                    SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                     Some(Box::new(NoSpaceOnDevice)),
                 ));
             }
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 Some(Box::new(DpkgError {
                     msg: msg.to_string(),
                 })),
@@ -157,7 +157,7 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
             lazy_regex::regex_captures!(r"dpkg: error processing package (.*) \((.*)\):", line)
         {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno + 1, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno + 1, Some("direct regex")),
                 Some(Box::new(DpkgError {
                     msg: format!("processing package {} ({})", pkg, msg),
                 })),
@@ -171,13 +171,13 @@ pub fn find_apt_get_failure(lines: Vec<&str>) -> Option<Failure> {
             line,
         ) {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
         if lazy_regex::regex_is_match!(r" .*: No space left on device", line) {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
@@ -202,7 +202,7 @@ pub fn find_apt_get_update_failure(
     let lines = sbuildlog.get_section_lines(Some(focus_section));
     SectionFailure {
         section: Some(focus_section),
-        failure: find_apt_get_failure(lines.unwrap()),
+        failure: find_apt_get_failure(&lines.unwrap()),
     }
 }
 
@@ -212,13 +212,13 @@ pub fn find_apt_get_update_failure(
 /// output from a log file.
 ///
 /// # Arguments
-/// * `lines` - Vector of lines to search in
+/// * `lines` - Lines to search in
 ///
 /// # Returns
 /// An optional tuple containing:
 /// * A vector of line offsets where the CUDF output was found
 /// * The parsed CUDF data
-pub(crate) fn find_cudf_output(lines: Vec<&str>) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
+pub(crate) fn find_cudf_output(lines: &[&str]) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
     let mut offset = None;
     for (i, line) in lines.enumerate_backward(None) {
         if line.starts_with("output-version:") {
@@ -302,7 +302,7 @@ mod tests {
     use super::*;
 
     fn assert_just_match(lines: Vec<&str>, lineno: usize) {
-        let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(lines.clone()));
+        let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(&lines));
         assert!(actual_err.is_none());
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
@@ -313,7 +313,7 @@ mod tests {
     }
 
     fn assert_match(lines: Vec<&str>, lineno: usize, mut expected: Option<impl Problem + 'static>) {
-        let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(lines.clone()));
+        let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(&lines));
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
             assert_eq!(lineno, r#match.lineno());
@@ -432,7 +432,7 @@ mod tests {
             "subprocess installed post-installation script returned error exit status 1",
         ];
 
-        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
+        let (match_result, problem) = Failure::split(find_apt_get_failure(&lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -452,7 +452,7 @@ mod tests {
             "E: Broken packages",
         ];
 
-        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
+        let (match_result, problem) = Failure::split(find_apt_get_failure(&lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -472,7 +472,7 @@ mod tests {
     fn test_unable_to_locate_package_direct() {
         let lines = vec!["E: Unable to locate package nonexistent-package"];
 
-        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
+        let (match_result, problem) = Failure::split(find_apt_get_failure(&lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -492,7 +492,7 @@ mod tests {
             "some text after"
         ];
 
-        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
+        let (match_result, problem) = Failure::split(find_apt_get_failure(&lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -509,7 +509,7 @@ mod tests {
             "some text after",
         ];
 
-        let (match_result, problem) = Failure::split(find_apt_get_failure(lines));
+        let (match_result, problem) = Failure::split(find_apt_get_failure(&lines));
 
         assert!(match_result.is_some());
         assert!(problem.is_some());
@@ -524,7 +524,7 @@ mod tests {
         let lines = include_str!("testdata/sbuild-cudf.log")
             .split_inclusive('\n')
             .collect::<Vec<_>>();
-        let (offsets, report) = find_cudf_output(lines).unwrap();
+        let (offsets, report) = find_cudf_output(&lines).unwrap();
         assert_eq!(offsets, (104..=119).collect::<Vec<_>>());
         let expected = Cudf {
             output_version: (1, 2),
@@ -580,7 +580,7 @@ mod tests {
             "      architecture: amd64\n",
             " \n",
         ];
-        let (_, cudf) = find_cudf_output(lines).unwrap();
+        let (_, cudf) = find_cudf_output(&lines).unwrap();
         let conflict = cudf.report[0].reasons[0].conflict.as_ref().unwrap();
         assert_eq!(
             conflict.pkg1.unsat_conflict.as_deref(),

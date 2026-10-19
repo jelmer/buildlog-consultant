@@ -6,7 +6,6 @@
 #![deny(missing_docs)]
 
 use std::borrow::Cow;
-use std::ops::Index;
 
 /// Module for handling apt-related logs and problems.
 pub mod apt;
@@ -359,17 +358,13 @@ impl SingleLineMatch {
     /// Creates a new `SingleLineMatch` from a collection of lines, an offset, and an optional origin.
     ///
     /// # Arguments
-    /// * `lines` - Collection of lines that can be indexed
+    /// * `lines` - The log lines
     /// * `offset` - Zero-based offset of the line to match
     /// * `origin` - Optional source identifier
     ///
     /// # Returns
     /// A new `SingleLineMatch` instance
-    pub fn from_lines<'a>(
-        lines: &impl Index<usize, Output = &'a str>,
-        offset: usize,
-        origin: Option<&str>,
-    ) -> Self {
+    pub fn from_lines(lines: &[&str], offset: usize, origin: Option<&str>) -> Self {
         let line = &lines[offset];
         let origin = origin
             .map(|s| Origin(s.to_string()))
@@ -418,17 +413,13 @@ impl MultiLineMatch {
     /// Creates a new `MultiLineMatch` from a collection of lines, a vector of offsets, and an optional origin.
     ///
     /// # Arguments
-    /// * `lines` - Collection of lines that can be indexed
+    /// * `lines` - The log lines
     /// * `offsets` - Vector of zero-based line offsets to match
     /// * `origin` - Optional source identifier
     ///
     /// # Returns
     /// A new `MultiLineMatch` instance
-    pub fn from_lines<'a>(
-        lines: &impl Index<usize, Output = &'a str>,
-        offsets: Vec<usize>,
-        origin: Option<&str>,
-    ) -> Self {
+    pub fn from_lines(lines: &[&str], offsets: Vec<usize>, origin: Option<&str>) -> Self {
         let lines = offsets
             .iter()
             .map(|&offset| lines[offset].to_string())

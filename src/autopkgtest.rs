@@ -6,6 +6,7 @@
 
 use crate::lines::Lines;
 use crate::problems::autopkgtest::*;
+use crate::r#match::Error;
 use crate::{Failure, Problem, SingleLineMatch};
 use std::collections::HashMap;
 
@@ -182,11 +183,11 @@ impl Summary {
 /// and extracts information about individual test results.
 ///
 /// # Arguments
-/// * `lines` - Vector of log lines from the summary section
+/// * `lines` - Log lines from the summary section
 ///
 /// # Returns
 /// A vector of `Summary` structures, one for each identified test result
-pub fn parse_autopkgtest_summary(lines: Vec<&str>) -> Vec<Summary> {
+pub fn parse_autopkgtest_summary(lines: &[&str]) -> Vec<Summary> {
     let mut i = 0;
     let mut ret = vec![];
     while i < lines.len() {
@@ -285,8 +286,12 @@ impl Field {
 }
 
 /// Find the autopkgtest failure in output.
-pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<AutopkgtestFailure> {
-    let mut test_output: HashMap<Field, (Vec<String>, usize)> = HashMap::new();
+///
+/// Returns an error if a matcher could not interpret the log.
+pub fn find_autopkgtest_failure_description(
+    lines: &[&str],
+) -> Result<Option<AutopkgtestFailure>, Error> {
+    let mut test_output: HashMap<Field, (Vec<&str>, usize)> = HashMap::new();
     let mut current_field: Option<Field> = None;
     let mut it = lines.iter().enumerate().peekable();
     while let Some((i, line)) = it.next() {
@@ -322,14 +327,14 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                     ) {
                         let error =
                             Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>);
-                        return Some(AutopkgtestFailure {
+                        return Ok(Some(AutopkgtestFailure {
                             failure: Failure::new(
-                                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                                 error,
                             ),
                             testname: last_test,
                             description: Some(stderr.to_owned()),
-                        });
+                        }));
                     }
                 }
                 if let Some((_, testbed_failure_reason)) =
@@ -350,15 +355,13 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                             r#match: m,
                             problem: Some(error),
                         }) = crate::common::find_build_failure_description(
-                            test_output
-                                .get(&field)
-                                .map_or(vec![], |x| x.0.iter().map(|x| x.as_str()).collect()),
-                        ) {
+                            test_output.get(&field).map_or(&[], |x| &x.0),
+                        )? {
                             let description = m.line().to_string();
-                            return Some(AutopkgtestFailure {
+                            return Ok(Some(AutopkgtestFailure {
                                 failure: Failure::new(
                                     SingleLineMatch::from_lines(
-                                        &lines,
+                                        lines,
                                         test_output.get(&field).unwrap().1 + m.offset(),
                                         Some("direct regex"),
                                     ),
@@ -366,52 +369,51 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                                 ),
                                 testname: last_test.map(|x| x.to_owned()),
                                 description: Some(description),
-                            });
+                            }));
                         }
                     }
 
                     if testbed_failure_reason
                         == "sent `auxverb_debug_fail', got `copy-failed', expected `ok...'"
                     {
-                        if let Some(failure) =
-                            crate::common::find_build_failure_description(lines.clone())
-                                .filter(|f| f.problem.is_some())
+                        if let Some(failure) = crate::common::find_build_failure_description(lines)?
+                            .filter(|f| f.problem.is_some())
                         {
                             let description = failure.r#match.line().to_string();
-                            return Some(AutopkgtestFailure {
+                            return Ok(Some(AutopkgtestFailure {
                                 failure,
                                 testname: last_test,
                                 description: Some(description),
-                            });
+                            }));
                         }
                     }
 
                     if testbed_failure_reason == "cannot send to testbed: [Errno 32] Broken pipe" {
-                        if let Some(failure) = find_testbed_setup_failure(lines.clone())
-                            .filter(|f| f.problem.is_some())
+                        if let Some(failure) =
+                            find_testbed_setup_failure(lines).filter(|f| f.problem.is_some())
                         {
                             let description = failure.r#match.line().to_string();
-                            return Some(AutopkgtestFailure {
+                            return Ok(Some(AutopkgtestFailure {
                                 failure,
                                 testname: last_test,
                                 description: Some(description),
-                            });
+                            }));
                         }
                     }
                     if testbed_failure_reason == "apt repeatedly failed to download packages" {
-                        if let Some(failure) = crate::apt::find_apt_get_failure(lines.clone())
-                            .filter(|f| f.problem.is_some())
+                        if let Some(failure) =
+                            crate::apt::find_apt_get_failure(lines).filter(|f| f.problem.is_some())
                         {
                             let description = failure.r#match.line().to_string();
-                            return Some(AutopkgtestFailure {
+                            return Ok(Some(AutopkgtestFailure {
                                 failure,
                                 testname: last_test,
                                 description: Some(description),
-                            });
+                            }));
                         }
-                        return Some(AutopkgtestFailure {
+                        return Ok(Some(AutopkgtestFailure {
                             failure: Failure::new(
-                                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                                 Some(Box::new(crate::problems::debian::AptFetchFailure {
                                     url: None,
                                     error: testbed_failure_reason.to_owned(),
@@ -419,76 +421,70 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                             ),
                             testname: last_test,
                             description: None,
-                        });
+                        }));
                     }
-                    return Some(AutopkgtestFailure {
+                    return Ok(Some(AutopkgtestFailure {
                         failure: Failure::new(
-                            SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                            SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                             Some(Box::new(AutopkgtestTestbedFailure {
                                 reason: testbed_failure_reason.to_owned(),
                             }) as Box<dyn Problem>),
                         ),
                         testname: last_test.map(|x| x.to_owned()),
                         description: None,
-                    });
+                    }));
                 }
                 if let Some((_, pkg)) =
                     lazy_regex::regex_captures!(r"erroneous package: (.*)", &msg)
                 {
                     if let Some(failure) =
-                        crate::common::find_build_failure_description(lines[..i].to_vec())
+                        crate::common::find_build_failure_description(&lines[..i])?
                             .filter(|f| f.problem.is_some())
                     {
                         let description = failure.r#match.line().to_string();
-                        return Some(AutopkgtestFailure {
+                        return Ok(Some(AutopkgtestFailure {
                             failure,
                             testname: last_test.map(|x| x.to_owned()),
                             description: Some(description),
-                        });
+                        }));
                     }
-                    return Some(AutopkgtestFailure {
+                    return Ok(Some(AutopkgtestFailure {
                         failure: Failure::new(
-                            SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                            SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                             Some(Box::new(AutopkgtestErroneousPackage {
                                 reason: pkg.to_string(),
                             }) as Box<dyn Problem>),
                         ),
                         testname: last_test.map(|x| x.to_owned()),
                         description: None,
-                    });
+                    }));
                 }
                 if msg == "unexpected error:" {
                     if let Some(failure) =
-                        crate::common::find_build_failure_description(lines[(i + 1)..].to_vec())
+                        crate::common::find_build_failure_description(&lines[(i + 1)..])?
                             .filter(|f| f.problem.is_some())
                     {
                         let description = failure.r#match.line().to_string();
-                        return Some(AutopkgtestFailure {
+                        return Ok(Some(AutopkgtestFailure {
                             failure,
                             testname: last_test.map(|x| x.to_owned()),
                             description: Some(description),
-                        });
+                        }));
                     }
                 }
                 if let Some(current_field) = current_field.as_ref() {
                     if let Some(Failure {
                         r#match: m,
                         problem: Some(e),
-                    }) = crate::apt::find_apt_get_failure(
-                        test_output
-                            .get(current_field)
-                            .unwrap()
-                            .0
-                            .iter()
-                            .map(|x| x.as_str())
-                            .collect(),
-                    ) {
+                    }) =
+                        crate::apt::find_apt_get_failure(&test_output.get(current_field).unwrap().0)
+                    {
                         if let Some(test_output_entry) = test_output.get(current_field) {
                             let description = m.line().to_string();
-                            return Some(AutopkgtestFailure {
+                            return Ok(Some(AutopkgtestFailure {
                                 failure: Failure::new(
                                     SingleLineMatch::from_lines(
-                                        &lines,
+                                        lines,
                                         test_output_entry.1 + m.offset(),
                                         Some("direct regex"),
                                     ),
@@ -496,16 +492,16 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                                 ),
                                 testname: last_test.map(|x| x.to_owned()),
                                 description: Some(description),
-                            });
+                            }));
                         }
                     }
                 }
                 if msg == "autopkgtest" && lines[i + 1].trim_end() == ": error cleaning up:" {
                     let description = lines[i - 1].trim_end().to_owned();
-                    return Some(AutopkgtestFailure {
+                    return Ok(Some(AutopkgtestFailure {
                         failure: Failure::new(
                             SingleLineMatch::from_lines(
-                                &lines,
+                                lines,
                                 test_output.get(current_field.as_ref().unwrap()).unwrap().1,
                                 Some("direct regex"),
                             ),
@@ -513,16 +509,16 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                         ),
                         testname: last_test.map(|x| x.to_owned()),
                         description: Some(description),
-                    });
+                    }));
                 }
-                return Some(AutopkgtestFailure {
+                return Ok(Some(AutopkgtestFailure {
                     failure: Failure::new(
-                        SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                        SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                         None,
                     ),
                     testname: last_test.map(|x| x.to_owned()),
                     description: Some(msg),
-                });
+                }));
             }
             Some((_, Packet::Summary)) => {
                 current_field = Some(Field::Summary);
@@ -595,7 +591,7 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                         .entry(current_field.clone())
                         .or_insert((vec![], i))
                         .0
-                        .push(line.to_string());
+                        .push(line);
                 }
             }
         }
@@ -605,35 +601,30 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
     let (summary_lines, summary_offset) = match test_output.get(&summary_field) {
         Some((lines, _)) => (lines, test_output.get(&summary_field).unwrap().1),
         None => {
-            while !lines.is_empty() && lines.last().unwrap().trim().is_empty() {
-                lines.pop();
-            }
-            if lines.is_empty() {
-                return None;
-            }
-            let offset = lines.len() - 1;
-            let last_line = lines.last().map(|x| x.to_string());
-            return Some(AutopkgtestFailure {
+            let Some(offset) = lines.iter().rposition(|l| !l.trim().is_empty()) else {
+                return Ok(None);
+            };
+            return Ok(Some(AutopkgtestFailure {
                 failure: Failure::new(
-                    SingleLineMatch::from_lines(&lines, offset, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                     None,
                 ),
-                testname: last_line,
+                testname: Some(lines[offset].to_string()),
                 description: None,
-            });
+            }));
         }
     };
-    for packet in parse_autopkgtest_summary(summary_lines.iter().map(|x| x.as_str()).collect()) {
+    for packet in parse_autopkgtest_summary(summary_lines) {
         if [TestResult::Pass, TestResult::Skip].contains(&packet.result) {
             continue;
         }
         assert!([TestResult::Fail, TestResult::Flaky].contains(&packet.result));
         if packet.reason.as_deref() == Some("timed out") {
             let error = Some(Box::new(AutopkgtestTimedOut) as Box<dyn Problem>);
-            return Some(AutopkgtestFailure {
+            return Ok(Some(AutopkgtestFailure {
                 failure: Failure::new(
                     SingleLineMatch::from_lines(
-                        &lines,
+                        lines,
                         summary_offset + packet.offset(),
                         Some("direct regex"),
                     ),
@@ -641,25 +632,23 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                 ),
                 testname: Some(packet.name),
                 description: packet.reason,
-            });
+            }));
         } else if let Some(output) = packet
             .reason
             .as_ref()
             .and_then(|x| x.strip_prefix("stderr: "))
         {
             let field = Field::Stderr(packet.name.to_string());
-            let (stderr_lines, stderr_offset) = test_output.get(&field).map_or_else(
-                || (vec![], None),
-                |x| (x.0.iter().map(|x| x.as_str()).collect(), Some(x.1)),
-            );
+            let (stderr_lines, stderr_offset) = test_output
+                .get(&field)
+                .map_or((&[][..], None), |x| (&x.0[..], Some(x.1)));
             let description;
             let mut offset = None;
             let r#match;
             let mut error;
             if !stderr_lines.is_empty() {
-                (r#match, error) = Failure::split(crate::common::find_build_failure_description(
-                    stderr_lines.clone(),
-                ));
+                (r#match, error) =
+                    Failure::split(crate::common::find_build_failure_description(stderr_lines)?);
                 if let (Some(m), Some(so)) = (r#match.as_ref(), stderr_offset) {
                     offset = Some(m.offset() + so);
                     description = Some(m.line().to_string());
@@ -680,7 +669,7 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                 }
             } else {
                 (r#match, error) =
-                    Failure::split(crate::common::find_build_failure_description(vec![output]));
+                    Failure::split(crate::common::find_build_failure_description(&[output])?);
 
                 (offset, description) = if let Some(r#match) = r#match.as_ref() {
                     (
@@ -703,30 +692,29 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                     packet.name, output
                 )
             });
-            return Some(AutopkgtestFailure {
+            return Ok(Some(AutopkgtestFailure {
                 failure: Failure::new(
-                    SingleLineMatch::from_lines(&lines, offset, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                     Some(error),
                 ),
                 testname: Some(packet.name),
                 description: Some(description),
-            });
+            }));
         } else if packet.reason.as_deref() == Some("badpkg") {
             let field = Field::Output(packet.name.to_string());
-            let (output_lines, output_offset) = test_output.get(&field).map_or_else(
-                || (vec![], None),
-                |x| (x.0.iter().map(|x| x.as_str()).collect(), Some(x.1)),
-            );
+            let (output_lines, output_offset) = test_output
+                .get(&field)
+                .map_or((&[][..], None), |x| (&x.0[..], Some(x.1)));
             if let (false, Some(offset)) = (output_lines.is_empty(), output_offset) {
                 if let Some(Failure {
                     r#match: m,
                     problem: Some(e),
                 }) = crate::apt::find_apt_get_failure(output_lines)
                 {
-                    return Some(AutopkgtestFailure {
+                    return Ok(Some(AutopkgtestFailure {
                         failure: Failure::new(
                             SingleLineMatch::from_lines(
-                                &lines,
+                                lines,
                                 m.offset() + offset,
                                 Some("direct regex"),
                             ),
@@ -734,7 +722,7 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                         ),
                         testname: Some(packet.name),
                         description: None,
-                    });
+                    }));
                 }
             }
             let badpkg = packet
@@ -769,10 +757,10 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
             let error = blame.map(|blame| {
                 Box::new(AutopkgtestDepsUnsatisfiable::from_blame_line(blame)) as Box<dyn Problem>
             });
-            return Some(AutopkgtestFailure {
+            return Ok(Some(AutopkgtestFailure {
                 failure: Failure::new(
                     SingleLineMatch::from_lines(
-                        &lines,
+                        lines,
                         summary_offset + packet.offset() + extra_offset,
                         Some("direct regex"),
                     ),
@@ -780,15 +768,14 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
                 ),
                 testname: Some(packet.name),
                 description: Some(description),
-            });
+            }));
         } else {
             let field = Field::Output(packet.name.to_string());
-            let (output_lines, output_offset) = test_output.get(&field).map_or_else(
-                || (vec![], None),
-                |x| (x.0.iter().map(|x| x.as_str()).collect(), Some(x.1)),
-            );
+            let (output_lines, output_offset) = test_output
+                .get(&field)
+                .map_or((&[][..], None), |x| (&x.0[..], Some(x.1)));
             let (r#match, error) =
-                Failure::split(crate::common::find_build_failure_description(output_lines));
+                Failure::split(crate::common::find_build_failure_description(output_lines)?);
             let offset = match (r#match.as_ref(), output_offset) {
                 (Some(m), Some(o)) => m.offset() + o,
                 _ => summary_offset + packet.offset(),
@@ -800,18 +787,18 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
             } else {
                 format!("Test {} failed", packet.name)
             };
-            return Some(AutopkgtestFailure {
+            return Ok(Some(AutopkgtestFailure {
                 failure: Failure::new(
-                    SingleLineMatch::from_lines(&lines, offset, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                     error,
                 ),
                 testname: Some(packet.name),
                 description: Some(description),
-            });
+            }));
         }
     }
 
-    None
+    Ok(None)
 }
 
 /// Searches for testbed setup failures in autopkgtest logs.
@@ -820,11 +807,11 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Option<Auto
 /// the autopkgtest testbed setup phase, such as chroot not found errors.
 ///
 /// # Arguments
-/// * `lines` - Vector of log lines to analyze
+/// * `lines` - Log lines to analyze
 ///
 /// # Returns
 /// The failure, if one was found
-pub fn find_testbed_setup_failure(lines: Vec<&str>) -> Option<Failure> {
+pub fn find_testbed_setup_failure(lines: &[&str]) -> Option<Failure> {
     for (i, line) in lines.enumerate_backward(None) {
         if let Some((_, command, status_code, stderr)) = lazy_regex::regex_captures!(
             r"\[(.*)\] failed \(exit status ([0-9]+), stderr \'(.*)\'\)\n",
@@ -834,14 +821,14 @@ pub fn find_testbed_setup_failure(lines: Vec<&str>) -> Option<Failure> {
                 lazy_regex::regex_captures!(r"E: (.*): Chroot not found\\n", stderr)
             {
                 return Some(Failure::new(
-                    SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                     Some(Box::new(crate::problems::common::ChrootNotFound {
                         chroot: chroot.to_owned(),
                     }) as Box<dyn Problem>),
                 ));
             }
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
                     command: command.to_string(),
                     exit_status: status_code.parse().unwrap(),
@@ -858,12 +845,12 @@ pub fn find_testbed_setup_failure(lines: Vec<&str>) -> Option<Failure> {
                 stderr_group
             ) {
                 return Some(Failure::new(
-                    SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                     Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>),
                 ));
             }
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 Some(Box::new(AutopkgtestTestbedSetupFailure {
                     command: command.to_string(),
                     exit_status: 1,
@@ -889,7 +876,7 @@ mod tests {
         expected_description: Option<&str>,
     ) {
         let (r#match, testname, error, description) =
-            match super::find_autopkgtest_failure_description(lines) {
+            match super::find_autopkgtest_failure_description(&lines).unwrap() {
                 Some(f) => (
                     Some(f.failure.r#match),
                     f.testname,
@@ -920,6 +907,13 @@ mod tests {
     }
 
     #[test]
+    fn test_no_match_trailing_blank_lines() {
+        let lines = vec!["first\n", "blalblala\n", "\n", "  \n"];
+        assert_autopkgtest_match(lines, vec![1], Some("blalblala\n"), None, None);
+        assert_autopkgtest_match(vec!["\n", " \n"], vec![], None, None, None);
+    }
+
+    #[test]
     fn test_unknown_error() {
         assert_autopkgtest_match(
             vec![
@@ -931,6 +925,17 @@ mod tests {
             None,
             Some("Test python-bcolz failed: some error"),
         );
+    }
+
+    #[test]
+    fn test_propagates_match_error() {
+        let error = super::find_autopkgtest_failure_description(&[
+            "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+            "unit-tests           FAIL stderr: E: Build killed with signal TERM after 99999999999999999999 minutes of inactivity\n",
+        ])
+        .unwrap_err();
+        assert_eq!(error.message(), "invalid integer");
+        assert_eq!(error.offset(), Some(0));
     }
 
     #[test]
@@ -1257,13 +1262,13 @@ mod tests {
 
         #[test]
         fn test_empty() {
-            assert_eq!(parse_autopkgtest_summary(vec![]), vec![]);
+            assert_eq!(parse_autopkgtest_summary(&[]), vec![]);
         }
 
         #[test]
         fn test_single_pass() {
             assert_eq!(
-                parse_autopkgtest_summary(vec!["python-bcolz PASS"]),
+                parse_autopkgtest_summary(&["python-bcolz PASS"]),
                 vec![Summary {
                     offset: 0,
                     name: "python-bcolz".to_string(),
@@ -1277,7 +1282,7 @@ mod tests {
         #[test]
         fn test_single_fail() {
             assert_eq!(
-                parse_autopkgtest_summary(vec!["python-bcolz FAIL some error"]),
+                parse_autopkgtest_summary(&["python-bcolz FAIL some error"]),
                 vec![Summary {
                     offset: 0,
                     name: "python-bcolz".to_string(),
@@ -1291,7 +1296,7 @@ mod tests {
         #[test]
         fn test_single_skip() {
             assert_eq!(
-                parse_autopkgtest_summary(vec!["python-bcolz SKIP some reason"]),
+                parse_autopkgtest_summary(&["python-bcolz SKIP some reason"]),
                 vec![Summary {
                     offset: 0,
                     name: "python-bcolz".to_string(),
@@ -1305,7 +1310,7 @@ mod tests {
         #[test]
         fn test_single_flaky() {
             assert_eq!(
-                parse_autopkgtest_summary(vec!["python-bcolz FLAKY some reason"]),
+                parse_autopkgtest_summary(&["python-bcolz FLAKY some reason"]),
                 vec![Summary {
                     offset: 0,
                     name: "python-bcolz".to_string(),
@@ -1319,7 +1324,7 @@ mod tests {
         #[test]
         fn test_multiple() {
             assert_eq!(
-                parse_autopkgtest_summary(vec![
+                parse_autopkgtest_summary(&[
                     "python-bcolz PASS",
                     "python-bcolz FAIL some error",
                     "python-bcolz SKIP some reason",

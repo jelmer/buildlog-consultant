@@ -305,11 +305,16 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
         if line != "# The following modules are not available." {
             return Ok(None);
         }
-        if lines[offset + 1].trim_end_matches(['\r', '\n'])
-            != "# `perl Makefile.PL | cpanm` will install them:"
+        if lines
+            .get(offset + 1)
+            .map(|l| l.trim_end_matches(['\r', '\n']))
+            != Some("# `perl Makefile.PL | cpanm` will install them:")
         {
             return Ok(None);
         }
+        let Some(module) = lines.get(offset + 2) else {
+            return Ok(None);
+        };
 
         let relevant_linenos = vec![offset, offset + 1, offset + 2];
 
@@ -324,9 +329,8 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
                 .collect(),
         );
 
-        let problem: Option<Box<dyn Problem>> = Some(Box::new(MissingPerlModule::simple(
-            lines[offset + 2].trim(),
-        )));
+        let problem: Option<Box<dyn Problem>> =
+            Some(Box::new(MissingPerlModule::simple(module.trim())));
 
         Ok(Some(Failure::new(m, problem)))
     }
@@ -354,6 +358,19 @@ impl Matcher for MultiLineVignetteErrorMatcher {
             return Ok(None);
         }
 
+        // The diagnostics are on the next line; fall back to the header if
+        // the log ends here.
+        let Some(line) = lines.get(offset + 1) else {
+            return Ok(Some(Failure::new(
+                SingleLineMatch {
+                    origin: Origin("vignette line match".into()),
+                    offset,
+                    line: lines[offset].to_string(),
+                },
+                None,
+            )));
+        };
+
         if let Some(failure) = VIGNETTE_LINE_MATCHERS.extract_from_lines(lines, offset + 1)? {
             return Ok(Some(failure));
         }
@@ -362,7 +379,7 @@ impl Matcher for MultiLineVignetteErrorMatcher {
             SingleLineMatch {
                 origin: Origin("vignette line match".into()),
                 offset: offset + 1,
-                line: lines[offset + 1].to_string(),
+                line: line.to_string(),
             },
             None,
         )))
@@ -381,15 +398,28 @@ impl Matcher for AutoconfUnexpectedMacroMatcher {
             return Ok(None);
         }
 
+        // The offending macro is on the next line; match just the error if
+        // the log ends here.
+        let Some(next_line) = lines.get(offset + 1) else {
+            return Ok(Some(Failure::new(
+                SingleLineMatch {
+                    origin: Origin("autoconf unexpected macro".into()),
+                    offset,
+                    line: lines[offset].to_string(),
+                },
+                None,
+            )));
+        };
+
         let m = MultiLineMatch::new(
             Origin("autoconf unexpected macro".into()),
             vec![offset, offset + 1],
-            vec![lines[offset].to_string(), lines[offset + 1].to_string()],
+            vec![lines[offset].to_string(), next_line.to_string()],
         );
 
         let problem = if let Some((_, r#macro)) = regex_captures!(
             r"^\./configure: line [0-9]+: `[\s\t]*([A-Z0-9_]+)\(.*",
-            lines[offset + 1]
+            next_line
         ) {
             Some(Box::new(MissingAutoconfMacro {
                 r#macro: r#macro.to_string(),
@@ -466,17 +496,17 @@ lazy_static::lazy_static! {
         r"^(distutils.errors.DistutilsError|error): Could not find suitable distribution for Requirement.parse\('([^']+)'\)$",
         |c| {
             let req = c.get(2).unwrap().as_str().split(';').next().unwrap();
-            Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(req, None))))
+            Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(req, None)?)))
         }),
         regex_line_matcher!(
             r"^We need the Python library (.*) to be installed. Try runnning: python -m ensurepip$",
             |c| Ok(Some(Box::new(MissingPythonDistribution { distribution: c.get(1).unwrap().as_str().to_string(), python_version: None, minimum_version: None })))),
         regex_line_matcher!(
             r"^pkg_resources.DistributionNotFound: The '([^']+)' distribution was not found and is required by the application$",
-            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None))))),
+            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None)?)))),
         regex_line_matcher!(
             r"^pkg_resources.DistributionNotFound: The '([^']+)' distribution was not found and is required by (.*)$",
-            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None))))),
+            |c| Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(c.get(1).unwrap().as_str(), None)?)))),
         regex_line_matcher!(
             r"^Please install cmake version >= (.*) and re-run setup$",
             |_| Ok(Some(Box::new(MissingCommand { command: "cmake".to_string() })))),
@@ -532,7 +562,9 @@ lazy_static::lazy_static! {
         }),
         regex_line_matcher!("^E       fixture '(.*)' not found$", |m| Ok(Some(Box::new(MissingPytestFixture { fixture: m.get(1).unwrap().as_str().to_string() })))),
         regex_line_matcher!("^pytest: error: unrecognized arguments: (.*)$", |m| {
-            let args = shlex::split(m.get(1).unwrap().as_str()).unwrap();
+            let args = m.get(1).unwrap().as_str();
+            let args = shlex::split(args)
+                .ok_or_else(|| Error::new(format!("invalid shell quoting: {}", args)))?;
             Ok(Some(Box::new(UnsupportedPytestArguments { args })))
         }),
         regex_line_matcher!(
@@ -997,8 +1029,8 @@ lazy_static::lazy_static! {
     regex_line_matcher!(
         r"(dh: |dh_.*: error: )Compatibility levels before ([0-9]+) are no longer supported \(level ([0-9]+) requested\)",
         |m| {
-            let l1 = m.get(2).unwrap().as_str().parse().unwrap();
-            let l2 = m.get(3).unwrap().as_str().parse().unwrap();
+            let l1 = m.get(2).unwrap().as_str().parse()?;
+            let l2 = m.get(3).unwrap().as_str().parse()?;
             Ok(Some(Box::new(UnsupportedDebhelperCompatLevel::new(l1, l2))))
         }
     ),
@@ -1539,7 +1571,13 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"Can\'t find (.*) directory in (.*)", |_| Ok(None)),
     regex_line_matcher!(
         r"/bin/sh: [0-9]: cannot create (.*): Directory nonexistent",
-        |m|  Ok(Some(Box::new(DirectoryNonExistant { path: std::path::Path::new(m.get(1).unwrap().as_str()).to_path_buf().parent().unwrap().display().to_string() })))
+        |m| {
+            let path = m.get(1).unwrap().as_str();
+            let parent = std::path::Path::new(path)
+                .parent()
+                .ok_or_else(|| Error::new(format!("no parent directory for {:?}", path)))?;
+            Ok(Some(Box::new(DirectoryNonExistant { path: parent.display().to_string() })))
+        }
     ),
     regex_line_matcher!(r"dh: Unknown sequence (.*) \(choose from: .*\)", |_| Ok(None)),
     regex_line_matcher!(r".*\.vala:[0-9]+\.[0-9]+-[0-9]+.[0-9]+: error: (.*)", |_| Ok(None)),
@@ -1910,7 +1948,7 @@ lazy_static::lazy_static! {
             let python_version = m.get(2).map(|pv| pv.as_str().parse().unwrap());
             Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(
                 m.get(3).unwrap().as_str(), python_version
-            ))))
+            )?)))
         }
     ),
     regex_line_matcher!(
@@ -1988,7 +2026,7 @@ lazy_static::lazy_static! {
     ),
     regex_line_matcher!(
         r"E: Build killed with signal TERM after ([0-9]+) minutes of inactivity",
-        |m| Ok(Some(Box::new(InactiveKilled { minutes: m.get(1).unwrap().as_str().parse().unwrap() })))
+        |m| Ok(Some(Box::new(InactiveKilled { minutes: m.get(1).unwrap().as_str().parse()? })))
     ),
     regex_line_matcher!(
         r#"\[.*Authority\] PAUSE credentials not found in "config.ini" or "dist.ini" or "~/.pause"\! Please set it or specify an authority for this plugin. at inline delegation in Dist::Zilla::Plugin::Authority for logger->log_fatal \(attribute declared in /usr/share/perl5/Dist/Zilla/Role/Plugin.pm at line [0-9]+\) line [0-9]+\."#, |_m| Ok(Some(Box::new(MissingPauseCredentials)))
@@ -2200,8 +2238,8 @@ lazy_static::lazy_static! {
     regex_line_matcher!(
         r"ERROR: Coverage for lines \(([0-9.]+)%\) does not meet global threshold \(([0-9]+)%\)",
         |m| Ok(Some(Box::new(CodeCoverageTooLow{
-            actual: m.get(1).unwrap().as_str().parse().unwrap(),
-            required: m.get(2).unwrap().as_str().parse().unwrap()})))
+            actual: m.get(1).unwrap().as_str().parse()?,
+            required: m.get(2).unwrap().as_str().parse()?})))
     ),
     regex_line_matcher!(
         r"Error \[ERR_REQUIRE_ESM\]: Must use import to load ES Module: (.*)",
@@ -2645,7 +2683,9 @@ lazy_static::lazy_static! {
             r#"The (.+) compiler\n\n  "(.*)"\n\nis not able to compile a simple test program\.\n\nIt fails with the following output:\n\n(.*)\n\nCMake will not be able to correctly generate this project.\n$"#,
             |m| {
                 let compiler_output = textwrap::dedent(m.get(3).unwrap().as_str());
-                Ok(find_build_failure_description(compiler_output.split_inclusive('\n').collect())
+                Ok(find_build_failure_description(
+                    &compiler_output.split_inclusive('\n').collect::<Vec<_>>(),
+                )?
                     .and_then(|f| f.problem))
             }
         ),
@@ -2928,14 +2968,12 @@ fn extract_cmake_error_lines<'a>(lines: &'a [&'a str], i: usize) -> (Vec<usize>,
 
 impl Matcher for CMakeErrorMatcher {
     fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
-        let (_path, _start_linenos) = if let Some((_, _, path, start_lineno, _)) = lazy_regex::regex_captures!(
+        if !regex_is_match!(
             r"CMake (Error|Warning) at (.+):([0-9]+) \((.*)\):",
             lines[offset].trim_end_matches('\n')
         ) {
-            (path, start_lineno.parse::<usize>().unwrap())
-        } else {
             return Ok(None);
-        };
+        }
 
         let (linenos, error_string) = extract_cmake_error_lines(lines, offset);
 
@@ -2946,8 +2984,11 @@ impl Matcher for CMakeErrorMatcher {
 
         let r#match = MultiLineMatch::new(Origin("CMake".to_string()), linenos, actual_lines);
 
+        // The matchers run on the extracted error text, so report the offset
+        // of the CMake error in the original log instead.
         let problem = CMAKE_ERROR_MATCHERS
-            .extract_from_lines(&[&error_string], 0)?
+            .extract_from_lines(&[&error_string], 0)
+            .map_err(|e| e.at_offset(offset))?
             .and_then(|f| f.problem);
         Ok(Some(Failure::new(r#match, problem)))
     }
@@ -3395,8 +3436,9 @@ pub fn find_secondary_build_failure(
 /// Find the key failure line in build output.
 ///
 /// # Returns
-/// The failure, if one was found
-pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
+/// The failure, if one was found, or an error if a matcher could not interpret
+/// the log
+pub fn find_build_failure_description(lines: &[&str]) -> Result<Option<Failure>, Error> {
     pub const OFFSET: usize = 250;
     // Is this cmake-specific, or rather just kf5 / qmake ?
     let mut cmake = false;
@@ -3405,8 +3447,8 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
         if line.contains("cmake") {
             cmake = true;
         }
-        if let Some(failure) = match_lines(lines.as_slice(), lineno).unwrap() {
-            return Some(failure);
+        if let Some(failure) = match_lines(lines, lineno)? {
+            return Ok(Some(failure));
         }
     }
 
@@ -3418,12 +3460,12 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
             if let Some((_, target)) =
                 lazy_regex::regex_captures!(r"  Could NOT find (.*) \(missing: .*\)", line)
             {
-                return Some(Failure::new(
-                    SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                return Ok(Some(Failure::new(
+                    SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                     Some(Box::new(MissingCommand {
                         command: target.to_lowercase(),
                     }) as Box<dyn Problem>),
-                ));
+                )));
             }
             if let Some((_, _target)) = lazy_regex::regex_captures!(
                 r#"\s*The imported target "(.*)" references the file"#,
@@ -3443,27 +3485,27 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
                     let filename_line = filename_line.trim_end_matches('\n');
                     let filename = lazy_regex::regex_captures!(r#"^\s*"(.*)"$"#, filename_line)
                         .map_or(filename_line, |(_, entry)| entry);
-                    return Some(Failure::new(
-                        SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                    return Ok(Some(Failure::new(
+                        SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                         Some(Box::new(MissingFile {
                             path: filename.into(),
                         }) as Box<dyn Problem>),
-                    ));
+                    )));
                 }
                 continue;
             }
             if lineno + 1 < lines.len() {
                 if let Some((_, _pkg)) = lazy_regex::regex_captures!("^  Could not find a package configuration file provided by \"(.*)\" with any of the following names:", &(line.to_string() + " " + lines[lineno + 1].trim_start_matches(' ').trim_end_matches('\n'))) {
-                    if lines[lineno + 2] == "\n" {
-                        let mut i = 3;
-                        let mut filenames = vec![];
-                        while !lines[lineno + i].trim().is_empty() {
-                            filenames.push(lines[lineno + i].trim().to_string());
-                            i += 1;
-                        }
-                        return Some(Failure::new(SingleLineMatch::from_lines(
-                                &lines, lineno, Some("direct regex (cmake)")
-                            ), Some(Box::new(CMakeFilesMissing{filenames, version: None}) as Box<dyn Problem>)))
+                    if lines.get(lineno + 2) == Some(&"\n") {
+                        let filenames = lines[lineno + 3..]
+                            .iter()
+                            .map(|l| l.trim())
+                            .take_while(|l| !l.is_empty())
+                            .map(|l| l.to_string())
+                            .collect();
+                        return Ok(Some(Failure::new(SingleLineMatch::from_lines(
+                                lines, lineno, Some("direct regex (cmake)")
+                            ), Some(Box::new(CMakeFilesMissing{filenames, version: None}) as Box<dyn Problem>))))
                     }
                 }
             }
@@ -3471,12 +3513,12 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Option<Failure> {
     }
 
     // And forwards for vague ("secondary") errors.
-    let m = find_secondary_build_failure(lines.as_slice(), OFFSET);
+    let m = find_secondary_build_failure(lines, OFFSET);
     if let Some(m) = m {
-        return Some(Failure::new(m, None));
+        return Ok(Some(Failure::new(m, None)));
     }
 
-    None
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -3485,7 +3527,7 @@ mod tests {
 
     fn assert_just_match(lines: Vec<&str>, lineno: usize) {
         let (r#match, actual_err) =
-            Failure::split(super::find_build_failure_description(lines.clone()));
+            Failure::split(super::find_build_failure_description(&lines).unwrap());
         assert!(actual_err.is_none());
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
@@ -3497,7 +3539,7 @@ mod tests {
 
     fn assert_match(lines: Vec<&str>, lineno: usize, mut expected: Option<impl Problem + 'static>) {
         let (r#match, actual_err) =
-            Failure::split(super::find_build_failure_description(lines.clone()));
+            Failure::split(super::find_build_failure_description(&lines).unwrap());
         if let Some(r#match) = r#match.as_ref() {
             assert_eq!(&r#match.line(), &lines[lineno - 1]);
             assert_eq!(lineno, r#match.lineno());
@@ -3517,6 +3559,30 @@ mod tests {
         } else {
             assert!(actual_err.is_none());
         }
+    }
+
+    fn assert_match_error(lines: Vec<&str>, lineno: usize, message: &str, source: Option<&str>) {
+        let err = super::find_build_failure_description(&lines).unwrap_err();
+        assert_eq!(err.message(), message);
+        assert_eq!(err.offset(), Some(lineno - 1));
+        assert!(err.origin().is_some());
+        assert_eq!(
+            std::error::Error::source(&err)
+                .map(|e| e.to_string())
+                .as_deref(),
+            source
+        );
+    }
+
+    /// Asserts the match lines (1-based) and problem, if any.
+    fn assert_failure(
+        lines: Vec<&str>,
+        linenos: Option<Vec<usize>>,
+        problem: Option<Box<dyn Problem>>,
+    ) {
+        let (m, p) = Failure::split(super::find_build_failure_description(&lines).unwrap());
+        assert_eq!(m.as_ref().map(|m| m.linenos()), linenos);
+        assert_eq!(p.as_deref(), problem.as_deref());
     }
 
     #[test]
@@ -3579,6 +3645,15 @@ mod tests {
     }
 
     #[test]
+    fn test_vignette_truncated() {
+        assert_failure(
+            vec!["Error: processing vignette 'uroot-intro.Rnw' failed with diagnostics:"],
+            Some(vec![1]),
+            None,
+        );
+    }
+
+    #[test]
     fn test_upstart_file_present() {
         assert_match(
             vec![
@@ -3618,6 +3693,16 @@ mod tests {
             Some(DirectoryNonExistant {
                 path: "rollup-plugin".to_owned(),
             }),
+        );
+    }
+
+    #[test]
+    fn test_directory_missing_without_parent() {
+        assert_match_error(
+            vec!["/bin/sh: 1: cannot create : Directory nonexistent"],
+            1,
+            "no parent directory for \"\"",
+            None,
         );
     }
 
@@ -3927,6 +4012,61 @@ mod tests {
     }
 
     #[test]
+    fn test_dh_compat_too_old_overflow() {
+        assert_match_error(
+            vec![
+                "dh_clean: error: Compatibility levels before 99999999999 are no longer supported (level 5 requested)"
+            ],
+            1,
+            "invalid integer",
+            Some("number too large to fit in target type"),
+        );
+    }
+
+    #[test]
+    fn test_inactive_killed() {
+        assert_match(
+            vec!["E: Build killed with signal TERM after 150 minutes of inactivity"],
+            1,
+            Some(InactiveKilled { minutes: 150 }),
+        );
+    }
+
+    #[test]
+    fn test_inactive_killed_overflow() {
+        assert_match_error(
+            vec![
+                "E: Build killed with signal TERM after 99999999999999999999 minutes of inactivity",
+            ],
+            1,
+            "invalid integer",
+            Some("number too large to fit in target type"),
+        );
+    }
+
+    #[test]
+    fn test_code_coverage_too_low() {
+        assert_match(
+            vec!["ERROR: Coverage for lines (92.5%) does not meet global threshold (95%)"],
+            1,
+            Some(CodeCoverageTooLow {
+                actual: 92.5,
+                required: 95.0,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_code_coverage_too_low_invalid_number() {
+        assert_match_error(
+            vec!["ERROR: Coverage for lines (1.2.3%) does not meet global threshold (95%)"],
+            1,
+            "invalid number",
+            Some("invalid float literal"),
+        );
+    }
+
+    #[test]
     fn test_dh_udeb_shared_library() {
         assert_just_match(vec![
                 "dh_makeshlibs: The udeb libepoxy0-udeb (>= 1.3) does not contain any shared libraries but --add-udeb=libepoxy0-udeb (>= 1.3) was passed!?"
@@ -4166,6 +4306,15 @@ mod tests {
             2,
             Some(MissingAutoconfMacro{
                 r#macro: "PKG_CHECK_MODULES".to_owned(), need_rebuild:true})
+        );
+    }
+
+    #[test]
+    fn test_autoconf_macro_truncated() {
+        assert_failure(
+            vec!["./configure: line 2368: syntax error near unexpected token `APERTIUM,'"],
+            Some(vec![1]),
+            None,
         );
     }
 
@@ -5008,6 +5157,36 @@ arch:all and the other not)"#
     }
 
     #[test]
+    fn test_missing_perl_modules_multiline() {
+        assert_failure(
+            vec![
+                "# The following modules are not available.",
+                "# `perl Makefile.PL | cpanm` will install them:",
+                "Foo::Bar",
+            ],
+            Some(vec![1, 2, 3]),
+            Some(Box::new(MissingPerlModule::simple("Foo::Bar"))),
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_modules_multiline_truncated() {
+        assert_failure(
+            vec![
+                "# The following modules are not available.",
+                "# `perl Makefile.PL | cpanm` will install them:",
+            ],
+            None,
+            None,
+        );
+        assert_failure(
+            vec!["# The following modules are not available."],
+            None,
+            None,
+        );
+    }
+
+    #[test]
     fn test_missing_perl_file() {
         assert_match(
             vec![
@@ -5551,6 +5730,16 @@ error: invalid command 'test'
     }
 
     #[test]
+    fn test_pytest_args_unbalanced_quotes() {
+        assert_match_error(
+            vec!["pytest: error: unrecognized arguments: --foo=\"bar"],
+            1,
+            "invalid shell quoting: --foo=\"bar",
+            None,
+        );
+    }
+
+    #[test]
     fn test_pytest_config() {
         assert_match(
             vec!["INTERNALERROR> pytest.PytestConfigWarning: Unknown config option: asyncio_mode"],
@@ -5623,6 +5812,18 @@ error: invalid command 'test'
         );
     }
 
+    #[test]
+    fn test_distutils_missing_invalid_requirement() {
+        assert_match_error(
+            vec![
+                "distutils.errors.DistutilsError: Could not find suitable distribution for Requirement.parse('foo>=')"
+            ],
+            1,
+            "invalid PEP 508 requirement",
+            Some("Unexpected end of version specifier, expected version\nfoo>=\n   ^^"),
+        );
+    }
+
     fn pip_wheel_line(python: &str) -> String {
         format!("error: Command '['/usr/bin/{}', '-m', 'pip', '--disable-pip-version-check', 'wheel', '--no-deps', '-w', '/tmp/tmp973_8lhm', '--quiet', 'asynctest']' returned non-zero exit status 1.", python)
     }
@@ -5630,7 +5831,7 @@ error: invalid command 'test'
     #[test]
     fn test_pip_wheel_python_version() {
         let line = pip_wheel_line("python3.11");
-        let (m, err) = Failure::split(super::find_build_failure_description(vec![&line]));
+        let (m, err) = Failure::split(super::find_build_failure_description(&[&line]).unwrap());
         assert_eq!(m.expect("match expected").line(), line);
         assert_eq!(
             err.as_ref().map(|x| x.as_ref()),
@@ -5646,7 +5847,7 @@ error: invalid command 'test'
     fn test_pip_wheel_malformed_python_version() {
         for python in ["python.", "python.3", "python99999999999999999999"] {
             let line = pip_wheel_line(python);
-            let (m, err) = Failure::split(super::find_build_failure_description(vec![&line]));
+            let (m, err) = Failure::split(super::find_build_failure_description(&[&line]).unwrap());
             assert_eq!(m.expect("generic match expected").line(), line);
             assert!(err.is_none(), "{}: unexpected problem {:?}", python, err);
         }
@@ -5716,7 +5917,7 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             "dh_auto_configure: error: cd obj-x86_64-linux-gnu && cmake .. returned exit code 1\n",
         );
         let lines: Vec<&str> = log.split_inclusive('\n').collect();
-        let (m, problem) = Failure::split(find_build_failure_description(lines));
+        let (m, problem) = Failure::split(find_build_failure_description(&lines).unwrap());
         let m = m.expect("expected a match");
         assert_eq!(4, m.lineno());
         assert_eq!("     \"/usr/lib/x86_64-linux-gnu/libfoo.so\"\n", m.line());
@@ -5733,7 +5934,7 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             "-- Found cmake\n  The imported target \"Foo::Bar\" references the file\n\n     \"/usr/lib/libfoo.so\"\n",
         ] {
             let lines: Vec<&str> = log.split_inclusive('\n').collect();
-            let (m, problem) = Failure::split(find_build_failure_description(lines));
+            let (m, problem) = Failure::split(find_build_failure_description(&lines).unwrap());
             assert!(m.is_none());
             assert!(problem.is_none());
         }
@@ -5804,6 +6005,71 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
                     "NetworkManagerQt".into(),
                 ],
             }),
+        );
+    }
+
+    #[test]
+    fn test_cmake_missing_cmake_files_truncated() {
+        assert_failure(
+            vec![
+                "cmake\n",
+                "  Could not find a package configuration file provided by \"sensor_msgs\" with\n",
+                "  any of the following names:\n",
+            ],
+            None,
+            None,
+        );
+        assert_failure(
+            vec![
+                "cmake\n",
+                "  Could not find a package configuration file provided by \"sensor_msgs\" with\n",
+                "  any of the following names:\n",
+                "\n",
+                "    sensor_msgsConfig.cmake\n",
+            ],
+            Some(vec![2]),
+            Some(Box::new(CMakeFilesMissing {
+                filenames: vec!["sensor_msgsConfig.cmake".to_string()],
+                version: None,
+            })),
+        );
+    }
+
+    #[test]
+    fn test_cmake_error_huge_line_number() {
+        let lines = vec![
+            "CMake Error at CMakeLists.txt:99999999999999999999 (message):\n",
+            "  Something went wrong\n",
+        ];
+        let (m, problem) = Failure::split(super::find_build_failure_description(&lines).unwrap());
+        assert_eq!(m.unwrap().linenos(), vec![1, 2]);
+        assert!(problem.is_none());
+    }
+
+    #[test]
+    fn test_cmake_compiler_output_error() {
+        // Errors from matching the extracted compiler output point at the
+        // start of the CMake error.
+        assert_match_error(
+            vec![
+                "-- Configuring\n",
+                "-- Detecting C compiler\n",
+                "CMake Error at CMakeLists.txt:3 (project):\n",
+                "  The C compiler\n",
+                "\n",
+                "    \"/usr/bin/cc\"\n",
+                "\n",
+                "  is not able to compile a simple test program.\n",
+                "\n",
+                "  It fails with the following output:\n",
+                "\n",
+                "    pytest: error: unrecognized arguments: --foo=\"bar\n",
+                "\n",
+                "  CMake will not be able to correctly generate this project.\n",
+            ],
+            3,
+            "invalid shell quoting: --foo=\"bar",
+            None,
         );
     }
 
@@ -5881,7 +6147,7 @@ Call Stack (most recent call first):
 -- Configuring incomplete, errors occurred!
 "#;
         let lines: Vec<&str> = log.split_inclusive('\n').collect();
-        let (_m, err) = Failure::split(super::find_build_failure_description(lines));
+        let (_m, err) = Failure::split(super::find_build_failure_description(&lines).unwrap());
         let err = err.expect("expected some problem");
         let cfm = err
             .as_any()
@@ -5931,7 +6197,7 @@ Call Stack (most recent call first):
             "chown: changing ownership of 'debian/tcptraceroute/usr/bin/tcptraceroute.mt': Operation not permitted",
             "make[1]: *** [debian/rules:23: override_dh_auto_install] Error 1",
         ];
-        let (m, err) = Failure::split(super::find_build_failure_description(lines.clone()));
+        let (m, err) = Failure::split(super::find_build_failure_description(&lines).unwrap());
         assert!(err.is_none(), "no Problem expected for this matcher");
         let m = m.expect("chown line should be picked over the trailing make error");
         assert_eq!(m.line(), lines[2]);
@@ -5944,7 +6210,7 @@ Call Stack (most recent call first):
             "install: cannot change ownership of '/build/reproducible-path/physlock-13/debian/physlock/usr/bin/physlock': Operation not permitted",
             "make[2]: *** [Makefile:55: install] Error 1",
         ];
-        let (m, err) = Failure::split(super::find_build_failure_description(lines.clone()));
+        let (m, err) = Failure::split(super::find_build_failure_description(&lines).unwrap());
         assert!(err.is_none(), "no Problem expected for this matcher");
         let m = m.expect("install line should be picked over the trailing make error");
         assert_eq!(m.line(), lines[1]);
@@ -5962,7 +6228,7 @@ Call Stack (most recent call first):
             "/usr/bin/x86_64-linux-gnu-ld.bfd: final link failed: bad value",
             "collect2: error: ld returned 1 exit status",
         ];
-        let (m, err) = Failure::split(super::find_build_failure_description(lines.clone()));
+        let (m, err) = Failure::split(super::find_build_failure_description(&lines).unwrap());
         assert!(err.is_none(), "no Problem expected for this matcher");
         let m = m.expect("PIC line should be picked over the collect2 fallback");
         assert_eq!(m.line(), lines[0]);

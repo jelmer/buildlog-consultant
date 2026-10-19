@@ -63,12 +63,12 @@ fn main() {
         #[cfg(feature = "chatgpt")]
         Backend::Chatgpt => {
             let key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
-            runtime.block_on(buildlog_consultant::chatgpt::analyze(key, line_refs))
+            runtime.block_on(buildlog_consultant::chatgpt::analyze(key, &line_refs))
         }
         #[cfg(feature = "claude")]
         Backend::Claude => {
             let key = std::env::var("ANTHROPIC_API_KEY").expect("ANTHROPIC_API_KEY not set");
-            runtime.block_on(buildlog_consultant::claude::analyze(key, line_refs))
+            runtime.block_on(buildlog_consultant::claude::analyze(key, &line_refs))
         }
     };
 
