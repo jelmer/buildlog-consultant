@@ -548,24 +548,15 @@ pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failur
             "dpkg-source: error: aborting due to unexpected upstream changes, see (.*)",
             line
         ) {
-            let mut j = lineno - 1;
-            let mut files = vec![];
-            while j > 0 {
-                if lines[j]
-                    == ("dpkg-source: info: local changes detected, the modified files are:\n")
-                {
-                    let err = Some(Box::new(DpkgSourceLocalChanges {
-                        diff_file: Some(diff_file.to_string()),
-                        files: Some(files),
-                    }) as Box<dyn Problem>);
-                    return Ok(Some(Failure::new(
-                        SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
-                        err,
-                    )));
-                }
-                files.push(lines[j].trim().to_string());
-                j -= 1;
-            }
+            let files = lines[..lineno]
+                .iter()
+                .rev()
+                .map(|l| l.trim_end_matches('\n'))
+                .take_while(|l| {
+                    *l != "dpkg-source: info: local changes detected, the modified files are:"
+                })
+                .map(|l| l.trim().to_string())
+                .collect();
             let err = Some(Box::new(DpkgSourceLocalChanges {
                 diff_file: Some(diff_file.to_string()),
                 files: Some(files),
@@ -2237,6 +2228,52 @@ Line4
         assert_eq!(
             std::error::Error::source(&err).unwrap().to_string(),
             "number too large to fit in target type"
+        );
+    }
+
+    #[test]
+    fn test_find_preamble_failure_local_changes_abort_first_line() {
+        let lines = vec![
+            "dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff\n",
+        ];
+        let (m, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
+        assert_eq!(m.expect("match").lineno(), 1);
+        let error = error.expect("problem");
+        assert_eq!(error.kind(), "unexpected-local-upstream-changes");
+        assert_eq!(
+            error.json(),
+            serde_json::json!({"diff_file": "/tmp/foo.diff", "files": []})
+        );
+    }
+
+    #[test]
+    fn test_find_preamble_failure_local_changes_without_header() {
+        let lines = vec![
+            " foo/a.c\n",
+            " foo/b.c\n",
+            "dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff\n",
+        ];
+        let (_, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
+        let error = error.expect("problem");
+        assert_eq!(
+            error.json(),
+            serde_json::json!({"diff_file": "/tmp/foo.diff", "files": ["foo/b.c", "foo/a.c"]})
+        );
+    }
+
+    #[test]
+    fn test_find_preamble_failure_local_changes_header_without_newline() {
+        let lines = vec![
+            "first",
+            "dpkg-source: info: local changes detected, the modified files are:",
+            " foo/a.c",
+            "dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff",
+        ];
+        let (_, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
+        let error = error.expect("problem");
+        assert_eq!(
+            error.json(),
+            serde_json::json!({"diff_file": "/tmp/foo.diff", "files": ["foo/a.c"]})
         );
     }
 }
