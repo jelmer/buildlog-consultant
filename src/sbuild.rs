@@ -9,7 +9,8 @@ use crate::common::find_build_failure_description;
 use crate::lines::Lines;
 use crate::problems::common::{ChrootNotFound, NoSpaceOnDevice, PatchApplicationFailed};
 use crate::problems::debian::*;
-use crate::r#match::Error;
+use crate::r#match::{extract_from_line, Error, RegexLineMatcher};
+use crate::regex_line_matcher;
 use crate::{Failure, Match, Problem};
 use debversion::Version;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
@@ -541,6 +542,90 @@ impl std::fmt::Display for SbuildFailure {
     }
 }
 
+lazy_static::lazy_static! {
+    // The preamble rules are split around the hand-written checks in
+    // find_preamble_failure_description, to keep the order they are tried in.
+    static ref PREAMBLE_MATCHERS_A: [Box<RegexLineMatcher>; 7] = [
+        regex_line_matcher!(
+            r"dpkg-source: error: detected ([0-9]+) unwanted binary file.*",
+            |_| Ok(Some(Box::new(DpkgUnwantedBinaryFiles)))
+        ),
+        regex_line_matcher!(
+            "dpkg-source: error: cannot read (.*/debian/control): No such file or directory",
+            |c| Ok(Some(Box::new(MissingControlFile { path: c[1].into() })))
+        ),
+        regex_line_matcher!(
+            "dpkg-source: error: .*: No space left on device",
+            |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+        regex_line_matcher!(
+            "tar: .*: Cannot write: No space left on device",
+            |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+        regex_line_matcher!(
+            "dpkg-source: error: cannot represent change to (.*): binary file contents changed",
+            |c| Ok(Some(Box::new(DpkgBinaryFileChanged {
+                files: vec![c[1].to_string()],
+            })))
+        ),
+        regex_line_matcher!(
+            r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC contains: (.*)\) at \(eval [0-9]+\) line [0-9]+\.",
+            |c| Ok(Some(Box::new(SourceFormatUnsupported {
+                source_format: c[1].to_string(),
+            })))
+        ),
+        regex_line_matcher!(
+            "E: Failed to package source directory (.*)",
+            |c| Ok(Some(Box::new(DpkgSourcePackFailed {
+                reason: c[1].to_string(),
+            })))
+        ),
+    ];
+    static ref PREAMBLE_MATCHERS_B: [Box<RegexLineMatcher>; 4] = [
+        regex_line_matcher!(
+            r"Patch (.*) does not apply \(enforce with -f\)",
+            |c| {
+                let patchname = &c[1];
+                let patchname = patchname.rsplit_once('/').map_or(patchname, |(_, n)| n);
+                Ok(Some(Box::new(PatchApplicationFailed {
+                    patchname: patchname.to_string(),
+                })))
+            }
+        ),
+        regex_line_matcher!(
+            r"dpkg-source: error: LC_ALL=C patch .* --reject-file=- < .*\/debian\/patches\/([^ ]+) subprocess returned exit status 1",
+            |c| Ok(Some(Box::new(PatchApplicationFailed {
+                patchname: c[1].to_string(),
+            })))
+        ),
+        regex_line_matcher!(
+            "dpkg-source: error: can't build with source format '(.*)': (.*)",
+            |c| Ok(Some(Box::new(SourceFormatUnbuildable {
+                source_format: c[1].to_string(),
+                reason: c[2].to_string(),
+            })))
+        ),
+        regex_line_matcher!(
+            "dpkg-source: error: cannot read (.*): No such file or directory",
+            |c| Ok(Some(Box::new(PatchFileMissing { path: c[1].into() })))
+        ),
+    ];
+    static ref PREAMBLE_MATCHERS_C: [Box<RegexLineMatcher>; 2] = [
+        regex_line_matcher!(
+            "breezy.errors.NoSuchRevision: (.*) has no revision b'(.*)'",
+            |c| Ok(Some(Box::new(MissingRevision {
+                revision: c[2].as_bytes().to_vec(),
+            })))
+        ),
+        regex_line_matcher!(
+            r"fatal: ambiguous argument \'(.*)\': unknown revision or path not in the working tree.",
+            |c| Ok(Some(Box::new(PristineTarTreeMissing {
+                treeish: c[1].to_string(),
+            })))
+        ),
+    ];
+}
+
 /// Searches for build failure descriptions in the preamble of a log file.
 ///
 /// This function looks for various error patterns in the preamble section of a build log,
@@ -582,82 +667,12 @@ pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failur
                 Some(Box::new(DpkgSourceUnrepresentableChanges)),
             )));
         }
-        if lazy_regex::regex_is_match!(
-            r"dpkg-source: error: detected ([0-9]+) unwanted binary file.*",
-            line
-        ) {
+        if let Some(problem) = extract_from_line(&PREAMBLE_MATCHERS_A[..], line)? {
             return Ok(Some(Failure::at_line(
                 lines,
                 lineno,
                 "direct regex",
-                Some(Box::new(DpkgUnwantedBinaryFiles)),
-            )));
-        }
-        if let Some((_, path)) = lazy_regex::regex_captures!(
-            "dpkg-source: error: cannot read (.*/debian/control): No such file or directory",
-            line,
-        ) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(MissingControlFile { path: path.into() })),
-            )));
-        }
-        if lazy_regex::regex_is_match!("dpkg-source: error: .*: No space left on device", line) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(NoSpaceOnDevice)),
-            )));
-        }
-        if lazy_regex::regex_is_match!("tar: .*: Cannot write: No space left on device", line) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(NoSpaceOnDevice)),
-            )));
-        }
-        if let Some((_, path)) = lazy_regex::regex_captures!(
-            "dpkg-source: error: cannot represent change to (.*): binary file contents changed",
-            line
-        ) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(DpkgBinaryFileChanged {
-                    files: vec![path.to_string()],
-                })),
-            )));
-        }
-
-        if let Some((_, format, _, _, _)) = lazy_regex::regex_captures!(
-            r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC contains: (.*)\) at \(eval [0-9]+\) line [0-9]+\.",
-            line
-        ) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(SourceFormatUnsupported {
-                    source_format: format.to_string(),
-                })),
-            )));
-        }
-
-        if let Some((_, reason)) =
-            lazy_regex::regex_captures!("E: Failed to package source directory (.*)", line)
-        {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(DpkgSourcePackFailed {
-                    reason: reason.to_string(),
-                })),
+                problem,
             )));
         }
 
@@ -682,52 +697,13 @@ pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failur
             }
         }
 
-        if let Some((_, patchname)) =
-            lazy_regex::regex_captures!(r"Patch (.*) does not apply \(enforce with -f\)", line)
-        {
-            let patchname = patchname.rsplit_once('/').map_or(patchname, |(_, n)| n);
+        if let Some(problem) = extract_from_line(&PREAMBLE_MATCHERS_B[..], line)? {
             return Ok(Some(Failure::at_line(
                 lines,
                 lineno,
                 "direct regex",
-                Some(Box::new(PatchApplicationFailed {
-                    patchname: patchname.to_string(),
-                })),
+                problem,
             )));
-        }
-        if let Some((_, patchname)) = lazy_regex::regex_captures!(
-            r"dpkg-source: error: LC_ALL=C patch .* --reject-file=- < .*\/debian\/patches\/([^ ]+) subprocess returned exit status 1",
-            line
-        ) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(PatchApplicationFailed {
-                    patchname: patchname.to_string(),
-                })),
-            )));
-        }
-        if let Some((_, source_format, reason)) = lazy_regex::regex_captures!(
-            "dpkg-source: error: can't build with source format '(.*)': (.*)",
-            line
-        ) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(SourceFormatUnbuildable {
-                    source_format: source_format.to_string(),
-                    reason: reason.to_string(),
-                })),
-            )));
-        }
-        if let Some((_, path)) = lazy_regex::regex_captures!(
-            "dpkg-source: error: cannot read (.*): No such file or directory",
-            line
-        ) {
-            let err = Some(Box::new(PatchFileMissing { path: path.into() }) as Box<dyn Problem>);
-            return Ok(Some(Failure::at_line(lines, lineno, "direct regex", err)));
         }
         if let Some((_, format, msg)) = lazy_regex::regex_captures!(
             "dpkg-source: error: source package format '(.*)' is not supported: (.*)",
@@ -747,31 +723,12 @@ pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failur
                 Some(p),
             )));
         }
-        if let Some((_, _, revid)) = lazy_regex::regex_captures!(
-            "breezy.errors.NoSuchRevision: (.*) has no revision b'(.*)'",
-            line
-        ) {
+        if let Some(problem) = extract_from_line(&PREAMBLE_MATCHERS_C[..], line)? {
             return Ok(Some(Failure::at_line(
                 lines,
                 lineno,
                 "direct regex",
-                Some(Box::new(MissingRevision {
-                    revision: revid.as_bytes().to_vec(),
-                })),
-            )));
-        }
-
-        if let Some((_, arg)) = lazy_regex::regex_captures!(
-            r"fatal: ambiguous argument \'(.*)\': unknown revision or path not in the working tree.",
-            line
-        ) {
-            return Ok(Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(PristineTarTreeMissing {
-                    treeish: arg.to_string(),
-                })),
+                problem,
             )));
         }
 

@@ -218,6 +218,21 @@ impl Matcher for RegexLineMatcher {
     }
 }
 
+/// Tries each matcher in turn against a single line.
+///
+/// Returns the outcome of the first matcher whose regex matches `line`.
+pub(crate) fn extract_from_line(
+    matchers: &[Box<RegexLineMatcher>],
+    line: &str,
+) -> Result<Option<Option<Box<dyn Problem>>>, Error> {
+    for matcher in matchers {
+        if let Some(problem) = matcher.extract_from_line(line)? {
+            return Ok(Some(problem));
+        }
+    }
+    Ok(None)
+}
+
 /// Macro for creating regex-based line matchers.
 ///
 /// This macro simplifies the creation of `RegexLineMatcher` instances by automatically
