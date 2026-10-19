@@ -48,12 +48,15 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
             ));
         }
         if line == "E: Broken packages" {
+            // The preceding line describes the problem; fall back to this one
+            // if there is none.
+            let offset = lineno.saturating_sub(1);
             let error = Some(Box::new(AptBrokenPackages {
-                description: lines[lineno - 1].trim().to_string(),
+                description: lines[offset].trim().to_string(),
                 broken: None,
             }) as Box<dyn Problem>);
             return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno - 1, Some("direct match")),
+                SingleLineMatch::from_lines(lines, offset, Some("direct match")),
                 error,
             ));
         }
@@ -466,6 +469,27 @@ mod tests {
             );
             assert!(broken_packages.broken.is_none());
         }
+    }
+
+    #[test]
+    fn test_broken_packages_first_line() {
+        let lines = vec!["E: Broken packages"];
+
+        let failure = find_apt_get_failure(&lines).unwrap();
+
+        assert_eq!(failure.r#match.offsets(), vec![0]);
+        assert_eq!(
+            failure
+                .problem
+                .unwrap()
+                .as_any()
+                .downcast_ref::<AptBrokenPackages>()
+                .unwrap(),
+            &AptBrokenPackages {
+                description: "E: Broken packages".to_string(),
+                broken: None,
+            }
+        );
     }
 
     #[test]
