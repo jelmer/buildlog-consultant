@@ -9,6 +9,7 @@ use crate::common::find_build_failure_description;
 use crate::lines::Lines;
 use crate::problems::common::{ChrootNotFound, NoSpaceOnDevice, PatchApplicationFailed};
 use crate::problems::debian::*;
+use crate::r#match::Error;
 use crate::{Failure, Match, Problem, SingleLineMatch};
 use debversion::Version;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
@@ -539,7 +540,7 @@ impl std::fmt::Display for SbuildFailure {
 ///
 /// # Returns
 /// The failure, if one was found
-pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
+pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Failure>, Error> {
     let mut ret = None;
     for (lineno, line) in lines.enumerate_backward(Some(100)) {
         let line = line.trim_end_matches('\n');
@@ -557,10 +558,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
                         diff_file: Some(diff_file.to_string()),
                         files: Some(files),
                     }) as Box<dyn Problem>);
-                    return Some(Failure::new(
+                    return Ok(Some(Failure::new(
                         SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                         err,
-                    ));
+                    )));
                 }
                 files.push(lines[j].trim().to_string());
                 j -= 1;
@@ -569,51 +570,51 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
                 diff_file: Some(diff_file.to_string()),
                 files: Some(files),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if line == "dpkg-source: error: unrepresentable changes to source" {
             let err = Some(Box::new(DpkgSourceUnrepresentableChanges) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct match")),
                 err,
-            ));
+            )));
         }
         if lazy_regex::regex_is_match!(
             r"dpkg-source: error: detected ([0-9]+) unwanted binary file.*",
             line
         ) {
             let err = Some(Box::new(DpkgUnwantedBinaryFiles) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if let Some((_, path)) = lazy_regex::regex_captures!(
             "dpkg-source: error: cannot read (.*/debian/control): No such file or directory",
             line,
         ) {
             let err = Some(Box::new(MissingControlFile { path: path.into() }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if lazy_regex::regex_is_match!("dpkg-source: error: .*: No space left on device", line) {
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if lazy_regex::regex_is_match!("tar: .*: Cannot write: No space left on device", line) {
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if let Some((_, path)) = lazy_regex::regex_captures!(
             "dpkg-source: error: cannot represent change to (.*): binary file contents changed",
@@ -622,10 +623,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
             let err = Some(Box::new(DpkgBinaryFileChanged {
                 files: vec![path.to_string()],
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
 
         if let Some((_, format, _, _, _)) = lazy_regex::regex_captures!(
@@ -635,10 +636,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
             let err = Some(Box::new(SourceFormatUnsupported {
                 source_format: format.to_string(),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
 
         if let Some((_, reason)) =
@@ -647,10 +648,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
             let err = Some(Box::new(DpkgSourcePackFailed {
                 reason: reason.to_string(),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
 
         if let Some((_, _path)) =
@@ -665,10 +666,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
                         version: version.to_string(),
                         reason: Some(reason.to_string()),
                     }) as Box<dyn Problem>);
-                    return Some(Failure::new(
+                    return Ok(Some(Failure::new(
                         SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                         err,
-                    ));
+                    )));
                 }
             }
         }
@@ -680,10 +681,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
             let err = Some(Box::new(PatchApplicationFailed {
                 patchname: patchname.to_string(),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if let Some((_, patchname)) = lazy_regex::regex_captures!(
             r"dpkg-source: error: LC_ALL=C patch .* --reject-file=- < .*\/debian\/patches\/([^ ]+) subprocess returned exit status 1",
@@ -692,10 +693,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
             let err = Some(Box::new(PatchApplicationFailed {
                 patchname: patchname.to_string(),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if let Some((_, source_format, reason)) = lazy_regex::regex_captures!(
             "dpkg-source: error: can't build with source format '(.*)': (.*)",
@@ -705,10 +706,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
                 source_format: source_format.to_string(),
                 reason: reason.to_string(),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if let Some((_, path)) = lazy_regex::regex_captures!(
             "dpkg-source: error: cannot read (.*): No such file or directory",
@@ -716,26 +717,26 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
         ) {
             let _patchname = path.rsplit_once('/').unwrap().1;
             let err = Some(Box::new(PatchFileMissing { path: path.into() }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
         if let Some((_, format, msg)) = lazy_regex::regex_captures!(
             "dpkg-source: error: source package format '(.*)' is not supported: (.*)",
             line
         ) {
-            let p = find_build_failure_description(vec![msg])
+            let p = find_build_failure_description(vec![msg])?
                 .and_then(|f| f.problem)
                 .unwrap_or_else(|| {
                     Box::new(SourceFormatUnsupported {
                         source_format: format.to_string(),
                     }) as Box<dyn Problem>
                 });
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 Some(p),
-            ));
+            )));
         }
         if let Some((_, _, revid)) = lazy_regex::regex_captures!(
             "breezy.errors.NoSuchRevision: (.*) has no revision b'(.*)'",
@@ -744,10 +745,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
             let err = Some(Box::new(MissingRevision {
                 revision: revid.as_bytes().to_vec(),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
 
         if let Some((_, arg)) = lazy_regex::regex_captures!(
@@ -757,10 +758,10 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
             let err = Some(Box::new(PristineTarTreeMissing {
                 treeish: arg.to_string(),
             }) as Box<dyn Problem>);
-            return Some(Failure::new(
+            return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
                 err,
-            ));
+            )));
         }
 
         if let Some((_, msg)) = lazy_regex::regex_captures!("dpkg-source: error: (.*)", line) {
@@ -774,7 +775,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Option<Failure> {
         }
     }
 
-    ret
+    Ok(ret)
 }
 
 /// The phase of the build process where a failure occurred.
@@ -899,12 +900,15 @@ pub fn strip_build_tail<'a>(
 ///
 /// # Returns
 /// An optional SbuildFailure structure with information about the failure
-pub fn find_failure_fetch_src(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
+pub fn find_failure_fetch_src(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Result<Option<SbuildFailure>, Error> {
     let section = if let Some(section) = sbuildlog.get_section(Some("fetch source files")) {
         section
     } else {
         log::warn!("expected section: fetch source files");
-        return None;
+        return Ok(None);
     };
     let section_lines = section.lines();
     let section_lines = if section_lines[0].trim().is_empty() {
@@ -913,28 +917,29 @@ pub fn find_failure_fetch_src(sbuildlog: &SbuildLog, failed_stage: &str) -> Opti
         section_lines.to_vec()
     };
     if section_lines.len() == 1 && section_lines[0].starts_with("E: Could not find ") {
-        let (r#match, error) = Failure::split(find_preamble_failure_description(
-            sbuildlog.get_section_lines(None)?,
-        ));
-        return Some(SbuildFailure {
+        let Some(lines) = sbuildlog.get_section_lines(None) else {
+            return Ok(None);
+        };
+        let (r#match, error) = Failure::split(find_preamble_failure_description(lines)?);
+        return Ok(Some(SbuildFailure {
             stage: Some("unpack".to_string()),
             description: error.as_ref().map(|x| x.to_string()),
             error,
             section: Some(section.clone()),
             r#match,
             phase: None,
-        });
+        }));
     }
     let (r#match, error) = Failure::split(crate::apt::find_apt_get_failure(section.lines()));
     let description = format!("build failed stage {}", failed_stage);
-    Some(SbuildFailure {
+    Ok(Some(SbuildFailure {
         stage: Some(failed_stage.to_string()),
         description: Some(description),
         error,
         phase: None,
         section: Some(section.clone()),
         r#match,
-    })
+    }))
 }
 
 /// Analyzes log sections to find failures in the session creation stage.
@@ -1019,30 +1024,33 @@ pub fn find_creation_session_error(lines: Vec<&str>) -> Option<Failure> {
 ///
 /// # Returns
 /// An optional SbuildFailure structure with information about the failure
-pub fn find_failure_unpack(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
+pub fn find_failure_unpack(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Result<Option<SbuildFailure>, Error> {
     let section = sbuildlog.get_section(Some("build"));
     if let Some(section) = section {
-        let (r#match, error) = Failure::split(find_preamble_failure_description(section.lines()));
+        let (r#match, error) = Failure::split(find_preamble_failure_description(section.lines())?);
         if let Some(error) = error {
-            return Some(SbuildFailure {
+            return Ok(Some(SbuildFailure {
                 stage: Some(failed_stage.to_string()),
                 description: Some(error.to_string()),
                 error: Some(error),
                 section: Some(section.clone()),
                 r#match,
                 phase: Some(Phase::Unpack),
-            });
+            }));
         }
     }
     let description = format!("build failed stage {}", failed_stage);
-    Some(SbuildFailure {
+    Ok(Some(SbuildFailure {
         stage: Some(failed_stage.to_string()),
         description: Some(description),
         error: None,
         phase: Some(Phase::Unpack),
         section: section.cloned(),
         r#match: None,
-    })
+    }))
 }
 
 /// Analyzes log sections to find failures in the build stage.
@@ -1056,13 +1064,16 @@ pub fn find_failure_unpack(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<
 ///
 /// # Returns
 /// An optional SbuildFailure structure with information about the failure
-pub fn find_failure_build(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
+pub fn find_failure_build(
+    sbuildlog: &SbuildLog,
+    failed_stage: &str,
+) -> Result<Option<SbuildFailure>, Error> {
     let phase = Phase::Build;
     let (section, r#match, error) = if let Some(section) = sbuildlog.get_section(Some("build")) {
         let lines_ref = section.lines();
         let (section_lines, _files) = strip_build_tail(&lines_ref, None);
         let (r#match, error) =
-            Failure::split(find_build_failure_description(section_lines.to_vec()));
+            Failure::split(find_build_failure_description(section_lines.to_vec())?);
         (Some(section), r#match, error)
     } else {
         (None, None, None)
@@ -1074,14 +1085,14 @@ pub fn find_failure_build(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<S
     } else {
         format!("build failed stage {}", failed_stage)
     };
-    Some(SbuildFailure {
+    Ok(Some(SbuildFailure {
         stage: Some(failed_stage.to_string()),
         description: Some(description),
         error,
         phase: Some(phase),
         section: section.cloned(),
         r#match,
-    })
+    }))
 }
 
 /// Analyzes log sections to find failures in the apt-get update stage.
@@ -1349,7 +1360,7 @@ pub fn find_failure_install_deps(
 pub fn find_failure_autopkgtest(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
-) -> Option<SbuildFailure> {
+) -> Result<Option<SbuildFailure>, Error> {
     let focus_section = match failed_stage {
         "run-post-build-commands" => "post build commands",
         "post-build" => "post build",
@@ -1361,7 +1372,7 @@ pub fn find_failure_autopkgtest(
     let section = sbuildlog.get_section(Some(focus_section));
     let (description, error, r#match, phase) = if let Some(section) = section {
         let (failure, testname, description) =
-            crate::autopkgtest::find_autopkgtest_failure_description(section.lines())
+            crate::autopkgtest::find_autopkgtest_failure_description(section.lines())?
                 .map_or((None, None, None), |f| {
                     (Some(f.failure), f.testname, f.description)
                 });
@@ -1378,14 +1389,14 @@ pub fn find_failure_autopkgtest(
         (None, None, None, None)
     };
     let description = description.unwrap_or_else(|| format!("build failed stage {}", failed_stage));
-    Some(SbuildFailure {
+    Ok(Some(SbuildFailure {
         stage: Some(failed_stage.to_string()),
         description: Some(description),
         error,
         phase,
         section: section.cloned(),
         r#match,
-    })
+    }))
 }
 
 /// Creates a SbuildFailure by analyzing a complete sbuild log.
@@ -1397,8 +1408,9 @@ pub fn find_failure_autopkgtest(
 /// * `sbuildlog` - The parsed sbuild log to analyze
 ///
 /// # Returns
-/// A SbuildFailure structure with information about the failure
-pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
+/// A SbuildFailure structure with information about the failure, or an error
+/// if a matcher could not interpret the log
+pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFailure, Error> {
     // TODO(jelmer): Doesn't this do the same thing as the tail?
     if sbuildlog
         .sections()
@@ -1407,56 +1419,60 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
         == vec![None]
     {
         let section = sbuildlog.sections().next().unwrap();
-        let (r#match, error) = Failure::split(find_preamble_failure_description(section.lines()));
+        let (r#match, error) = Failure::split(find_preamble_failure_description(section.lines())?);
         if let Some(error) = error {
-            return SbuildFailure {
+            return Ok(SbuildFailure {
                 stage: Some("unpack".to_string()),
                 description: Some(error.to_string()),
                 error: Some(error),
                 section: Some(section.clone()),
                 r#match,
                 phase: None,
-            };
+            });
         }
     }
 
     let failed_stage = sbuildlog.get_failed_stage();
 
-    let overall_failure = failed_stage.as_ref().and_then(|failed_stage| {
-        match failed_stage.as_str() {
-            "fetch-src" => find_failure_fetch_src(sbuildlog, failed_stage),
-            "create-session" => find_failure_create_session(sbuildlog, failed_stage),
-            "unpack" => find_failure_unpack(sbuildlog, failed_stage),
-            "build" => find_failure_build(sbuildlog, failed_stage),
-            "apt-get-update" => find_failure_apt_get_update(sbuildlog, failed_stage),
-            "arch-check" => find_failure_arch_check(sbuildlog, failed_stage),
-            "check-space" => find_failure_check_space(sbuildlog, failed_stage),
-            "install-deps" => find_failure_install_deps(sbuildlog, failed_stage),
-            "explain-bd-uninstallable" => find_failure_install_deps(sbuildlog, failed_stage),
-            "autopkgtest" => find_failure_autopkgtest(sbuildlog, failed_stage),
-            // We run autopkgtest as only post-build step at the moment.
-            "run-post-build-commands" => find_failure_autopkgtest(sbuildlog, failed_stage),
-            "post-build" => find_failure_autopkgtest(sbuildlog, failed_stage),
-            _ => {
-                log::warn!("unknown failed stage: {}", &failed_stage);
-                None
-            }
+    let overall_failure = match failed_stage.as_deref() {
+        None => None,
+        Some(failed_stage @ "fetch-src") => find_failure_fetch_src(sbuildlog, failed_stage)?,
+        Some(failed_stage @ "create-session") => {
+            find_failure_create_session(sbuildlog, failed_stage)
         }
-    });
+        Some(failed_stage @ "unpack") => find_failure_unpack(sbuildlog, failed_stage)?,
+        Some(failed_stage @ "build") => find_failure_build(sbuildlog, failed_stage)?,
+        Some(failed_stage @ "apt-get-update") => {
+            find_failure_apt_get_update(sbuildlog, failed_stage)
+        }
+        Some(failed_stage @ "arch-check") => find_failure_arch_check(sbuildlog, failed_stage),
+        Some(failed_stage @ "check-space") => find_failure_check_space(sbuildlog, failed_stage),
+        Some(failed_stage @ ("install-deps" | "explain-bd-uninstallable")) => {
+            find_failure_install_deps(sbuildlog, failed_stage)
+        }
+        // We run autopkgtest as only post-build step at the moment.
+        Some(failed_stage @ ("autopkgtest" | "run-post-build-commands" | "post-build")) => {
+            find_failure_autopkgtest(sbuildlog, failed_stage)?
+        }
+        Some(failed_stage) => {
+            log::warn!("unknown failed stage: {}", failed_stage);
+            None
+        }
+    };
 
     if let Some(overall_failure) = overall_failure {
-        return overall_failure;
+        return Ok(overall_failure);
     } else if let Some(failed_stage) = failed_stage {
         log::warn!("unknown failed stage: {}", failed_stage);
         let description = format!("build failed stage {}", failed_stage);
-        return SbuildFailure {
+        return Ok(SbuildFailure {
             stage: Some(failed_stage),
             description: Some(description),
             error: None,
             phase: None,
             section: None,
             r#match: None,
-        };
+        });
     }
 
     let mut description = Some("build failed".to_string());
@@ -1471,11 +1487,11 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
         == vec![None]
     {
         let s = sbuildlog.sections().next().unwrap();
-        (r#match, error) = Failure::split(find_preamble_failure_description(s.lines()));
+        (r#match, error) = Failure::split(find_preamble_failure_description(s.lines())?);
         if let Some(error) = error.as_ref() {
             description = Some(error.to_string());
         } else {
-            (r#match, error) = Failure::split(find_build_failure_description(s.lines()));
+            (r#match, error) = Failure::split(find_build_failure_description(s.lines())?);
             if let Some(r#match) = r#match.as_ref() {
                 description = Some(r#match.line().trim_end_matches('\n').to_string());
             }
@@ -1497,14 +1513,14 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> SbuildFailure {
         }
         section = Some(s);
     }
-    SbuildFailure {
+    Ok(SbuildFailure {
         stage: failed_stage,
         description,
         error,
         phase: Some(phase),
         section: section.cloned(),
         r#match,
-    }
+    })
 }
 
 /// Searches for disk space check failures in log lines.
@@ -2002,7 +2018,9 @@ Line4
             lines,
         };
         let log = SbuildLog(vec![section]);
-        let failure = find_failure_unpack(&log, "unpack").expect("failure surfaced");
+        let failure = find_failure_unpack(&log, "unpack")
+            .unwrap()
+            .expect("failure surfaced");
         assert_eq!(failure.phase, Some(Phase::Unpack));
         assert_eq!(failure.stage.as_deref(), Some("unpack"));
         assert!(failure.error.is_some(), "preamble error attached");
@@ -2019,7 +2037,9 @@ Line4
             lines: vec!["something inscrutable went wrong".to_string()],
         };
         let log = SbuildLog(vec![section]);
-        let failure = find_failure_unpack(&log, "unpack").expect("failure surfaced");
+        let failure = find_failure_unpack(&log, "unpack")
+            .unwrap()
+            .expect("failure surfaced");
         assert_eq!(failure.phase, Some(Phase::Unpack));
         assert!(failure.error.is_none());
     }
@@ -2057,7 +2077,9 @@ Line4
             ],
         };
         let log = SbuildLog(vec![section]);
-        let failure = find_failure_autopkgtest(&log, "post-build").expect("failure surfaced");
+        let failure = find_failure_autopkgtest(&log, "post-build")
+            .unwrap()
+            .expect("failure surfaced");
         match failure.phase.as_ref().expect("phase must not be None") {
             Phase::AutoPkgTest(name) => {
                 assert!(
@@ -2096,7 +2118,9 @@ Line4
             ],
         };
         let log = SbuildLog(vec![section]);
-        let failure = find_failure_autopkgtest(&log, "autopkgtest").expect("failure surfaced");
+        let failure = find_failure_autopkgtest(&log, "autopkgtest")
+            .unwrap()
+            .expect("failure surfaced");
         match failure.phase.as_ref().expect("phase must be set") {
             Phase::AutoPkgTest(name) => assert_eq!(name, "command1"),
             other => panic!("expected Phase::AutoPkgTest(command1), got {:?}", other),
@@ -2121,7 +2145,7 @@ Line4
             lines,
         };
         let log = SbuildLog(vec![section]);
-        let failure = worker_failure_from_sbuild_log(&log);
+        let failure = worker_failure_from_sbuild_log(&log).unwrap();
         let error = failure
             .error
             .expect("brz parser should attach a Problem on the fallback path");
@@ -2159,7 +2183,7 @@ Line4
             "1 out of 1 hunk FAILED -- rejects in file src/foo.c\n",
             "Patch debian/patches/foo.patch does not apply (enforce with -f)\n",
         ];
-        let (m, error) = Failure::split(find_preamble_failure_description(lines));
+        let (m, error) = Failure::split(find_preamble_failure_description(lines).unwrap());
         let m = m.expect("match");
         assert_eq!(m.lineno(), 5);
         let error = error.expect("problem");
@@ -2176,7 +2200,7 @@ Line4
             "1 out of 1 hunk FAILED -- rejects in file src/foo.c\n",
             "Patch foo.patch does not apply (enforce with -f)\n",
         ];
-        let (_, error) = Failure::split(find_preamble_failure_description(lines));
+        let (_, error) = Failure::split(find_preamble_failure_description(lines).unwrap());
         let error = error.expect("problem");
         assert_eq!(error.kind(), "patch-application-failed");
         assert_eq!(error.json(), serde_json::json!({"patchname": "foo.patch"}));
