@@ -939,6 +939,17 @@ mod tests {
     }
 
     #[test]
+    fn test_propagates_match_error() {
+        let error = super::find_autopkgtest_failure_description(vec![
+            "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+            "unit-tests           FAIL stderr: E: Build killed with signal TERM after 99999999999999999999 minutes of inactivity\n",
+        ])
+        .unwrap_err();
+        assert_eq!(error.message(), "invalid integer");
+        assert_eq!(error.offset(), Some(0));
+    }
+
+    #[test]
     fn test_timed_out() {
         let error = super::AutopkgtestTimedOut;
         let lines = vec![
