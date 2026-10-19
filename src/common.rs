@@ -1458,17 +1458,17 @@ lazy_static::lazy_static! {
     regex_line_matcher!("(.*):([0-9]+): undefined reference to `(.*)'", |_| Ok(None)),
     regex_line_matcher!("(.*):([0-9]+): error: undefined reference to '(.*)'", |_| Ok(None)),
     regex_line_matcher!(
-        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*): first defined here",
+        r"\/usr\/bin\/ld:(.*): multiple definition of `.*\'; (.*): first defined here",
         |_| Ok(None)
     ),
     regex_line_matcher!(r".+\.go:[0-9]+: undefined reference to `(.*)'", |_| Ok(None)),
     regex_line_matcher!(r"ar: libdeps specified more than once", |_| Ok(None)),
     regex_line_matcher!(
-        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `.*\'; (.*):\((.*)\) first defined here",
         |_| Ok(None)
     ),
     regex_line_matcher!(
-        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        r"\/usr\/bin\/ld:(.*): multiple definition of `.*\'; (.*):\((.*)\) first defined here",
         |_| Ok(None)
     ),
     regex_line_matcher!(r"\/usr\/bin\/ld: (.*): undefined reference to `(.*)\'", |_| Ok(None)),
@@ -4885,6 +4885,17 @@ arch:all and the other not)"#
             ],
             1,
         );
+    }
+
+    #[test]
+    fn test_ld_multiple_definition() {
+        let lines = vec![
+            "/usr/bin/ld: ../lib/libaxe.a(stream.c.o):(.bss+0x10): multiple definition of `gsl_message_mask'; ../lib/libaxe.a(error.c.o):(.bss+0x8): first defined here",
+        ];
+        let (r#match, problem) =
+            Failure::split(super::find_build_failure_description(&lines).unwrap());
+        assert_eq!(r#match.expect("no match found").lineno(), 1);
+        assert!(problem.is_none());
     }
 
     #[test]
