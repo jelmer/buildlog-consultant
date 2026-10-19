@@ -256,16 +256,17 @@ impl MissingPythonDistribution {
     /// * `python_version` - Optional Python version to override detected version
     ///
     /// # Returns
-    /// A new MissingPythonDistribution instance
+    /// A new MissingPythonDistribution instance, or an error if `text` is not
+    /// a valid requirement
     pub fn from_requirement_str(
         text: &str,
         python_version: Option<i32>,
-    ) -> MissingPythonDistribution {
+    ) -> Result<MissingPythonDistribution, pep508_rs::Pep508Error> {
         use pep440_rs::Operator;
         use pep508_rs::{Requirement, VersionOrUrl};
         use std::str::FromStr;
 
-        let depspec: Requirement = Requirement::from_str(text).unwrap();
+        let depspec: Requirement = Requirement::from_str(text)?;
 
         let distribution = depspec.name.to_string();
 
@@ -282,11 +283,11 @@ impl MissingPythonDistribution {
                 None
             };
 
-        MissingPythonDistribution {
+        Ok(MissingPythonDistribution {
             distribution,
             python_version,
             minimum_version,
-        }
+        })
     }
 
     /// Creates a simple MissingPythonDistribution without version constraints.
@@ -4189,6 +4190,28 @@ mod tests {
             "missing-make-target",
             json!({"required_by": null, "target": "f0-value"}),
             "Unknown make target: f0-value",
+        );
+    }
+
+    #[test]
+    fn test_missing_python_distribution_from_requirement_str() {
+        assert_eq!(
+            MissingPythonDistribution::from_requirement_str("foo>=1.0", None).unwrap(),
+            MissingPythonDistribution {
+                distribution: "foo".to_string(),
+                python_version: None,
+                minimum_version: Some("1.0".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_missing_python_distribution_from_invalid_requirement_str() {
+        assert_eq!(
+            MissingPythonDistribution::from_requirement_str("foo>=", None)
+                .unwrap_err()
+                .to_string(),
+            "Unexpected end of version specifier, expected version\nfoo>=\n   ^^"
         );
     }
 }

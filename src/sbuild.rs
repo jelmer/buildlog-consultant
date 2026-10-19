@@ -2152,6 +2152,25 @@ Line4
         assert_eq!(error.kind(), "uscan-request-version-missing");
     }
 
+    #[test]
+    fn test_worker_failure_propagates_match_error() {
+        let lines = vec![
+            "E: Build killed with signal TERM after 99999999999999999999 minutes of inactivity"
+                .to_string(),
+        ];
+        let section = SbuildLogSection {
+            title: None,
+            offsets: (1, lines.len()),
+            lines,
+        };
+        let log = SbuildLog(vec![section]);
+        let Err(error) = worker_failure_from_sbuild_log(&log) else {
+            panic!("expected an error");
+        };
+        assert_eq!(error.message(), "invalid integer");
+        assert_eq!(error.offset(), Some(0));
+    }
+
     /// `Phase::Unpack` and `Phase::AptGetUpdate` round-trip through serde
     /// with the kebab-case wire names downstream consumers expect.
     #[test]
