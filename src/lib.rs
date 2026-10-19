@@ -27,6 +27,12 @@ pub mod problem;
 
 pub use problem::{problem_from_json, ProblemDeserializer, ProblemFromJsonFn};
 
+#[doc(hidden)]
+pub mod __private {
+    pub use inventory;
+    pub use serde_json;
+}
+
 #[cfg(any(feature = "chatgpt", feature = "claude"))]
 /// Shared utilities for LLM-based build log analysis.
 pub mod llm;

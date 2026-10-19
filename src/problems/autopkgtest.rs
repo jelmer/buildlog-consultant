@@ -1,4 +1,5 @@
 use crate::Problem;
+use serde::{Deserialize, Serialize};
 
 /// Problem representing unsatisfiable dependencies in autopkgtest.
 #[derive(Debug, Clone)]
@@ -60,29 +61,10 @@ impl std::fmt::Display for AutopkgtestDepsUnsatisfiable {
 }
 
 /// Problem representing an autopkgtest test that timed out during execution.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AutopkgtestTimedOut;
 
-impl Problem for AutopkgtestTimedOut {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "timed-out".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "timed-out",
-        detail_fields: &[],
-    }
-}
+crate::problem!(AutopkgtestTimedOut, "timed-out", {});
 
 impl std::fmt::Display for AutopkgtestTimedOut {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -93,29 +75,10 @@ impl std::fmt::Display for AutopkgtestTimedOut {
 /// Problem representing a missing XDG_RUNTIME_DIR environment variable.
 ///
 /// This issue typically occurs when running GUI tests in autopkgtest.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct XDGRunTimeNotSet;
 
-impl Problem for XDGRunTimeNotSet {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "xdg-runtime-dir-not-set".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "xdg-runtime-dir-not-set",
-        detail_fields: &[],
-    }
-}
+crate::problem!(XDGRunTimeNotSet, "xdg-runtime-dir-not-set", {});
 
 impl std::fmt::Display for XDGRunTimeNotSet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -162,29 +125,14 @@ impl std::fmt::Display for AutopkgtestTestbedFailure {
 ///
 /// This occurs when the chroot environment used for dependency resolution
 /// becomes unavailable during testing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AutopkgtestDepChrootDisappeared;
 
-impl Problem for AutopkgtestDepChrootDisappeared {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "testbed-chroot-disappeared".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "testbed-chroot-disappeared",
-        detail_fields: &[],
-    }
-}
+crate::problem!(
+    AutopkgtestDepChrootDisappeared,
+    "testbed-chroot-disappeared",
+    {}
+);
 
 impl std::fmt::Display for AutopkgtestDepChrootDisappeared {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -266,7 +214,7 @@ impl std::fmt::Display for AutopkgtestStderrFailure {
 ///
 /// Contains details about the command that failed, its exit status,
 /// and the error message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AutopkgtestTestbedSetupFailure {
     /// The command that failed to execute properly.
     pub command: String,
@@ -276,30 +224,11 @@ pub struct AutopkgtestTestbedSetupFailure {
     pub error: String,
 }
 
-impl Problem for AutopkgtestTestbedSetupFailure {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "testbed-setup-failure".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "command": self.command,
-            "exit_status": self.exit_status,
-            "error": self.error,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "testbed-setup-failure",
-        detail_fields: &["command", "exit_status", "error"],
-    }
-}
+crate::problem!(
+    AutopkgtestTestbedSetupFailure,
+    "testbed-setup-failure",
+    ["command", "exit_status", "error"]
+);
 
 impl std::fmt::Display for AutopkgtestTestbedSetupFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

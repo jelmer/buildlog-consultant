@@ -9,7 +9,7 @@ use std::path::PathBuf;
 ///
 /// This struct is used to report situations where a required file is missing,
 /// which may cause build or execution failures.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingFile {
     /// The path to the missing file.
     pub path: PathBuf,
@@ -25,37 +25,7 @@ impl MissingFile {
     }
 }
 
-impl Problem for MissingFile {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "path": self.path.to_string_lossy(),
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-file",
-        detail_fields: &["path"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-file", |v| {
-    let path: String = v
-        .get("path")
-        .and_then(|p| p.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("path"))?
-        .to_string();
-    Ok(Box::new(MissingFile { path: path.into() }) as Box<dyn crate::Problem>)
-});
+crate::problem!(MissingFile, "missing-file", ["path"]);
 
 impl Display for MissingFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -67,7 +37,7 @@ impl Display for MissingFile {
 ///
 /// This struct is used to report when a file required by the build system
 /// (such as a Makefile, CMakeLists.txt, etc.) is missing.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingBuildFile {
     /// The name of the missing build file.
     pub filename: String,
@@ -83,28 +53,7 @@ impl MissingBuildFile {
     }
 }
 
-impl Problem for MissingBuildFile {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-build-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "filename": self.filename,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-build-file",
-        detail_fields: &["filename"],
-    }
-}
+crate::problem!(MissingBuildFile, "missing-build-file", ["filename"]);
 
 impl Display for MissingBuildFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -116,34 +65,17 @@ impl Display for MissingBuildFile {
 ///
 /// This struct is used when it's not clear whether a missing entity is a
 /// command (executable) or a build file.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingCommandOrBuildFile {
     /// The name of the missing command or build file.
     pub filename: String,
 }
 
-impl Problem for MissingCommandOrBuildFile {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-command-or-build-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "filename": self.filename,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-command-or-build-file",
-        detail_fields: &["filename"],
-    }
-}
+crate::problem!(
+    MissingCommandOrBuildFile,
+    "missing-command-or-build-file",
+    ["filename"]
+);
 
 impl Display for MissingCommandOrBuildFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -165,47 +97,17 @@ impl MissingCommandOrBuildFile {
 ///
 /// This struct is used when a build process requires a version control
 /// system directory (like .git, .bzr, .svn) to be present.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VcsControlDirectoryNeeded {
     /// List of version control systems that could provide the needed directory.
     pub vcs: Vec<String>,
 }
 
-impl Problem for VcsControlDirectoryNeeded {
-    fn kind(&self) -> Cow<'_, str> {
-        "vcs-control-directory-needed".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "vcs": self.vcs,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "vcs-control-directory-needed",
-        detail_fields: &["vcs"],
-    }
-}
-
-crate::register_problem_de_fn!("vcs-control-directory-needed", |v| {
-    let vcs: Vec<String> = v
-        .get("vcs")
-        .and_then(|x| x.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|s| s.as_str().map(String::from))
-                .collect()
-        })
-        .ok_or_else(|| serde::de::Error::missing_field("vcs"))?;
-    Ok(Box::new(VcsControlDirectoryNeeded { vcs }) as Box<dyn crate::Problem>)
-});
+crate::problem!(
+    VcsControlDirectoryNeeded,
+    "vcs-control-directory-needed",
+    ["vcs"]
+);
 
 impl VcsControlDirectoryNeeded {
     /// Creates a new VcsControlDirectoryNeeded instance.
@@ -223,7 +125,7 @@ impl VcsControlDirectoryNeeded {
 ///
 /// This struct is used when a required Python module is not available,
 /// which may include version constraints.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingPythonModule {
     /// The name of the missing Python module.
     pub module: String,
@@ -268,51 +170,11 @@ impl MissingPythonModule {
     }
 }
 
-impl Problem for MissingPythonModule {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-python-module".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "module": self.module,
-            "python_version": self.python_version,
-            "minimum_version": self.minimum_version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-python-module",
-        detail_fields: &["module", "python_version", "minimum_version"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-python-module", |v| {
-    let module = v
-        .get("module")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("module"))?
-        .to_string();
-    let python_version = v
-        .get("python_version")
-        .and_then(|x| x.as_i64())
-        .map(|n| n as i32);
-    let minimum_version = v
-        .get("minimum_version")
-        .and_then(|x| x.as_str())
-        .map(String::from);
-    Ok(Box::new(MissingPythonModule {
-        module,
-        python_version,
-        minimum_version,
-    }) as Box<dyn crate::Problem>)
-});
+crate::problem!(
+    MissingPythonModule,
+    "missing-python-module",
+    ["module", "python_version", "minimum_version"]
+);
 
 /// Problem representing a missing command-line executable.
 ///
@@ -362,7 +224,7 @@ crate::register_problem_de_fn!("command-missing", |v| {
 ///
 /// This struct is used when a required Python package is not available,
 /// which may include version constraints.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingPythonDistribution {
     /// The name of the missing Python distribution.
     pub distribution: String,
@@ -390,51 +252,11 @@ impl Display for MissingPythonDistribution {
     }
 }
 
-impl Problem for MissingPythonDistribution {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-python-distribution".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "distribution": self.distribution,
-            "python_version": self.python_version,
-            "minimum_version": self.minimum_version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-python-distribution",
-        detail_fields: &["distribution", "python_version", "minimum_version"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-python-distribution", |v| {
-    let distribution = v
-        .get("distribution")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("distribution"))?
-        .to_string();
-    let python_version = v
-        .get("python_version")
-        .and_then(|x| x.as_i64())
-        .map(|n| n as i32);
-    let minimum_version = v
-        .get("minimum_version")
-        .and_then(|x| x.as_str())
-        .map(String::from);
-    Ok(Box::new(MissingPythonDistribution {
-        distribution,
-        python_version,
-        minimum_version,
-    }) as Box<dyn crate::Problem>)
-});
+crate::problem!(
+    MissingPythonDistribution,
+    "missing-python-distribution",
+    ["distribution", "python_version", "minimum_version"]
+);
 
 fn find_python_version(marker: Vec<Vec<pep508_rs::MarkerExpression>>) -> Option<i32> {
     let mut major_version = None;
@@ -521,7 +343,7 @@ impl Display for VcsControlDirectoryNeeded {
 /// Problem representing a missing Haskell module.
 ///
 /// This struct is used when a required Haskell module is not available.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingHaskellModule {
     /// The name of the missing Haskell module.
     pub module: String,
@@ -546,37 +368,7 @@ impl Display for MissingHaskellModule {
     }
 }
 
-impl Problem for MissingHaskellModule {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-haskell-module".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "module": self.module,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-haskell-module",
-        detail_fields: &["module"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-haskell-module", |v| {
-    let module = v
-        .get("module")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("module"))?
-        .to_string();
-    Ok(Box::new(MissingHaskellModule::new(module)) as Box<dyn crate::Problem>)
-});
+crate::problem!(MissingHaskellModule, "missing-haskell-module", ["module"]);
 
 /// Problem representing a missing system library.
 ///
@@ -768,7 +560,7 @@ inventory::submit! {
 ///
 /// This struct is used when a required R package is not installed
 /// or not available in the environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingRPackage {
     /// The name of the missing R package.
     pub package: String,
@@ -802,71 +594,23 @@ impl Display for MissingRPackage {
     }
 }
 
-impl Problem for MissingRPackage {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-r-package".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package,
-            "minimum_version": self.minimum_version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-r-package",
-        detail_fields: &["package", "minimum_version"],
-    }
-}
+crate::problem!(
+    MissingRPackage,
+    "missing-r-package",
+    ["package", "minimum_version"]
+);
 
 /// Problem representing a missing Go package.
 ///
 /// This struct is used when a required Go package is not installed
 /// or not available in the environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingGoPackage {
     /// The import path of the missing Go package.
     pub package: String,
 }
 
-impl Problem for MissingGoPackage {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-go-package".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-go-package",
-        detail_fields: &["package"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-go-package", |v| {
-    let package = v
-        .get("package")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("package"))?
-        .to_string();
-    Ok(Box::new(MissingGoPackage { package }) as Box<dyn crate::Problem>)
-});
+crate::problem!(MissingGoPackage, "missing-go-package", ["package"]);
 
 impl Display for MissingGoPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -878,43 +622,13 @@ impl Display for MissingGoPackage {
 ///
 /// This struct is used when a required C header file (.h) is not available
 /// during compilation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingCHeader {
     /// The name of the missing C header file.
     pub header: String,
 }
 
-impl Problem for MissingCHeader {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-c-header".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "header": self.header,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-c-header",
-        detail_fields: &["header"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-c-header", |v| {
-    let header = v
-        .get("header")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("header"))?
-        .to_string();
-    Ok(Box::new(MissingCHeader::new(header)) as Box<dyn crate::Problem>)
-});
+crate::problem!(MissingCHeader, "missing-c-header", ["header"]);
 
 impl Display for MissingCHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1029,29 +743,10 @@ impl Display for MissingNodePackage {
 ///
 /// This struct is used when a build expects to find a configure script
 /// (typically from autotools) but it doesn't exist.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingConfigure;
 
-impl Problem for MissingConfigure {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-configure".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-configure",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingConfigure, "missing-configure", {});
 
 impl Display for MissingConfigure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1063,7 +758,7 @@ impl Display for MissingConfigure {
 ///
 /// This struct is used when a build requires a dependency that
 /// cannot be clearly categorized as a specific type of dependency.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingVagueDependency {
     /// The name of the missing dependency.
     pub name: String,
@@ -1093,31 +788,11 @@ impl MissingVagueDependency {
     }
 }
 
-impl Problem for MissingVagueDependency {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-vague-dependency".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "name": self.name,
-            "url": self.url,
-            "minimum_version": self.minimum_version,
-            "current_version": self.current_version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-vague-dependency",
-        detail_fields: &["name", "url", "minimum_version", "current_version"],
-    }
-}
+crate::problem!(
+    MissingVagueDependency,
+    "missing-vague-dependency",
+    ["name", "url", "minimum_version", "current_version"]
+);
 
 impl Display for MissingVagueDependency {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1129,29 +804,10 @@ impl Display for MissingVagueDependency {
 ///
 /// This struct is used when a build requires the Qt framework
 /// but it is not installed or cannot be found.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingQt;
 
-impl Problem for MissingQt {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-qt".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-qt",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingQt, "missing-qt", {});
 
 impl Display for MissingQt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1163,29 +819,10 @@ impl Display for MissingQt {
 ///
 /// This struct is used when a build requires X11 (X Window System)
 /// components but they are not installed or cannot be found.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingX11;
 
-impl Problem for MissingX11 {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-x11".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-x11",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingX11, "missing-x11", {});
 
 impl Display for MissingX11 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1197,11 +834,12 @@ impl Display for MissingX11 {
 ///
 /// This struct is used when a build using autoconf requires a macro
 /// that is not available in the build environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingAutoconfMacro {
     /// The name of the missing autoconf macro.
     pub r#macro: String,
     /// Whether the build system needs to be rebuilt after adding the macro.
+    #[serde(default)]
     pub need_rebuild: bool,
 }
 
@@ -1221,44 +859,11 @@ impl MissingAutoconfMacro {
     }
 }
 
-impl Problem for MissingAutoconfMacro {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-autoconf-macro".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "macro": self.r#macro,
-            "need_rebuild": self.need_rebuild,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-autoconf-macro",
-        detail_fields: &["macro", "need_rebuild"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-autoconf-macro", |v| {
-    let m = v
-        .get("macro")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("macro"))?
-        .to_string();
-    let need_rebuild = v
-        .get("need_rebuild")
-        .and_then(|x| x.as_bool())
-        .unwrap_or(false);
-    let mut p = MissingAutoconfMacro::new(m);
-    p.need_rebuild = need_rebuild;
-    Ok(Box::new(p) as Box<dyn crate::Problem>)
-});
+crate::problem!(
+    MissingAutoconfMacro,
+    "missing-autoconf-macro",
+    ["macro", "need_rebuild"]
+);
 
 impl Display for MissingAutoconfMacro {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1423,7 +1028,7 @@ impl Display for MissingPostgresExtension {
 ///
 /// This struct is used when a build requires a package found via pkg-config
 /// that is not installed or cannot be found.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingPkgConfig {
     /// The name of the missing pkg-config module.
     pub module: String,
@@ -1431,45 +1036,11 @@ pub struct MissingPkgConfig {
     pub minimum_version: Option<String>,
 }
 
-impl Problem for MissingPkgConfig {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-pkg-config-package".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "module": self.module,
-            "minimum_version": self.minimum_version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-pkg-config-package",
-        detail_fields: &["module", "minimum_version"],
-    }
-}
-
-crate::register_problem_de_fn!("missing-pkg-config-package", |v| {
-    let module = v
-        .get("module")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| serde::de::Error::missing_field("module"))?
-        .to_string();
-    let minimum_version = v
-        .get("minimum_version")
-        .and_then(|x| x.as_str())
-        .map(String::from);
-    Ok(Box::new(MissingPkgConfig {
-        module,
-        minimum_version,
-    }) as Box<dyn crate::Problem>)
-});
+crate::problem!(
+    MissingPkgConfig,
+    "missing-pkg-config-package",
+    ["module", "minimum_version"]
+);
 
 impl Display for MissingPkgConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1578,38 +1149,10 @@ impl Display for MissingHaskellDependencies {
 ///
 /// This struct is used when a build fails because there is no space
 /// left on the device/filesystem where the build is running.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoSpaceOnDevice;
 
-impl Problem for NoSpaceOnDevice {
-    fn kind(&self) -> Cow<'_, str> {
-        "no-space-on-device".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    /// Indicates that this problem is universal across all build steps.
-    ///
-    /// No space on device is considered a universal problem because it can
-    /// affect any stage of the build process and is not specific to particular
-    /// build steps.
-    fn is_universal(&self) -> bool {
-        true
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "no-space-on-device",
-        detail_fields: &[],
-    }
-}
+crate::problem!(NoSpaceOnDevice, "no-space-on-device", {}, universal);
 
 impl Display for NoSpaceOnDevice {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1621,29 +1164,10 @@ impl Display for NoSpaceOnDevice {
 ///
 /// This struct is used when a build or runtime requires a Java Runtime
 /// Environment (JRE) that is not installed or cannot be found.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingJRE;
 
-impl Problem for MissingJRE {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-jre".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-jre",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingJRE, "missing-jre", {});
 
 impl Display for MissingJRE {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1655,7 +1179,7 @@ impl Display for MissingJRE {
 ///
 /// This struct is used when a build requires a Java Development Kit (JDK)
 /// at a specific path but it cannot be found.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingJDK {
     /// The path where the JDK was expected to be found.
     pub jdk_path: String,
@@ -1674,28 +1198,7 @@ impl MissingJDK {
     }
 }
 
-impl Problem for MissingJDK {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-jdk".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "jdk_path": self.jdk_path
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-jdk",
-        detail_fields: &["jdk_path"],
-    }
-}
+crate::problem!(MissingJDK, "missing-jdk", ["jdk_path"]);
 
 impl Display for MissingJDK {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1707,7 +1210,7 @@ impl Display for MissingJDK {
 ///
 /// This struct is used when a build requires a specific file from the JDK
 /// but it cannot be found in the JDK directory.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingJDKFile {
     /// The path to the JDK directory.
     pub jdk_path: String,
@@ -1729,29 +1232,7 @@ impl MissingJDKFile {
     }
 }
 
-impl Problem for MissingJDKFile {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-jdk-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "jdk_path": self.jdk_path,
-            "filename": self.filename
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-jdk-file",
-        detail_fields: &["jdk_path", "filename"],
-    }
-}
+crate::problem!(MissingJDKFile, "missing-jdk-file", ["jdk_path", "filename"]);
 
 impl Display for MissingJDKFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1763,7 +1244,7 @@ impl Display for MissingJDKFile {
 ///
 /// This struct is used when a Perl script attempts to load a file
 /// but it cannot be found in any of the include paths.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingPerlFile {
     /// The name of the missing Perl file.
     pub filename: String,
@@ -1785,29 +1266,7 @@ impl MissingPerlFile {
     }
 }
 
-impl Problem for MissingPerlFile {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-perl-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "filename": self.filename,
-            "inc": self.inc
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-perl-file",
-        detail_fields: &["filename", "inc"],
-    }
-}
+crate::problem!(MissingPerlFile, "missing-perl-file", ["filename", "inc"]);
 
 impl Display for MissingPerlFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1828,7 +1287,7 @@ impl Display for MissingPerlFile {
 ///
 /// This struct is used when a Perl script requires a module
 /// that is not installed or cannot be found in the include paths.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingPerlModule {
     /// The name of the file where the module is required, if known.
     pub filename: Option<String>,
@@ -1840,31 +1299,11 @@ pub struct MissingPerlModule {
     pub minimum_version: Option<String>,
 }
 
-impl Problem for MissingPerlModule {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-perl-module".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "filename": self.filename,
-            "module": self.module,
-            "inc": self.inc,
-            "minimum_version": self.minimum_version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-perl-module",
-        detail_fields: &["filename", "module", "inc", "minimum_version"],
-    }
-}
+crate::problem!(
+    MissingPerlModule,
+    "missing-perl-module",
+    ["filename", "module", "inc", "minimum_version"]
+);
 
 impl Display for MissingPerlModule {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1945,29 +1384,10 @@ impl Display for MissingSetupPyCommand {
 ///
 /// This struct is used when a build requires a C# compiler
 /// but none is available in the build environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingCSharpCompiler;
 
-impl Problem for MissingCSharpCompiler {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-c#-compiler".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-c#-compiler",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingCSharpCompiler, "missing-c#-compiler", {});
 
 impl Display for MissingCSharpCompiler {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1979,29 +1399,10 @@ impl Display for MissingCSharpCompiler {
 ///
 /// This struct is used when a build requires a Rust compiler (rustc)
 /// but none is available in the build environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingRustCompiler;
 
-impl Problem for MissingRustCompiler {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-rust-compiler".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-rust-compiler",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingRustCompiler, "missing-rust-compiler", {});
 
 impl Display for MissingRustCompiler {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2013,29 +1414,10 @@ impl Display for MissingRustCompiler {
 ///
 /// This struct is used when a build requires an assembler (like as or nasm)
 /// but none is available in the build environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingAssembler;
 
-impl Problem for MissingAssembler {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-assembler".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-assembler",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingAssembler, "missing-assembler", {});
 
 impl Display for MissingAssembler {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2047,37 +1429,20 @@ impl Display for MissingAssembler {
 ///
 /// This struct is used when a Cargo build requires a Rust crate
 /// that is not available or cannot be found.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingCargoCrate {
     /// The name of the missing Rust crate.
+    #[serde(rename = "crate")]
     pub crate_name: String,
     /// The requirement or dependency that needs this crate, if known.
     pub requirement: Option<String>,
 }
 
-impl Problem for MissingCargoCrate {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-cargo-crate".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "crate": self.crate_name,
-            "requirement": self.requirement
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-cargo-crate",
-        detail_fields: &["crate", "requirement"],
-    }
-}
+crate::problem!(
+    MissingCargoCrate,
+    "missing-cargo-crate",
+    ["crate", "requirement"]
+);
 
 impl MissingCargoCrate {
     /// Creates a simple MissingCargoCrate instance with just a crate name.
@@ -2113,29 +1478,10 @@ impl Display for MissingCargoCrate {
 ///
 /// This struct is used when the debhelper command is used with arguments
 /// in an incorrect order, which can cause build issues in Debian packaging.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DhWithOrderIncorrect;
 
-impl Problem for DhWithOrderIncorrect {
-    fn kind(&self) -> Cow<'_, str> {
-        "debhelper-argument-order".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debhelper-argument-order",
-        detail_fields: &[],
-    }
-}
+crate::problem!(DhWithOrderIncorrect, "debhelper-argument-order", {});
 
 impl Display for DhWithOrderIncorrect {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2148,7 +1494,7 @@ impl Display for DhWithOrderIncorrect {
 /// This struct is used when a Debian package build specifies a debhelper
 /// compatibility level that is lower than the minimum supported level
 /// in the current environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UnsupportedDebhelperCompatLevel {
     /// The oldest (minimum) compatibility level supported by the current debhelper.
     pub oldest_supported: u32,
@@ -2173,29 +1519,11 @@ impl UnsupportedDebhelperCompatLevel {
     }
 }
 
-impl Problem for UnsupportedDebhelperCompatLevel {
-    fn kind(&self) -> Cow<'_, str> {
-        "unsupported-debhelper-compat-level".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "oldest_supported": self.oldest_supported,
-            "requested": self.requested
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "unsupported-debhelper-compat-level",
-        detail_fields: &["oldest_supported", "requested"],
-    }
-}
+crate::problem!(
+    UnsupportedDebhelperCompatLevel,
+    "unsupported-debhelper-compat-level",
+    ["oldest_supported", "requested"]
+);
 
 impl Display for UnsupportedDebhelperCompatLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2213,29 +1541,10 @@ impl Display for UnsupportedDebhelperCompatLevel {
 /// to automatically determine the package version from version control
 /// metadata, which typically happens when building from a source archive
 /// rather than a git repository.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SetuptoolScmVersionIssue;
 
-impl Problem for SetuptoolScmVersionIssue {
-    fn kind(&self) -> Cow<'_, str> {
-        "setuptools-scm-version-issue".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "setuptools-scm-version-issue",
-        detail_fields: &[],
-    }
-}
+crate::problem!(SetuptoolScmVersionIssue, "setuptools-scm-version-issue", {});
 
 impl Display for SetuptoolScmVersionIssue {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2430,7 +1739,7 @@ impl Display for DhLinkDestinationIsDirectory {
 ///
 /// This struct is used when an XML parser attempts to resolve an external
 /// entity reference but the referenced entity cannot be found at the given URL.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingXmlEntity {
     /// The URL where the XML entity was expected to be found.
     pub url: String,
@@ -2449,28 +1758,7 @@ impl MissingXmlEntity {
     }
 }
 
-impl Problem for MissingXmlEntity {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-xml-entity".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "url": self.url
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-xml-entity",
-        detail_fields: &["url"],
-    }
-}
+crate::problem!(MissingXmlEntity, "missing-xml-entity", ["url"]);
 
 impl Display for MissingXmlEntity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2531,7 +1819,7 @@ impl Display for CcacheError {
 ///
 /// This struct is used when a version string for a Debian package is rejected
 /// by Debian tools as invalid or incompatible with policy requirements.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebianVersionRejected {
     /// The version string that was rejected.
     pub version: String,
@@ -2550,28 +1838,11 @@ impl DebianVersionRejected {
     }
 }
 
-impl Problem for DebianVersionRejected {
-    fn kind(&self) -> Cow<'_, str> {
-        "debian-version-rejected".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "version": self.version
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debian-version-rejected",
-        detail_fields: &["version"],
-    }
-}
+crate::problem!(
+    DebianVersionRejected,
+    "debian-version-rejected",
+    ["version"]
+);
 
 impl Display for DebianVersionRejected {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2583,7 +1854,7 @@ impl Display for DebianVersionRejected {
 ///
 /// This struct is used when a build process fails because a patch
 /// cannot be successfully applied to the source code.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PatchApplicationFailed {
     /// The name of the patch file that could not be applied.
     pub patchname: String,
@@ -2602,28 +1873,11 @@ impl PatchApplicationFailed {
     }
 }
 
-impl Problem for PatchApplicationFailed {
-    fn kind(&self) -> Cow<'_, str> {
-        "patch-application-failed".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "patchname": self.patchname
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "patch-application-failed",
-        detail_fields: &["patchname"],
-    }
-}
+crate::problem!(
+    PatchApplicationFailed,
+    "patch-application-failed",
+    ["patchname"]
+);
 
 impl Display for PatchApplicationFailed {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2635,7 +1889,7 @@ impl Display for PatchApplicationFailed {
 ///
 /// This struct is used when PostgreSQL extension build files need to be updated
 /// using the pg_buildext updatecontrol command to generate control files from templates.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NeedPgBuildExtUpdateControl {
     /// The path to the generated control file.
     pub generated_path: String,
@@ -2660,29 +1914,11 @@ impl NeedPgBuildExtUpdateControl {
     }
 }
 
-impl Problem for NeedPgBuildExtUpdateControl {
-    fn kind(&self) -> Cow<'_, str> {
-        "need-pg-buildext-updatecontrol".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "generated_path": self.generated_path,
-            "template_path": self.template_path
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "need-pg-buildext-updatecontrol",
-        detail_fields: &["generated_path", "template_path"],
-    }
-}
+crate::problem!(
+    NeedPgBuildExtUpdateControl,
+    "need-pg-buildext-updatecontrol",
+    ["generated_path", "template_path"]
+);
 
 impl Display for NeedPgBuildExtUpdateControl {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2698,7 +1934,7 @@ impl Display for NeedPgBuildExtUpdateControl {
 ///
 /// This struct is used when debhelper fails to load an addon module,
 /// which typically provides additional functionality to the debhelper tools.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DhAddonLoadFailure {
     /// The name of the addon that failed to load.
     pub name: String,
@@ -2720,29 +1956,11 @@ impl DhAddonLoadFailure {
     }
 }
 
-impl Problem for DhAddonLoadFailure {
-    fn kind(&self) -> Cow<'_, str> {
-        "dh-addon-load-failure".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "name": self.name,
-            "path": self.path
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "dh-addon-load-failure",
-        detail_fields: &["name", "path"],
-    }
-}
+crate::problem!(
+    DhAddonLoadFailure,
+    "dh-addon-load-failure",
+    ["name", "path"]
+);
 
 impl Display for DhAddonLoadFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2754,7 +1972,7 @@ impl Display for DhAddonLoadFailure {
 ///
 /// This struct is used when the --until flag is used with debhelper (dh)
 /// but the version of debhelper in use does not support this option.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DhUntilUnsupported;
 
 impl Default for DhUntilUnsupported {
@@ -2777,26 +1995,7 @@ impl DhUntilUnsupported {
     }
 }
 
-impl Problem for DhUntilUnsupported {
-    fn kind(&self) -> Cow<'_, str> {
-        "dh-until-unsupported".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "dh-until-unsupported",
-        detail_fields: &[],
-    }
-}
+crate::problem!(DhUntilUnsupported, "dh-until-unsupported", {});
 
 impl Display for DhUntilUnsupported {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2808,7 +2007,7 @@ impl Display for DhUntilUnsupported {
 ///
 /// This struct is used when a debhelper tool is looking for files matching
 /// a specific pattern but cannot find any matches in the searched directories.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebhelperPatternNotFound {
     /// The file pattern that was being searched for.
     pub pattern: String,
@@ -2837,30 +2036,11 @@ impl DebhelperPatternNotFound {
     }
 }
 
-impl Problem for DebhelperPatternNotFound {
-    fn kind(&self) -> Cow<'_, str> {
-        "debhelper-pattern-not-found".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "pattern": self.pattern,
-            "tool": self.tool,
-            "directories": self.directories
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "debhelper-pattern-not-found",
-        detail_fields: &["pattern", "tool", "directories"],
-    }
-}
+crate::problem!(
+    DebhelperPatternNotFound,
+    "debhelper-pattern-not-found",
+    ["pattern", "tool", "directories"]
+);
 
 impl Display for DebhelperPatternNotFound {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2876,7 +2056,7 @@ impl Display for DebhelperPatternNotFound {
 ///
 /// This struct is used when a Perl module build expects to find a MANIFEST
 /// file listing all files in the distribution, but it doesn't exist.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingPerlManifest;
 
 impl Default for MissingPerlManifest {
@@ -2899,26 +2079,7 @@ impl MissingPerlManifest {
     }
 }
 
-impl Problem for MissingPerlManifest {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-perl-manifest".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-perl-manifest",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingPerlManifest, "missing-perl-manifest", {});
 
 impl Display for MissingPerlManifest {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2930,7 +2091,7 @@ impl Display for MissingPerlManifest {
 ///
 /// This struct is used when ImageMagick requires a delegate library
 /// to handle a specific file format or operation, but the delegate is not available.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImageMagickDelegateMissing {
     /// The name of the missing ImageMagick delegate.
     pub delegate: String,
@@ -2949,28 +2110,11 @@ impl ImageMagickDelegateMissing {
     }
 }
 
-impl Problem for ImageMagickDelegateMissing {
-    fn kind(&self) -> Cow<'_, str> {
-        "imagemagick-delegate-missing".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "delegate": self.delegate
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "imagemagick-delegate-missing",
-        detail_fields: &["delegate"],
-    }
-}
+crate::problem!(
+    ImageMagickDelegateMissing,
+    "imagemagick-delegate-missing",
+    ["delegate"]
+);
 
 impl Display for ImageMagickDelegateMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -2982,7 +2126,7 @@ impl Display for ImageMagickDelegateMissing {
 ///
 /// This struct is used when a build process or operation was cancelled
 /// before completion, typically by user intervention or a timeout.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cancelled;
 
 impl Default for Cancelled {
@@ -3005,26 +2149,7 @@ impl Cancelled {
     }
 }
 
-impl Problem for Cancelled {
-    fn kind(&self) -> Cow<'_, str> {
-        "cancelled".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "cancelled",
-        detail_fields: &[],
-    }
-}
+crate::problem!(Cancelled, "cancelled", {});
 
 impl Display for Cancelled {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3036,7 +2161,7 @@ impl Display for Cancelled {
 ///
 /// This struct is used when symbols (functions or variables) that were previously
 /// exported by a library are no longer present, which can break API compatibility.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DisappearedSymbols;
 
 impl Default for DisappearedSymbols {
@@ -3059,26 +2184,7 @@ impl DisappearedSymbols {
     }
 }
 
-impl Problem for DisappearedSymbols {
-    fn kind(&self) -> Cow<'_, str> {
-        "disappeared-symbols".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "disappeared-symbols",
-        detail_fields: &[],
-    }
-}
+crate::problem!(DisappearedSymbols, "disappeared-symbols", {});
 
 impl Display for DisappearedSymbols {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3090,7 +2196,7 @@ impl Display for DisappearedSymbols {
 ///
 /// This struct is used when the debhelper compatibility level is specified
 /// multiple times in different places, which can lead to conflicts.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DuplicateDHCompatLevel {
     /// The command or file where the duplicate compatibility level was found.
     pub command: String,
@@ -3109,28 +2215,11 @@ impl DuplicateDHCompatLevel {
     }
 }
 
-impl Problem for DuplicateDHCompatLevel {
-    fn kind(&self) -> Cow<'_, str> {
-        "duplicate-dh-compat-level".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "command": self.command
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "duplicate-dh-compat-level",
-        detail_fields: &["command"],
-    }
-}
+crate::problem!(
+    DuplicateDHCompatLevel,
+    "duplicate-dh-compat-level",
+    ["command"]
+);
 
 impl Display for DuplicateDHCompatLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3146,7 +2235,7 @@ impl Display for DuplicateDHCompatLevel {
 ///
 /// This struct is used when debhelper requires a compatibility level to be
 /// specified, but none was found in the expected locations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingDHCompatLevel {
     /// The command that reported the missing compatibility level.
     pub command: String,
@@ -3165,28 +2254,7 @@ impl MissingDHCompatLevel {
     }
 }
 
-impl Problem for MissingDHCompatLevel {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-dh-compat-level".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "command": self.command
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-dh-compat-level",
-        detail_fields: &["command"],
-    }
-}
+crate::problem!(MissingDHCompatLevel, "missing-dh-compat-level", ["command"]);
 
 impl Display for MissingDHCompatLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3198,7 +2266,7 @@ impl Display for MissingDHCompatLevel {
 ///
 /// This struct is used when a build process requires a Java Virtual Machine
 /// but cannot find one installed or properly configured in the system.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingJVM;
 
 impl Default for MissingJVM {
@@ -3221,26 +2289,7 @@ impl MissingJVM {
     }
 }
 
-impl Problem for MissingJVM {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-jvm".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-jvm",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingJVM, "missing-jvm", {});
 
 impl Display for MissingJVM {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3252,7 +2301,7 @@ impl Display for MissingJVM {
 ///
 /// This struct is used when a build process requires a Ruby gem
 /// that is not installed or available in the current environment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingRubyGem {
     /// The name of the missing Ruby gem.
     pub gem: String,
@@ -3285,29 +2334,7 @@ impl MissingRubyGem {
     }
 }
 
-impl Problem for MissingRubyGem {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-ruby-gem".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "gem": self.gem,
-            "version": self.version
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-ruby-gem",
-        detail_fields: &["gem", "version"],
-    }
-}
+crate::problem!(MissingRubyGem, "missing-ruby-gem", ["gem", "version"]);
 
 impl Display for MissingRubyGem {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3323,7 +2350,7 @@ impl Display for MissingRubyGem {
 ///
 /// This struct is used when a build process requires a JavaScript runtime
 /// (like Node.js, Deno, or a browser JavaScript engine) but none is available.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingJavaScriptRuntime;
 
 impl Default for MissingJavaScriptRuntime {
@@ -3346,26 +2373,7 @@ impl MissingJavaScriptRuntime {
     }
 }
 
-impl Problem for MissingJavaScriptRuntime {
-    fn kind(&self) -> Cow<'_, str> {
-        "javascript-runtime-missing".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "javascript-runtime-missing",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingJavaScriptRuntime, "javascript-runtime-missing", {});
 
 impl Display for MissingJavaScriptRuntime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3377,7 +2385,7 @@ impl Display for MissingJavaScriptRuntime {
 ///
 /// This struct is used when a Ruby application or library tries to
 /// load or require a Ruby file that does not exist or cannot be found.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingRubyFile {
     /// The name or path of the missing Ruby file.
     pub filename: String,
@@ -3396,28 +2404,7 @@ impl MissingRubyFile {
     }
 }
 
-impl Problem for MissingRubyFile {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-ruby-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "filename": self.filename
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-ruby-file",
-        detail_fields: &["filename"],
-    }
-}
+crate::problem!(MissingRubyFile, "missing-ruby-file", ["filename"]);
 
 impl Display for MissingRubyFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3429,7 +2416,7 @@ impl Display for MissingRubyFile {
 ///
 /// This struct is used when a PHP application tries to use a class
 /// that has not been defined or cannot be autoloaded.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingPhpClass {
     /// The name of the missing PHP class.
     pub php_class: String,
@@ -3461,28 +2448,7 @@ impl MissingPhpClass {
     }
 }
 
-impl Problem for MissingPhpClass {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-php-class".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "php_class": self.php_class
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-php-class",
-        detail_fields: &["php_class"],
-    }
-}
+crate::problem!(MissingPhpClass, "missing-php-class", ["php_class"]);
 
 impl Display for MissingPhpClass {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3490,11 +2456,11 @@ impl Display for MissingPhpClass {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing Java class.
 ///
 /// This struct is used when a Java application or build process
 /// requires a Java class that cannot be found in the classpath.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingJavaClass {
     /// The name of the missing Java class.
     pub classname: String,
@@ -3526,28 +2492,7 @@ impl MissingJavaClass {
     }
 }
 
-impl Problem for MissingJavaClass {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-java-class".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "classname": self.classname
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-java-class",
-        detail_fields: &["classname"],
-    }
-}
+crate::problem!(MissingJavaClass, "missing-java-class", ["classname"]);
 
 impl Display for MissingJavaClass {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3555,11 +2500,11 @@ impl Display for MissingJavaClass {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing Sprockets asset file.
 ///
 /// This struct is used when a Ruby on Rails application using the Sprockets
 /// asset pipeline is missing a required asset file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingSprocketsFile {
     /// The name of the missing Sprockets asset file.
     pub name: String,
@@ -3581,29 +2526,11 @@ impl MissingSprocketsFile {
     }
 }
 
-impl Problem for MissingSprocketsFile {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-sprockets-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "name": self.name,
-            "content_type": self.content_type
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-sprockets-file",
-        detail_fields: &["name", "content_type"],
-    }
-}
+crate::problem!(
+    MissingSprocketsFile,
+    "missing-sprockets-file",
+    ["name", "content_type"]
+);
 
 impl Display for MissingSprocketsFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3615,11 +2542,11 @@ impl Display for MissingSprocketsFile {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing Xfce desktop environment dependency.
 ///
 /// This struct is used when a package build requires an Xfce-specific
 /// dependency package that is not available.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingXfceDependency {
     /// The name of the missing Xfce dependency package.
     pub package: String,
@@ -3638,28 +2565,11 @@ impl MissingXfceDependency {
     }
 }
 
-impl Problem for MissingXfceDependency {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-xfce-dependency".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-xfce-dependency",
-        detail_fields: &["package"],
-    }
-}
+crate::problem!(
+    MissingXfceDependency,
+    "missing-xfce-dependency",
+    ["package"]
+);
 
 impl Display for MissingXfceDependency {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3667,33 +2577,14 @@ impl Display for MissingXfceDependency {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing missing GNOME common build tools and macros.
 ///
 /// This struct is used when a GNOME-related package build requires the
 /// gnome-common package, which provides common build tools and macros for GNOME projects.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GnomeCommonMissing;
 
-impl Problem for GnomeCommonMissing {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-gnome-common".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-gnome-common",
-        detail_fields: &[],
-    }
-}
+crate::problem!(GnomeCommonMissing, "missing-gnome-common", {});
 
 impl Display for GnomeCommonMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3701,11 +2592,11 @@ impl Display for GnomeCommonMissing {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing input file for GNU config.status.
 ///
 /// This struct is used when the GNU autotools config.status script
 /// is missing one of its required input files.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingConfigStatusInput {
     /// The path to the missing input file.
     pub path: String,
@@ -3724,28 +2615,11 @@ impl MissingConfigStatusInput {
     }
 }
 
-impl Problem for MissingConfigStatusInput {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-config.status-input".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "path": self.path
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-config.status-input",
-        detail_fields: &["path"],
-    }
-}
+crate::problem!(
+    MissingConfigStatusInput,
+    "missing-config.status-input",
+    ["path"]
+);
 
 impl Display for MissingConfigStatusInput {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3753,11 +2627,11 @@ impl Display for MissingConfigStatusInput {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing GNOME common dependency.
 ///
 /// This struct is used when a GNOME-related package build requires a dependency
 /// that is typically provided by or related to the gnome-common infrastructure.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingGnomeCommonDependency {
     /// The name of the missing GNOME common dependency package.
     pub package: String,
@@ -3793,29 +2667,11 @@ impl MissingGnomeCommonDependency {
     }
 }
 
-impl Problem for MissingGnomeCommonDependency {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-gnome-common-dependency".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package,
-            "minimum_version": self.minimum_version
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-gnome-common-dependency",
-        detail_fields: &["package", "minimum_version"],
-    }
-}
+crate::problem!(
+    MissingGnomeCommonDependency,
+    "missing-gnome-common-dependency",
+    ["package", "minimum_version"]
+);
 
 impl Display for MissingGnomeCommonDependency {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3828,11 +2684,11 @@ impl Display for MissingGnomeCommonDependency {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing input file for GNU Automake.
 ///
 /// This struct is used when GNU Automake cannot find a required input
 /// file that it needs to generate build files.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingAutomakeInput {
     /// The path to the missing input file.
     pub path: String,
@@ -3851,28 +2707,7 @@ impl MissingAutomakeInput {
     }
 }
 
-impl Problem for MissingAutomakeInput {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-automake-input".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "path": self.path
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-automake-input",
-        detail_fields: &["path"],
-    }
-}
+crate::problem!(MissingAutomakeInput, "missing-automake-input", ["path"]);
 
 impl Display for MissingAutomakeInput {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3880,12 +2715,12 @@ impl Display for MissingAutomakeInput {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a chroot environment that could not be found.
 ///
 /// This struct is used when a build process tries to use a chroot environment
 /// (a root directory that appears as the system root to enclosed processes),
 /// but the specified chroot does not exist.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChrootNotFound {
     /// The path or name of the chroot that could not be found.
     pub chroot: String,
@@ -3904,28 +2739,7 @@ impl ChrootNotFound {
     }
 }
 
-impl Problem for ChrootNotFound {
-    fn kind(&self) -> Cow<'_, str> {
-        "chroot-not-found".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "chroot": self.chroot
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "chroot-not-found",
-        detail_fields: &["chroot"],
-    }
-}
+crate::problem!(ChrootNotFound, "chroot-not-found", ["chroot"]);
 
 impl Display for ChrootNotFound {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3933,11 +2747,11 @@ impl Display for ChrootNotFound {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing missing GNU Libtool.
 ///
 /// This struct is used when a build process requires the GNU Libtool
 /// utility for creating portable shared libraries, but it is not installed.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingLibtool;
 
 impl Default for MissingLibtool {
@@ -3960,26 +2774,7 @@ impl MissingLibtool {
     }
 }
 
-impl Problem for MissingLibtool {
-    fn kind(&self) -> Cow<'_, str> {
-        "missing-libtool".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-libtool",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingLibtool, "missing-libtool", {});
 
 impl Display for MissingLibtool {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3987,11 +2782,11 @@ impl Display for MissingLibtool {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing missing CMake files.
 ///
 /// This struct is used when a CMake-based build process cannot find
 /// required CMake module or configuration files.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CMakeFilesMissing {
     /// The names of the missing CMake files.
     pub filenames: Vec<String>,
@@ -3999,29 +2794,11 @@ pub struct CMakeFilesMissing {
     pub version: Option<String>,
 }
 
-impl Problem for CMakeFilesMissing {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-cmake-files".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "filenames": self.filenames,
-            "version": self.version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-cmake-files",
-        detail_fields: &["filenames", "version"],
-    }
-}
+crate::problem!(
+    CMakeFilesMissing,
+    "missing-cmake-files",
+    ["filenames", "version"]
+);
 
 impl std::fmt::Display for CMakeFilesMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4029,11 +2806,11 @@ impl std::fmt::Display for CMakeFilesMissing {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing missing CMake package components.
 ///
 /// This struct is used when a CMake-based build process requires specific
 /// components of a package, but they cannot be found.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingCMakeComponents {
     /// The name of the CMake package.
     pub name: String,
@@ -4041,29 +2818,11 @@ pub struct MissingCMakeComponents {
     pub components: Vec<String>,
 }
 
-impl Problem for MissingCMakeComponents {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-cmake-components".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "name": self.name,
-            "components": self.components,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-cmake-components",
-        detail_fields: &["name", "components"],
-    }
-}
+crate::problem!(
+    MissingCMakeComponents,
+    "missing-cmake-components",
+    ["name", "components"]
+);
 
 impl std::fmt::Display for MissingCMakeComponents {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4071,11 +2830,11 @@ impl std::fmt::Display for MissingCMakeComponents {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing CMake package configuration.
 ///
 /// This struct is used when a CMake-based build process cannot find
 /// a required package configuration file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingCMakeConfig {
     /// The name of the CMake package.
     pub name: String,
@@ -4083,29 +2842,11 @@ pub struct MissingCMakeConfig {
     pub version: Option<String>,
 }
 
-impl Problem for MissingCMakeConfig {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-cmake-config".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "name": self.name,
-            "version": self.version,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-cmake-config",
-        detail_fields: &["name", "version"],
-    }
-}
+crate::problem!(
+    MissingCMakeConfig,
+    "missing-cmake-config",
+    ["name", "version"]
+);
 
 impl std::fmt::Display for MissingCMakeConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4121,11 +2862,11 @@ impl std::fmt::Display for MissingCMakeConfig {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a CMake package with mismatched version requirements.
 ///
 /// This struct is used when a CMake-based build process found a package,
 /// but it requires an exact version that doesn't match the found version.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CMakeNeedExactVersion {
     /// The name of the CMake package.
     pub package: String,
@@ -4137,31 +2878,11 @@ pub struct CMakeNeedExactVersion {
     pub path: PathBuf,
 }
 
-impl Problem for CMakeNeedExactVersion {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "cmake-exact-version-missing".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package,
-            "version_found": self.version_found,
-            "exact_version_needed": self.exact_version_needed,
-            "path": self.path,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "cmake-exact-version-missing",
-        detail_fields: &["package", "version_found", "exact_version_needed", "path"],
-    }
-}
+crate::problem!(
+    CMakeNeedExactVersion,
+    "cmake-exact-version-missing",
+    ["package", "version_found", "exact_version_needed", "path"]
+);
 
 impl std::fmt::Display for CMakeNeedExactVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4173,11 +2894,11 @@ impl std::fmt::Display for CMakeNeedExactVersion {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing static library file.
 ///
 /// This struct is used when a build process requires a static library
 /// (typically a .a or .lib file) but it cannot be found.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingStaticLibrary {
     /// The name of the library (without file extension).
     pub library: String,
@@ -4185,29 +2906,11 @@ pub struct MissingStaticLibrary {
     pub filename: String,
 }
 
-impl Problem for MissingStaticLibrary {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-static-library".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "library": self.library,
-            "filename": self.filename,
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-static-library",
-        detail_fields: &["library", "filename"],
-    }
-}
+crate::problem!(
+    MissingStaticLibrary,
+    "missing-static-library",
+    ["library", "filename"]
+);
 
 impl std::fmt::Display for MissingStaticLibrary {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4215,33 +2918,14 @@ impl std::fmt::Display for MissingStaticLibrary {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing Go runtime.
 ///
 /// This struct is used when a build process requires the Go language runtime
 /// but it is not installed or cannot be found in the system.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingGoRuntime;
 
-impl Problem for MissingGoRuntime {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-go-runtime".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-go-runtime",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingGoRuntime, "missing-go-runtime", {});
 
 impl std::fmt::Display for MissingGoRuntime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4321,33 +3005,14 @@ impl std::fmt::Display for MissingPerlPredeclared {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing missing Git user identity configuration.
 ///
 /// This struct is used when Git operations that require user identity
 /// (like commits) fail because the user.name and user.email are not configured.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingGitIdentity;
 
-impl Problem for MissingGitIdentity {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-git-identity".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-git-identity",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingGitIdentity, "missing-git-identity", {});
 
 impl std::fmt::Display for MissingGitIdentity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4355,33 +3020,14 @@ impl std::fmt::Display for MissingGitIdentity {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing GPG secret key.
 ///
 /// This struct is used when an operation requires a GPG secret key
 /// (such as signing packages or commits) but no secret key is available.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingSecretGpgKey;
 
-impl Problem for MissingSecretGpgKey {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "no-secret-gpg-key".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "no-secret-gpg-key",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingSecretGpgKey, "no-secret-gpg-key", {});
 
 impl std::fmt::Display for MissingSecretGpgKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4389,33 +3035,14 @@ impl std::fmt::Display for MissingSecretGpgKey {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing missing version information for vcversioner.
 ///
 /// This struct is used when the vcversioner Python package cannot determine
 /// the version from either a Git directory or a version.txt file.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingVcVersionerVersion;
 
-impl Problem for MissingVcVersionerVersion {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "no-vcversioner-version".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "no-vcversioner-version",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingVcVersionerVersion, "no-vcversioner-version", {});
 
 impl std::fmt::Display for MissingVcVersionerVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4475,33 +3102,14 @@ impl std::fmt::Display for MissingLatexFile {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing X Window System display.
 ///
 /// This struct is used when a program requires an X11 display connection
 /// but no display server is available (such as in headless environments).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingXDisplay;
 
-impl Problem for MissingXDisplay {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-x-display".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-x-display",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingXDisplay, "missing-x-display", {});
 
 impl std::fmt::Display for MissingXDisplay {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4581,33 +3189,14 @@ impl std::fmt::Display for InactiveKilled {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing missing PAUSE credentials for Perl module upload.
 ///
 /// This struct is used when attempting to upload a Perl module to PAUSE
 /// (Perl Authors Upload Server) without proper authentication credentials.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingPauseCredentials;
 
-impl Problem for MissingPauseCredentials {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-pause-credentials".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-pause-credentials",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingPauseCredentials, "missing-pause-credentials", {});
 
 impl std::fmt::Display for MissingPauseCredentials {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4615,11 +3204,11 @@ impl std::fmt::Display for MissingPauseCredentials {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing mismatched gettext versions.
 ///
 /// This struct is used when there's a version mismatch between gettext versions
 /// referenced in Makefile.in.in and the autoconf macros.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MismatchGettextVersions {
     /// The gettext version specified in the Makefile.
     pub makefile_version: String,
@@ -4627,29 +3216,11 @@ pub struct MismatchGettextVersions {
     pub autoconf_version: String,
 }
 
-impl Problem for MismatchGettextVersions {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "mismatch-gettext-versions".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "makefile_version": self.makefile_version,
-            "autoconf_version": self.autoconf_version
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "mismatch-gettext-versions",
-        detail_fields: &["makefile_version", "autoconf_version"],
-    }
-}
+crate::problem!(
+    MismatchGettextVersions,
+    "mismatch-gettext-versions",
+    ["makefile_version", "autoconf_version"]
+);
 
 impl std::fmt::Display for MismatchGettextVersions {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4769,33 +3340,14 @@ impl std::fmt::Display for MissingLuaModule {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing Go module file.
 ///
 /// This struct is used when a Go project requires a go.mod file for
 /// module and dependency management, but the file is missing.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingGoModFile;
 
-impl Problem for MissingGoModFile {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-go.mod-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-go.mod-file",
-        detail_fields: &[],
-    }
-}
+crate::problem!(MissingGoModFile, "missing-go.mod-file", {});
 
 impl std::fmt::Display for MissingGoModFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4803,33 +3355,14 @@ impl std::fmt::Display for MissingGoModFile {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing an outdated Go module file.
 ///
 /// This struct is used when a Go project's go.mod file needs to be
 /// updated due to changes in dependencies or Go version requirements.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutdatedGoModFile;
 
-impl Problem for OutdatedGoModFile {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "outdated-go.mod-file".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "outdated-go.mod-file",
-        detail_fields: &[],
-    }
-}
+crate::problem!(OutdatedGoModFile, "outdated-go.mod-file", {});
 
 impl std::fmt::Display for OutdatedGoModFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -4837,11 +3370,11 @@ impl std::fmt::Display for OutdatedGoModFile {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing insufficient code test coverage.
 ///
 /// This struct is used when a build process requires a minimum level of
 /// code test coverage, but the actual coverage is below the required threshold.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CodeCoverageTooLow {
     /// The actual code coverage percentage achieved.
     pub actual: f64,
@@ -4849,29 +3382,11 @@ pub struct CodeCoverageTooLow {
     pub required: f64,
 }
 
-impl Problem for CodeCoverageTooLow {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "code-coverage-too-low".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "actual": self.actual,
-            "required": self.required
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "code-coverage-too-low",
-        detail_fields: &["actual", "required"],
-    }
-}
+crate::problem!(
+    CodeCoverageTooLow,
+    "code-coverage-too-low",
+    ["actual", "required"]
+);
 
 impl std::fmt::Display for CodeCoverageTooLow {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -5031,11 +3546,11 @@ impl std::fmt::Display for MissingPerlDistributionFile {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a missing entry in the Go checksum file.
 ///
 /// This struct is used when a Go project requires an entry in the go.sum file
 /// for a specific package version, but the entry is missing.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissingGoSumEntry {
     /// The package import path.
     pub package: String,
@@ -5043,29 +3558,11 @@ pub struct MissingGoSumEntry {
     pub version: String,
 }
 
-impl Problem for MissingGoSumEntry {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "missing-go.sum-entry".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "package": self.package,
-            "version": self.version
-        })
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "missing-go.sum-entry",
-        detail_fields: &["package", "version"],
-    }
-}
+crate::problem!(
+    MissingGoSumEntry,
+    "missing-go.sum-entry",
+    ["package", "version"]
+);
 
 impl std::fmt::Display for MissingGoSumEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -5073,33 +3570,14 @@ impl std::fmt::Display for MissingGoSumEntry {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing an issue with the Vala compiler.
 ///
 /// This struct is used when the Vala compiler (valac) encounters
 /// an error that prevents it from compiling Vala source code.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValaCompilerCannotCompile;
 
-impl Problem for ValaCompilerCannotCompile {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "valac-cannot-compile".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "valac-cannot-compile",
-        detail_fields: &[],
-    }
-}
+crate::problem!(ValaCompilerCannotCompile, "valac-cannot-compile", {});
 
 impl std::fmt::Display for ValaCompilerCannotCompile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -5215,33 +3693,14 @@ impl std::fmt::Display for MissingOCamlPackage {
     }
 }
 
-#[derive(Debug, Clone)]
 /// Problem representing a "too many open files" error.
 ///
 /// This struct is used when a process hits the system limit for the number
 /// of files that can be opened simultaneously, often due to a resource leak.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TooManyOpenFiles;
 
-impl Problem for TooManyOpenFiles {
-    fn kind(&self) -> std::borrow::Cow<'_, str> {
-        "too-many-open-files".into()
-    }
-
-    fn json(&self) -> serde_json::Value {
-        serde_json::json!({})
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-inventory::submit! {
-    crate::ProblemKindInfo {
-        kind: "too-many-open-files",
-        detail_fields: &[],
-    }
-}
+crate::problem!(TooManyOpenFiles, "too-many-open-files", {});
 
 impl std::fmt::Display for TooManyOpenFiles {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -5315,6 +3774,7 @@ inventory::submit! {
 mod tests {
     use super::*;
     use crate::problem::assert_wire_format;
+    use crate::Problem;
     use serde_json::json;
 
     fn assert_registered(problem: &dyn Problem) {
