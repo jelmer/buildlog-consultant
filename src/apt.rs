@@ -7,10 +7,44 @@
 use crate::lines::Lines;
 use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
-use crate::r#match::Error;
+use crate::r#match::{extract_from_line, Error, RegexLineMatcher};
+use crate::regex_line_matcher;
 use crate::sbuild::SectionFailure;
 use crate::{Failure, MultiLineMatch, Problem};
 use debian_control::lossless::relations::{Entry, Relations};
+
+lazy_static::lazy_static! {
+    static ref APT_ERROR_MATCHERS: [Box<RegexLineMatcher>; 3] = [
+        regex_line_matcher!(
+            "E: The repository '([^']+)' does not have a Release file.",
+            |c| Ok(Some(Box::new(AptMissingReleaseFile {
+                url: c[1].to_string(),
+            })))
+        ),
+        regex_line_matcher!(
+            "dpkg-deb: error: unable to write file '(.*)': No space left on device",
+            |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+        regex_line_matcher!(
+            r"E: You don't have enough free space in (.*)\.",
+            |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+    ];
+    static ref NO_SPACE_MATCHERS: [Box<RegexLineMatcher>; 2] = [
+        regex_line_matcher!(
+            r" cannot copy extracted data for '(.*)' to '(.*)': failed to write \(No space left on device\)",
+            |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+        regex_line_matcher!(
+            r" .*: No space left on device",
+            |_| Ok(Some(Box::new(NoSpaceOnDevice)))
+        ),
+    ];
+}
+
+fn match_line(matchers: &[Box<RegexLineMatcher>], line: &str) -> Option<Option<Box<dyn Problem>>> {
+    extract_from_line(matchers, line).expect("apt matchers do not fail")
+}
 
 /// Analyzes APT output to identify failures and their causes.
 ///
@@ -91,39 +125,8 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
                 error,
             ));
         }
-        if let Some((_, repo)) = lazy_regex::regex_captures!(
-            "E: The repository '([^']+)' does not have a Release file.",
-            line
-        ) {
-            return Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(AptMissingReleaseFile {
-                    url: repo.to_string(),
-                })),
-            ));
-        }
-        if let Some((_, _path)) = lazy_regex::regex_captures!(
-            "dpkg-deb: error: unable to write file '(.*)': No space left on device",
-            line
-        ) {
-            return Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(NoSpaceOnDevice)),
-            ));
-        }
-        if let Some((_, _path)) =
-            lazy_regex::regex_captures!(r"E: You don't have enough free space in (.*)\.", line)
-        {
-            return Some(Failure::at_line(
-                lines,
-                lineno,
-                "direct regex",
-                Some(Box::new(NoSpaceOnDevice)),
-            ));
+        if let Some(problem) = match_line(&APT_ERROR_MATCHERS[..], line) {
+            return Some(Failure::at_line(lines, lineno, "direct regex", problem));
         }
         if line.starts_with("E: ") && ret.is_none() {
             ret = Some(Failure::at_line(lines, lineno, "direct regex", None));
@@ -188,24 +191,8 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
     }
 
     for (i, line) in lines.enumerate_forward(None) {
-        if lazy_regex::regex_is_match!(
-            r" cannot copy extracted data for '(.*)' to '(.*)': failed to write \(No space left on device\)",
-            line,
-        ) {
-            return Some(Failure::at_line(
-                lines,
-                i,
-                "direct regex",
-                Some(Box::new(NoSpaceOnDevice)),
-            ));
-        }
-        if lazy_regex::regex_is_match!(r" .*: No space left on device", line) {
-            return Some(Failure::at_line(
-                lines,
-                i,
-                "direct regex",
-                Some(Box::new(NoSpaceOnDevice)),
-            ));
+        if let Some(problem) = match_line(&NO_SPACE_MATCHERS[..], line) {
+            return Some(Failure::at_line(lines, i, "direct regex", problem));
         }
     }
     ret
