@@ -3471,17 +3471,19 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> BuildFailureResult {
                 line
             ) {
                 lineno += 1;
-                while lineno < lines.len() && !line.is_empty() {
+                while lines.get(lineno).is_some_and(|l| l.trim().is_empty()) {
                     lineno += 1;
                 }
-                if lines[lineno + 2].starts_with("  but this file does not exist.") {
-                    let filename = if let Some((_, entry)) =
-                        lazy_regex::regex_captures!(r#"\s*"(.*)""#, line)
-                    {
-                        entry
-                    } else {
-                        line
-                    };
+                let Some(filename_line) = lines.get(lineno) else {
+                    continue;
+                };
+                if lines
+                    .get(lineno + 2)
+                    .is_some_and(|l| l.starts_with("  but this file does not exist."))
+                {
+                    let filename_line = filename_line.trim_end_matches('\n');
+                    let filename = lazy_regex::regex_captures!(r#"^\s*"(.*)"$"#, filename_line)
+                        .map_or(filename_line, |(_, entry)| entry);
                     return (
                         Some(Box::new(SingleLineMatch::from_lines(
                             &lines,
@@ -5615,6 +5617,55 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
                 "/usr/lib/x86_64-linux-gnu/libEGL.so".into(),
             )),
         );
+    }
+
+    #[test]
+    fn test_cmake_imported_target_missing_file_fallback() {
+        // dh_auto_configure dumps CMakeCache.txt after a failed configure,
+        // pushing the CMake error out of reach of the backward search.
+        let mut log =
+            r#"CMake Error at /usr/lib/x86_64-linux-gnu/cmake/Foo/FooTargets.cmake:79 (message):
+  The imported target "Foo::Bar" references the file
+
+     "/usr/lib/x86_64-linux-gnu/libfoo.so"
+
+  but this file does not exist.  Possible reasons include:
+
+  * The file was deleted, renamed, or moved to another location.
+
+-- Configuring incomplete, errors occurred!
+	cd obj-x86_64-linux-gnu && tail -v -n +0 CMakeCache.txt
+==> CMakeCache.txt <==
+"#
+            .to_string();
+        for i in 0..300 {
+            log.push_str(&format!("//Cache entry {}\nENTRY_{}:STRING=value\n", i, i));
+        }
+        log.push_str(
+            "dh_auto_configure: error: cd obj-x86_64-linux-gnu && cmake .. returned exit code 1\n",
+        );
+        let lines: Vec<&str> = log.split_inclusive('\n').collect();
+        let (m, problem) = find_build_failure_description(lines);
+        let m = m.expect("expected a match");
+        assert_eq!(4, m.lineno());
+        assert_eq!("     \"/usr/lib/x86_64-linux-gnu/libfoo.so\"\n", m.line());
+        assert_eq!(
+            problem.as_ref().map(|x| x.as_ref()),
+            Some(&MissingFile::new("/usr/lib/x86_64-linux-gnu/libfoo.so".into()) as &dyn Problem)
+        );
+    }
+
+    #[test]
+    fn test_cmake_imported_target_truncated() {
+        for log in [
+            "-- Found cmake\n  The imported target \"Foo::Bar\" references the file\n",
+            "-- Found cmake\n  The imported target \"Foo::Bar\" references the file\n\n     \"/usr/lib/libfoo.so\"\n",
+        ] {
+            let lines: Vec<&str> = log.split_inclusive('\n').collect();
+            let (m, problem) = find_build_failure_description(lines);
+            assert!(m.is_none());
+            assert!(problem.is_none());
+        }
     }
 
     #[test]
