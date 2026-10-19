@@ -711,17 +711,25 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
                     );
                 }
             }
-            let mut badpkg = None;
-            let mut blame = None;
-            let mut blame_offset = None;
-            for (extra_offset, line) in packet.extra.iter().enumerate() {
-                let extra_offset = extra_offset + 1;
-                badpkg = line.strip_prefix("badpkg: ");
-                if line.starts_with("blame: ") {
-                    blame = Some(line);
-                    blame_offset = Some(extra_offset);
-                }
-            }
+            let badpkg = packet
+                .extra
+                .iter()
+                .find_map(|line| line.strip_prefix("badpkg: "));
+            let blame_index = packet
+                .extra
+                .iter()
+                .position(|line| line.starts_with("blame: "));
+            let blame = blame_index.map(|i| &packet.extra[i]);
+            // Point at the blame line, falling back to the badpkg line and
+            // then the summary line itself.
+            let extra_offset = blame_index
+                .or_else(|| {
+                    packet
+                        .extra
+                        .iter()
+                        .position(|line| line.starts_with("badpkg: "))
+                })
+                .map_or(0, |i| i + 1);
             let description = if let Some(badpkg) = badpkg {
                 format!(
                     "Test {} failed: {}",
@@ -738,7 +746,7 @@ pub fn find_autopkgtest_failure_description(mut lines: Vec<&str>) -> Autopkgtest
             return (
                 Some(Box::new(SingleLineMatch::from_lines(
                     &lines,
-                    summary_offset + packet.offset() + blame_offset.unwrap(),
+                    summary_offset + packet.offset() + extra_offset,
                     Some("direct regex"),
                 )) as Box<dyn Match>),
                 Some(packet.name),
@@ -984,6 +992,40 @@ mod tests {
                 ];
 
         assert_autopkgtest_match(lines, vec![2], Some("intltool"), Some(Box::new(error)), Some("Test intltool failed: Test dependencies are unsatisfiable. A common reason is that your testbed is out of date with respect to the archive, and you need to use a current testbed or run apt-get update or use -U."));
+    }
+
+    #[test]
+    fn test_deps_badpkg_before_blame() {
+        let error = AutopkgtestDepsUnsatisfiable(vec![
+            (Some("deb".to_string()), "cmake-extras".to_string()),
+            (
+                None,
+                "/home/janitor/tmp/tmpgbn5jhou/build-area/cmake-extras_1.3+17.04.20170310-6~jan.dsc"
+                    .to_string(),
+            ),
+        ]);
+        let lines = vec![
+            "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+            "intltool             FAIL badpkg\n",
+            "badpkg: Test dependencies are unsatisfiable. A common reason is that your testbed is out of date with respect to the archive, and you need to use a current testbed or run apt-get update or use -U.\n",
+            "blame: deb:cmake-extras /home/janitor/tmp/tmpgbn5jhou/build-area/cmake-extras_1.3+17.04.20170310-6~jan.dsc\n",
+        ];
+
+        assert_autopkgtest_match(lines, vec![3], Some("intltool"), Some(Box::new(error)), Some("Test intltool failed: Test dependencies are unsatisfiable. A common reason is that your testbed is out of date with respect to the archive, and you need to use a current testbed or run apt-get update or use -U."));
+    }
+
+    #[test]
+    fn test_deps_badpkg_without_blame() {
+        // autopkgtest emits "blame: " with nothing blamed; trailing whitespace
+        // is often stripped from stored logs.
+        let lines = vec![
+            "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+            "intltool             FAIL badpkg\n",
+            "blame:\n",
+            "badpkg: Test dependencies are unsatisfiable. A common reason is that your testbed is out of date with respect to the archive, and you need to use a current testbed or run apt-get update or use -U.\n",
+        ];
+
+        assert_autopkgtest_match(lines, vec![3], Some("intltool"), None, Some("Test intltool failed: Test dependencies are unsatisfiable. A common reason is that your testbed is out of date with respect to the archive, and you need to use a current testbed or run apt-get update or use -U."));
     }
 
     #[test]
