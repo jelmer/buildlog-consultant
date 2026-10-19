@@ -1358,7 +1358,9 @@ pub fn find_failure_install_deps(
 /// * `failed_stage` - The stage name that failed
 ///
 /// # Returns
-/// An optional SbuildFailure structure with information about the failure
+/// An optional SbuildFailure structure with information about the failure, or
+/// an error if `failed_stage` is not one of "autopkgtest",
+/// "run-post-build-commands" or "post-build"
 pub fn find_failure_autopkgtest(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
@@ -1368,7 +1370,10 @@ pub fn find_failure_autopkgtest(
         "post-build" => "post build",
         "autopkgtest" => "autopkgtest",
         _ => {
-            unreachable!();
+            return Err(Error::new(format!(
+                "unsupported autopkgtest stage: {}",
+                failed_stage
+            )));
         }
     };
     let section = sbuildlog.get_section(Some(focus_section));
@@ -2127,6 +2132,13 @@ Line4
             Phase::AutoPkgTest(name) => assert_eq!(name, "command1"),
             other => panic!("expected Phase::AutoPkgTest(command1), got {:?}", other),
         }
+    }
+
+    #[test]
+    fn test_find_failure_autopkgtest_unsupported_stage() {
+        let log = SbuildLog(vec![]);
+        let err = find_failure_autopkgtest(&log, "build").err().unwrap();
+        assert_eq!(err.to_string(), "unsupported autopkgtest stage: build");
     }
 
     #[test]
