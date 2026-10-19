@@ -676,7 +676,7 @@ lazy_static::lazy_static! {
         regex_line_matcher!("^.*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!("^\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!("^\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!("^✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("^✖ \x1b\\[31mERROR:\x1b\\[39m (?:Error: )?Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!("^\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
      node_module_missing),
     regex_line_matcher!(r#"^\[31mError: No test files found: "(.*)"\[39m"#),
@@ -1458,17 +1458,17 @@ lazy_static::lazy_static! {
     regex_line_matcher!("(.*):([0-9]+): undefined reference to `(.*)'", |_| Ok(None)),
     regex_line_matcher!("(.*):([0-9]+): error: undefined reference to '(.*)'", |_| Ok(None)),
     regex_line_matcher!(
-        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*): first defined here",
+        r"\/usr\/bin\/ld:(.*): multiple definition of `.*\'; (.*): first defined here",
         |_| Ok(None)
     ),
     regex_line_matcher!(r".+\.go:[0-9]+: undefined reference to `(.*)'", |_| Ok(None)),
     regex_line_matcher!(r"ar: libdeps specified more than once", |_| Ok(None)),
     regex_line_matcher!(
-        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        r"\/usr\/bin\/ld: .*\(.*\):\(.*\): multiple definition of `.*\'; (.*):\((.*)\) first defined here",
         |_| Ok(None)
     ),
     regex_line_matcher!(
-        r"\/usr\/bin\/ld:(.*): multiple definition of `*.\'; (.*):\((.*)\) first defined here",
+        r"\/usr\/bin\/ld:(.*): multiple definition of `.*\'; (.*):\((.*)\) first defined here",
         |_| Ok(None)
     ),
     regex_line_matcher!(r"\/usr\/bin\/ld: (.*): undefined reference to `(.*)\'", |_| Ok(None)),
@@ -4888,6 +4888,17 @@ arch:all and the other not)"#
     }
 
     #[test]
+    fn test_ld_multiple_definition() {
+        let lines = vec![
+            "/usr/bin/ld: ../lib/libaxe.a(stream.c.o):(.bss+0x10): multiple definition of `gsl_message_mask'; ../lib/libaxe.a(error.c.o):(.bss+0x8): first defined here",
+        ];
+        let (r#match, problem) =
+            Failure::split(super::find_build_failure_description(&lines).unwrap());
+        assert_eq!(r#match.expect("no match found").lineno(), 1);
+        assert!(problem.is_none());
+    }
+
+    #[test]
     fn test_multiple_definition() {
         assert_just_match(
             vec![
@@ -5427,6 +5438,21 @@ Call Stack (most recent call first):
             vec!["ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."],
             1,
             Some(MissingJRE),
+        );
+    }
+
+    #[test]
+    fn test_node_module_missing_colored_without_error_prefix() {
+        let lines = vec!["✖ \x1b[31mERROR:\x1b[39m Cannot find module 'tape'"];
+        let (r#match, problem) =
+            Failure::split(super::find_build_failure_description(&lines).unwrap());
+        assert_eq!(r#match.expect("no match found").lineno(), 1);
+        assert_eq!(
+            problem.expect("no problem found").json(),
+            MissingNodeModule {
+                module: "tape".to_owned()
+            }
+            .json()
         );
     }
 
