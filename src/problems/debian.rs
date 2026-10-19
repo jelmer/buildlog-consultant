@@ -1693,7 +1693,10 @@ impl std::fmt::Display for BrzInternalError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::problem::assert_wire_format;
     use crate::Problem;
+    use serde_json::json;
+    use std::path::PathBuf;
 
     #[test]
     fn test_dpkg_source_local_changes_trait() {
@@ -1711,5 +1714,363 @@ mod tests {
         let problem = UScanTooManyRequests("rate limit exceeded".to_string());
         let json = problem.json();
         assert_eq!(json["reason"], "rate limit exceeded");
+    }
+
+    #[test]
+    fn wire_format() {
+        assert_wire_format(
+            &DpkgError("f0-value".to_string()),
+            "dpkg-error",
+            json!({"msg": "f0-value"}),
+            "dpkg error: f0-value",
+        );
+        assert_wire_format(
+            &AptUpdateError,
+            "apt-update-error",
+            json!({}),
+            "apt update error",
+        );
+        assert_wire_format(
+            &AptFetchFailure {
+                url: Some("url-value".to_string()),
+                error: "error-value".to_string(),
+            },
+            "apt-file-fetch-failure",
+            json!({"error": "error-value", "url": "url-value"}),
+            "apt fetch failure: url-value (error-value)",
+        );
+        assert_wire_format(
+            &AptFetchFailure {
+                url: None,
+                error: "error-value".to_string(),
+            },
+            "apt-file-fetch-failure",
+            json!({"error": "error-value", "url": null}),
+            "apt fetch failure: error-value",
+        );
+        assert_wire_format(
+            &AptMissingReleaseFile("f0-value".to_string()),
+            "missing-release-file",
+            json!({"url": "f0-value"}),
+            "apt missing release file: f0-value",
+        );
+        assert_wire_format(
+            &AptPackageUnknown("f0-value".to_string()),
+            "apt-package-unknown",
+            json!({"package": "f0-value"}),
+            "apt package unknown: f0-value",
+        );
+        assert_wire_format(
+            &AptBrokenPackages {
+                description: "description-value".to_string(),
+                broken: Some(vec!["broken-a".to_string(), "broken-b".to_string()]),
+            },
+            "apt-broken-packages",
+            json!({"broken": ["broken-a", "broken-b"], "description": "description-value"}),
+            "apt broken packages: description-value",
+        );
+        assert_wire_format(
+            &AptBrokenPackages {
+                description: "description-value".to_string(),
+                broken: None,
+            },
+            "apt-broken-packages",
+            json!({"broken": null, "description": "description-value"}),
+            "apt broken packages: description-value",
+        );
+        assert_wire_format(
+            &UnableToFindUpstreamTarball {
+                package: "package-value".to_string(),
+                version: "1.2-3".parse().unwrap(),
+            },
+            "unable-to-find-upstream-tarball",
+            json!({"package": "package-value", "version": "1.2-3"}),
+            "Unable to find upstream tarball for package-value 1.2-3",
+        );
+        assert_wire_format(
+            &SourceFormatUnbuildable {
+                source_format: "source_format-value".to_string(),
+                reason: "reason-value".to_string(),
+            },
+            "source-format-unbuildable",
+            json!({"reason": "reason-value", "source_format": "source_format-value"}),
+            "Source format source_format-value is unbuildable: reason-value",
+        );
+        assert_wire_format(
+            &SourceFormatUnsupported("f0-value".to_string()),
+            "source-format-unsupported",
+            json!({"source_format": "f0-value"}),
+            "Source format f0-value is unsupported",
+        );
+        assert_wire_format(
+            &PatchFileMissing(PathBuf::from("/srv/f0")),
+            "patch-file-missing",
+            json!({"path": "/srv/f0"}),
+            "Patch file missing: /srv/f0",
+        );
+        assert_wire_format(
+            &DpkgSourceLocalChanges {
+                diff_file: Some("diff_file-value".to_string()),
+                files: Some(vec!["files-a".to_string(), "files-b".to_string()]),
+            },
+            "unexpected-local-upstream-changes",
+            json!({"diff_file": "diff_file-value", "files": ["files-a", "files-b"]}),
+            "Tree has local changes: [\"files-a\", \"files-b\"]",
+        );
+        assert_wire_format(
+            &DpkgSourceLocalChanges {
+                diff_file: None,
+                files: None,
+            },
+            "unexpected-local-upstream-changes",
+            json!({"diff_file": null, "files": null}),
+            "Tree has local changes",
+        );
+        assert_wire_format(
+            &DpkgSourceUnrepresentableChanges,
+            "unrepresentable-local-changes",
+            json!(null),
+            "Tree has unrepresentable changes",
+        );
+        assert_wire_format(
+            &DpkgUnwantedBinaryFiles,
+            "unwanted-binary-files",
+            json!(null),
+            "Tree has unwanted binary files",
+        );
+        assert_wire_format(
+            &DpkgBinaryFileChanged(vec!["f0-a".to_string(), "f0-b".to_string()]),
+            "binary-file-changed",
+            json!({"files": ["f0-a", "f0-b"]}),
+            "Binary file changed",
+        );
+        assert_wire_format(
+            &MissingControlFile(PathBuf::from("/srv/f0")),
+            "missing-control-file",
+            json!(null),
+            "Missing control file: /srv/f0",
+        );
+        assert_wire_format(
+            &UnknownMercurialExtraFields("f0-value".to_string()),
+            "unknown-mercurial-extra-fields",
+            json!({"field": "f0-value"}),
+            "Unknown Mercurial extra field: f0-value",
+        );
+        assert_wire_format(
+            &UpstreamPGPSignatureVerificationFailed,
+            "upstream-pgp-signature-verification-failed",
+            json!(null),
+            "Upstream PGP signature verification failed",
+        );
+        assert_wire_format(
+            &UScanRequestVersionMissing("f0-value".to_string()),
+            "uscan-request-version-missing",
+            json!({"version": "f0-value"}),
+            "UScan request version missing: f0-value",
+        );
+        assert_wire_format(
+            &DebcargoFailure("f0-value".to_string()),
+            "debcargo-failure",
+            json!({"reason": "f0-value"}),
+            "Debcargo failure: f0-value",
+        );
+        assert_wire_format(
+            &ChangelogParseError("f0-value".to_string()),
+            "changelog-parse-error",
+            json!({"reason": "f0-value"}),
+            "Changelog parse error: f0-value",
+        );
+        assert_wire_format(
+            &UScanError("f0-value".to_string()),
+            "uscan-error",
+            json!({"reason": "f0-value"}),
+            "UScan error: f0-value",
+        );
+        assert_wire_format(
+            &UScanFailed {
+                url: "url-value".to_string(),
+                reason: "reason-value".to_string(),
+            },
+            "uscan-failed",
+            json!({"reason": "reason-value", "url": "url-value"}),
+            "UScan failed: reason-value",
+        );
+        assert_wire_format(
+            &InconsistentSourceFormat {
+                version: true,
+                source_format: true,
+            },
+            "inconsistent-source-format",
+            json!({"source_format": true, "version": true}),
+            "Inconsistent source format between version and source format",
+        );
+        assert_wire_format(
+            &UpstreamMetadataFileParseError {
+                path: PathBuf::from("/srv/path"),
+                reason: "reason-value".to_string(),
+            },
+            "debian-upstream-metadata-invalid",
+            json!({"path": "/srv/path", "reason": "reason-value"}),
+            "Upstream metadata file parse error: reason-value",
+        );
+        assert_wire_format(
+            &DpkgSourcePackFailed("f0-value".to_string()),
+            "dpkg-source-pack-failed",
+            json!({"reason": "f0-value"}),
+            "Dpkg source pack failed: f0-value",
+        );
+        assert_wire_format(
+            &DpkgBadVersion {
+                version: "version-value".to_string(),
+                reason: Some("reason-value".to_string()),
+            },
+            "dpkg-bad-version",
+            json!({"reason": "reason-value", "version": "version-value"}),
+            "Version version-value is invalid: reason-value",
+        );
+        assert_wire_format(
+            &DpkgBadVersion {
+                version: "version-value".to_string(),
+                reason: None,
+            },
+            "dpkg-bad-version",
+            json!({"reason": null, "version": "version-value"}),
+            "Version version-value is invalid",
+        );
+        assert_wire_format(
+            &MissingDebcargoCrate {
+                cratename: "cratename-value".to_string(),
+                version: Some("version-value".to_string()),
+            },
+            "debcargo-missing-crate",
+            json!({"crate": "cratename-value", "version": "version-value"}),
+            "debcargo can't find crate cratename-value (version: version-value)",
+        );
+        assert_wire_format(
+            &MissingDebcargoCrate {
+                cratename: "cratename-value".to_string(),
+                version: None,
+            },
+            "debcargo-missing-crate",
+            json!({"crate": "cratename-value", "version": null}),
+            "debcargo can't find crate cratename-value",
+        );
+        assert_wire_format(
+            &PristineTarTreeMissing("f0-value".to_string()),
+            "pristine-tar-missing-tree",
+            json!({"treeish": "f0-value"}),
+            "Pristine-tar tree missing: f0-value",
+        );
+        assert_wire_format(
+            &MissingRevision(b"deadbeef".to_vec()),
+            "missing-revision",
+            json!({"revision": "deadbeef"}),
+            "Missing revision: deadbeef",
+        );
+        assert_wire_format(
+            &DebcargoUnacceptablePredicate {
+                cratename: "cratename-value".to_string(),
+                predicate: "predicate-value".to_string(),
+            },
+            "debcargo-unacceptable-predicate",
+            json!({"crate": "cratename-value", "predicate": "predicate-value"}),
+            "Cannot represent prerelease part of dependency: predicate-value",
+        );
+        assert_wire_format(
+            &DebcargoUnacceptableComparator {
+                cratename: "cratename-value".to_string(),
+                comparator: "comparator-value".to_string(),
+            },
+            "debcargo-unacceptable-comparator",
+            json!({"comparator": "comparator-value", "crate": "cratename-value"}),
+            "Cannot represent prerelease part of dependency: comparator-value",
+        );
+        assert_wire_format(
+            &UScanTooManyRequests("f0-value".to_string()),
+            "uscan-too-many-requests",
+            json!({"reason": "f0-value"}),
+            "UScan too many requests: f0-value",
+        );
+        assert_wire_format(
+            &UnsatisfiedAptConflicts("f0-value".to_string()),
+            "unsatisfied-apt-conflicts",
+            json!({"relations": "f0-value"}),
+            "unsatisfied apt conflicts: f0-value",
+        );
+        assert_wire_format(
+            &ArchitectureNotInList {
+                arch: "arch-value".to_string(),
+                arch_list: vec!["arch_list-a".to_string(), "arch_list-b".to_string()],
+            },
+            "arch-not-in-list",
+            json!({"arch": "arch-value", "arch_list": ["arch_list-a", "arch_list-b"]}),
+            "Architecture arch-value not a build arch",
+        );
+        assert_wire_format(
+            &UnsatisfiedAptDependencies("f0-value".to_string()),
+            "unsatisfied-apt-dependencies",
+            json!({"relations": "f0-value"}),
+            "unsatisfied apt dependencies: f0-value",
+        );
+        assert_wire_format(
+            &InsufficientDiskSpace {
+                needed: 42,
+                free: 42,
+            },
+            "insufficient-disk-space",
+            json!({"free": 42, "needed": 42}),
+            "Insufficient disk space for build. Need: 42 KiB, free: 42 KiB",
+        );
+        assert_wire_format(
+            &NestedTreeUnresolvable {
+                name: "name-value".to_string(),
+            },
+            "nested-tree-unresolvable",
+            json!({"name": "name-value"}),
+            "Nested tree for name-value cannot be resolved",
+        );
+        assert_wire_format(
+            &SubmoduleEncountered {
+                path: "path-value".to_string(),
+                sha: "sha-value".to_string(),
+            },
+            "submodule-encountered",
+            json!({"path": "path-value", "sha": "sha-value"}),
+            "Submodule encountered at path-value (sha-value)",
+        );
+        assert_wire_format(
+            &UScanRemoteVersionMismatch {
+                package: "package-value".to_string(),
+                remote_version: "remote_version-value".to_string(),
+                wanted_version: "wanted_version-value".to_string(),
+            },
+            "uscan-remote-version-mismatch",
+            json!({
+                "package": "package-value",
+                "remote_version": "remote_version-value",
+                "wanted_version": "wanted_version-value",
+            }),
+            "uscan: package-value latest is remote_version-value, wanted wanted_version-value",
+        );
+        assert_wire_format(
+            &UScanWatchfileMalformed {
+                paragraph: "paragraph-value".to_string(),
+            },
+            "uscan-watchfile-malformed",
+            json!({"paragraph": "paragraph-value"}),
+            "uscan rejected malformed debian/watch paragraph",
+        );
+        assert_wire_format(
+            &BrzInternalError {
+                exception_type: "exception_type-value".to_string(),
+                exception_message: "exception_message-value".to_string(),
+            },
+            "brz-internal-error",
+            json!({
+                "exception_message": "exception_message-value",
+                "exception_type": "exception_type-value",
+            }),
+            "brz internal error: exception_type-value: exception_message-value",
+        );
     }
 }

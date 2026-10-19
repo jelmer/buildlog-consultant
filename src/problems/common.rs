@@ -5314,6 +5314,8 @@ inventory::submit! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::problem::assert_wire_format;
+    use serde_json::json;
 
     fn assert_registered(problem: &dyn Problem) {
         let kind = problem.kind();
@@ -5344,5 +5346,932 @@ mod tests {
             package: "github.com/foo/bar".into(),
             version: "v1.0.0".into(),
         });
+    }
+
+    #[test]
+    fn wire_format() {
+        assert_wire_format(
+            &MissingFile {
+                path: PathBuf::from("/srv/path"),
+            },
+            "missing-file",
+            json!({"path": "/srv/path"}),
+            "Missing file: /srv/path",
+        );
+        assert_wire_format(
+            &MissingBuildFile {
+                filename: "filename-value".to_string(),
+            },
+            "missing-build-file",
+            json!({"filename": "filename-value"}),
+            "Missing build file: filename-value",
+        );
+        assert_wire_format(
+            &MissingCommandOrBuildFile {
+                filename: "filename-value".to_string(),
+            },
+            "missing-command-or-build-file",
+            json!({"filename": "filename-value"}),
+            "Missing command or build file: filename-value",
+        );
+        assert_wire_format(
+            &VcsControlDirectoryNeeded {
+                vcs: vec!["vcs-a".to_string(), "vcs-b".to_string()],
+            },
+            "vcs-control-directory-needed",
+            json!({"vcs": ["vcs-a", "vcs-b"]}),
+            "VCS control directory needed: vcs-a, vcs-b",
+        );
+        assert_wire_format(
+            &MissingPythonModule {
+                module: "module-value".to_string(),
+                python_version: Some(3),
+                minimum_version: Some("minimum_version-value".to_string()),
+            },
+            "missing-python-module",
+            json!({
+                "minimum_version": "minimum_version-value",
+                "module": "module-value",
+                "python_version": 3,
+            }),
+            "Missing 3 Python module: module-value (>= minimum_version-value)",
+        );
+        assert_wire_format(
+            &MissingPythonModule {
+                module: "module-value".to_string(),
+                python_version: None,
+                minimum_version: None,
+            },
+            "missing-python-module",
+            json!({"minimum_version": null, "module": "module-value", "python_version": null}),
+            "Missing Python module: module-value",
+        );
+        assert_wire_format(
+            &MissingCommand("f0-value".to_string()),
+            "command-missing",
+            json!({"command": "f0-value"}),
+            "Missing command: f0-value",
+        );
+        assert_wire_format(
+            &MissingPythonDistribution {
+                distribution: "distribution-value".to_string(),
+                python_version: Some(3),
+                minimum_version: Some("minimum_version-value".to_string()),
+            },
+            "missing-python-distribution",
+            json!({
+                "distribution": "distribution-value",
+                "minimum_version": "minimum_version-value",
+                "python_version": 3,
+            }),
+            "Missing 3 Python distribution: distribution-value (>= minimum_version-value)",
+        );
+        assert_wire_format(
+            &MissingPythonDistribution {
+                distribution: "distribution-value".to_string(),
+                python_version: None,
+                minimum_version: None,
+            },
+            "missing-python-distribution",
+            json!({
+                "distribution": "distribution-value",
+                "minimum_version": null,
+                "python_version": null,
+            }),
+            "Missing Python distribution: distribution-value",
+        );
+        assert_wire_format(
+            &MissingHaskellModule {
+                module: "module-value".to_string(),
+            },
+            "missing-haskell-module",
+            json!({"module": "module-value"}),
+            "Missing Haskell module: module-value",
+        );
+        assert_wire_format(
+            &MissingLibrary("f0-value".to_string()),
+            "missing-library",
+            json!({"library": "f0-value"}),
+            "Missing library: f0-value",
+        );
+        assert_wire_format(
+            &MissingIntrospectionTypelib("f0-value".to_string()),
+            "missing-introspection-typelib",
+            json!({"library": "f0-value"}),
+            "Missing introspection typelib: f0-value",
+        );
+        assert_wire_format(
+            &MissingPytestFixture("f0-value".to_string()),
+            "missing-pytest-fixture",
+            json!({"fixture": "f0-value"}),
+            "Missing pytest fixture: f0-value",
+        );
+        assert_wire_format(
+            &UnsupportedPytestConfigOption("f0-value".to_string()),
+            "unsupported-pytest-config-option",
+            json!({"name": "f0-value"}),
+            "Unsupported pytest config option: f0-value",
+        );
+        assert_wire_format(
+            &UnsupportedPytestArguments(vec!["f0-a".to_string(), "f0-b".to_string()]),
+            "unsupported-pytest-arguments",
+            json!({"args": ["f0-a", "f0-b"]}),
+            "Unsupported pytest arguments: [\"f0-a\", \"f0-b\"]",
+        );
+        assert_wire_format(
+            &MissingRPackage {
+                package: "package-value".to_string(),
+                minimum_version: Some("minimum_version-value".to_string()),
+            },
+            "missing-r-package",
+            json!({"minimum_version": "minimum_version-value", "package": "package-value"}),
+            "Missing R package: package-value (>= minimum_version-value)",
+        );
+        assert_wire_format(
+            &MissingRPackage {
+                package: "package-value".to_string(),
+                minimum_version: None,
+            },
+            "missing-r-package",
+            json!({"minimum_version": null, "package": "package-value"}),
+            "Missing R package: package-value",
+        );
+        assert_wire_format(
+            &MissingGoPackage {
+                package: "package-value".to_string(),
+            },
+            "missing-go-package",
+            json!({"package": "package-value"}),
+            "Missing Go package: package-value",
+        );
+        assert_wire_format(
+            &MissingCHeader {
+                header: "header-value".to_string(),
+            },
+            "missing-c-header",
+            json!({"header": "header-value"}),
+            "Missing C header: header-value",
+        );
+        assert_wire_format(
+            &MissingNodeModule("f0-value".to_string()),
+            "missing-node-module",
+            json!({"module": "f0-value"}),
+            "Missing Node module: f0-value",
+        );
+        assert_wire_format(
+            &MissingNodePackage("f0-value".to_string()),
+            "missing-node-package",
+            json!({"package": "f0-value"}),
+            "Missing Node package: f0-value",
+        );
+        assert_wire_format(
+            &MissingConfigure,
+            "missing-configure",
+            json!({}),
+            "Missing ./configure",
+        );
+        assert_wire_format(
+            &MissingVagueDependency {
+                name: "name-value".to_string(),
+                url: Some("url-value".to_string()),
+                minimum_version: Some("minimum_version-value".to_string()),
+                current_version: Some("current_version-value".to_string()),
+            },
+            "missing-vague-dependency",
+            json!({
+                "current_version": "current_version-value",
+                "minimum_version": "minimum_version-value",
+                "name": "name-value",
+                "url": "url-value",
+            }),
+            "Missing dependency: name-value",
+        );
+        assert_wire_format(
+            &MissingVagueDependency {
+                name: "name-value".to_string(),
+                url: None,
+                minimum_version: None,
+                current_version: None,
+            },
+            "missing-vague-dependency",
+            json!({
+                "current_version": null,
+                "minimum_version": null,
+                "name": "name-value",
+                "url": null,
+            }),
+            "Missing dependency: name-value",
+        );
+        assert_wire_format(&MissingQt, "missing-qt", json!({}), "Missing Qt");
+        assert_wire_format(&MissingX11, "missing-x11", json!({}), "Missing X11");
+        assert_wire_format(
+            &MissingAutoconfMacro {
+                r#macro: "macro-value".to_string(),
+                need_rebuild: true,
+            },
+            "missing-autoconf-macro",
+            json!({"macro": "macro-value", "need_rebuild": true}),
+            "Missing autoconf macro: macro-value",
+        );
+        assert_wire_format(
+            &DirectoryNonExistant("f0-value".to_string()),
+            "local-directory-not-existing",
+            json!({"path": "f0-value"}),
+            "Directory does not exist: f0-value",
+        );
+        assert_wire_format(
+            &MissingValaPackage("f0-value".to_string()),
+            "missing-vala-package",
+            json!({"package": "f0-value"}),
+            "Missing Vala package: f0-value",
+        );
+        assert_wire_format(
+            &UpstartFilePresent("f0-value".to_string()),
+            "upstart-file-present",
+            json!({"filename": "f0-value"}),
+            "Upstart file present: f0-value",
+        );
+        assert_wire_format(
+            &MissingPostgresExtension("f0-value".to_string()),
+            "missing-postgresql-extension",
+            json!({"extension": "f0-value"}),
+            "Missing PostgreSQL extension: f0-value",
+        );
+        assert_wire_format(
+            &MissingPkgConfig {
+                module: "module-value".to_string(),
+                minimum_version: Some("minimum_version-value".to_string()),
+            },
+            "missing-pkg-config-package",
+            json!({"minimum_version": "minimum_version-value", "module": "module-value"}),
+            "Missing pkg-config module: module-value >= minimum_version-value",
+        );
+        assert_wire_format(
+            &MissingPkgConfig {
+                module: "module-value".to_string(),
+                minimum_version: None,
+            },
+            "missing-pkg-config-package",
+            json!({"minimum_version": null, "module": "module-value"}),
+            "Missing pkg-config module: module-value",
+        );
+        assert_wire_format(
+            &MissingHaskellDependencies(vec!["f0-a".to_string(), "f0-b".to_string()]),
+            "missing-haskell-dependencies",
+            json!({"deps": ["f0-a", "f0-b"]}),
+            "Missing Haskell dependencies: [\"f0-a\", \"f0-b\"]",
+        );
+        assert_wire_format(
+            &NoSpaceOnDevice,
+            "no-space-on-device",
+            json!({}),
+            "No space left on device",
+        );
+        assert_wire_format(&MissingJRE, "missing-jre", json!({}), "Missing JRE");
+        assert_wire_format(
+            &MissingJDK {
+                jdk_path: "jdk_path-value".to_string(),
+            },
+            "missing-jdk",
+            json!({"jdk_path": "jdk_path-value"}),
+            "Missing JDK at jdk_path-value",
+        );
+        assert_wire_format(
+            &MissingJDKFile {
+                jdk_path: "jdk_path-value".to_string(),
+                filename: "filename-value".to_string(),
+            },
+            "missing-jdk-file",
+            json!({"filename": "filename-value", "jdk_path": "jdk_path-value"}),
+            "Missing JDK file filename-value at jdk_path-value",
+        );
+        assert_wire_format(
+            &MissingPerlFile {
+                filename: "filename-value".to_string(),
+                inc: Some(vec!["inc-a".to_string(), "inc-b".to_string()]),
+            },
+            "missing-perl-file",
+            json!({"filename": "filename-value", "inc": ["inc-a", "inc-b"]}),
+            "Missing Perl file filename-value (INC: inc-a:inc-b)",
+        );
+        assert_wire_format(
+            &MissingPerlFile {
+                filename: "filename-value".to_string(),
+                inc: None,
+            },
+            "missing-perl-file",
+            json!({"filename": "filename-value", "inc": null}),
+            "Missing Perl file filename-value",
+        );
+        assert_wire_format(
+            &MissingPerlModule {
+                filename: Some("Foo/Bar.pm".to_string()),
+                module: "Foo::Bar".to_string(),
+                inc: Some(vec!["/usr/lib".to_string(), "/etc".to_string()]),
+                minimum_version: Some("1.2".to_string()),
+            },
+            "missing-perl-module",
+            json!({
+                "filename": "Foo/Bar.pm",
+                "inc": ["/usr/lib", "/etc"],
+                "minimum_version": "1.2",
+                "module": "Foo::Bar",
+            }),
+            "Missing Perl module: Foo::Bar (from Foo/Bar.pm) >= 1.2 (INC: /usr/lib, /etc)",
+        );
+        assert_wire_format(
+            &MissingPerlModule {
+                filename: None,
+                module: "module-value".to_string(),
+                inc: None,
+                minimum_version: None,
+            },
+            "missing-perl-module",
+            json!({
+                "filename": null,
+                "inc": null,
+                "minimum_version": null,
+                "module": "module-value",
+            }),
+            "Missing Perl module: module-value",
+        );
+        assert_wire_format(
+            &MissingSetupPyCommand("f0-value".to_string()),
+            "missing-setup.py-command",
+            json!({"command": "f0-value"}),
+            "Missing setup.py command: f0-value",
+        );
+        assert_wire_format(
+            &MissingCSharpCompiler,
+            "missing-c#-compiler",
+            json!({}),
+            "Missing C# compiler",
+        );
+        assert_wire_format(
+            &MissingRustCompiler,
+            "missing-rust-compiler",
+            json!({}),
+            "Missing Rust compiler",
+        );
+        assert_wire_format(
+            &MissingAssembler,
+            "missing-assembler",
+            json!({}),
+            "Missing assembler",
+        );
+        assert_wire_format(
+            &MissingCargoCrate {
+                crate_name: "crate_name-value".to_string(),
+                requirement: Some("requirement-value".to_string()),
+            },
+            "missing-cargo-crate",
+            json!({"crate": "crate_name-value", "requirement": "requirement-value"}),
+            "Missing Cargo crate crate_name-value (required by requirement-value)",
+        );
+        assert_wire_format(
+            &MissingCargoCrate {
+                crate_name: "crate_name-value".to_string(),
+                requirement: None,
+            },
+            "missing-cargo-crate",
+            json!({"crate": "crate_name-value", "requirement": null}),
+            "Missing Cargo crate crate_name-value",
+        );
+        assert_wire_format(
+            &DhWithOrderIncorrect,
+            "debhelper-argument-order",
+            json!({}),
+            "dh argument order is incorrect",
+        );
+        assert_wire_format(
+            &UnsupportedDebhelperCompatLevel {
+                oldest_supported: 12,
+                requested: 12,
+            },
+            "unsupported-debhelper-compat-level",
+            json!({"oldest_supported": 12, "requested": 12}),
+            "Request debhelper compat level 12 lower than supported 12",
+        );
+        assert_wire_format(
+            &SetuptoolScmVersionIssue,
+            "setuptools-scm-version-issue",
+            json!({}),
+            "setuptools_scm was unable to find version",
+        );
+        assert_wire_format(
+            &MissingMavenArtifacts(vec!["f0-a".to_string(), "f0-b".to_string()]),
+            "missing-maven-artifacts",
+            json!({"artifacts": ["f0-a", "f0-b"]}),
+            "Missing Maven artifacts: f0-a, f0-b",
+        );
+        assert_wire_format(
+            &NotExecutableFile("f0-value".to_string()),
+            "not-executable-file",
+            json!({"path": "f0-value"}),
+            "Command not executable: f0-value",
+        );
+        assert_wire_format(
+            &DhMissingUninstalled("f0-value".to_string()),
+            "dh-missing-uninstalled",
+            json!({"missing_file": "f0-value"}),
+            "dh_missing file not installed: f0-value",
+        );
+        assert_wire_format(
+            &DhLinkDestinationIsDirectory("f0-value".to_string()),
+            "dh-link-destination-is-directory",
+            json!({"path": "f0-value"}),
+            "Link destination f0-value is directory",
+        );
+        assert_wire_format(
+            &MissingXmlEntity {
+                url: "url-value".to_string(),
+            },
+            "missing-xml-entity",
+            json!({"url": "url-value"}),
+            "Missing XML entity: url-value",
+        );
+        assert_wire_format(
+            &CcacheError("f0-value".to_string()),
+            "ccache-error",
+            json!({"error": "f0-value"}),
+            "ccache error: f0-value",
+        );
+        assert_wire_format(
+            &DebianVersionRejected {
+                version: "version-value".to_string(),
+            },
+            "debian-version-rejected",
+            json!({"version": "version-value"}),
+            "Debian Version Rejected; version-value",
+        );
+        assert_wire_format(
+            &PatchApplicationFailed {
+                patchname: "patchname-value".to_string(),
+            },
+            "patch-application-failed",
+            json!({"patchname": "patchname-value"}),
+            "Patch application failed: patchname-value",
+        );
+        assert_wire_format(
+            &NeedPgBuildExtUpdateControl {
+                generated_path: "generated_path-value".to_string(),
+                template_path: "template_path-value".to_string(),
+            },
+            "need-pg-buildext-updatecontrol",
+            json!({
+                "generated_path": "generated_path-value",
+                "template_path": "template_path-value",
+            }),
+            "Need to run 'pg_buildext updatecontrol' to update generated_path-value",
+        );
+        assert_wire_format(
+            &DhAddonLoadFailure {
+                name: "name-value".to_string(),
+                path: "path-value".to_string(),
+            },
+            "dh-addon-load-failure",
+            json!({"name": "name-value", "path": "path-value"}),
+            "dh addon loading failed: name-value",
+        );
+        assert_wire_format(
+            &DhUntilUnsupported,
+            "dh-until-unsupported",
+            json!({}),
+            "dh --until is no longer supported",
+        );
+        assert_wire_format(
+            &DebhelperPatternNotFound {
+                pattern: "*.so".to_string(),
+                tool: "install".to_string(),
+                directories: vec!["usr".to_string(), "lib".to_string()],
+            },
+            "debhelper-pattern-not-found",
+            json!({"directories": ["usr", "lib"], "pattern": "*.so", "tool": "install"}),
+            "debhelper (install) expansion failed for \"*.so\" (directories: [\"usr\", \"lib\"])",
+        );
+        assert_wire_format(
+            &MissingPerlManifest,
+            "missing-perl-manifest",
+            json!({}),
+            "missing Perl MANIFEST",
+        );
+        assert_wire_format(
+            &ImageMagickDelegateMissing {
+                delegate: "delegate-value".to_string(),
+            },
+            "imagemagick-delegate-missing",
+            json!({"delegate": "delegate-value"}),
+            "Imagemagick missing delegate: delegate-value",
+        );
+        assert_wire_format(
+            &Cancelled,
+            "cancelled",
+            json!({}),
+            "Cancelled by runner or job manager",
+        );
+        assert_wire_format(
+            &DisappearedSymbols,
+            "disappeared-symbols",
+            json!({}),
+            "Disappeared symbols",
+        );
+        assert_wire_format(
+            &DuplicateDHCompatLevel {
+                command: "command-value".to_string(),
+            },
+            "duplicate-dh-compat-level",
+            json!({"command": "command-value"}),
+            "DH Compat Level specified twice (command: command-value)",
+        );
+        assert_wire_format(
+            &MissingDHCompatLevel {
+                command: "command-value".to_string(),
+            },
+            "missing-dh-compat-level",
+            json!({"command": "command-value"}),
+            "Missing DH Compat Level (command: command-value)",
+        );
+        assert_wire_format(&MissingJVM, "missing-jvm", json!({}), "missing JVM");
+        assert_wire_format(
+            &MissingRubyGem {
+                gem: "gem-value".to_string(),
+                version: Some("version-value".to_string()),
+            },
+            "missing-ruby-gem",
+            json!({"gem": "gem-value", "version": "version-value"}),
+            "missing ruby gem: gem-value (>= version-value)",
+        );
+        assert_wire_format(
+            &MissingRubyGem {
+                gem: "gem-value".to_string(),
+                version: None,
+            },
+            "missing-ruby-gem",
+            json!({"gem": "gem-value", "version": null}),
+            "missing ruby gem: gem-value",
+        );
+        assert_wire_format(
+            &MissingJavaScriptRuntime,
+            "javascript-runtime-missing",
+            json!({}),
+            "Missing JavaScript Runtime",
+        );
+        assert_wire_format(
+            &MissingRubyFile {
+                filename: "filename-value".to_string(),
+            },
+            "missing-ruby-file",
+            json!({"filename": "filename-value"}),
+            "missing ruby file: filename-value",
+        );
+        assert_wire_format(
+            &MissingPhpClass {
+                php_class: "php_class-value".to_string(),
+            },
+            "missing-php-class",
+            json!({"php_class": "php_class-value"}),
+            "missing PHP class: php_class-value",
+        );
+        assert_wire_format(
+            &MissingJavaClass {
+                classname: "classname-value".to_string(),
+            },
+            "missing-java-class",
+            json!({"classname": "classname-value"}),
+            "missing Java class: classname-value",
+        );
+        assert_wire_format(
+            &MissingSprocketsFile {
+                name: "name-value".to_string(),
+                content_type: "content_type-value".to_string(),
+            },
+            "missing-sprockets-file",
+            json!({"content_type": "content_type-value", "name": "name-value"}),
+            "missing sprockets file: name-value (type: content_type-value)",
+        );
+        assert_wire_format(
+            &MissingXfceDependency {
+                package: "package-value".to_string(),
+            },
+            "missing-xfce-dependency",
+            json!({"package": "package-value"}),
+            "missing XFCE build dependency: package-value",
+        );
+        assert_wire_format(
+            &GnomeCommonMissing,
+            "missing-gnome-common",
+            json!({}),
+            "gnome-common is not installed",
+        );
+        assert_wire_format(
+            &MissingConfigStatusInput {
+                path: "path-value".to_string(),
+            },
+            "missing-config.status-input",
+            json!({"path": "path-value"}),
+            "missing config.status input path-value",
+        );
+        assert_wire_format(
+            &MissingGnomeCommonDependency {
+                package: "package-value".to_string(),
+                minimum_version: Some("minimum_version-value".to_string()),
+            },
+            "missing-gnome-common-dependency",
+            json!({"minimum_version": "minimum_version-value", "package": "package-value"}),
+            "missing gnome-common dependency: package-value: (>= minimum_version-value)",
+        );
+        assert_wire_format(
+            &MissingGnomeCommonDependency {
+                package: "package-value".to_string(),
+                minimum_version: None,
+            },
+            "missing-gnome-common-dependency",
+            json!({"minimum_version": null, "package": "package-value"}),
+            "missing gnome-common dependency: package-value: (>= any)",
+        );
+        assert_wire_format(
+            &MissingAutomakeInput {
+                path: "path-value".to_string(),
+            },
+            "missing-automake-input",
+            json!({"path": "path-value"}),
+            "automake input file path-value missing",
+        );
+        assert_wire_format(
+            &ChrootNotFound {
+                chroot: "chroot-value".to_string(),
+            },
+            "chroot-not-found",
+            json!({"chroot": "chroot-value"}),
+            "chroot not found: chroot-value",
+        );
+        assert_wire_format(
+            &MissingLibtool,
+            "missing-libtool",
+            json!({}),
+            "Libtool is missing",
+        );
+        assert_wire_format(
+            &CMakeFilesMissing {
+                filenames: vec!["filenames-a".to_string(), "filenames-b".to_string()],
+                version: Some("version-value".to_string()),
+            },
+            "missing-cmake-files",
+            json!({"filenames": ["filenames-a", "filenames-b"], "version": "version-value"}),
+            "CMake files missing: [\"filenames-a\", \"filenames-b\"]",
+        );
+        assert_wire_format(
+            &CMakeFilesMissing {
+                filenames: vec!["filenames-a".to_string(), "filenames-b".to_string()],
+                version: None,
+            },
+            "missing-cmake-files",
+            json!({"filenames": ["filenames-a", "filenames-b"], "version": null}),
+            "CMake files missing: [\"filenames-a\", \"filenames-b\"]",
+        );
+        assert_wire_format(
+            &MissingCMakeComponents {
+                name: "name-value".to_string(),
+                components: vec!["components-a".to_string(), "components-b".to_string()],
+            },
+            "missing-cmake-components",
+            json!({"components": ["components-a", "components-b"], "name": "name-value"}),
+            "Missing CMake components: [\"components-a\", \"components-b\"]",
+        );
+        assert_wire_format(
+            &MissingCMakeConfig {
+                name: "name-value".to_string(),
+                version: Some("version-value".to_string()),
+            },
+            "missing-cmake-config",
+            json!({"name": "name-value", "version": "version-value"}),
+            "Missing CMake package configuration for name-value (version version-value)",
+        );
+        assert_wire_format(
+            &MissingCMakeConfig {
+                name: "name-value".to_string(),
+                version: None,
+            },
+            "missing-cmake-config",
+            json!({"name": "name-value", "version": null}),
+            "Missing CMake package configuration for name-value",
+        );
+        assert_wire_format(
+            &CMakeNeedExactVersion {
+                package: "package-value".to_string(),
+                version_found: "version_found-value".to_string(),
+                exact_version_needed: "exact_version_needed-value".to_string(),
+                path: PathBuf::from("/srv/path"),
+            },
+            "cmake-exact-version-missing",
+            json!({
+                "exact_version_needed": "exact_version_needed-value",
+                "package": "package-value",
+                "path": "/srv/path",
+                "version_found": "version_found-value",
+            }),
+            "CMake needs exact package package-value, version exact_version_needed-value",
+        );
+        assert_wire_format(
+            &MissingStaticLibrary {
+                library: "library-value".to_string(),
+                filename: "filename-value".to_string(),
+            },
+            "missing-static-library",
+            json!({"filename": "filename-value", "library": "library-value"}),
+            "missing static library: library-value",
+        );
+        assert_wire_format(
+            &MissingGoRuntime,
+            "missing-go-runtime",
+            json!({}),
+            "go runtime is missing",
+        );
+        assert_wire_format(
+            &UnknownCertificateAuthority("f0-value".to_string()),
+            "unknown-certificate-authority",
+            json!({"url": "f0-value"}),
+            "Unknown Certificate Authority for f0-value",
+        );
+        assert_wire_format(
+            &MissingPerlPredeclared("f0-value".to_string()),
+            "missing-perl-predeclared",
+            json!({"name": "f0-value"}),
+            "missing predeclared function: f0-value",
+        );
+        assert_wire_format(
+            &MissingGitIdentity,
+            "missing-git-identity",
+            json!({}),
+            "Missing Git Identity",
+        );
+        assert_wire_format(
+            &MissingSecretGpgKey,
+            "no-secret-gpg-key",
+            json!({}),
+            "No secret GPG key is present",
+        );
+        assert_wire_format(
+            &MissingVcVersionerVersion,
+            "no-vcversioner-version",
+            json!({}),
+            "vcversion could not find a git directory or version.txt file",
+        );
+        assert_wire_format(
+            &MissingLatexFile("f0-value".to_string()),
+            "missing-latex-file",
+            json!({"filename": "f0-value"}),
+            "Missing LaTeX file: f0-value",
+        );
+        assert_wire_format(
+            &MissingXDisplay,
+            "missing-x-display",
+            json!({}),
+            "No X Display",
+        );
+        assert_wire_format(
+            &MissingFontspec("f0-value".to_string()),
+            "missing-fontspec",
+            json!({"fontspec": "f0-value"}),
+            "Missing font spec: f0-value",
+        );
+        assert_wire_format(
+            &InactiveKilled(42),
+            "inactive-killed",
+            json!({"minutes": 42}),
+            "Killed due to inactivity after 42 minutes",
+        );
+        assert_wire_format(
+            &MissingPauseCredentials,
+            "missing-pause-credentials",
+            json!({}),
+            "Missing credentials for PAUSE",
+        );
+        assert_wire_format(
+            &MismatchGettextVersions {
+                makefile_version: "makefile_version-value".to_string(),
+                autoconf_version: "autoconf_version-value".to_string(),
+            },
+            "mismatch-gettext-versions",
+            json!({
+                "autoconf_version": "autoconf_version-value",
+                "makefile_version": "makefile_version-value",
+            }),
+            "Mismatch versions (makefile_version-value, autoconf_version-value)",
+        );
+        assert_wire_format(
+            &InvalidCurrentUser("f0-value".to_string()),
+            "invalid-current-user",
+            json!({"user": "f0-value"}),
+            "Can not run as f0-value",
+        );
+        assert_wire_format(
+            &MissingGnulibDirectory(PathBuf::from("/srv/f0")),
+            "missing-gnulib-directory",
+            json!({"directory": "/srv/f0"}),
+            "Missing gnulib directory: /srv/f0",
+        );
+        assert_wire_format(
+            &MissingLuaModule("f0-value".to_string()),
+            "missing-lua-module",
+            json!({"module": "f0-value"}),
+            "Missing Lua Module: f0-value",
+        );
+        assert_wire_format(
+            &MissingGoModFile,
+            "missing-go.mod-file",
+            json!({}),
+            "go.mod file is missing",
+        );
+        assert_wire_format(
+            &OutdatedGoModFile,
+            "outdated-go.mod-file",
+            json!({}),
+            "go.mod file is outdated",
+        );
+        assert_wire_format(
+            &CodeCoverageTooLow {
+                actual: 61.5,
+                required: 61.5,
+            },
+            "code-coverage-too-low",
+            json!({"actual": 61.5, "required": 61.5}),
+            "Code coverage too low: 61.50 < 61.50",
+        );
+        assert_wire_format(
+            &ESModuleMustUseImport("f0-value".to_string()),
+            "esmodule-must-use-import",
+            json!({"path": "f0-value"}),
+            "ESM-only module f0-value must use import()",
+        );
+        assert_wire_format(
+            &MissingPHPExtension("f0-value".to_string()),
+            "missing-php-extension",
+            json!({"extension": "f0-value"}),
+            "Missing PHP Extension: f0-value",
+        );
+        assert_wire_format(
+            &MinimumAutoconfTooOld("f0-value".to_string()),
+            "minimum-autoconf-too-old",
+            json!({"minimum_version": "f0-value"}),
+            "configure.{ac,in} should require newer autoconf f0-value",
+        );
+        assert_wire_format(
+            &MissingPerlDistributionFile("f0-value".to_string()),
+            "missing-perl-distribution-file",
+            json!({"filename": "f0-value"}),
+            "Missing perl distribution file: f0-value",
+        );
+        assert_wire_format(
+            &MissingGoSumEntry {
+                package: "package-value".to_string(),
+                version: "version-value".to_string(),
+            },
+            "missing-go.sum-entry",
+            json!({"package": "package-value", "version": "version-value"}),
+            "Missing go.sum entry: package-value@version-value",
+        );
+        assert_wire_format(
+            &ValaCompilerCannotCompile,
+            "valac-cannot-compile",
+            json!({}),
+            "valac can not compile",
+        );
+        assert_wire_format(
+            &MissingDebianBuildDep("f0-value".to_string()),
+            "missing-debian-build-dep",
+            json!({"dep": "f0-value"}),
+            "Missing Debian Build-Depends: f0-value",
+        );
+        assert_wire_format(
+            &MissingQtModules(vec!["f0-a".to_string(), "f0-b".to_string()]),
+            "missing-qt-modules",
+            json!({"modules": ["f0-a", "f0-b"]}),
+            "Missing QT modules: [\"f0-a\", \"f0-b\"]",
+        );
+        assert_wire_format(
+            &MissingOCamlPackage("f0-value".to_string()),
+            "missing-ocaml-package",
+            json!({"package": "f0-value"}),
+            "Missing OCaml package: f0-value",
+        );
+        assert_wire_format(
+            &TooManyOpenFiles,
+            "too-many-open-files",
+            json!({}),
+            "Too many open files",
+        );
+        assert_wire_format(
+            &MissingMakeTarget("f0-value".to_string(), Some("f1-value".to_string())),
+            "missing-make-target",
+            json!({"required_by": "f1-value", "target": "f0-value"}),
+            "Unknown make target: f0-value",
+        );
+        assert_wire_format(
+            &MissingMakeTarget("f0-value".to_string(), None),
+            "missing-make-target",
+            json!({"required_by": null, "target": "f0-value"}),
+            "Unknown make target: f0-value",
+        );
     }
 }

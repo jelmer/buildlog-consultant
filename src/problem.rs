@@ -110,6 +110,45 @@ macro_rules! register_problem_de_fn {
     };
 }
 
+/// Check the kind, JSON details and Display output of a problem, that the
+/// registered detail fields match the JSON keys, and that the problem
+/// round-trips through [`problem_from_json`] if it has a deserializer.
+#[cfg(test)]
+pub(crate) fn assert_wire_format(
+    p: &dyn Problem,
+    kind: &str,
+    details: serde_json::Value,
+    display: &str,
+) {
+    assert_eq!(p.kind(), kind);
+    assert_eq!(p.json(), details, "json() of {}", kind);
+    assert_eq!(p.to_string(), display, "Display of {}", kind);
+
+    if let Some(info) = inventory::iter::<crate::ProblemKindInfo>
+        .into_iter()
+        .find(|info| info.kind == kind)
+    {
+        let mut fields = info.detail_fields.to_vec();
+        fields.sort();
+        let mut keys: Vec<&str> = details
+            .as_object()
+            .map(|o| o.keys().map(String::as_str).collect())
+            .unwrap_or_default();
+        keys.sort();
+        assert_eq!(fields, keys, "detail_fields of {}", kind);
+    }
+
+    if inventory::iter::<ProblemDeserializer>
+        .into_iter()
+        .any(|d| d.kind == kind)
+    {
+        let back = problem_from_json(kind, &details)
+            .unwrap_or_else(|| panic!("{} failed to deserialize", kind));
+        assert_eq!(back.kind(), kind);
+        assert_eq!(back.json(), details, "round-trip of {}", kind);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Problem;

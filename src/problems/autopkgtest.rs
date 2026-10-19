@@ -314,7 +314,9 @@ impl std::fmt::Display for AutopkgtestTestbedSetupFailure {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::problem::assert_wire_format;
     use crate::Problem;
+    use serde_json::json;
 
     #[test]
     fn test_autopkgtest_testbed_setup_failure_trait() {
@@ -327,5 +329,64 @@ mod tests {
         assert_eq!(json["command"], "apt-get update");
         assert_eq!(json["exit_status"], 100);
         assert_eq!(json["error"], "Failed to fetch");
+    }
+
+    #[test]
+    fn wire_format() {
+        assert_wire_format(
+            &AutopkgtestDepsUnsatisfiable(vec![
+                (Some("a".to_string()), "x".to_string()),
+                (None, "y".to_string()),
+            ]),
+            "badpkg",
+            json!({"args": [["a", "x"], [null, "y"]]}),
+            "autopkgtest dependencies unsatisfiable: [(Some(\"a\"), \"x\"), (None, \"y\")]",
+        );
+        assert_wire_format(
+            &AutopkgtestTimedOut,
+            "timed-out",
+            json!({}),
+            "autopkgtest timed out",
+        );
+        assert_wire_format(
+            &XDGRunTimeNotSet,
+            "xdg-runtime-dir-not-set",
+            json!({}),
+            "XDG_RUNTIME_DIR not set",
+        );
+        assert_wire_format(
+            &AutopkgtestTestbedFailure("f0-value".to_string()),
+            "testbed-failure",
+            json!({"reason": "f0-value"}),
+            "autopkgtest testbed failure: f0-value",
+        );
+        assert_wire_format(
+            &AutopkgtestDepChrootDisappeared,
+            "testbed-chroot-disappeared",
+            json!({}),
+            "autopkgtest dependency chroot disappeared",
+        );
+        assert_wire_format(
+            &AutopkgtestErroneousPackage("f0-value".to_string()),
+            "erroneous-package",
+            json!({"reason": "f0-value"}),
+            "autopkgtest erroneous package: f0-value",
+        );
+        assert_wire_format(
+            &AutopkgtestStderrFailure("f0-value".to_string()),
+            "stderr-output",
+            json!({"stderr_line": "f0-value"}),
+            "autopkgtest output on stderr: f0-value",
+        );
+        assert_wire_format(
+            &AutopkgtestTestbedSetupFailure {
+                command: "command-value".to_string(),
+                exit_status: 3,
+                error: "error-value".to_string(),
+            },
+            "testbed-setup-failure",
+            json!({"command": "command-value", "error": "error-value", "exit_status": 3}),
+            "autopkgtest testbed setup failure: command-value exited with status 3: error-value",
+        );
     }
 }
