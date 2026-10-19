@@ -1705,4 +1705,412 @@ mod tests {
             );
         }
     }
+
+    fn describe(lines: &[&str]) -> serde_json::Value {
+        match find_autopkgtest_failure_description(lines) {
+            Ok(f) => f.map_or(serde_json::Value::Null, |f| {
+                serde_json::json!({
+                    "failure": crate::failure_json(Some(&f.failure)),
+                    "testname": f.testname,
+                    "description": f.description,
+                })
+            }),
+            Err(e) => serde_json::json!({"error": e.to_string()}),
+        }
+    }
+
+    #[test]
+    fn test_describe_no_summary() {
+        assert_eq!(describe(&[]), serde_json::json!(null));
+        assert_eq!(
+            describe(&["first\n", "last\n", " \n"]),
+            serde_json::json!({"description":null,"failure":{"lines":["last\n"],"offsets":[1],"origin":"direct regex","problem":null},"testname":"last\n"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_chroot_disappeared() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [19:19:20]: test runtestsuite: preparing testbed\n",
+                "Get:1 file:/tmp/autopkgtest.hdIETy/binaries  InRelease\n",
+                "autopkgtest [19:19:23]: ERROR: \"dpkg --unpack /tmp/foo.deb\" failed with stderr \"W: /var/lib/schroot/session/unstable-amd64-sbuild-7fb1b836: Failed to stat file: No such file or directory\n",
+            ]),
+            serde_json::json!({"description":"W: /var/lib/schroot/session/unstable-amd64-sbuild-7fb1b836: Failed to stat file: No such file or directory","failure":{"lines":["autopkgtest [19:19:23]: ERROR: \"dpkg --unpack /tmp/foo.deb\" failed with stderr \"W: /var/lib/schroot/session/unstable-amd64-sbuild-7fb1b836: Failed to stat file: No such file or directory\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{},"kind":"testbed-chroot-disappeared"}},"testname":"runtestsuite"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_quoted_multiline_error() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [19:19:20]: test foo: preparing testbed\n",
+                "autopkgtest [19:19:23]: ERROR: \"dpkg --unpack /tmp/foo.deb\n",
+                "more\n",
+                "end\" failed\n",
+                "trailing\n",
+            ]),
+            serde_json::json!({"description":"\"dpkg --unpack /tmp/foo.deb\nmore\nend\" failed","failure":{"lines":["autopkgtest [19:19:23]: ERROR: \"dpkg --unpack /tmp/foo.deb\n"],"offsets":[1],"origin":"direct regex","problem":null},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_auxverb_failure_with_output_problem() {
+        assert_eq!(
+            describe(&[
+                "Removing autopkgtest-satdep (0) ...\n",
+                "autopkgtest [06:59:00]: test phpunit: [-----------------------\n",
+                "something\n",
+                "/tmp/bla: 12: ss: not found\n",
+                "autopkgtest [06:59:01]: ERROR: testbed failure: testbed auxverb failed with exit code 255\n",
+            ]),
+            serde_json::json!({"description":"/tmp/bla: 12: ss: not found\n","failure":{"lines":["/tmp/bla: 12: ss: not found\n"],"offsets":[3],"origin":"direct regex","problem":{"details":{"command":"ss"},"kind":"command-missing"}},"testname":"phpunit"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_auxverb_failure_without_output_problem() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [06:59:00]: test phpunit: [-----------------------\n",
+                "something\n",
+                "autopkgtest [06:59:01]: ERROR: testbed failure: testbed auxverb failed with exit code 255\n",
+            ]),
+            serde_json::json!({"description":null,"failure":{"lines":["autopkgtest [06:59:01]: ERROR: testbed failure: testbed auxverb failed with exit code 255\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{"reason":"testbed auxverb failed with exit code 255"},"kind":"testbed-failure"}},"testname":"phpunit"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_copy_failed() {
+        assert_eq!(
+            describe(&[
+                "/tmp/bla: 12: ss: not found\n",
+                "autopkgtest [06:59:01]: ERROR: testbed failure: sent `auxverb_debug_fail', got `copy-failed', expected `ok...'\n",
+            ]),
+            serde_json::json!({"description":"/tmp/bla: 12: ss: not found\n","failure":{"lines":["/tmp/bla: 12: ss: not found\n"],"offsets":[0],"origin":"direct regex (^.*: [0-9]+: (.*): not found)","problem":{"details":{"command":"ss"},"kind":"command-missing"}},"testname":null}),
+        );
+        assert_eq!(
+            describe(&[
+                "something\n",
+                "autopkgtest [06:59:01]: ERROR: testbed failure: sent `auxverb_debug_fail', got `copy-failed', expected `ok...'\n",
+            ]),
+            serde_json::json!({"description":null,"failure":{"lines":["autopkgtest [06:59:01]: ERROR: testbed failure: sent `auxverb_debug_fail', got `copy-failed', expected `ok...'\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"reason":"sent `auxverb_debug_fail', got `copy-failed', expected `ok...'"},"kind":"testbed-failure"}},"testname":null}),
+        );
+    }
+
+    #[test]
+    fn test_describe_broken_pipe() {
+        assert_eq!(
+            describe(&[
+                "[schroot -c foo] failed (exit status 1, stderr 'boom')\n",
+                "autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 32] Broken pipe\n",
+            ]),
+            serde_json::json!({"description":"[schroot -c foo] failed (exit status 1, stderr 'boom')\n","failure":{"lines":["[schroot -c foo] failed (exit status 1, stderr 'boom')\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"command":"schroot -c foo","error":"boom","exit_status":1},"kind":"testbed-setup-failure"}},"testname":null}),
+        );
+        assert_eq!(
+            describe(&[
+                "something\n",
+                "autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 32] Broken pipe\n",
+            ]),
+            serde_json::json!({"description":null,"failure":{"lines":["autopkgtest [22:52:19]: ERROR: testbed failure: cannot send to testbed: [Errno 32] Broken pipe\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"reason":"cannot send to testbed: [Errno 32] Broken pipe"},"kind":"testbed-failure"}},"testname":null}),
+        );
+    }
+
+    #[test]
+    fn test_describe_apt_download_failure() {
+        assert_eq!(
+            describe(&[
+                "E: Unable to locate package libfoo-dev\n",
+                "autopkgtest [22:52:19]: ERROR: testbed failure: apt repeatedly failed to download packages\n",
+            ]),
+            serde_json::json!({"description":"E: Unable to locate package libfoo-dev\n","failure":{"lines":["E: Unable to locate package libfoo-dev\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"package":"libfoo-dev"},"kind":"apt-package-unknown"}},"testname":null}),
+        );
+        assert_eq!(
+            describe(&[
+                "something\n",
+                "autopkgtest [22:52:19]: ERROR: testbed failure: apt repeatedly failed to download packages\n",
+            ]),
+            serde_json::json!({"description":null,"failure":{"lines":["autopkgtest [22:52:19]: ERROR: testbed failure: apt repeatedly failed to download packages\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"error":"apt repeatedly failed to download packages","url":null},"kind":"apt-file-fetch-failure"}},"testname":null}),
+        );
+    }
+
+    #[test]
+    fn test_describe_erroneous_package() {
+        assert_eq!(
+            describe(&[
+                "/tmp/bla: 12: ss: not found\n",
+                "autopkgtest [22:52:19]: ERROR: erroneous package: rules extract failed with exit code 1\n",
+            ]),
+            serde_json::json!({"description":"/tmp/bla: 12: ss: not found\n","failure":{"lines":["/tmp/bla: 12: ss: not found\n"],"offsets":[0],"origin":"direct regex (^.*: [0-9]+: (.*): not found)","problem":{"details":{"command":"ss"},"kind":"command-missing"}},"testname":null}),
+        );
+        assert_eq!(
+            describe(&[
+                "something\n",
+                "autopkgtest [22:52:19]: ERROR: erroneous package: rules extract failed with exit code 1\n",
+            ]),
+            serde_json::json!({"description":null,"failure":{"lines":["autopkgtest [22:52:19]: ERROR: erroneous package: rules extract failed with exit code 1\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"reason":"rules extract failed with exit code 1"},"kind":"erroneous-package"}},"testname":null}),
+        );
+    }
+
+    #[test]
+    fn test_describe_unexpected_error() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [22:52:19]: ERROR: unexpected error:\n",
+                "something\n",
+                "/tmp/bla: 12: ss: not found\n",
+            ]),
+            serde_json::json!({"description":"/tmp/bla: 12: ss: not found\n","failure":{"lines":["/tmp/bla: 12: ss: not found\n"],"offsets":[1],"origin":"direct regex (^.*: [0-9]+: (.*): not found)","problem":{"details":{"command":"ss"},"kind":"command-missing"}},"testname":null}),
+        );
+        assert_eq!(
+            describe(&[
+                "autopkgtest [22:52:19]: ERROR: unexpected error:\n",
+                "something\n",
+            ]),
+            serde_json::json!({"description":"unexpected error:","failure":{"lines":["autopkgtest [22:52:19]: ERROR: unexpected error:\n"],"offsets":[0],"origin":"direct regex","problem":null},"testname":null}),
+        );
+    }
+
+    #[test]
+    fn test_describe_apt_failure_in_current_field() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [19:19:20]: test foo: preparing testbed\n",
+                "Reading package lists...\n",
+                "E: Unable to locate package libfoo-dev\n",
+                "autopkgtest [19:19:23]: ERROR: something\n",
+            ]),
+            serde_json::json!({"description":"E: Unable to locate package libfoo-dev\n","failure":{"lines":["E: Unable to locate package libfoo-dev\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{"package":"libfoo-dev"},"kind":"apt-package-unknown"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_error_cleaning_up() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [19:19:20]: test foo: [-----------------------\n",
+                "some output\n",
+                "more output\n",
+                "autopkgtest [19:19:23]: ERROR: autopkgtest\n",
+                ": error cleaning up:\n",
+            ]),
+            serde_json::json!({"description":"more output","failure":{"lines":["some output\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{},"kind":"timed-out"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_generic_error() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [19:19:20]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "autopkgtest [19:19:23]: ERROR: something broke\n",
+            ]),
+            serde_json::json!({"description":"something broke","failure":{"lines":["autopkgtest [19:19:23]: ERROR: something broke\n"],"offsets":[1],"origin":"direct regex","problem":null},"testname":null}),
+        );
+    }
+
+    #[test]
+    fn test_describe_timed_out() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  PASS\n",
+                "unit-tests           FAIL timed out\n",
+            ]),
+            serde_json::json!({"description":"timed out","failure":{"lines":["unit-tests           FAIL timed out\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{},"kind":"timed-out"}},"testname":"unit-tests"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_stderr_with_known_problem() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: test foo:  - - - - - - - - - - stderr - - - - - - - - - -\n",
+                "some output\n",
+                "/tmp/bla: 12: ss: not found\n",
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL stderr: some output\n",
+            ]),
+            serde_json::json!({"description":"/tmp/bla: 12: ss: not found\n","failure":{"lines":["/tmp/bla: 12: ss: not found\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{"command":"ss"},"kind":"command-missing"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_stderr_xdg_runtime_dir() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: test foo:  - - - - - - - - - - stderr - - - - - - - - - -\n",
+                "QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'\n",
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL stderr: QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'\n",
+            ]),
+            serde_json::json!({"description":"QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'\n","failure":{"lines":["QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{},"kind":"xdg-runtime-dir-not-set"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_stderr_unknown() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: test foo:  - - - - - - - - - - stderr - - - - - - - - - -\n",
+                "some output\n",
+                "more output\n",
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL stderr: some output\n",
+            ]),
+            serde_json::json!({"description":"Test foo failed due to unauthorized stderr output: some output","failure":{"lines":["some output\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"stderr_line":"some output"},"kind":"stderr-output"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_stderr_without_stderr_section() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL stderr: /tmp/bla: 12: ss: not found\n",
+            ]),
+            serde_json::json!({"description":"/tmp/bla: 12: ss: not found","failure":{"lines":["foo                  FAIL stderr: /tmp/bla: 12: ss: not found\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"command":"ss"},"kind":"command-missing"}},"testname":"foo"}),
+        );
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL stderr: some output\n",
+            ]),
+            serde_json::json!({"description":"Test foo failed due to unauthorized stderr output: some output","failure":{"lines":["foo                  FAIL stderr: some output\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"stderr_line":"some output"},"kind":"stderr-output"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_badpkg_with_apt_failure() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [19:19:20]: test foo: [-----------------------\n",
+                "Reading package lists...\n",
+                "E: Unable to locate package libfoo-dev\n",
+                "autopkgtest [19:19:20]: test foo: -----------------------]\n",
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL badpkg\n",
+                "blame: deb:libfoo-dev\n",
+            ]),
+            serde_json::json!({"description":null,"failure":{"lines":["E: Unable to locate package libfoo-dev\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{"package":"libfoo-dev"},"kind":"apt-package-unknown"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_badpkg_without_extra() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL badpkg\n",
+            ]),
+            serde_json::json!({"description":"Test foo failed","failure":{"lines":["foo                  FAIL badpkg\n"],"offsets":[1],"origin":"direct regex","problem":null},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_failure_with_output() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [19:19:20]: test foo: [-----------------------\n",
+                "something\n",
+                "/tmp/bla: 12: ss: not found\n",
+                "autopkgtest [19:19:20]: test foo: -----------------------]\n",
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FAIL non-zero exit status 1\n",
+            ]),
+            serde_json::json!({"description":"/tmp/bla: 12: ss: not found\n","failure":{"lines":["/tmp/bla: 12: ss: not found\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{"command":"ss"},"kind":"command-missing"}},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_failure_without_output() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  FLAKY non-zero exit status 1\n",
+            ]),
+            serde_json::json!({"description":"Test foo failed: non-zero exit status 1","failure":{"lines":["foo                  FLAKY non-zero exit status 1\n"],"offsets":[1],"origin":"direct regex","problem":null},"testname":"foo"}),
+        );
+    }
+
+    #[test]
+    fn test_describe_all_passed() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [20:49:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "foo                  PASS\n",
+                "bar                  SKIP no reason\n",
+            ]),
+            serde_json::json!(null),
+        );
+    }
+
+    #[test]
+    fn test_describe_match_error() {
+        assert_eq!(
+            describe(&[
+                "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+                "unit-tests           FAIL stderr: E: Build killed with signal TERM after 99999999999999999999 minutes of inactivity\n",
+            ]),
+            serde_json::json!({"error":"invalid integer at line 1 (direct regex (E: Build killed with signal TERM after ([0-9]+) minutes of inactivity))"}),
+        );
+    }
+
+    fn testbed(lines: &[&str]) -> serde_json::Value {
+        crate::failure_json(find_testbed_setup_failure(lines).unwrap().as_ref())
+    }
+
+    #[test]
+    fn test_testbed_setup_chroot_not_found() {
+        assert_eq!(
+            testbed(&["[schroot -c unstable-amd64-sbuild] failed (exit status 1, stderr 'E: unstable-amd64-sbuild: Chroot not found\\n')\n"]),
+            serde_json::json!({"lines":["[schroot -c unstable-amd64-sbuild] failed (exit status 1, stderr 'E: unstable-amd64-sbuild: Chroot not found\\n')\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"chroot":"unstable-amd64-sbuild"},"kind":"chroot-not-found"}}),
+        );
+    }
+
+    #[test]
+    fn test_testbed_setup_command_failed() {
+        assert_eq!(
+            testbed(&[
+                "[first] failed (exit status 3, stderr 'one')\n",
+                "foo\n",
+                "[schroot -c foo] failed (exit status 2, stderr 'boom')\n",
+                "bar\n",
+            ]),
+            serde_json::json!({"lines":["[schroot -c foo] failed (exit status 2, stderr 'boom')\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{"command":"schroot -c foo","error":"boom","exit_status":2},"kind":"testbed-setup-failure"}}),
+        );
+    }
+
+    #[test]
+    fn test_testbed_setup_chroot_disappeared() {
+        assert_eq!(
+            testbed(&["<VirtSubproc>: failure: ['chmod', '1777', '/tmp/x'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2: Failed to stat file: No such file or directory\n"]),
+            serde_json::json!({"lines":["<VirtSubproc>: failure: ['chmod', '1777', '/tmp/x'] unexpectedly produced stderr output `W: /var/lib/schroot/session/unstable-amd64-sbuild-dbcdb3f2: Failed to stat file: No such file or directory\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"testbed-chroot-disappeared"}}),
+        );
+    }
+
+    #[test]
+    fn test_testbed_setup_unexpected_stderr() {
+        assert_eq!(
+            testbed(&["<VirtSubproc>: failure: ['chmod', '1777', '/tmp/x'] unexpectedly produced stderr output `boom\n", "foo\n"]),
+            serde_json::json!({"lines":["<VirtSubproc>: failure: ['chmod', '1777', '/tmp/x'] unexpectedly produced stderr output `boom\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"command":"chmod', '1777', '/tmp/x","error":"boom","exit_status":1},"kind":"testbed-setup-failure"}}),
+        );
+    }
+
+    #[test]
+    fn test_testbed_setup_first_pattern_wins() {
+        assert_eq!(
+            testbed(&["<VirtSubproc>: failure: ['a'] unexpectedly produced stderr output `[c] failed (exit status 1, stderr 'd')\n"]),
+            serde_json::json!({"lines":["<VirtSubproc>: failure: ['a'] unexpectedly produced stderr output `[c] failed (exit status 1, stderr 'd')\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"command":"'a'] unexpectedly produced stderr output `[c","error":"d","exit_status":1},"kind":"testbed-setup-failure"}}),
+        );
+    }
+
+    #[test]
+    fn test_testbed_setup_no_match() {
+        assert_eq!(testbed(&[]), serde_json::json!(null));
+        assert_eq!(
+            testbed(&["[schroot -c foo] failed (exit status 2, stderr 'boom')"]),
+            serde_json::json!(null),
+        );
+    }
 }

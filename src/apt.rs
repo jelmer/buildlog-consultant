@@ -986,4 +986,201 @@ mod tests {
             "invalid unsat-conflict \"libfoo (<< 2.0\" in dose3 report: Expected ')'"
         );
     }
+
+    fn apt(lines: &[&str]) -> serde_json::Value {
+        crate::failure_json(find_apt_get_failure(lines).as_ref())
+    }
+
+    #[test]
+    fn test_apt_empty() {
+        assert_eq!(apt(&[]), serde_json::json!(null));
+    }
+
+    #[test]
+    fn test_apt_failed_to_fetch() {
+        assert_eq!(
+            apt(&["E: Failed to fetch http://deb.debian.org/foo.deb  404  Not Found [IP: 1.2.3.4 80]\n"]),
+            serde_json::json!({"lines":["E: Failed to fetch http://deb.debian.org/foo.deb  404  Not Found [IP: 1.2.3.4 80]\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"error":"404  Not Found [IP: 1.2.3.4 80]","url":"http://deb.debian.org/foo.deb"},"kind":"apt-file-fetch-failure"}}),
+        );
+        assert_eq!(
+            apt(&["E: Failed to fetch http://deb.debian.org/foo.deb  Write error - No space left on device\n"]),
+            serde_json::json!({"lines":["E: Failed to fetch http://deb.debian.org/foo.deb  Write error - No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_failed_to_fetch_unparsed() {
+        assert_eq!(
+            apt(&["E: Failed to fetch http://deb.debian.org/foo.deb 404\n"]),
+            serde_json::json!({"lines":["E: Failed to fetch http://deb.debian.org/foo.deb 404\n"],"offsets":[0],"origin":"direct regex","problem":null}),
+        );
+    }
+
+    #[test]
+    fn test_apt_broken_packages() {
+        assert_eq!(
+            apt(&[
+                "foo\n",
+                " The following packages have unmet dependencies:  \n",
+                "E: Broken packages\n",
+            ]),
+            serde_json::json!({"lines":[" The following packages have unmet dependencies:  \n"],"offsets":[1],"origin":"direct match","problem":{"details":{"broken":null,"description":"The following packages have unmet dependencies:"},"kind":"apt-broken-packages"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_held_broken_packages() {
+        assert_eq!(
+            apt(&[
+                "The following packages have unmet dependencies:\n",
+                " sbuild-build-depends-main-dummy : Depends: libfoo-dev but it is not going to be installed\n",
+                "                                   Depends: libbar-dev (>= 1.0) but it is not installable\n",
+                "E: Unable to correct problems, you have held broken packages.\n",
+            ]),
+            serde_json::json!({"lines":[" sbuild-build-depends-main-dummy : Depends: libfoo-dev but it is not going to be installed\n","                                   Depends: libbar-dev (>= 1.0) but it is not installable\n","E: Unable to correct problems, you have held broken packages.\n"],"offsets":[1,2,3],"origin":"direct match","problem":{"details":{"broken":["libbar-dev (>= 1.0)","libfoo-dev"],"description":"E: Unable to correct problems, you have held broken packages."},"kind":"apt-broken-packages"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_held_broken_packages_none_listed() {
+        assert_eq!(
+            apt(&[
+                "foo\n",
+                "bar\n",
+                "E: Unable to correct problems, you have held broken packages.\n",
+            ]),
+            serde_json::json!({"lines":["E: Unable to correct problems, you have held broken packages.\n"],"offsets":[2],"origin":"direct match","problem":{"details":{"broken":[],"description":"E: Unable to correct problems, you have held broken packages."},"kind":"apt-broken-packages"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_missing_release_file() {
+        assert_eq!(
+            apt(&["E: The repository 'http://example.com unstable Release' does not have a Release file.\n"]),
+            serde_json::json!({"lines":["E: The repository 'http://example.com unstable Release' does not have a Release file.\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"url":"http://example.com unstable Release"},"kind":"missing-release-file"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_dpkg_deb_no_space() {
+        assert_eq!(
+            apt(&["dpkg-deb: error: unable to write file '/foo': No space left on device\n"]),
+            serde_json::json!({"lines":["dpkg-deb: error: unable to write file '/foo': No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_not_enough_free_space() {
+        assert_eq!(
+            apt(&["E: You don't have enough free space in /var/cache/apt/archives/.\n"]),
+            serde_json::json!({"lines":["E: You don't have enough free space in /var/cache/apt/archives/.\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_generic_error_latest_wins() {
+        assert_eq!(
+            apt(&["E: first\n", "foo\n", "E: second\n", "bar\n"]),
+            serde_json::json!({"lines":["E: second\n"],"offsets":[2],"origin":"direct regex","problem":null}),
+        );
+    }
+
+    #[test]
+    fn test_apt_specific_error_before_generic() {
+        assert_eq!(
+            apt(&["E: Unable to locate package foo\n", "E: second\n"]),
+            serde_json::json!({"lines":["E: Unable to locate package foo\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"package":"foo"},"kind":"apt-package-unknown"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_unable_to_locate_package() {
+        assert_eq!(
+            apt(&["E: Unable to locate package libfoo-dev\n"]),
+            serde_json::json!({"lines":["E: Unable to locate package libfoo-dev\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"package":"libfoo-dev"},"kind":"apt-package-unknown"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_write_error() {
+        assert_eq!(
+            apt(&["E: Write error - write (28: No space left on device)\n"]),
+            serde_json::json!({"lines":["E: Write error - write (28: No space left on device)\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+        assert_eq!(
+            apt(&[
+                "E: Unable to locate package foo\n",
+                "E: Write error - write (28: No space left on device)\n",
+            ]),
+            serde_json::json!({"lines":["E: Write error - write (28: No space left on device)\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_dpkg_error() {
+        assert_eq!(
+            apt(&["dpkg: error: cannot write '/var/lib/dpkg/status': No space left on device\n"]),
+            serde_json::json!({"lines":["dpkg: error: cannot write '/var/lib/dpkg/status': No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+        assert_eq!(
+            apt(&["dpkg: error: something else\n"]),
+            serde_json::json!({"lines":["dpkg: error: something else\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"msg":"something else"},"kind":"dpkg-error"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_dpkg_error_processing_package() {
+        assert_eq!(
+            apt(&[
+                "dpkg: error processing package foo (--configure):\n",
+                " installed foo package post-installation script subprocess returned error exit status 1\n",
+            ]),
+            serde_json::json!({"lines":[" installed foo package post-installation script subprocess returned error exit status 1\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"msg":"processing package foo (--configure)"},"kind":"dpkg-error"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_cannot_copy_extracted_data() {
+        assert_eq!(
+            apt(&[
+                "foo\n",
+                "dpkg-deb (subprocess): cannot copy extracted data for './usr/lib/foo.so' to '/usr/lib/foo.so.dpkg-new': failed to write (No space left on device)\n",
+            ]),
+            serde_json::json!({"lines":["dpkg-deb (subprocess): cannot copy extracted data for './usr/lib/foo.so' to '/usr/lib/foo.so.dpkg-new': failed to write (No space left on device)\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_forward_no_space_overrides_generic() {
+        assert_eq!(
+            apt(&[
+                "E: something\n",
+                " foo: No space left on device\n",
+                " bar: No space left on device\n"
+            ]),
+            serde_json::json!({"lines":[" foo: No space left on device\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_apt_scans_last_50_lines() {
+        let mut lines = vec!["E: Unable to locate package libfoo-dev\n"];
+        lines.extend(std::iter::repeat_n("filler\n", 49));
+        assert_eq!(
+            apt(&lines),
+            serde_json::json!({"lines":["E: Unable to locate package libfoo-dev\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"package":"libfoo-dev"},"kind":"apt-package-unknown"}})
+        );
+        lines.push("filler\n");
+        assert_eq!(apt(&lines), serde_json::json!(null));
+    }
+
+    #[test]
+    fn test_apt_forward_scan_is_not_limited() {
+        let mut lines = vec![" foo: No space left on device\n"];
+        lines.extend(std::iter::repeat_n("filler\n", 60));
+        assert_eq!(
+            apt(&lines),
+            serde_json::json!({"lines":[" foo: No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}})
+        );
+    }
 }

@@ -53,6 +53,19 @@ pub mod r#match;
 /// Module for handling sbuild logs and related problems.
 pub mod sbuild;
 
+/// Describes a failure as JSON, so tests can compare all of it at once.
+#[cfg(test)]
+pub(crate) fn failure_json(failure: Option<&Failure>) -> serde_json::Value {
+    failure.map_or(serde_json::Value::Null, |f| {
+        serde_json::json!({
+            "offsets": f.r#match.offsets(),
+            "lines": f.r#match.lines(),
+            "origin": f.r#match.origin().as_str(),
+            "problem": f.problem.as_deref(),
+        })
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

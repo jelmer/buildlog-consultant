@@ -2445,4 +2445,483 @@ Line4
         assert!(m.is_none());
         assert!(error.is_none());
     }
+
+    fn preamble(lines: &[&str]) -> serde_json::Value {
+        match find_preamble_failure_description(lines) {
+            Ok(f) => crate::failure_json(f.as_ref()),
+            Err(e) => serde_json::json!({"error": e.to_string()}),
+        }
+    }
+
+    #[test]
+    fn test_preamble_empty() {
+        assert_eq!(preamble(&[]), serde_json::json!(null));
+    }
+
+    #[test]
+    fn test_preamble_local_changes() {
+        assert_eq!(
+            preamble(&[
+                "dpkg-source: info: using options from foo/debian/source/options\n",
+                "dpkg-source: info: local changes detected, the modified files are:\n",
+                " foo/a.c\n",
+                " foo/b.c\n",
+                "dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff.abc\n",
+                "dpkg-source: info: you can integrate the local changes with dpkg-source --commit\n",
+            ]),
+            serde_json::json!({"lines":["dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff.abc\n"],"offsets":[4],"origin":"direct regex","problem":{"details":{"diff_file":"/tmp/foo.diff.abc","files":["foo/b.c","foo/a.c"]},"kind":"unexpected-local-upstream-changes"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_local_changes_header_first_line() {
+        assert_eq!(
+            preamble(&[
+                "dpkg-source: info: local changes detected, the modified files are:\n",
+                " foo/a.c\n",
+                " foo/b.c\n",
+                "dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff.abc\n",
+            ]),
+            serde_json::json!({"lines":["dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff.abc\n"],"offsets":[3],"origin":"direct regex","problem":{"details":{"diff_file":"/tmp/foo.diff.abc","files":["foo/b.c","foo/a.c"]},"kind":"unexpected-local-upstream-changes"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_local_changes_header_without_newline() {
+        assert_eq!(
+            preamble(&[
+                "first",
+                "dpkg-source: info: local changes detected, the modified files are:",
+                " foo/a.c",
+                "dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff.abc",
+            ]),
+            serde_json::json!({"lines":["dpkg-source: error: aborting due to unexpected upstream changes, see /tmp/foo.diff.abc"],"offsets":[3],"origin":"direct regex","problem":{"details":{"diff_file":"/tmp/foo.diff.abc","files":["foo/a.c"]},"kind":"unexpected-local-upstream-changes"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_unrepresentable_changes() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: unrepresentable changes to source\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: unrepresentable changes to source\n"],"offsets":[0],"origin":"direct match","problem":{"details":null,"kind":"unrepresentable-local-changes"}}),
+        );
+        assert_eq!(
+            preamble(&["dpkg-source: error: unrepresentable changes to source"]),
+            serde_json::json!({"lines":["dpkg-source: error: unrepresentable changes to source"],"offsets":[0],"origin":"direct match","problem":{"details":null,"kind":"unrepresentable-local-changes"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_unwanted_binary_files() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: detected 1 unwanted binary file (add it in debian/source/include-binaries to allow its inclusion).\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: detected 1 unwanted binary file (add it in debian/source/include-binaries to allow its inclusion).\n"],"offsets":[0],"origin":"direct regex","problem":{"details":null,"kind":"unwanted-binary-files"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_missing_control_file() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: cannot read foo-1.0/debian/control: No such file or directory\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: cannot read foo-1.0/debian/control: No such file or directory\n"],"offsets":[0],"origin":"direct regex","problem":{"details":null,"kind":"missing-control-file"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_dpkg_source_no_space() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: cannot write foo.tar: No space left on device\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: cannot write foo.tar: No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_tar_no_space() {
+        assert_eq!(
+            preamble(&["tar: foo/bar: Cannot write: No space left on device\n"]),
+            serde_json::json!({"lines":["tar: foo/bar: Cannot write: No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_binary_file_changed() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: cannot represent change to foo/logo.png: binary file contents changed\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: cannot represent change to foo/logo.png: binary file contents changed\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"files":["foo/logo.png"]},"kind":"binary-file-changed"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_source_format_unsupported_inc() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: source package format '3.0 (git)' is not supported: Can't locate Dpkg/Source/Package/V3/Git.pm in @INC (you may need to install the Dpkg::Source::Package::V3::Git module) (@INC contains: /etc/perl /usr/share/perl5) at (eval 82) line 1.\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: source package format '3.0 (git)' is not supported: Can't locate Dpkg/Source/Package/V3/Git.pm in @INC (you may need to install the Dpkg::Source::Package::V3::Git module) (@INC contains: /etc/perl /usr/share/perl5) at (eval 82) line 1.\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"source_format":"3.0 (git)"},"kind":"source-format-unsupported"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_failed_to_package_source() {
+        assert_eq!(
+            preamble(&["E: Failed to package source directory /build/foo-1.0\n"]),
+            serde_json::json!({"lines":["E: Failed to package source directory /build/foo-1.0\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"reason":"/build/foo-1.0"},"kind":"dpkg-source-pack-failed"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_bad_version() {
+        assert_eq!(
+            preamble(&[
+                "dpkg-parsechangelog: warning:     debian/changelog(l1): version '1.0-a-' is invalid: revision number is empty\n",
+                "LINE: foo (1.0-a-) unstable; urgency=medium\n",
+                "E: Bad version unknown in /build/foo\n",
+            ]),
+            serde_json::json!({"lines":["E: Bad version unknown in /build/foo\n"],"offsets":[2],"origin":"direct regex","problem":{"details":{"reason":"revision number is empty","version":"1.0-a-"},"kind":"dpkg-bad-version"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_bad_version_without_context() {
+        assert_eq!(
+            preamble(&[
+                "something else\n",
+                "LINE: foo (1.0-a-) unstable; urgency=medium\n",
+                "E: Bad version unknown in /build/foo\n",
+            ]),
+            serde_json::json!(null),
+        );
+        assert_eq!(
+            preamble(&[
+                "dpkg-parsechangelog: warning:     debian/changelog(l1): version '1.0-a-' is invalid: revision number is empty\n",
+                "something else\n",
+                "E: Bad version unknown in /build/foo\n",
+            ]),
+            serde_json::json!(null),
+        );
+    }
+
+    #[test]
+    fn test_preamble_bad_version_falls_through() {
+        assert_eq!(
+            preamble(&[
+                "something else\n",
+                "E: Bad version unknown in Patch foo.patch does not apply (enforce with -f)\n",
+            ]),
+            serde_json::json!({"lines":["E: Bad version unknown in Patch foo.patch does not apply (enforce with -f)\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"patchname":"foo.patch"},"kind":"patch-application-failed"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_patch_reject() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: LC_ALL=C patch -t -F 0 -N -p1 -u -V never -E -b -B .pc/foo.patch/ --reject-file=- < foo.orig.abc/debian/patches/foo.patch subprocess returned exit status 1\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: LC_ALL=C patch -t -F 0 -N -p1 -u -V never -E -b -B .pc/foo.patch/ --reject-file=- < foo.orig.abc/debian/patches/foo.patch subprocess returned exit status 1\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"patchname":"foo.patch"},"kind":"patch-application-failed"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_source_format_unbuildable() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: can't build with source format '3.0 (quilt)': no upstream tarball found at ../foo_1.0.orig.tar.{bz2,gz,lzma,xz}\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: can't build with source format '3.0 (quilt)': no upstream tarball found at ../foo_1.0.orig.tar.{bz2,gz,lzma,xz}\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"reason":"no upstream tarball found at ../foo_1.0.orig.tar.{bz2,gz,lzma,xz}","source_format":"3.0 (quilt)"},"kind":"source-format-unbuildable"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_patch_file_missing() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: cannot read foo/debian/patches/foo.patch: No such file or directory\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: cannot read foo/debian/patches/foo.patch: No such file or directory\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"path":"foo/debian/patches/foo.patch"},"kind":"patch-file-missing"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_source_format_unsupported() {
+        assert_eq!(
+            preamble(&[
+                "dpkg-source: error: source package format '3.0 (foo)' is not supported: blah\n"
+            ]),
+            serde_json::json!({"lines":["dpkg-source: error: source package format '3.0 (foo)' is not supported: blah\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"source_format":"3.0 (foo)"},"kind":"source-format-unsupported"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_source_format_unsupported_known_reason() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: source package format '3.0 (foo)' is not supported: foo: No space left on device\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: source package format '3.0 (foo)' is not supported: foo: No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_source_format_unsupported_match_error() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: source package format '3.0 (foo)' is not supported: E: Build killed with signal TERM after 99999999999999999999 minutes of inactivity\n"]),
+            serde_json::json!({"error":"invalid integer at line 1 (direct regex (E: Build killed with signal TERM after ([0-9]+) minutes of inactivity))"}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_missing_revision() {
+        assert_eq!(
+            preamble(&["breezy.errors.NoSuchRevision: CHKInventoryRepository('file:///foo/.bzr/repository/') has no revision b'jelmer@example.com-1'\n"]),
+            serde_json::json!({"lines":["breezy.errors.NoSuchRevision: CHKInventoryRepository('file:///foo/.bzr/repository/') has no revision b'jelmer@example.com-1'\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"revision":"jelmer@example.com-1"},"kind":"missing-revision"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_pristine_tar_tree_missing() {
+        assert_eq!(
+            preamble(&["fatal: ambiguous argument 'upstream/1.0': unknown revision or path not in the working tree.\n"]),
+            serde_json::json!({"lines":["fatal: ambiguous argument 'upstream/1.0': unknown revision or path not in the working tree.\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"treeish":"upstream/1.0"},"kind":"pristine-tar-missing-tree"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_generic_dpkg_source_error() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: something went wrong\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: something went wrong\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"reason":"something went wrong"},"kind":"dpkg-source-pack-failed"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_generic_dpkg_source_error_earliest_wins() {
+        assert_eq!(
+            preamble(&[
+                "dpkg-source: error: first\n",
+                "other\n",
+                "dpkg-source: error: second\n",
+            ]),
+            serde_json::json!({"lines":["dpkg-source: error: first\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"reason":"first"},"kind":"dpkg-source-pack-failed"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_specific_error_before_generic() {
+        assert_eq!(
+            preamble(&[
+                "tar: foo: Cannot write: No space left on device\n",
+                "dpkg-source: error: second\n",
+            ]),
+            serde_json::json!({"lines":["tar: foo: Cannot write: No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_latest_specific_error_wins() {
+        assert_eq!(
+            preamble(&[
+                "dpkg-source: error: unrepresentable changes to source\n",
+                "tar: foo: Cannot write: No space left on device\n",
+            ]),
+            serde_json::json!({"lines":["tar: foo: Cannot write: No space left on device\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_control_file_before_patch_file() {
+        assert_eq!(
+            preamble(&[
+                "dpkg-source: error: cannot read foo/debian/control: No such file or directory\n"
+            ]),
+            serde_json::json!({"lines":["dpkg-source: error: cannot read foo/debian/control: No such file or directory\n"],"offsets":[0],"origin":"direct regex","problem":{"details":null,"kind":"missing-control-file"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_inc_before_generic_unsupported() {
+        assert_eq!(
+            preamble(&["dpkg-source: error: source package format '3.0 (git)' is not supported: Can't locate Foo.pm in @INC (you may need to install the Foo module) (@INC contains: /x) at (eval 1) line 2.\n"]),
+            serde_json::json!({"lines":["dpkg-source: error: source package format '3.0 (git)' is not supported: Can't locate Foo.pm in @INC (you may need to install the Foo module) (@INC contains: /x) at (eval 1) line 2.\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"source_format":"3.0 (git)"},"kind":"source-format-unsupported"}}),
+        );
+    }
+
+    #[test]
+    fn test_preamble_scans_last_100_lines() {
+        let mut lines = vec!["dpkg-source: error: unrepresentable changes to source\n"];
+        lines.extend(std::iter::repeat_n("filler\n", 99));
+        assert_eq!(
+            preamble(&lines),
+            serde_json::json!({"lines":["dpkg-source: error: unrepresentable changes to source\n"],"offsets":[0],"origin":"direct match","problem":{"details":null,"kind":"unrepresentable-local-changes"}})
+        );
+        lines.push("filler\n");
+        assert_eq!(preamble(&lines), serde_json::json!(null));
+    }
+
+    #[test]
+    fn test_preamble_no_match() {
+        assert_eq!(preamble(&["foo\n", "bar\n"]), serde_json::json!(null),);
+    }
+
+    #[test]
+    fn test_creation_session_error_chroot_not_found() {
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&[
+                    "E: Chroot for distribution unstable, architecture amd64 not found\n"
+                ])
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["E: Chroot for distribution unstable, architecture amd64 not found\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"chroot":"unstable-amd64-sbuild"},"kind":"chroot-not-found"}}),
+        );
+    }
+
+    #[test]
+    fn test_creation_session_error_chroot_without_newline() {
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&[
+                    "E: Chroot for distribution unstable, architecture amd64 not found"
+                ])
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["E: Chroot for distribution unstable, architecture amd64 not found"],"offsets":[0],"origin":"direct regex","problem":null}),
+        );
+    }
+
+    #[test]
+    fn test_creation_session_error_generic() {
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&["I: foo\n", "E: something\n", "I: bar\n"]).as_ref()
+            ),
+            serde_json::json!({"lines":["E: something\n"],"offsets":[1],"origin":"direct regex","problem":null}),
+        );
+    }
+
+    #[test]
+    fn test_creation_session_error_earliest_wins() {
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&[
+                    "E: first\n",
+                    "E: Chroot for distribution unstable, architecture amd64 not found\n"
+                ])
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["E: first\n"],"offsets":[0],"origin":"direct regex","problem":null}),
+        );
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&[
+                    "E: Chroot for distribution unstable, architecture amd64 not found\n",
+                    "E: second\n"
+                ])
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["E: Chroot for distribution unstable, architecture amd64 not found\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{"chroot":"unstable-amd64-sbuild"},"kind":"chroot-not-found"}}),
+        );
+    }
+
+    #[test]
+    fn test_creation_session_error_no_space() {
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&[
+                    "E: first\n",
+                    "mkdir: cannot create directory '/foo': No space left on device\n",
+                    "E: second\n"
+                ])
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["mkdir: cannot create directory '/foo': No space left on device\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&[
+                    "mkdir: cannot create directory '/foo': No space left on device\n",
+                    "E: second\n"
+                ])
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["mkdir: cannot create directory '/foo': No space left on device\n"],"offsets":[0],"origin":"direct regex","problem":{"details":{},"kind":"no-space-on-device"}}),
+        );
+        assert_eq!(
+            crate::failure_json(
+                find_creation_session_error(&[
+                    "mkdir: cannot create directory '/foo': No space left on device"
+                ])
+                .as_ref()
+            ),
+            serde_json::json!(null),
+        );
+    }
+
+    #[test]
+    fn test_creation_session_error_none() {
+        assert_eq!(
+            crate::failure_json(find_creation_session_error(&[]).as_ref()),
+            serde_json::json!(null),
+        );
+        assert_eq!(
+            crate::failure_json(find_creation_session_error(&["I: foo\n"]).as_ref()),
+            serde_json::json!(null),
+        );
+    }
+
+    #[test]
+    fn test_arch_check_failure_description() {
+        assert_eq!(
+            crate::failure_json(find_arch_check_failure_description(&[
+                "foo\n",
+                "E: dsc: amd64 not in arch list or does not match any arch wildcards: arm64 armhf -- skipping\n",
+                "E: dsc: i386 not in arch list or does not match any arch wildcards: arm64 -- skipping\n",
+            ]).as_ref()),
+            serde_json::json!({"lines":["E: dsc: amd64 not in arch list or does not match any arch wildcards: arm64 armhf -- skipping\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"arch":"amd64","arch_list":["arm64","armhf"]},"kind":"arch-not-in-list"}}),
+        );
+    }
+
+    #[test]
+    fn test_arch_check_failure_description_no_match() {
+        assert_eq!(
+            crate::failure_json(find_arch_check_failure_description(&["foo\n", "bar\n"]).as_ref()),
+            serde_json::json!({"lines":["bar\n"],"offsets":[1],"origin":"direct regex","problem":null}),
+        );
+    }
+
+    #[test]
+    fn test_check_space_failure_description() {
+        assert_eq!(
+            crate::failure_json(
+                find_check_space_failure_description(&[
+                    "foo\n",
+                    "E: Disk space is probably not sufficient for building.\n",
+                    "I: Source needs 1000 KiB, while 500 KiB is free.\n",
+                ])
+                .unwrap()
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["E: Disk space is probably not sufficient for building.\n"],"offsets":[1],"origin":"direct regex","problem":{"details":{"free":500,"needed":1000},"kind":"insufficient-disk-space"}}),
+        );
+    }
+
+    #[test]
+    fn test_check_space_failure_description_without_sizes() {
+        assert_eq!(
+            crate::failure_json(
+                find_check_space_failure_description(&[
+                    "E: Disk space is probably not sufficient for building.\n",
+                    "I: something else\n",
+                ])
+                .unwrap()
+                .as_ref()
+            ),
+            serde_json::json!({"lines":["E: Disk space is probably not sufficient for building.\n"],"offsets":[0],"origin":"direct match","problem":null}),
+        );
+    }
+
+    #[test]
+    fn test_check_space_failure_description_none() {
+        assert_eq!(
+            crate::failure_json(
+                find_check_space_failure_description(&[
+                    "E: Disk space is probably not sufficient for building.",
+                    "I: Source needs 1000 KiB, while 500 KiB is free.\n",
+                ])
+                .unwrap()
+                .as_ref()
+            ),
+            serde_json::json!(null),
+        );
+    }
 }
