@@ -382,17 +382,10 @@ pub fn find_autopkgtest_failure_description(
                 if let Some((_, testbed_failure_reason)) =
                     lazy_regex::regex_captures!(r"testbed failure: (.*)", &msg)
                 {
-                    if current_field.is_some()
-                        && testbed_failure_reason == "testbed auxverb failed with exit code 255"
+                    if let (Some(testname), "testbed auxverb failed with exit code 255") =
+                        (last_test.as_deref(), testbed_failure_reason)
                     {
-                        let field = Field::Output(
-                            current_field
-                                .as_ref()
-                                .unwrap()
-                                .testname()
-                                .unwrap()
-                                .to_owned(),
-                        );
+                        let field = Field::Output(testname.to_owned());
                         if let Some(Failure {
                             r#match: m,
                             problem: Some(error),
@@ -540,16 +533,12 @@ pub fn find_autopkgtest_failure_description(
                 }
                 if msg == "autopkgtest" && lines[i + 1].trim_end() == ": error cleaning up:" {
                     let description = lines[i - 1].trim_end().to_owned();
+                    // Point at the start of the current field's output, or
+                    // at the ERROR line itself when outside of any field.
+                    let offset = current_field.as_ref().map_or(i, |f| test_output[f].start);
                     return Ok(Some(AutopkgtestFailure {
                         failure: Failure::new(
-                            SingleLineMatch::from_lines(
-                                lines,
-                                test_output
-                                    .get(current_field.as_ref().unwrap())
-                                    .unwrap()
-                                    .start,
-                                Some("direct regex"),
-                            ),
+                            SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                             Some(Box::new(AutopkgtestTimedOut) as Box<dyn Problem>),
                         ),
                         testname: last_test.map(|x| x.to_owned()),
@@ -1216,6 +1205,38 @@ mod tests {
 "Exiting with 16\n"
         ];
         assert_autopkgtest_match(lines, vec![3], Some("phpunit"), Some(Box::new(error)), None);
+    }
+
+    #[test]
+    fn test_testbed_failure_in_summary() {
+        let error = AutopkgtestTestbedFailure {
+            reason: "testbed auxverb failed with exit code 255".to_owned(),
+        };
+        let lines = vec![
+            "autopkgtest [06:59:00]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+            "phpunit              FAIL non-zero exit status 1\n",
+            "autopkgtest [06:59:01]: ERROR: testbed failure: testbed auxverb failed with exit code 255\n",
+        ];
+        assert_autopkgtest_match(lines, vec![2], None, Some(Box::new(error)), None);
+    }
+
+    #[test]
+    fn test_error_cleaning_up_outside_test() {
+        let lines = vec![
+            "autopkgtest [06:59:00]: test phpunit: [-----------------------\n",
+            "running tests\n",
+            "autopkgtest [06:59:00]: test phpunit: -----------------------]\n",
+            "timed out\n",
+            "autopkgtest [06:59:01]: ERROR: autopkgtest\n",
+            ": error cleaning up:\n",
+        ];
+        assert_autopkgtest_match(
+            lines,
+            vec![4],
+            None,
+            Some(Box::new(AutopkgtestTimedOut)),
+            Some("timed out"),
+        );
     }
 
     #[test]
