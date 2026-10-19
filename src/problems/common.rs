@@ -1928,6 +1928,13 @@ impl Problem for MissingSetupPyCommand {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-setup.py-command",
+        detail_fields: &["command"],
+    }
+}
+
 impl Display for MissingSetupPyCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Missing setup.py command: {}", self.0)
@@ -1952,6 +1959,13 @@ impl Problem for MissingCSharpCompiler {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-c#-compiler",
+        detail_fields: &[],
     }
 }
 
@@ -3726,6 +3740,13 @@ impl Problem for MissingConfigStatusInput {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-config.status-input",
+        detail_fields: &["path"],
+    }
+}
+
 impl Display for MissingConfigStatusInput {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "missing config.status input {}", self.path)
@@ -4769,6 +4790,13 @@ impl Problem for MissingGoModFile {
     }
 }
 
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-go.mod-file",
+        detail_fields: &[],
+    }
+}
+
 impl std::fmt::Display for MissingGoModFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "go.mod file is missing")
@@ -4793,6 +4821,13 @@ impl Problem for OutdatedGoModFile {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "outdated-go.mod-file",
+        detail_fields: &[],
     }
 }
 
@@ -5022,6 +5057,13 @@ impl Problem for MissingGoSumEntry {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+inventory::submit! {
+    crate::ProblemKindInfo {
+        kind: "missing-go.sum-entry",
+        detail_fields: &["package", "version"],
     }
 }
 
@@ -5266,5 +5308,41 @@ inventory::submit! {
     crate::ProblemKindInfo {
         kind: "missing-make-target",
         detail_fields: &["target", "required_by"],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_registered(problem: &dyn Problem) {
+        let kind = problem.kind();
+        let info = inventory::iter::<crate::ProblemKindInfo>()
+            .find(|info| info.kind == kind)
+            .unwrap_or_else(|| panic!("no ProblemKindInfo registered for {:?}", kind));
+        let mut expected: Vec<String> = problem
+            .json()
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect();
+        expected.sort();
+        let mut actual: Vec<&str> = info.detail_fields.to_vec();
+        actual.sort();
+        assert_eq!(actual, expected, "detail_fields mismatch for {:?}", kind);
+    }
+
+    #[test]
+    fn test_kinds_registered() {
+        assert_registered(&MissingSetupPyCommand("test".into()));
+        assert_registered(&MissingCSharpCompiler);
+        assert_registered(&MissingConfigStatusInput::new("Makefile.in".into()));
+        assert_registered(&MissingGoModFile);
+        assert_registered(&OutdatedGoModFile);
+        assert_registered(&MissingGoSumEntry {
+            package: "github.com/foo/bar".into(),
+            version: "v1.0.0".into(),
+        });
     }
 }
