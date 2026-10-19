@@ -250,9 +250,8 @@ impl Matcher for SetupPyCommandMissingMatcher {
                 Some((_, command)) => command,
             };
 
-        for j in 0..20 {
-            let offset = offset - j;
-            let line = lines[offset].trim_end_matches('\n');
+        for line in lines[offset.saturating_sub(19)..=offset].iter().rev() {
+            let line = line.trim_end_matches('\n');
 
             if regex_is_match!(
                 r"usage: setup.py \[global_opts\] cmd1 \[cmd1_opts\] \[cmd2 \[cmd2_opts\] \.\.\.\]",
@@ -5291,6 +5290,32 @@ error: invalid command 'test'
 """#.split_inclusive('\n').collect::<Vec<&str>>(),
             12,
             Some(MissingSetupPyCommand("test".to_owned())),
+        );
+    }
+
+    #[test]
+    fn test_setup_py_command_no_usage_near_start() {
+        let lines = vec!["running build\n", "error: invalid command 'foo'\n"];
+        let result = SetupPyCommandMissingMatcher
+            .extract_from_lines(&lines, 1)
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_setup_py_command_usage_on_first_line() {
+        let lines = vec![
+            "usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]\n",
+            "error: invalid command 'foo'\n",
+        ];
+        let (m, p) = SetupPyCommandMissingMatcher
+            .extract_from_lines(&lines, 1)
+            .unwrap()
+            .unwrap();
+        assert_eq!(m.offsets(), vec![1]);
+        assert_eq!(
+            p.as_deref(),
+            Some(&MissingSetupPyCommand("foo".to_owned()) as &dyn Problem)
         );
     }
 
