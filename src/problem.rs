@@ -210,7 +210,7 @@ macro_rules! problem {
 
 /// Check the kind, JSON details and Display output of a problem, that the
 /// registered detail fields match the JSON keys, and that the problem
-/// round-trips through [`problem_from_json`] if it has a deserializer.
+/// round-trips through [`problem_from_json`].
 #[cfg(test)]
 pub(crate) fn assert_wire_format(
     p: &dyn Problem,
@@ -218,8 +218,41 @@ pub(crate) fn assert_wire_format(
     details: serde_json::Value,
     display: &str,
 ) {
+    assert_wire_format_common(p, kind, &details, display);
+    let back = problem_from_json(kind, &details)
+        .unwrap_or_else(|| panic!("{} failed to deserialize", kind));
+    assert_eq!(back.kind(), kind);
+    assert_eq!(back.json(), details, "round-trip of {}", kind);
+}
+
+/// Like [`assert_wire_format`], for problems that can't be reconstructed
+/// from their JSON details and so have no deserializer.
+#[cfg(test)]
+pub(crate) fn assert_wire_format_no_deserializer(
+    p: &dyn Problem,
+    kind: &str,
+    details: serde_json::Value,
+    display: &str,
+) {
+    assert_wire_format_common(p, kind, &details, display);
+    assert!(
+        !inventory::iter::<ProblemDeserializer>
+            .into_iter()
+            .any(|d| d.kind == kind),
+        "{} has a deserializer",
+        kind
+    );
+}
+
+#[cfg(test)]
+fn assert_wire_format_common(
+    p: &dyn Problem,
+    kind: &str,
+    details: &serde_json::Value,
+    display: &str,
+) {
     assert_eq!(p.kind(), kind);
-    assert_eq!(p.json(), details, "json() of {}", kind);
+    assert_eq!(&p.json(), details, "json() of {}", kind);
     assert_eq!(p.to_string(), display, "Display of {}", kind);
 
     {
@@ -235,16 +268,6 @@ pub(crate) fn assert_wire_format(
             .unwrap_or_default();
         keys.sort();
         assert_eq!(fields, keys, "detail_fields of {}", kind);
-    }
-
-    if inventory::iter::<ProblemDeserializer>
-        .into_iter()
-        .any(|d| d.kind == kind)
-    {
-        let back = problem_from_json(kind, &details)
-            .unwrap_or_else(|| panic!("{} failed to deserialize", kind));
-        assert_eq!(back.kind(), kind);
-        assert_eq!(back.json(), details, "round-trip of {}", kind);
     }
 }
 
