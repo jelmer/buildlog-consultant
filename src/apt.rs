@@ -159,8 +159,15 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
         if let Some((_, pkg, msg)) =
             lazy_regex::regex_captures!(r"dpkg: error processing package (.*) \((.*)\):", line)
         {
+            // The following line has the reason; fall back to this one if
+            // the log ends here.
+            let offset = if lineno + 1 < lines.len() {
+                lineno + 1
+            } else {
+                lineno
+            };
             return Some(Failure::new(
-                SingleLineMatch::from_lines(lines, lineno + 1, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                 Some(Box::new(DpkgError {
                     msg: format!("processing package {} ({})", pkg, msg),
                 })),
@@ -445,6 +452,26 @@ mod tests {
             let dpkg_error = dpkg_error.unwrap();
             assert_eq!(dpkg_error.msg, "processing package hello (--configure)");
         }
+    }
+
+    #[test]
+    fn test_dpkg_error_processing_package_last_line() {
+        let lines = vec!["dpkg: error processing package hello (--configure):"];
+
+        let failure = find_apt_get_failure(&lines).unwrap();
+
+        assert_eq!(failure.r#match.offsets(), vec![0]);
+        assert_eq!(
+            failure
+                .problem
+                .unwrap()
+                .as_any()
+                .downcast_ref::<DpkgError>()
+                .unwrap(),
+            &DpkgError {
+                msg: "processing package hello (--configure)".to_string(),
+            }
+        );
     }
 
     // Direct test of functions without using helper functions
