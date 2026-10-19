@@ -137,7 +137,7 @@ pub(crate) struct Pkg {
     pub unsat_dependency: Option<String>,
 
     /// The unsatisfied conflict, if any.
-    #[serde(rename = "unsat-conflict)")]
+    #[serde(rename = "unsat-conflict")]
     pub unsat_conflict: Option<String>,
 }
 
