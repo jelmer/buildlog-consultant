@@ -611,6 +611,45 @@ mod tests {
     }
 
     #[test]
+    fn test_find_cudf_output_conflict() {
+        let lines = vec![
+            "output-version: 1.2\n",
+            "native-architecture: amd64\n",
+            "report:\n",
+            " -\n",
+            "  package: sbuild-build-depends-main-dummy\n",
+            "  version: 0.invalid.0\n",
+            "  architecture: amd64\n",
+            "  status: broken\n",
+            "  reasons:\n",
+            "   -\n",
+            "    conflict:\n",
+            "     pkg1:\n",
+            "      package: sbuild-build-depends-main-dummy\n",
+            "      version: 0.invalid.0\n",
+            "      architecture: amd64\n",
+            "      unsat-conflict: libfoo:amd64 (<< 2.0)\n",
+            "     pkg2:\n",
+            "      package: libfoo\n",
+            "      version: 1.0-1\n",
+            "      architecture: amd64\n",
+            " \n",
+        ];
+        let (_, cudf) = find_cudf_output(lines).unwrap();
+        let conflict = cudf.report[0].reasons[0].conflict.as_ref().unwrap();
+        assert_eq!(
+            conflict.pkg1.unsat_conflict.as_deref(),
+            Some("libfoo:amd64 (<< 2.0)")
+        );
+        let problem = error_from_dose3_reports(&cudf.report).unwrap();
+        let problem = problem
+            .as_any()
+            .downcast_ref::<UnsatisfiedAptConflicts>()
+            .unwrap();
+        assert_eq!(problem.0, "libfoo:amd64 (<< 2.0)");
+    }
+
+    #[test]
     fn test_error_from_dose3_reports() {
         use crate::cudf::*;
 
