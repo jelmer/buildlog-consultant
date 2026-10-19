@@ -70,9 +70,12 @@ fn parse_debcargo_failure(_: &regex::Captures, prior_lines: &[&str]) -> Option<B
     const MORE_TAIL: &str = "\x1b[0m\n";
     const MORE_HEAD1: &str = "\x1b[1;31mSomething failed: ";
     const MORE_HEAD2: &str = "\x1b[1;31mdebcargo failed: ";
-    if let Some(extra) = prior_lines.last().unwrap().strip_suffix(MORE_TAIL) {
+    if let Some((extra, earlier)) = prior_lines
+        .split_last()
+        .and_then(|(last, earlier)| Some((last.strip_suffix(MORE_TAIL)?, earlier)))
+    {
         let mut extra = vec![extra];
-        for line in prior_lines[..prior_lines.len() - 1].iter().rev() {
+        for line in earlier.iter().rev() {
             if let Some(middle) = extra[0].strip_prefix(MORE_HEAD1) {
                 extra[0] = middle;
                 break;
@@ -284,6 +287,19 @@ mod tests {
                 source_format: false
             }) as Box<dyn Problem>),
             err
+        );
+    }
+
+    #[test]
+    fn test_debcargo_failure_on_first_line() {
+        let lines = vec!["brz: ERROR: Debcargo failed to run.\n"];
+        let (err, line) = find_brz_build_error(&lines).unwrap().unwrap();
+        assert_eq!(line, "Debcargo failure: Debcargo failed to run");
+        assert_eq!(
+            err,
+            Some(Box::new(DebcargoFailure {
+                reason: "Debcargo failed to run".to_string()
+            }) as Box<dyn Problem>)
         );
     }
 
