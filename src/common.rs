@@ -1933,9 +1933,10 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))
     ),
     regex_line_matcher!(
-        r#"(subprocess.CalledProcessError|error): Command \'\[\'/usr/bin/python([0-9.]*)\', \'-m\', \'pip\', \'--disable-pip-version-check\', \'wheel\', \'--no-deps\', \'-w\', .*, \'([^-][^\']+)\'\]\' returned non-zero exit status 1."#,
+        r#"(subprocess.CalledProcessError|error): Command \'\[\'/usr/bin/python(?:([0-9]{1,9})(?:\.[0-9]+)*)?\', \'-m\', \'pip\', \'--disable-pip-version-check\', \'wheel\', \'--no-deps\', \'-w\', .*, \'([^-][^\']+)\'\]\' returned non-zero exit status 1."#,
         |m| {
-            let python_version = m.get(2).filter(|x| !x.is_empty()).map(|pv| pv.as_str().split_once('.').map_or(pv.as_str(), |x| x.0).parse().unwrap());
+            // The regex only captures up to 9 digits, so this always fits in an i32.
+            let python_version = m.get(2).map(|pv| pv.as_str().parse().unwrap());
             Ok(Some(Box::new(MissingPythonDistribution::from_requirement_str(
                 m.get(3).unwrap().as_str(), python_version
             ))))
@@ -5577,6 +5578,35 @@ error: invalid command 'test'
             1,
             Some(MissingPythonDistribution::simple("setuptools-scm")),
         );
+    }
+
+    fn pip_wheel_line(python: &str) -> String {
+        format!("error: Command '['/usr/bin/{}', '-m', 'pip', '--disable-pip-version-check', 'wheel', '--no-deps', '-w', '/tmp/tmp973_8lhm', '--quiet', 'asynctest']' returned non-zero exit status 1.", python)
+    }
+
+    #[test]
+    fn test_pip_wheel_python_version() {
+        let line = pip_wheel_line("python3.11");
+        let (m, err) = super::find_build_failure_description(vec![&line]);
+        assert_eq!(m.expect("match expected").line(), line);
+        assert_eq!(
+            err.as_ref().map(|x| x.as_ref()),
+            Some(&MissingPythonDistribution {
+                distribution: "asynctest".to_owned(),
+                python_version: Some(3),
+                minimum_version: None
+            } as &dyn Problem)
+        );
+    }
+
+    #[test]
+    fn test_pip_wheel_malformed_python_version() {
+        for python in ["python.", "python.3", "python99999999999999999999"] {
+            let line = pip_wheel_line(python);
+            let (m, err) = super::find_build_failure_description(vec![&line]);
+            assert_eq!(m.expect("generic match expected").line(), line);
+            assert!(err.is_none(), "{}: unexpected problem {:?}", python, err);
+        }
     }
 
     #[test]
