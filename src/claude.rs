@@ -43,20 +43,20 @@ async fn pick_model(client: &Client) -> Result<String, Box<dyn std::error::Error
 ///
 /// # Arguments
 /// * `api_key` - API key for Anthropic
-/// * `lines` - Vector of log lines to analyze
+/// * `lines` - Log lines to analyze
 ///
 /// # Returns
 /// A Result containing an optional [`AnalysisResult`] with the identified error line
 /// and problem details, or an error if the Claude API call fails.
 pub async fn analyze(
     api_key: String,
-    lines: Vec<&str>,
+    lines: &[&str],
 ) -> std::result::Result<Option<AnalysisResult>, Box<dyn std::error::Error + Send + Sync>> {
     let client = ClientBuilder::default().api_key(api_key).build()?;
     let model = pick_model(&client).await?;
 
-    let (offset, selected) = llm::truncate_lines(&lines);
-    let prompt = llm::format_prompt(&selected, offset);
+    let (offset, selected) = llm::truncate_lines(lines);
+    let prompt = llm::format_prompt(selected, offset);
 
     let messages = vec![Message {
         role: Role::User,
@@ -83,7 +83,7 @@ pub async fn analyze(
 
     log::debug!("Claude raw response: {:?}", text);
 
-    match llm::parse_response(text, &lines, "claude") {
+    match llm::parse_response(text, lines, "claude") {
         Some(result) => Ok(Some(result)),
         None => {
             log::debug!("Unable to parse claude response: {:?}", text);

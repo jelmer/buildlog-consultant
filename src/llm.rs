@@ -91,7 +91,7 @@ pub fn format_prompt(lines: &[&str], offset: usize) -> String {
 ///
 /// Returns `(offset, selected_lines)` where `offset` is the index of the
 /// first selected line in the original `lines` slice.
-pub fn truncate_lines<'a>(lines: &[&'a str]) -> (usize, Vec<&'a str>) {
+pub fn truncate_lines<'a, 'b>(lines: &'b [&'a str]) -> (usize, &'b [&'a str]) {
     let mut total = 0;
     let mut count = 0;
     for line in lines.iter().rev() {
@@ -103,15 +103,14 @@ pub fn truncate_lines<'a>(lines: &[&'a str]) -> (usize, Vec<&'a str>) {
         count += 1;
     }
     let offset = lines.len() - count;
-    let selected: Vec<&str> = lines[offset..].to_vec();
-    (offset, selected)
+    (offset, &lines[offset..])
 }
 
 /// Parse the LLM response to extract a line number, problem kind, and details.
 ///
 /// The response is expected to be a JSON object with `line`, `kind`, and `details` fields.
 /// Falls back to extracting just a line number if JSON parsing fails.
-pub fn parse_response(response: &str, lines: &Vec<&str>, origin: &str) -> Option<AnalysisResult> {
+pub fn parse_response(response: &str, lines: &[&str], origin: &str) -> Option<AnalysisResult> {
     // Strip markdown code fences if present
     let trimmed = response.trim();
     let trimmed = trimmed

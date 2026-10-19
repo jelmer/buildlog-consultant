@@ -27,7 +27,7 @@ fn main() {
 
     let lines = log.split_inclusive('\n').collect::<Vec<_>>();
 
-    let Some(failure) = buildlog_consultant::apt::find_apt_get_failure(lines.clone()) else {
+    let Some(failure) = buildlog_consultant::apt::find_apt_get_failure(&lines) else {
         return;
     };
 

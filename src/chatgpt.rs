@@ -71,14 +71,14 @@ async fn pick_model(
 ///
 /// # Arguments
 /// * `chatgpt_key` - API key for ChatGPT
-/// * `lines` - Vector of log lines to analyze
+/// * `lines` - Log lines to analyze
 ///
 /// # Returns
 /// A Result containing an optional [`AnalysisResult`] with the identified error line
 /// and problem details, or an error if the ChatGPT API call fails.
 pub async fn analyze(
     chatgpt_key: String,
-    lines: Vec<&str>,
+    lines: &[&str],
 ) -> std::result::Result<Option<AnalysisResult>, Box<dyn std::error::Error + Send + Sync>> {
     let model_name = pick_model(&chatgpt_key).await?;
     let model_str: &'static str = Box::leak(model_name.into_boxed_str());
@@ -88,15 +88,15 @@ pub async fn analyze(
     };
     let client = ChatGPT::new_with_config(chatgpt_key, config)?;
 
-    let (offset, selected) = llm::truncate_lines(&lines);
-    let prompt = llm::format_prompt(&selected, offset);
+    let (offset, selected) = llm::truncate_lines(lines);
+    let prompt = llm::format_prompt(selected, offset);
     let full_prompt = format!("{}\n\n{}", llm::system_prompt(), prompt);
 
     let response: CompletionResponse = client.send_message(&full_prompt).await?;
 
     let text = &response.message().content;
 
-    match llm::parse_response(text, &lines, "chatgpt") {
+    match llm::parse_response(text, lines, "chatgpt") {
         Some(result) => Ok(Some(result)),
         None => {
             log::debug!("Unable to parse chatgpt response: {:?}", text);

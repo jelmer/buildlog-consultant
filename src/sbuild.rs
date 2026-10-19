@@ -540,7 +540,7 @@ impl std::fmt::Display for SbuildFailure {
 ///
 /// # Returns
 /// The failure, if one was found
-pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Failure>, Error> {
+pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failure>, Error> {
     let mut ret = None;
     for (lineno, line) in lines.enumerate_backward(Some(100)) {
         let line = line.trim_end_matches('\n');
@@ -559,7 +559,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                         files: Some(files),
                     }) as Box<dyn Problem>);
                     return Ok(Some(Failure::new(
-                        SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                        SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                         err,
                     )));
                 }
@@ -571,14 +571,14 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 files: Some(files),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
         if line == "dpkg-source: error: unrepresentable changes to source" {
             let err = Some(Box::new(DpkgSourceUnrepresentableChanges) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct match")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct match")),
                 err,
             )));
         }
@@ -588,7 +588,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
         ) {
             let err = Some(Box::new(DpkgUnwantedBinaryFiles) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -598,21 +598,21 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
         ) {
             let err = Some(Box::new(MissingControlFile { path: path.into() }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
         if lazy_regex::regex_is_match!("dpkg-source: error: .*: No space left on device", line) {
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
         if lazy_regex::regex_is_match!("tar: .*: Cannot write: No space left on device", line) {
             let err = Some(Box::new(NoSpaceOnDevice) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -624,7 +624,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 files: vec![path.to_string()],
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -637,7 +637,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 source_format: format.to_string(),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -649,7 +649,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 reason: reason.to_string(),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -667,7 +667,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                         reason: Some(reason.to_string()),
                     }) as Box<dyn Problem>);
                     return Ok(Some(Failure::new(
-                        SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                        SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                         err,
                     )));
                 }
@@ -682,7 +682,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 patchname: patchname.to_string(),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -694,7 +694,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 patchname: patchname.to_string(),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -707,7 +707,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 reason: reason.to_string(),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -718,7 +718,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
             let _patchname = path.rsplit_once('/').unwrap().1;
             let err = Some(Box::new(PatchFileMissing { path: path.into() }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -726,7 +726,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
             "dpkg-source: error: source package format '(.*)' is not supported: (.*)",
             line
         ) {
-            let p = find_build_failure_description(vec![msg])?
+            let p = find_build_failure_description(&[msg])?
                 .and_then(|f| f.problem)
                 .unwrap_or_else(|| {
                     Box::new(SourceFormatUnsupported {
@@ -734,7 +734,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                     }) as Box<dyn Problem>
                 });
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 Some(p),
             )));
         }
@@ -746,7 +746,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 revision: revid.as_bytes().to_vec(),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -759,7 +759,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 treeish: arg.to_string(),
             }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             )));
         }
@@ -769,7 +769,7 @@ pub fn find_preamble_failure_description(lines: Vec<&str>) -> Result<Option<Fail
                 reason: msg.to_string(),
             }) as Box<dyn Problem>);
             ret = Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
                 err,
             ));
         }
@@ -912,15 +912,15 @@ pub fn find_failure_fetch_src(
     };
     let section_lines = section.lines();
     let section_lines = if section_lines[0].trim().is_empty() {
-        section_lines[1..].to_vec()
+        &section_lines[1..]
     } else {
-        section_lines.to_vec()
+        &section_lines[..]
     };
     if section_lines.len() == 1 && section_lines[0].starts_with("E: Could not find ") {
         let Some(lines) = sbuildlog.get_section_lines(None) else {
             return Ok(None);
         };
-        let (r#match, error) = Failure::split(find_preamble_failure_description(lines)?);
+        let (r#match, error) = Failure::split(find_preamble_failure_description(&lines)?);
         return Ok(Some(SbuildFailure {
             stage: Some("unpack".to_string()),
             description: error.as_ref().map(|x| x.to_string()),
@@ -930,7 +930,7 @@ pub fn find_failure_fetch_src(
             phase: None,
         }));
     }
-    let (r#match, error) = Failure::split(crate::apt::find_apt_get_failure(section.lines()));
+    let (r#match, error) = Failure::split(crate::apt::find_apt_get_failure(&section.lines()));
     let description = format!("build failed stage {}", failed_stage);
     Ok(Some(SbuildFailure {
         stage: Some(failed_stage.to_string()),
@@ -958,7 +958,7 @@ pub fn find_failure_create_session(
     failed_stage: &str,
 ) -> Option<SbuildFailure> {
     let section = sbuildlog.get_section(None)?;
-    let (r#match, error) = Failure::split(find_creation_session_error(section.lines()));
+    let (r#match, error) = Failure::split(find_creation_session_error(&section.lines()));
     let phase = Phase::CreateSession;
     let description = format!("build failed stage {}", failed_stage);
     Some(SbuildFailure {
@@ -981,12 +981,12 @@ pub fn find_failure_create_session(
 ///
 /// # Returns
 /// The failure, if one was found
-pub fn find_creation_session_error(lines: Vec<&str>) -> Option<Failure> {
+pub fn find_creation_session_error(lines: &[&str]) -> Option<Failure> {
     let mut ret = None;
     for (i, line) in lines.enumerate_backward(None) {
         if line.starts_with("E: ") {
             ret = Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 None,
             ));
         }
@@ -998,13 +998,13 @@ pub fn find_creation_session_error(lines: Vec<&str>) -> Option<Failure> {
                 chroot: format!("{}-{}-sbuild", distribution, architecture),
             }) as Box<dyn Problem>);
             ret = Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 err,
             ));
         }
         if line.ends_with(": No space left on device\n") {
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, i, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, i, Some("direct regex")),
                 Some(Box::new(NoSpaceOnDevice)),
             ));
         }
@@ -1030,7 +1030,7 @@ pub fn find_failure_unpack(
 ) -> Result<Option<SbuildFailure>, Error> {
     let section = sbuildlog.get_section(Some("build"));
     if let Some(section) = section {
-        let (r#match, error) = Failure::split(find_preamble_failure_description(section.lines())?);
+        let (r#match, error) = Failure::split(find_preamble_failure_description(&section.lines())?);
         if let Some(error) = error {
             return Ok(Some(SbuildFailure {
                 stage: Some(failed_stage.to_string()),
@@ -1072,8 +1072,7 @@ pub fn find_failure_build(
     let (section, r#match, error) = if let Some(section) = sbuildlog.get_section(Some("build")) {
         let lines_ref = section.lines();
         let (section_lines, _files) = strip_build_tail(&lines_ref, None);
-        let (r#match, error) =
-            Failure::split(find_build_failure_description(section_lines.to_vec())?);
+        let (r#match, error) = Failure::split(find_build_failure_description(section_lines)?);
         (Some(section), r#match, error)
     } else {
         (None, None, None)
@@ -1142,7 +1141,7 @@ pub fn find_failure_apt_get_update(
 ///
 /// # Returns
 /// The failure, if one was found
-fn find_arch_check_failure_description(lines: Vec<&str>) -> Option<Failure> {
+fn find_arch_check_failure_description(lines: &[&str]) -> Option<Failure> {
     for (offset, line) in lines.enumerate_forward(None) {
         if let Some((_, arch, arch_list)) = lazy_regex::regex_captures!(
             "E: dsc: (.*) not in arch list or does not match any arch wildcards: (.*) -- skipping",
@@ -1156,13 +1155,13 @@ fn find_arch_check_failure_description(lines: Vec<&str>) -> Option<Failure> {
                     .collect(),
             };
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, offset, Some("direct regex")),
+                SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                 Some(Box::new(error)),
             ));
         }
     }
     Some(Failure::new(
-        SingleLineMatch::from_lines(&lines, lines.len() - 1, Some("direct regex")),
+        SingleLineMatch::from_lines(lines, lines.len() - 1, Some("direct regex")),
         None,
     ))
 }
@@ -1181,7 +1180,7 @@ fn find_arch_check_failure_description(lines: Vec<&str>) -> Option<Failure> {
 pub fn find_failure_arch_check(sbuildlog: &SbuildLog, failed_stage: &str) -> Option<SbuildFailure> {
     let section = sbuildlog.get_section(Some("check architectures"));
     let (r#match, error) =
-        Failure::split(section.and_then(|s| find_arch_check_failure_description(s.lines())));
+        Failure::split(section.and_then(|s| find_arch_check_failure_description(&s.lines())));
     let description = if let Some(error) = error.as_ref() {
         error.to_string()
     } else {
@@ -1213,7 +1212,7 @@ pub fn find_failure_check_space(
     failed_stage: &str,
 ) -> Option<SbuildFailure> {
     let section = sbuildlog.get_section(Some("cleanup"))?;
-    let (r#match, error) = Failure::split(find_check_space_failure_description(section.lines()));
+    let (r#match, error) = Failure::split(find_check_space_failure_description(&section.lines()));
     let description = if let Some(ref error) = error {
         error.to_string()
     } else {
@@ -1249,7 +1248,7 @@ pub const DOSE3_SECTION: &str = "install dose3 build dependencies (aspcud-based 
 pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SectionFailure<'_> {
     let dose3_lines = sbuildlog.get_section_lines(Some(DOSE3_SECTION));
     if let Some(dose3_lines) = dose3_lines {
-        let dose3 = crate::apt::find_cudf_output(dose3_lines.clone());
+        let dose3 = crate::apt::find_cudf_output(&dose3_lines);
         if let Some((dose3_offsets, dose3_output)) = dose3 {
             let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
             let r#match = crate::MultiLineMatch::from_lines(&dose3_lines, dose3_offsets, None);
@@ -1263,7 +1262,7 @@ pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SectionFa
     const SECTION: &str = "Install package build dependencies";
     let build_dependencies_lines = sbuildlog.get_section_lines(Some(SECTION));
     if let Some(build_dependencies_lines) = build_dependencies_lines {
-        let dose3 = crate::apt::find_cudf_output(build_dependencies_lines.clone());
+        let dose3 = crate::apt::find_cudf_output(&build_dependencies_lines);
         if let Some((dose3_offsets, dose3_output)) = dose3 {
             let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
             let r#match =
@@ -1275,7 +1274,7 @@ pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SectionFa
         }
         return SectionFailure {
             section: Some(SECTION),
-            failure: crate::apt::find_apt_get_failure(build_dependencies_lines),
+            failure: crate::apt::find_apt_get_failure(&build_dependencies_lines),
         };
     }
 
@@ -1287,7 +1286,7 @@ pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SectionFa
             "install (.*) build dependencies.*",
             &section.title.as_ref().unwrap().to_lowercase()
         ) {
-            if let Some(failure) = crate::apt::find_apt_get_failure(section.lines()) {
+            if let Some(failure) = crate::apt::find_apt_get_failure(&section.lines()) {
                 return SectionFailure {
                     section: section.title.as_deref(),
                     failure: Some(failure),
@@ -1372,7 +1371,7 @@ pub fn find_failure_autopkgtest(
     let section = sbuildlog.get_section(Some(focus_section));
     let (description, error, r#match, phase) = if let Some(section) = section {
         let (failure, testname, description) =
-            crate::autopkgtest::find_autopkgtest_failure_description(section.lines())?
+            crate::autopkgtest::find_autopkgtest_failure_description(&section.lines())?
                 .map_or((None, None, None), |f| {
                     (Some(f.failure), f.testname, f.description)
                 });
@@ -1419,7 +1418,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
         == vec![None]
     {
         let section = sbuildlog.sections().next().unwrap();
-        let (r#match, error) = Failure::split(find_preamble_failure_description(section.lines())?);
+        let (r#match, error) = Failure::split(find_preamble_failure_description(&section.lines())?);
         if let Some(error) = error {
             return Ok(SbuildFailure {
                 stage: Some("unpack".to_string()),
@@ -1487,11 +1486,11 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
         == vec![None]
     {
         let s = sbuildlog.sections().next().unwrap();
-        (r#match, error) = Failure::split(find_preamble_failure_description(s.lines())?);
+        (r#match, error) = Failure::split(find_preamble_failure_description(&s.lines())?);
         if let Some(error) = error.as_ref() {
             description = Some(error.to_string());
         } else {
-            (r#match, error) = Failure::split(find_build_failure_description(s.lines())?);
+            (r#match, error) = Failure::split(find_build_failure_description(&s.lines())?);
             if let Some(r#match) = r#match.as_ref() {
                 description = Some(r#match.line().trim_end_matches('\n').to_string());
             }
@@ -1501,7 +1500,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
             // a more identifiable cause (uscan failures, missing tarballs,
             // etc.).
             if error.is_none() {
-                if let Some((e, d)) = crate::brz::find_brz_build_error(s.lines()) {
+                if let Some((e, d)) = crate::brz::find_brz_build_error(&s.lines()) {
                     if e.is_some() {
                         description = Some(d.to_string());
                         error = e;
@@ -1533,7 +1532,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
 ///
 /// # Returns
 /// The failure, if one was found
-fn find_check_space_failure_description(lines: Vec<&str>) -> Option<Failure> {
+fn find_check_space_failure_description(lines: &[&str]) -> Option<Failure> {
     for (offset, line) in lines.enumerate_forward(None) {
         if line == "E: Disk space is probably not sufficient for building.\n" {
             if let Some((_, needed, free)) = lazy_regex::regex_captures!(
@@ -1541,7 +1540,7 @@ fn find_check_space_failure_description(lines: Vec<&str>) -> Option<Failure> {
                 lines[offset + 1]
             ) {
                 return Some(Failure::new(
-                    SingleLineMatch::from_lines(&lines, offset, Some("direct regex")),
+                    SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                     Some(Box::new(InsufficientDiskSpace {
                         needed: needed.parse().unwrap(),
                         free: free.parse().unwrap(),
@@ -1549,7 +1548,7 @@ fn find_check_space_failure_description(lines: Vec<&str>) -> Option<Failure> {
                 ));
             }
             return Some(Failure::new(
-                SingleLineMatch::from_lines(&lines, offset, Some("direct match")),
+                SingleLineMatch::from_lines(lines, offset, Some("direct match")),
                 None,
             ));
         }
@@ -2202,7 +2201,7 @@ Line4
             "1 out of 1 hunk FAILED -- rejects in file src/foo.c\n",
             "Patch debian/patches/foo.patch does not apply (enforce with -f)\n",
         ];
-        let (m, error) = Failure::split(find_preamble_failure_description(lines).unwrap());
+        let (m, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
         let m = m.expect("match");
         assert_eq!(m.lineno(), 5);
         let error = error.expect("problem");
@@ -2219,7 +2218,7 @@ Line4
             "1 out of 1 hunk FAILED -- rejects in file src/foo.c\n",
             "Patch foo.patch does not apply (enforce with -f)\n",
         ];
-        let (_, error) = Failure::split(find_preamble_failure_description(lines).unwrap());
+        let (_, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
         let error = error.expect("problem");
         assert_eq!(error.kind(), "patch-application-failed");
         assert_eq!(error.json(), serde_json::json!({"patchname": "foo.patch"}));
