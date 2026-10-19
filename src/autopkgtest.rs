@@ -309,7 +309,12 @@ pub fn find_autopkgtest_failure_description(
                             break;
                         }
                     }
-                    sublines.join("\n")
+                    // Continuation lines still carry their line terminator.
+                    sublines
+                        .iter()
+                        .map(|l| l.trim_end_matches('\n'))
+                        .collect::<Vec<_>>()
+                        .join("\n")
                 } else {
                     msg.to_string()
                 };
@@ -1199,6 +1204,22 @@ mod tests {
         let error = AutopkgtestDepChrootDisappeared;
 
         assert_autopkgtest_match(lines, vec![7], Some("runtestsuite"), Some(Box::new(error)), Some("W: /var/lib/schroot/session/unstable-amd64-sbuild-7fb1b836-14f9-4709-8584-cbbae284db97: Failed to stat file: No such file or directory"));
+    }
+
+    #[test]
+    fn test_multiline_quoted_error() {
+        let lines = vec![
+            "autopkgtest [19:19:23]: ERROR: \"dpkg --unpack /tmp/x.deb\n",
+            "first\n",
+            "second\"\n",
+        ];
+        assert_autopkgtest_match(
+            lines,
+            vec![0],
+            None,
+            None,
+            Some("\"dpkg --unpack /tmp/x.deb\nfirst\nsecond\""),
+        );
     }
 
     #[test]
