@@ -63,7 +63,7 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
         if line == "E: Unable to correct problems, you have held broken packages." {
             let mut offsets = vec![];
             let mut broken = vec![];
-            for j in (0..(lineno - 1)).rev() {
+            for j in (0..lineno).rev() {
                 if let Some((_, pkg, _)) = lazy_regex::regex_captures!(
                     r"\s*Depends: (.*) but it is not (going to be installed|installable)",
                     lines[j]
@@ -86,6 +86,8 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
                 description: lines[lineno].trim().to_string(),
                 broken: Some(broken),
             }) as Box<dyn Problem>);
+            // Keep offsets ascending, as highlight_lines expects.
+            offsets.reverse();
             offsets.push(lineno);
             return Some(Failure::new(
                 MultiLineMatch::from_lines(lines, offsets, Some("direct match")),
@@ -516,6 +518,68 @@ mod tests {
                 description: "E: Broken packages".to_string(),
                 broken: None,
             }
+        );
+    }
+
+    #[test]
+    fn test_held_broken_packages() {
+        let lines = vec![
+            "The following packages have unmet dependencies:",
+            " sbuild-build-depends-main-dummy : Depends: libfoo-dev but it is not going to be installed",
+            "                                   Depends: libbar-dev (>= 1.0) but it is not installable",
+            "E: Unable to correct problems, you have held broken packages.",
+        ];
+
+        let failure = find_apt_get_failure(&lines).unwrap();
+
+        assert_eq!(failure.r#match.offsets(), vec![1, 2, 3]);
+        assert_eq!(failure.r#match.lines(), vec![lines[1], lines[2], lines[3]]);
+        assert_eq!(
+            failure
+                .problem
+                .unwrap()
+                .as_any()
+                .downcast_ref::<AptBrokenPackages>()
+                .unwrap(),
+            &AptBrokenPackages {
+                description: "E: Unable to correct problems, you have held broken packages."
+                    .to_string(),
+                broken: Some(vec![
+                    "libbar-dev (>= 1.0)".to_string(),
+                    "libfoo-dev".to_string()
+                ]),
+            }
+        );
+    }
+
+    #[test]
+    fn test_held_broken_packages_from_first_line() {
+        let lines = vec![
+            " sbuild-build-depends-main-dummy : Depends: libfoo-dev but it is not going to be installed",
+            "E: Unable to correct problems, you have held broken packages.",
+        ];
+
+        let failure = find_apt_get_failure(&lines).unwrap();
+
+        assert_eq!(failure.r#match.offsets(), vec![0, 1]);
+    }
+
+    #[test]
+    fn test_held_broken_packages_first_line() {
+        let lines = vec!["E: Unable to correct problems, you have held broken packages."];
+
+        let failure = find_apt_get_failure(&lines).unwrap();
+
+        assert_eq!(failure.r#match.offsets(), vec![0]);
+        assert_eq!(
+            failure
+                .problem
+                .unwrap()
+                .as_any()
+                .downcast_ref::<AptBrokenPackages>()
+                .unwrap()
+                .broken,
+            Some(vec![])
         );
     }
 
