@@ -6,7 +6,8 @@
 
 use crate::lines::Lines;
 use crate::problems::autopkgtest::*;
-use crate::r#match::Error;
+use crate::r#match::{extract_from_line, Error, RegexLineMatcher};
+use crate::regex_line_matcher;
 use crate::{Failure, Problem};
 use std::collections::HashMap;
 
@@ -810,6 +811,48 @@ pub fn find_autopkgtest_failure_description(
     Ok(None)
 }
 
+lazy_static::lazy_static! {
+    static ref TESTBED_SETUP_MATCHERS: [Box<RegexLineMatcher>; 2] = [
+        // stderr is a Python repr(), which is double-quoted if the string
+        // contains ' but no ".
+        regex_line_matcher!(
+            r#"\[(.*)\] failed \(exit status (-?[0-9]+), stderr ('.*'|".*")\)\n"#,
+            |c| {
+                let stderr = &c[3][1..c[3].len() - 1];
+                if let Some((_, chroot)) =
+                    lazy_regex::regex_captures!(r"E: (.*): Chroot not found\\n", stderr)
+                {
+                    return Ok(Some(Box::new(crate::problems::common::ChrootNotFound {
+                        chroot: chroot.to_owned(),
+                    })));
+                }
+                Ok(Some(Box::new(AutopkgtestTestbedSetupFailure {
+                    command: c[1].to_string(),
+                    exit_status: c[2].parse()?,
+                    error: stderr.to_string(),
+                })))
+            }
+        ),
+        regex_line_matcher!(
+            r"<VirtSubproc>: failure: \['(.*)'\] unexpectedly produced stderr output `(.*)\n",
+            |c| {
+                let stderr_group = &c[2];
+                if lazy_regex::regex_is_match!(
+                    r"W: /var/lib/schroot/session/(.*): Failed to stat file: No such file or directory",
+                    stderr_group
+                ) {
+                    return Ok(Some(Box::new(AutopkgtestDepChrootDisappeared)));
+                }
+                Ok(Some(Box::new(AutopkgtestTestbedSetupFailure {
+                    command: c[1].to_string(),
+                    exit_status: 1,
+                    error: stderr_group.to_string(),
+                })))
+            }
+        ),
+    ];
+}
+
 /// Searches for testbed setup failures in autopkgtest logs.
 ///
 /// This function analyzes log lines to identify errors that occurred during
@@ -823,63 +866,10 @@ pub fn find_autopkgtest_failure_description(
 /// be interpreted
 pub fn find_testbed_setup_failure(lines: &[&str]) -> Result<Option<Failure>, Error> {
     for (i, line) in lines.enumerate_backward(None) {
-        // stderr is a Python repr(), which is double-quoted if the string
-        // contains ' but no ".
-        if let Some((_, command, status_code, stderr)) = lazy_regex::regex_captures!(
-            r#"\[(.*)\] failed \(exit status (-?[0-9]+), stderr ('.*'|".*")\)\n"#,
-            line
-        ) {
-            let stderr = &stderr[1..stderr.len() - 1];
-            if let Some((_, chroot)) =
-                lazy_regex::regex_captures!(r"E: (.*): Chroot not found\\n", stderr)
-            {
-                return Ok(Some(Failure::at_line(
-                    lines,
-                    i,
-                    "direct regex",
-                    Some(Box::new(crate::problems::common::ChrootNotFound {
-                        chroot: chroot.to_owned(),
-                    }) as Box<dyn Problem>),
-                )));
-            }
-            return Ok(Some(Failure::at_line(
-                lines,
-                i,
-                "direct regex",
-                Some(Box::new(AutopkgtestTestbedSetupFailure {
-                    command: command.to_string(),
-                    exit_status: status_code
-                        .parse()
-                        .map_err(|e| Error::from(e).or_offset(i))?,
-                    error: stderr.to_string(),
-                }) as Box<dyn Problem>),
-            )));
-        }
-        if let Some((_, command, stderr_group)) = lazy_regex::regex_captures!(
-            r"<VirtSubproc>: failure: \['(.*)'\] unexpectedly produced stderr output `(.*)\n",
-            line
-        ) {
-            if lazy_regex::regex_is_match!(
-                r"W: /var/lib/schroot/session/(.*): Failed to stat file: No such file or directory",
-                stderr_group
-            ) {
-                return Ok(Some(Failure::at_line(
-                    lines,
-                    i,
-                    "direct regex",
-                    Some(Box::new(AutopkgtestDepChrootDisappeared) as Box<dyn Problem>),
-                )));
-            }
-            return Ok(Some(Failure::at_line(
-                lines,
-                i,
-                "direct regex",
-                Some(Box::new(AutopkgtestTestbedSetupFailure {
-                    command: command.to_string(),
-                    exit_status: 1,
-                    error: stderr_group.to_string(),
-                }) as Box<dyn Problem>),
-            )));
+        if let Some(problem) =
+            extract_from_line(&TESTBED_SETUP_MATCHERS[..], line).map_err(|e| e.or_offset(i))?
+        {
+            return Ok(Some(Failure::at_line(lines, i, "direct regex", problem)));
         }
     }
     Ok(None)
