@@ -305,11 +305,16 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
         if line != "# The following modules are not available." {
             return Ok(None);
         }
-        if lines[offset + 1].trim_end_matches(['\r', '\n'])
-            != "# `perl Makefile.PL | cpanm` will install them:"
+        if lines
+            .get(offset + 1)
+            .map(|l| l.trim_end_matches(['\r', '\n']))
+            != Some("# `perl Makefile.PL | cpanm` will install them:")
         {
             return Ok(None);
         }
+        let Some(module) = lines.get(offset + 2) else {
+            return Ok(None);
+        };
 
         let relevant_linenos = vec![offset, offset + 1, offset + 2];
 
@@ -324,9 +329,8 @@ impl Matcher for MultiLinePerlMissingModulesErrorMatcher {
                 .collect(),
         );
 
-        let problem: Option<Box<dyn Problem>> = Some(Box::new(MissingPerlModule::simple(
-            lines[offset + 2].trim(),
-        )));
+        let problem: Option<Box<dyn Problem>> =
+            Some(Box::new(MissingPerlModule::simple(module.trim())));
 
         Ok(Some(Failure::new(m, problem)))
     }
@@ -354,6 +358,19 @@ impl Matcher for MultiLineVignetteErrorMatcher {
             return Ok(None);
         }
 
+        // The diagnostics are on the next line; fall back to the header if
+        // the log ends here.
+        let Some(line) = lines.get(offset + 1) else {
+            return Ok(Some(Failure::new(
+                SingleLineMatch {
+                    origin: Origin("vignette line match".into()),
+                    offset,
+                    line: lines[offset].to_string(),
+                },
+                None,
+            )));
+        };
+
         if let Some(failure) = VIGNETTE_LINE_MATCHERS.extract_from_lines(lines, offset + 1)? {
             return Ok(Some(failure));
         }
@@ -362,7 +379,7 @@ impl Matcher for MultiLineVignetteErrorMatcher {
             SingleLineMatch {
                 origin: Origin("vignette line match".into()),
                 offset: offset + 1,
-                line: lines[offset + 1].to_string(),
+                line: line.to_string(),
             },
             None,
         )))
@@ -381,15 +398,28 @@ impl Matcher for AutoconfUnexpectedMacroMatcher {
             return Ok(None);
         }
 
+        // The offending macro is on the next line; match just the error if
+        // the log ends here.
+        let Some(next_line) = lines.get(offset + 1) else {
+            return Ok(Some(Failure::new(
+                SingleLineMatch {
+                    origin: Origin("autoconf unexpected macro".into()),
+                    offset,
+                    line: lines[offset].to_string(),
+                },
+                None,
+            )));
+        };
+
         let m = MultiLineMatch::new(
             Origin("autoconf unexpected macro".into()),
             vec![offset, offset + 1],
-            vec![lines[offset].to_string(), lines[offset + 1].to_string()],
+            vec![lines[offset].to_string(), next_line.to_string()],
         );
 
         let problem = if let Some((_, r#macro)) = regex_captures!(
             r"^\./configure: line [0-9]+: `[\s\t]*([A-Z0-9_]+)\(.*",
-            lines[offset + 1]
+            next_line
         ) {
             Some(Box::new(MissingAutoconfMacro {
                 r#macro: r#macro.to_string(),
@@ -3464,13 +3494,13 @@ pub fn find_build_failure_description(lines: Vec<&str>) -> Result<Option<Failure
             }
             if lineno + 1 < lines.len() {
                 if let Some((_, _pkg)) = lazy_regex::regex_captures!("^  Could not find a package configuration file provided by \"(.*)\" with any of the following names:", &(line.to_string() + " " + lines[lineno + 1].trim_start_matches(' ').trim_end_matches('\n'))) {
-                    if lines[lineno + 2] == "\n" {
-                        let mut i = 3;
-                        let mut filenames = vec![];
-                        while !lines[lineno + i].trim().is_empty() {
-                            filenames.push(lines[lineno + i].trim().to_string());
-                            i += 1;
-                        }
+                    if lines.get(lineno + 2) == Some(&"\n") {
+                        let filenames = lines[lineno + 3..]
+                            .iter()
+                            .map(|l| l.trim())
+                            .take_while(|l| !l.is_empty())
+                            .map(|l| l.to_string())
+                            .collect();
                         return Ok(Some(Failure::new(SingleLineMatch::from_lines(
                                 &lines, lineno, Some("direct regex (cmake)")
                             ), Some(Box::new(CMakeFilesMissing{filenames, version: None}) as Box<dyn Problem>))))
@@ -3542,6 +3572,17 @@ mod tests {
         );
     }
 
+    /// Asserts the match lines (1-based) and problem, if any.
+    fn assert_failure(
+        lines: Vec<&str>,
+        linenos: Option<Vec<usize>>,
+        problem: Option<Box<dyn Problem>>,
+    ) {
+        let (m, p) = Failure::split(super::find_build_failure_description(lines).unwrap());
+        assert_eq!(m.as_ref().map(|m| m.linenos()), linenos);
+        assert_eq!(p.as_deref(), problem.as_deref());
+    }
+
     #[test]
     fn test_make_missing_rule() {
         assert_match(
@@ -3598,6 +3639,15 @@ mod tests {
             ],
             2,
             Some(MissingVagueDependency::simple("pdflatex")),
+        );
+    }
+
+    #[test]
+    fn test_vignette_truncated() {
+        assert_failure(
+            vec!["Error: processing vignette 'uroot-intro.Rnw' failed with diagnostics:"],
+            Some(vec![1]),
+            None,
         );
     }
 
@@ -4254,6 +4304,15 @@ mod tests {
             2,
             Some(MissingAutoconfMacro{
                 r#macro: "PKG_CHECK_MODULES".to_owned(), need_rebuild:true})
+        );
+    }
+
+    #[test]
+    fn test_autoconf_macro_truncated() {
+        assert_failure(
+            vec!["./configure: line 2368: syntax error near unexpected token `APERTIUM,'"],
+            Some(vec![1]),
+            None,
         );
     }
 
@@ -5096,6 +5155,36 @@ arch:all and the other not)"#
     }
 
     #[test]
+    fn test_missing_perl_modules_multiline() {
+        assert_failure(
+            vec![
+                "# The following modules are not available.",
+                "# `perl Makefile.PL | cpanm` will install them:",
+                "Foo::Bar",
+            ],
+            Some(vec![1, 2, 3]),
+            Some(Box::new(MissingPerlModule::simple("Foo::Bar"))),
+        );
+    }
+
+    #[test]
+    fn test_missing_perl_modules_multiline_truncated() {
+        assert_failure(
+            vec![
+                "# The following modules are not available.",
+                "# `perl Makefile.PL | cpanm` will install them:",
+            ],
+            None,
+            None,
+        );
+        assert_failure(
+            vec!["# The following modules are not available."],
+            None,
+            None,
+        );
+    }
+
+    #[test]
     fn test_missing_perl_file() {
         assert_match(
             vec![
@@ -5917,6 +6006,34 @@ dh_auto_configure: cd obj-x86_64-linux-gnu && cmake with args
             }),
         );
     }
+
+    #[test]
+    fn test_cmake_missing_cmake_files_truncated() {
+        assert_failure(
+            vec![
+                "cmake\n",
+                "  Could not find a package configuration file provided by \"sensor_msgs\" with\n",
+                "  any of the following names:\n",
+            ],
+            None,
+            None,
+        );
+        assert_failure(
+            vec![
+                "cmake\n",
+                "  Could not find a package configuration file provided by \"sensor_msgs\" with\n",
+                "  any of the following names:\n",
+                "\n",
+                "    sensor_msgsConfig.cmake\n",
+            ],
+            Some(vec![2]),
+            Some(Box::new(CMakeFilesMissing {
+                filenames: vec!["sensor_msgsConfig.cmake".to_string()],
+                version: None,
+            })),
+        );
+    }
+
     #[test]
     fn test_cmake_error_huge_line_number() {
         let lines = vec![
