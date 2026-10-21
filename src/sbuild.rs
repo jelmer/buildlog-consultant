@@ -1246,7 +1246,7 @@ pub fn find_install_deps_failure_description(
     if let Some(dose3_lines) = dose3_lines {
         let dose3 = crate::apt::find_cudf_output(&dose3_lines)?;
         if let Some((dose3_offsets, dose3_output)) = dose3 {
-            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
+            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice())?;
             let r#match = crate::MultiLineMatch::from_lines(&dose3_lines, dose3_offsets, None);
             return Ok(SectionFailure {
                 section: Some(DOSE3_SECTION),
@@ -1260,7 +1260,7 @@ pub fn find_install_deps_failure_description(
     if let Some(build_dependencies_lines) = build_dependencies_lines {
         let dose3 = crate::apt::find_cudf_output(&build_dependencies_lines)?;
         if let Some((dose3_offsets, dose3_output)) = dose3 {
-            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
+            let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice())?;
             let r#match =
                 crate::MultiLineMatch::from_lines(&build_dependencies_lines, dose3_offsets, None);
             return Ok(SectionFailure {
