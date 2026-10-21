@@ -143,8 +143,9 @@ impl std::str::FromStr for Space {
 /// * `lines` - The log lines to parse
 ///
 /// # Returns
-/// A `Summary` structure containing the extracted information
-pub fn parse_summary(lines: &[&str]) -> Summary {
+/// A `Summary` structure containing the extracted information, or an error
+/// if a value could not be parsed
+pub fn parse_summary(lines: &[&str]) -> Result<Summary, Error> {
     let mut build_architecture = None;
     let mut build_type = None;
     let mut build_time = None;
@@ -163,31 +164,32 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
     let mut fail_stage = None;
     let mut space = None;
     let mut version = None;
-    for line in lines {
+    for (offset, line) in lines.iter().enumerate() {
         if line.trim() == "" {
             continue;
         }
         if let Some((key, value)) = line.trim_end().split_once(": ") {
             let value = value.trim();
+            let secs = || parse_summary_value(key, value, offset).map(Duration::from_secs);
             match key {
                 "Fail-Stage" => fail_stage = Some(value.to_string()),
                 "Build Architecture" => build_architecture = Some(value.to_string()),
                 "Build Type" => build_type = Some(value.to_string()),
-                "Build-Time" => build_time = Some(Duration::from_secs(value.parse().unwrap())),
-                "Build-Space" => build_space = Some(value.parse().unwrap()),
+                "Build-Time" => build_time = Some(secs()?),
+                "Build-Space" => build_space = Some(parse_summary_value(key, value, offset)?),
                 "Host Architecture" => host_architecture = Some(value.to_string()),
-                "Install-Time" => install_time = Some(Duration::from_secs(value.parse().unwrap())),
+                "Install-Time" => install_time = Some(secs()?),
                 "Lintian" => lintian = Some(value.to_string()),
                 "Package" => package = Some(value.to_string()),
-                "Package-Time" => package_time = Some(Duration::from_secs(value.parse().unwrap())),
-                "Source-Version" => source_version = Some(value.parse().unwrap()),
-                "Job" => job = Some(value.parse().unwrap()),
+                "Package-Time" => package_time = Some(secs()?),
+                "Source-Version" => source_version = Some(parse_summary_value(key, value, offset)?),
+                "Job" => job = Some(value.to_string()),
                 "Machine Architecture" => machine_architecture = Some(value.to_string()),
                 "Distribution" => distribution = Some(value.to_string()),
                 "Autopkgtest" => autopkgtest = Some(value.to_string()),
                 "Status" => status = Some(value.to_string()),
-                "Space" => space = Some(value.parse().unwrap()),
-                "Version" => version = Some(value.parse().unwrap()),
+                "Space" => space = Some(parse_summary_value(key, value, offset)?),
+                "Version" => version = Some(parse_summary_value(key, value, offset)?),
                 n => {
                     log::warn!("Unknown key in summary: {}", n);
                 }
@@ -196,7 +198,7 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
             log::warn!("Unknown line in summary: {}", line);
         }
     }
-    Summary {
+    Ok(Summary {
         build_architecture,
         build_type,
         build_time,
@@ -215,7 +217,17 @@ pub fn parse_summary(lines: &[&str]) -> Summary {
         status,
         space,
         version,
-    }
+    })
+}
+
+fn parse_summary_value<T>(key: &str, value: &str, offset: usize) -> Result<T, Error>
+where
+    T: FromStr,
+    T::Err: std::error::Error + Send + Sync + 'static,
+{
+    value.parse().map_err(|e| {
+        Error::with_source(format!("invalid {} in summary: {:?}", key, value), e).at_offset(offset)
+    })
 }
 
 /// Structure representing a parsed sbuild log file.
@@ -258,12 +270,8 @@ impl SbuildLog {
     }
 
     /// Get the failed stage, if it is provided
-    pub fn get_failed_stage(&self) -> Option<String> {
-        if let Some(summary) = self.summary() {
-            summary.fail_stage
-        } else {
-            None
-        }
+    pub fn get_failed_stage(&self) -> Result<Option<String>, Error> {
+        Ok(self.summary()?.and_then(|summary| summary.fail_stage))
     }
 
     /// Iterate ove the sections
@@ -277,10 +285,12 @@ impl SbuildLog {
     /// if it exists.
     ///
     /// # Returns
-    /// An optional `Summary` structure containing build metadata
-    pub fn summary(&self) -> Option<Summary> {
-        let lines = self.get_section_lines(Some("Summary"));
-        lines.map(|lines| parse_summary(lines.as_slice()))
+    /// An optional `Summary` structure containing build metadata, or an error
+    /// if the Summary section could not be parsed
+    pub fn summary(&self) -> Result<Option<Summary>, Error> {
+        self.get_section_lines(Some("Summary"))
+            .map(|lines| parse_summary(lines.as_slice()))
+            .transpose()
     }
 }
 
@@ -1433,7 +1443,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
         }
     }
 
-    let failed_stage = sbuildlog.get_failed_stage();
+    let failed_stage = sbuildlog.get_failed_stage()?;
 
     let overall_failure = match failed_stage.as_deref() {
         None => None,
@@ -1580,9 +1590,9 @@ mod tests {
                 "Summary"
             ]
         );
-        assert_eq!(sbuild_log.get_failed_stage(), None);
+        assert_eq!(sbuild_log.get_failed_stage().unwrap(), None);
         assert_eq!(
-            sbuild_log.summary().unwrap(),
+            sbuild_log.summary().unwrap().unwrap(),
             Summary {
                 version: Some("0.1.3-1".parse().unwrap()),
                 fail_stage: None,
@@ -1691,12 +1701,44 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
             "Status: successful",
             "Build-Time: 3",
         ];
-        let summary = parse_summary(summary_lines);
+        let summary = parse_summary(summary_lines).unwrap();
         assert_eq!(summary.package, Some("rust-always-assert".to_string()));
         assert_eq!(summary.version, Some("0.1.3-1".parse().unwrap()));
         assert_eq!(summary.distribution, Some("unstable".to_string()));
         assert_eq!(summary.status, Some("successful".to_string()));
         assert_eq!(summary.build_time, Some(Duration::from_secs(3)));
+    }
+
+    #[test]
+    fn test_parse_summary_invalid_value() {
+        let err = parse_summary(&["Package: foo", "Build-Time: 3s"]).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "invalid Build-Time in summary: \"3s\" at line 2"
+        );
+        assert_eq!(
+            std::error::Error::source(&err).unwrap().to_string(),
+            "invalid digit found in string"
+        );
+
+        let err = parse_summary(&["Version: 1.0 1"]).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "invalid Version in summary: \"1.0 1\" at line 1"
+        );
+    }
+
+    #[test]
+    fn test_worker_failure_invalid_summary() {
+        let sep = format!("+{}+", "-".repeat(78));
+        let log: SbuildLog = format!("{sep}\n| Summary |\n{sep}\n\nSpace: lots\n")
+            .parse()
+            .unwrap();
+        let err = worker_failure_from_sbuild_log(&log).err().unwrap();
+        assert_eq!(
+            err.to_string(),
+            "invalid Space in summary: \"lots\" at line 2"
+        );
     }
 
     #[test]

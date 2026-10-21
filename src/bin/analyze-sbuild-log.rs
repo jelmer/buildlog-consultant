@@ -1,3 +1,4 @@
+use buildlog_consultant::r#match::Error;
 use buildlog_consultant::sbuild::{worker_failure_from_sbuild_log, SbuildLog};
 use buildlog_consultant::{Match, Problem};
 use clap::Parser;
@@ -21,6 +22,14 @@ struct Args {
 
     /// The path to the build log to analyze.
     path: Option<PathBuf>,
+}
+
+fn exit_with_error(e: Error) -> ! {
+    log::error!("Failed to analyze log: {}", e);
+    if let Some(source) = std::error::Error::source(&e) {
+        log::error!("Caused by: {}", source);
+    }
+    std::process::exit(1);
 }
 
 fn as_json(m: Option<&dyn Match>, problem: Option<&dyn Problem>) -> serde_json::Value {
@@ -85,15 +94,11 @@ pub fn main() -> Result<(), i8> {
         println!("{:?}", sbuildlog);
     }
 
-    let failed_stage = sbuildlog.get_failed_stage();
+    let failed_stage = sbuildlog
+        .get_failed_stage()
+        .unwrap_or_else(|e| exit_with_error(e));
 
-    let failure = worker_failure_from_sbuild_log(&sbuildlog).unwrap_or_else(|e| {
-        log::error!("Failed to analyze log: {}", e);
-        if let Some(source) = std::error::Error::source(&e) {
-            log::error!("Caused by: {}", source);
-        }
-        std::process::exit(1);
-    });
+    let failure = worker_failure_from_sbuild_log(&sbuildlog).unwrap_or_else(|e| exit_with_error(e));
 
     if args.json {
         let ret = as_json(
