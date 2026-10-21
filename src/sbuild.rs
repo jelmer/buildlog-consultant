@@ -1513,7 +1513,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
             // a more identifiable cause (uscan failures, missing tarballs,
             // etc.).
             if error.is_none() {
-                if let Some((e, d)) = crate::brz::find_brz_build_error(&s.lines()) {
+                if let Some((e, d)) = crate::brz::find_brz_build_error(&s.lines())? {
                     if e.is_some() {
                         description = Some(d.to_string());
                         error = e;
