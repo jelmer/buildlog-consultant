@@ -82,8 +82,10 @@ fn parse_autopgktest_line(line: &str) -> Option<(&str, Packet<'_>)> {
         Some((timestamp, Packet::Source))
     } else if message.starts_with("@@@@@@@@@@@@@@@@@@@@ summary") {
         return Some((timestamp, Packet::Summary));
-    } else if let Some(message) = message.strip_prefix("test ") {
-        let (testname, test_status) = message.trim_end_matches('\n').split_once(": ").unwrap();
+    } else if let Some((testname, test_status)) = message
+        .strip_prefix("test ")
+        .and_then(|m| m.trim_end_matches('\n').split_once(": "))
+    {
         if test_status == "[-----------------------" {
             return Some((timestamp, Packet::TestBeginOutput(testname)));
         } else if test_status == "-----------------------]" {
@@ -1505,6 +1507,14 @@ mod tests {
             assert_eq!(
                 super::parse_autopgktest_line("autopkgtest [07:58:03]: ERROR: some error"),
                 Some(("07:58:03", super::Packet::Error("some error")))
+            );
+        }
+
+        #[test]
+        fn test_test_without_status() {
+            assert_eq!(
+                super::parse_autopgktest_line("autopkgtest [07:58:03]: test command1\n"),
+                Some(("07:58:03", super::Packet::Other("test command1")))
             );
         }
     }
