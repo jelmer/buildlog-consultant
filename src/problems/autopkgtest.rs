@@ -14,9 +14,15 @@ impl AutopkgtestDepsUnsatisfiable {
     ///
     /// # Arguments
     /// * `line` - The blame line string to parse
+    ///
+    /// # Panics
+    /// Panics if `line` does not start with `blame:`.
     pub fn from_blame_line(line: &str) -> Self {
         let mut args = vec![];
-        for entry in line.strip_prefix("blame: ").unwrap().split_whitespace() {
+        let blamed = line
+            .strip_prefix("blame:")
+            .expect("blame line should start with \"blame:\"");
+        for entry in blamed.split_whitespace() {
             let (kind, arg) = match entry.split_once(':') {
                 Some((kind, arg)) => (Some(kind), arg),
                 None => (None, entry),
@@ -173,6 +179,18 @@ mod tests {
     use crate::problem::assert_wire_format;
     use crate::Problem;
     use serde_json::json;
+
+    #[test]
+    fn test_from_blame_line_empty() {
+        assert_eq!(
+            AutopkgtestDepsUnsatisfiable::from_blame_line("blame:\n"),
+            AutopkgtestDepsUnsatisfiable { args: vec![] }
+        );
+        assert_eq!(
+            AutopkgtestDepsUnsatisfiable::from_blame_line("blame: \n"),
+            AutopkgtestDepsUnsatisfiable { args: vec![] }
+        );
+    }
 
     #[test]
     fn test_autopkgtest_testbed_setup_failure_trait() {

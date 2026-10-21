@@ -760,14 +760,20 @@ pub fn find_autopkgtest_failure_description(
                 .extra
                 .iter()
                 .find_map(|line| line.strip_prefix("badpkg: "));
-            let blame_index = packet
+            // A blame line that names nothing gives no information on what
+            // was unsatisfiable.
+            let blame = packet
                 .extra
                 .iter()
-                .position(|line| line.starts_with("blame: "));
-            let blame = blame_index.map(|i| &packet.extra[i]);
+                .enumerate()
+                .find(|(_, line)| line.starts_with("blame:"))
+                .map(|(i, line)| (i, AutopkgtestDepsUnsatisfiable::from_blame_line(line)))
+                .filter(|(_, blame)| !blame.args.is_empty());
             // Point at the blame line, falling back to the badpkg line and
             // then the summary line itself.
-            let extra_offset = blame_index
+            let extra_offset = blame
+                .as_ref()
+                .map(|(i, _)| *i)
                 .or_else(|| {
                     packet
                         .extra
@@ -785,9 +791,7 @@ pub fn find_autopkgtest_failure_description(
                 format!("Test {} failed", packet.name)
             };
 
-            let error = blame.map(|blame| {
-                Box::new(AutopkgtestDepsUnsatisfiable::from_blame_line(blame)) as Box<dyn Problem>
-            });
+            let error = blame.map(|(_, blame)| Box::new(blame) as Box<dyn Problem>);
             return Ok(Some(AutopkgtestFailure {
                 failure: Failure::new(
                     SingleLineMatch::from_lines(
@@ -1117,6 +1121,24 @@ mod tests {
         ];
 
         assert_autopkgtest_match(lines, vec![3], Some("intltool"), None, Some("Test intltool failed: Test dependencies are unsatisfiable. A common reason is that your testbed is out of date with respect to the archive, and you need to use a current testbed or run apt-get update or use -U."));
+    }
+
+    #[test]
+    fn test_deps_badpkg_empty_blame_unstripped() {
+        let lines = vec![
+            "autopkgtest [07:58:03]: @@@@@@@@@@@@@@@@@@@@ summary\n",
+            "intltool             FAIL badpkg\n",
+            "blame: \n",
+            "badpkg: Test dependencies are unsatisfiable.\n",
+        ];
+
+        assert_autopkgtest_match(
+            lines,
+            vec![3],
+            Some("intltool"),
+            None,
+            Some("Test intltool failed: Test dependencies are unsatisfiable."),
+        );
     }
 
     #[test]
