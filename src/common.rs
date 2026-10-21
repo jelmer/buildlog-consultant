@@ -676,7 +676,7 @@ lazy_static::lazy_static! {
         regex_line_matcher!("^.*␛\x1b\\[31mERROR:␛\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!("^\x1b\\[2mError: Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!("^\x1b\\[1m\x1b\\[31m\\[!\\] \x1b\\[1mError: Cannot find module '(.*)'", node_module_missing),
-    regex_line_matcher!("^✖ \x1b\\[31mERROR:\x1b\\[39m Error: Cannot find module '(.*)'", node_module_missing),
+    regex_line_matcher!("^✖ \x1b\\[31mERROR:\x1b\\[39m (?:Error: )?Cannot find module '(.*)'", node_module_missing),
     regex_line_matcher!("^\x1b\\[0;31m  Error: To use the transpile option, you must have the '(.*)' module installed",
      node_module_missing),
     regex_line_matcher!(r#"^\[31mError: No test files found: "(.*)"\[39m"#),
@@ -5438,6 +5438,21 @@ Call Stack (most recent call first):
             vec!["ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."],
             1,
             Some(MissingJRE),
+        );
+    }
+
+    #[test]
+    fn test_node_module_missing_colored_without_error_prefix() {
+        let lines = vec!["✖ \x1b[31mERROR:\x1b[39m Cannot find module 'tape'"];
+        let (r#match, problem) =
+            Failure::split(super::find_build_failure_description(&lines).unwrap());
+        assert_eq!(r#match.expect("no match found").lineno(), 1);
+        assert_eq!(
+            problem.expect("no problem found").json(),
+            MissingNodeModule {
+                module: "tape".to_owned()
+            }
+            .json()
         );
     }
 
