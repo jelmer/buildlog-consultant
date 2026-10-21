@@ -1150,8 +1150,9 @@ fn find_arch_check_failure_description(lines: &[&str]) -> Option<Failure> {
             ));
         }
     }
+    let last = lines.len().checked_sub(1)?;
     Some(Failure::new(
-        SingleLineMatch::from_lines(lines, lines.len() - 1, Some("direct regex")),
+        SingleLineMatch::from_lines(lines, last, Some("direct regex")),
         None,
     ))
 }
@@ -1992,6 +1993,11 @@ Line4
 
         let section2 = log.get_section(Some("Section2")).unwrap();
         assert_eq!(section2.lines(), vec!["Line3\n", "Line4\n"]);
+    }
+
+    #[test]
+    fn test_arch_check_failure_description_empty() {
+        assert!(find_arch_check_failure_description(&[]).is_none());
     }
 
     /// Regression: an unpack-stage failure with a recognised preamble error
