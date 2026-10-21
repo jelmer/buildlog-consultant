@@ -1529,10 +1529,13 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
 fn find_check_space_failure_description(lines: &[&str]) -> Result<Option<Failure>, Error> {
     for (offset, line) in lines.enumerate_forward(None) {
         if line == "E: Disk space is probably not sufficient for building.\n" {
-            if let Some((_, needed, free)) = lazy_regex::regex_captures!(
-                "I: Source needs ([0-9]+) KiB, while ([0-9]+) KiB is free.\n",
-                lines[offset + 1]
-            ) {
+            let sizes = lines.get(offset + 1).and_then(|next| {
+                lazy_regex::regex_captures!(
+                    "I: Source needs ([0-9]+) KiB, while ([0-9]+) KiB is free.\n",
+                    next
+                )
+            });
+            if let Some((_, needed, free)) = sizes {
                 return Ok(Some(Failure::new(
                     SingleLineMatch::from_lines(lines, offset, Some("direct regex")),
                     Some(Box::new(InsufficientDiskSpace {
@@ -2229,6 +2232,16 @@ Line4
             std::error::Error::source(&err).unwrap().to_string(),
             "number too large to fit in target type"
         );
+    }
+
+    #[test]
+    fn test_check_space_failure_description_last_line() {
+        let lines = ["E: Disk space is probably not sufficient for building.\n"];
+        let (m, error) = Failure::split(find_check_space_failure_description(&lines).unwrap());
+        let m = m.expect("match");
+        assert_eq!(m.lineno(), 1);
+        assert_eq!(m.origin().as_str(), "direct match");
+        assert!(error.is_none());
     }
 
     #[test]
