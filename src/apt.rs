@@ -341,36 +341,21 @@ mod tests {
 
     fn assert_just_match(lines: Vec<&str>, lineno: usize) {
         let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(&lines));
+        let r#match = r#match.expect("no match found");
+        assert_eq!(&r#match.line(), &lines[lineno - 1]);
+        assert_eq!(lineno, r#match.lineno());
         assert!(actual_err.is_none());
-        if let Some(r#match) = r#match.as_ref() {
-            assert_eq!(&r#match.line(), &lines[lineno - 1]);
-            assert_eq!(lineno, r#match.lineno());
-        } else {
-            assert!(r#match.is_none());
-        }
     }
 
-    fn assert_match(lines: Vec<&str>, lineno: usize, mut expected: Option<impl Problem + 'static>) {
+    fn assert_match(lines: Vec<&str>, lineno: usize, expected: Option<impl Problem + 'static>) {
         let (r#match, actual_err) = Failure::split(super::find_apt_get_failure(&lines));
-        if let Some(r#match) = r#match.as_ref() {
-            assert_eq!(&r#match.line(), &lines[lineno - 1]);
-            assert_eq!(lineno, r#match.lineno());
-        } else {
-            assert!(r#match.is_none());
-        }
-        if let Some(expected) = expected.take() {
-            assert!(
-                r#match.is_some(),
-                "err ({:?}) provided but match missing",
-                &expected
-            );
-            assert_eq!(
-                actual_err.as_ref().map(|x| x.as_ref()),
-                Some(&expected as &dyn Problem)
-            );
-        } else {
-            assert!(actual_err.is_none());
-        }
+        let r#match = r#match.expect("no match found");
+        assert_eq!(&r#match.line(), &lines[lineno - 1]);
+        assert_eq!(lineno, r#match.lineno());
+        assert_eq!(
+            actual_err.as_ref().map(|x| x.as_ref()),
+            expected.as_ref().map(|x| x as &dyn Problem)
+        );
     }
 
     #[test]
