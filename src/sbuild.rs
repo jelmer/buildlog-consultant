@@ -1237,38 +1237,41 @@ pub const DOSE3_SECTION: &str = "install dose3 build dependencies (aspcud-based 
 /// * `sbuildlog` - The parsed sbuild log to analyze
 ///
 /// # Returns
-/// The title of the section that was analyzed, if any, and the failure found in it
-pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SectionFailure<'_> {
+/// The title of the section that was analyzed, if any, and the failure found in
+/// it, or an error if the log could not be interpreted
+pub fn find_install_deps_failure_description(
+    sbuildlog: &SbuildLog,
+) -> Result<SectionFailure<'_>, Error> {
     let dose3_lines = sbuildlog.get_section_lines(Some(DOSE3_SECTION));
     if let Some(dose3_lines) = dose3_lines {
-        let dose3 = crate::apt::find_cudf_output(&dose3_lines);
+        let dose3 = crate::apt::find_cudf_output(&dose3_lines)?;
         if let Some((dose3_offsets, dose3_output)) = dose3 {
             let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
             let r#match = crate::MultiLineMatch::from_lines(&dose3_lines, dose3_offsets, None);
-            return SectionFailure {
+            return Ok(SectionFailure {
                 section: Some(DOSE3_SECTION),
                 failure: Some(Failure::new(r#match, error)),
-            };
+            });
         }
     }
 
     const SECTION: &str = "Install package build dependencies";
     let build_dependencies_lines = sbuildlog.get_section_lines(Some(SECTION));
     if let Some(build_dependencies_lines) = build_dependencies_lines {
-        let dose3 = crate::apt::find_cudf_output(&build_dependencies_lines);
+        let dose3 = crate::apt::find_cudf_output(&build_dependencies_lines)?;
         if let Some((dose3_offsets, dose3_output)) = dose3 {
             let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice());
             let r#match =
                 crate::MultiLineMatch::from_lines(&build_dependencies_lines, dose3_offsets, None);
-            return SectionFailure {
+            return Ok(SectionFailure {
                 section: Some(SECTION),
                 failure: Some(Failure::new(r#match, error)),
-            };
+            });
         }
-        return SectionFailure {
+        return Ok(SectionFailure {
             section: Some(SECTION),
             failure: crate::apt::find_apt_get_failure(&build_dependencies_lines),
-        };
+        });
     }
 
     for section in sbuildlog.sections() {
@@ -1280,18 +1283,18 @@ pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SectionFa
             &section.title.as_ref().unwrap().to_lowercase()
         ) {
             if let Some(failure) = crate::apt::find_apt_get_failure(&section.lines()) {
-                return SectionFailure {
+                return Ok(SectionFailure {
                     section: section.title.as_deref(),
                     failure: Some(failure),
-                };
+                });
             }
         }
     }
 
-    SectionFailure {
+    Ok(SectionFailure {
         section: None,
         failure: None,
-    }
+    })
 }
 
 /// Analyzes log sections to find failures in the dependency installation stage.
@@ -1305,15 +1308,16 @@ pub fn find_install_deps_failure_description(sbuildlog: &SbuildLog) -> SectionFa
 /// * `failed_stage` - The stage name that failed
 ///
 /// # Returns
-/// An optional SbuildFailure structure with information about the failure
+/// An optional SbuildFailure structure with information about the failure, or
+/// an error if the log could not be interpreted
 pub fn find_failure_install_deps(
     sbuildlog: &SbuildLog,
     failed_stage: &str,
-) -> Option<SbuildFailure> {
+) -> Result<Option<SbuildFailure>, Error> {
     let SectionFailure {
         section: focus_section,
         failure,
-    } = find_install_deps_failure_description(sbuildlog);
+    } = find_install_deps_failure_description(sbuildlog)?;
     let (r#match, error) = Failure::split(failure);
     let description = if let Some(error) = error.as_ref() {
         error.to_string()
@@ -1327,14 +1331,14 @@ pub fn find_failure_install_deps(
         format!("build failed stage {}", failed_stage)
     };
     let phase = Phase::Build;
-    Some(SbuildFailure {
+    Ok(Some(SbuildFailure {
         stage: Some(failed_stage.to_string()),
         description: Some(description.to_string()),
         error,
         phase: Some(phase),
         section: sbuildlog.get_section(focus_section).cloned(),
         r#match,
-    })
+    }))
 }
 
 /// Analyzes log sections to find failures in the autopkgtest stage.
@@ -1445,7 +1449,7 @@ pub fn worker_failure_from_sbuild_log(sbuildlog: &SbuildLog) -> Result<SbuildFai
         Some(failed_stage @ "arch-check") => find_failure_arch_check(sbuildlog, failed_stage),
         Some(failed_stage @ "check-space") => find_failure_check_space(sbuildlog, failed_stage)?,
         Some(failed_stage @ ("install-deps" | "explain-bd-uninstallable")) => {
-            find_failure_install_deps(sbuildlog, failed_stage)
+            find_failure_install_deps(sbuildlog, failed_stage)?
         }
         // We run autopkgtest as only post-build step at the moment.
         Some(failed_stage @ ("autopkgtest" | "run-post-build-commands" | "post-build")) => {

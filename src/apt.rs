@@ -7,6 +7,7 @@
 use crate::lines::Lines;
 use crate::problems::common::NoSpaceOnDevice;
 use crate::problems::debian::*;
+use crate::r#match::Error;
 use crate::sbuild::SectionFailure;
 use crate::{Failure, MultiLineMatch, Problem, SingleLineMatch};
 use debian_control::lossless::relations::{Entry, Relations};
@@ -230,14 +231,21 @@ pub fn find_apt_get_update_failure(
 /// An optional tuple containing:
 /// * A vector of line offsets where the CUDF output was found
 /// * The parsed CUDF data
-pub(crate) fn find_cudf_output(lines: &[&str]) -> Option<(Vec<usize>, crate::cudf::Cudf)> {
+///
+/// An error is returned if the CUDF output can not be parsed.
+pub(crate) fn find_cudf_output(
+    lines: &[&str],
+) -> Result<Option<(Vec<usize>, crate::cudf::Cudf)>, Error> {
     let mut offset = None;
     for (i, line) in lines.enumerate_backward(None) {
         if line.starts_with("output-version:") {
             offset = Some(i);
         }
     }
-    let mut offset = offset?;
+    let Some(mut offset) = offset else {
+        return Ok(None);
+    };
+    let start = offset;
     let mut output = vec![];
     let mut offsets = vec![];
     while !lines[offset].trim().is_empty() {
@@ -246,7 +254,9 @@ pub(crate) fn find_cudf_output(lines: &[&str]) -> Option<(Vec<usize>, crate::cud
         offset += 1;
     }
 
-    Some((offsets, serde_yaml::from_str(&output.join("\n")).unwrap()))
+    let cudf = serde_yaml::from_str(&output.join("\n"))
+        .map_err(|e| Error::with_source("invalid dose3 output", e).at_offset(start))?;
+    Ok(Some((offsets, cudf)))
 }
 
 /// Extracts error information from DOSE3 reports.
@@ -639,7 +649,7 @@ mod tests {
         let lines = include_str!("testdata/sbuild-cudf.log")
             .split_inclusive('\n')
             .collect::<Vec<_>>();
-        let (offsets, report) = find_cudf_output(&lines).unwrap();
+        let (offsets, report) = find_cudf_output(&lines).unwrap().unwrap();
         assert_eq!(offsets, (104..=119).collect::<Vec<_>>());
         let expected = Cudf {
             output_version: (1, 2),
@@ -695,7 +705,7 @@ mod tests {
             "      architecture: amd64\n",
             " \n",
         ];
-        let (_, cudf) = find_cudf_output(&lines).unwrap();
+        let (_, cudf) = find_cudf_output(&lines).unwrap().unwrap();
         let conflict = cudf.report[0].reasons[0].conflict.as_ref().unwrap();
         assert_eq!(
             conflict.pkg1.unsat_conflict.as_deref(),
@@ -707,6 +717,18 @@ mod tests {
             .downcast_ref::<UnsatisfiedAptConflicts>()
             .unwrap();
         assert_eq!(problem.relations, "libfoo:amd64 (<< 2.0)");
+    }
+
+    #[test]
+    fn test_find_cudf_output_invalid() {
+        let lines = vec![
+            "output-version: 1.2\n",
+            "native-architecture: amd64\n",
+            "\n",
+        ];
+        let err = find_cudf_output(&lines).unwrap_err();
+        assert_eq!(err.message(), "invalid dose3 output");
+        assert_eq!(err.offset(), Some(0));
     }
 
     #[test]
