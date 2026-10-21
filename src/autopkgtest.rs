@@ -840,7 +840,7 @@ pub fn find_testbed_setup_failure(lines: &[&str]) -> Result<Option<Failure>, Err
         // stderr is a Python repr(), which is double-quoted if the string
         // contains ' but no ".
         if let Some((_, command, status_code, stderr)) = lazy_regex::regex_captures!(
-            r#"\[(.*)\] failed \(exit status ([0-9]+), stderr ('.*'|".*")\)\n"#,
+            r#"\[(.*)\] failed \(exit status (-?[0-9]+), stderr ('.*'|".*")\)\n"#,
             line
         ) {
             let stderr = &stderr[1..stderr.len() - 1];
@@ -992,6 +992,24 @@ mod tests {
                 command: "'schroot', '-c', 'foo'".to_owned(),
                 exit_status: 1,
                 error: "E: can't find session\\n".to_owned(),
+            }) as Box<dyn Problem>)
+        );
+    }
+
+    #[test]
+    fn test_testbed_setup_negative_exit_status() {
+        let failure = super::find_testbed_setup_failure(&[
+            "['schroot', '-c', 'foo'] failed (exit status -9, stderr '')\n",
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!(failure.r#match.offsets(), vec![0]);
+        assert_eq!(
+            failure.problem,
+            Some(Box::new(AutopkgtestTestbedSetupFailure {
+                command: "'schroot', '-c', 'foo'".to_owned(),
+                exit_status: -9,
+                error: "".to_owned(),
             }) as Box<dyn Problem>)
         );
     }
