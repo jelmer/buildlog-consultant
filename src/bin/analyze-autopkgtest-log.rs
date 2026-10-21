@@ -34,7 +34,7 @@ fn main() {
 
     let log = std::fs::read_to_string(&args.path).expect("Failed to read log file");
 
-    let lines = log.split('\n').collect::<Vec<_>>();
+    let lines = log.split_inclusive('\n').collect::<Vec<_>>();
 
     let result = buildlog_consultant::autopkgtest::find_autopkgtest_failure_description(&lines)
         .unwrap_or_else(|e| {
