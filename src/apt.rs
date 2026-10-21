@@ -66,7 +66,7 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
             let mut broken = vec![];
             for j in (0..lineno).rev() {
                 if let Some((_, pkg, _)) = lazy_regex::regex_captures!(
-                    r"\s*Depends: (.*) but it is not (going to be installed|installable)",
+                    r"^\s*Depends: (.*) but it is not (going to be installed|installable)",
                     lines[j]
                 ) {
                     offsets.push(j);
@@ -74,7 +74,7 @@ pub fn find_apt_get_failure(lines: &[&str]) -> Option<Failure> {
                     continue;
                 }
                 if let Some((_, _, pkg, _)) = lazy_regex::regex_captures!(
-                    r"\s*(.*) : Depends: (.*) but it is not (going to be installed|installable)",
+                    r"^\s*(.*) : Depends: (.*) but it is not (going to be installed|installable)",
                     lines[j]
                 ) {
                     offsets.push(j);
@@ -597,6 +597,29 @@ mod tests {
         let failure = find_apt_get_failure(&lines).unwrap();
 
         assert_eq!(failure.r#match.offsets(), vec![0]);
+        assert_eq!(
+            failure
+                .problem
+                .unwrap()
+                .as_any()
+                .downcast_ref::<AptBrokenPackages>()
+                .unwrap()
+                .broken,
+            Some(vec![])
+        );
+    }
+
+    #[test]
+    fn test_held_broken_packages_unrelated_depends() {
+        let lines = vec![
+            "Note: foo Depends: libfoo-dev but it is not installable",
+            "Note: foo Depends: libfoo-dev but it is not installable",
+            "E: Unable to correct problems, you have held broken packages.",
+        ];
+
+        let failure = find_apt_get_failure(&lines).unwrap();
+
+        assert_eq!(failure.r#match.offsets(), vec![2]);
         assert_eq!(
             failure
                 .problem
