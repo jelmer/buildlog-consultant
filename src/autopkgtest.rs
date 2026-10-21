@@ -819,10 +819,13 @@ pub fn find_autopkgtest_failure_description(
 /// be interpreted
 pub fn find_testbed_setup_failure(lines: &[&str]) -> Result<Option<Failure>, Error> {
     for (i, line) in lines.enumerate_backward(None) {
+        // stderr is a Python repr(), which is double-quoted if the string
+        // contains ' but no ".
         if let Some((_, command, status_code, stderr)) = lazy_regex::regex_captures!(
-            r"\[(.*)\] failed \(exit status ([0-9]+), stderr \'(.*)\'\)\n",
+            r#"\[(.*)\] failed \(exit status ([0-9]+), stderr ('.*'|".*")\)\n"#,
             line
         ) {
+            let stderr = &stderr[1..stderr.len() - 1];
             if let Some((_, chroot)) =
                 lazy_regex::regex_captures!(r"E: (.*): Chroot not found\\n", stderr)
             {
@@ -955,6 +958,24 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.message(), "invalid integer");
         assert_eq!(error.offset(), Some(0));
+    }
+
+    #[test]
+    fn test_testbed_setup_double_quoted_stderr() {
+        let failure = super::find_testbed_setup_failure(&[
+            "['schroot', '-c', 'foo'] failed (exit status 1, stderr \"E: can't find session\\n\")\n",
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!(failure.r#match.offsets(), vec![0]);
+        assert_eq!(
+            failure.problem,
+            Some(Box::new(AutopkgtestTestbedSetupFailure {
+                command: "'schroot', '-c', 'foo'".to_owned(),
+                exit_status: 1,
+                error: "E: can't find session\\n".to_owned(),
+            }) as Box<dyn Problem>)
+        );
     }
 
     #[test]
