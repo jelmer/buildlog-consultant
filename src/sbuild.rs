@@ -706,7 +706,6 @@ pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failur
             "dpkg-source: error: cannot read (.*): No such file or directory",
             line
         ) {
-            let _patchname = path.rsplit_once('/').unwrap().1;
             let err = Some(Box::new(PatchFileMissing { path: path.into() }) as Box<dyn Problem>);
             return Ok(Some(Failure::new(
                 SingleLineMatch::from_lines(lines, lineno, Some("direct regex")),
@@ -2204,6 +2203,16 @@ Line4
         let error = error.expect("problem");
         assert_eq!(error.kind(), "patch-application-failed");
         assert_eq!(error.json(), serde_json::json!({"patchname": "foo.patch"}));
+    }
+
+    #[test]
+    fn test_find_preamble_failure_cannot_read_without_slash() {
+        let lines = vec!["dpkg-source: error: cannot read foo.patch: No such file or directory\n"];
+        let (m, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
+        assert_eq!(m.expect("match").lineno(), 1);
+        let error = error.expect("problem");
+        assert_eq!(error.kind(), "patch-file-missing");
+        assert_eq!(error.json(), serde_json::json!({"path": "foo.patch"}));
     }
 
     #[test]
