@@ -304,12 +304,20 @@ pub fn find_autopkgtest_failure_description(
                 let msg = if msg.starts_with('"') && msg.chars().filter(|x| *x == '"').count() == 1
                 {
                     let mut sublines = vec![msg];
-                    while i < lines.len() {
-                        let (_i, line) = it.next().unwrap();
+                    let mut terminated = false;
+                    for (_, line) in it.by_ref() {
                         sublines.push(line);
                         if line.chars().filter(|x| x == &'"').count() == 1 {
+                            terminated = true;
                             break;
                         }
+                    }
+                    if !terminated {
+                        log::warn!(
+                            "unterminated quoted autopkgtest error at line {}: {}",
+                            i + 1,
+                            msg
+                        );
                     }
                     // Continuation lines still carry their line terminator.
                     sublines
@@ -1256,6 +1264,38 @@ mod tests {
             None,
             None,
             Some("\"dpkg --unpack /tmp/x.deb\nfirst\nsecond\""),
+        );
+    }
+
+    #[test]
+    fn test_multiline_quoted_error_trailing_line() {
+        let lines = vec![
+            "autopkgtest [10:00:00]: ERROR: \"some command",
+            "continued here",
+            "end\"",
+            "trailing",
+        ];
+        assert_autopkgtest_match(
+            lines,
+            vec![0],
+            None,
+            None,
+            Some("\"some command\ncontinued here\nend\""),
+        );
+    }
+
+    #[test]
+    fn test_unterminated_quoted_error() {
+        let lines = vec![
+            "autopkgtest [10:00:00]: ERROR: \"some command",
+            "continued here",
+        ];
+        assert_autopkgtest_match(
+            lines,
+            vec![0],
+            None,
+            None,
+            Some("\"some command\ncontinued here"),
         );
     }
 
