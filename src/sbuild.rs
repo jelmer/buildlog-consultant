@@ -288,8 +288,7 @@ impl<F: std::io::Read> TryFrom<BufReader<F>> for SbuildLog {
     type Error = std::io::Error;
 
     fn try_from(reader: BufReader<F>) -> Result<Self, Self::Error> {
-        let sections = parse_sbuild_log(reader);
-        Ok(SbuildLog(sections.collect()))
+        Ok(SbuildLog(parse_sbuild_log(reader)?.collect()))
     }
 }
 
@@ -306,9 +305,7 @@ impl FromStr for SbuildLog {
     type Err = std::io::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let reader = BufReader::new(s.as_bytes());
-        let sections = parse_sbuild_log(reader);
-        Ok(SbuildLog(sections.collect()))
+        BufReader::new(s.as_bytes()).try_into()
     }
 }
 
@@ -371,8 +368,11 @@ fn strip_section_header_timestamp(raw: &str) -> &str {
 /// * `reader` - A buffered reader providing access to the log file
 ///
 /// # Returns
-/// An iterator over the sections found in the log file
-pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = SbuildLogSection> {
+/// An iterator over the sections found in the log file, or an error if
+/// reading from `reader` failed
+pub fn parse_sbuild_log<R: BufRead>(
+    mut reader: R,
+) -> std::io::Result<impl Iterator<Item = SbuildLogSection>> {
     let mut begin_offset = 1;
     let mut lines = Vec::new();
     let mut title: Option<String> = None;
@@ -388,7 +388,7 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
         let mut line = String::new();
 
         // Read a line from the file. Break if EOF.
-        if reader.read_line(&mut line).unwrap() == 0 {
+        if reader.read_line(&mut line)? == 0 {
             break;
         }
 
@@ -402,8 +402,8 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
             let mut l1 = String::new();
             let mut l2 = String::new();
 
-            reader.read_line(&mut l1).unwrap();
-            reader.read_line(&mut l2).unwrap();
+            reader.read_line(&mut l1)?;
+            reader.read_line(&mut l2)?;
 
             lineno += 2;
 
@@ -459,7 +459,7 @@ pub fn parse_sbuild_log<R: BufRead>(mut reader: R) -> impl Iterator<Item = Sbuil
     });
 
     // Return the sections as an iterator.
-    sections.into_iter()
+    Ok(sections.into_iter())
 }
 
 /// Represents a failure in an sbuild log.
@@ -1706,6 +1706,29 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
 
         let space: Space = "n/a".parse().unwrap();
         assert_eq!(space, Space::NotAvailable);
+    }
+
+    struct FailingReader;
+
+    impl std::io::Read for FailingReader {
+        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("read failed"))
+        }
+    }
+
+    #[test]
+    fn test_parse_sbuild_log_read_error() {
+        let reader = BufReader::new(std::io::Read::chain(&b"foo\n"[..], FailingReader));
+        let err = SbuildLog::try_from(reader).unwrap_err();
+        assert_eq!(err.to_string(), "read failed");
+    }
+
+    #[test]
+    fn test_parse_sbuild_log_read_error_after_separator() {
+        let sep = format!("+{}+\n", "-".repeat(78));
+        let reader = BufReader::new(std::io::Read::chain(sep.as_bytes(), FailingReader));
+        let err = SbuildLog::try_from(reader).unwrap_err();
+        assert_eq!(err.to_string(), "read failed");
     }
 
     #[test]
