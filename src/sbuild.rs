@@ -648,7 +648,7 @@ pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failur
         if let Some((_, _path)) =
             lazy_regex::regex_captures!("E: Bad version unknown in (.*)", line)
         {
-            if lines[lineno - 1].starts_with("LINE: ") {
+            if lineno >= 2 && lines[lineno - 1].starts_with("LINE: ") {
                 if let Some((_, version, reason)) = lazy_regex::regex_captures!(
                     r"dpkg-parsechangelog: warning: .*\(l[0-9]+\): version \'(.*)\' is invalid: (.*)",
                     lines[lineno - 2]
@@ -2275,5 +2275,24 @@ Line4
             error.json(),
             serde_json::json!({"diff_file": "/tmp/foo.diff", "files": ["foo/a.c"]})
         );
+    }
+
+    #[test]
+    fn test_find_preamble_failure_bad_version_first_line() {
+        let lines = vec!["E: Bad version unknown in /build/foo\n"];
+        let (m, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
+        assert!(m.is_none());
+        assert!(error.is_none());
+    }
+
+    #[test]
+    fn test_find_preamble_failure_bad_version_second_line() {
+        let lines = vec![
+            "LINE: foo (1.0-a-) unstable; urgency=medium\n",
+            "E: Bad version unknown in /build/foo\n",
+        ];
+        let (m, error) = Failure::split(find_preamble_failure_description(&lines).unwrap());
+        assert!(m.is_none());
+        assert!(error.is_none());
     }
 }
