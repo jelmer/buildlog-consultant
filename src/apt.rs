@@ -238,13 +238,10 @@ pub fn find_apt_get_update_failure(
 pub(crate) fn find_cudf_output(
     lines: &[&str],
 ) -> Result<Option<(Vec<usize>, crate::cudf::Cudf)>, Error> {
-    let mut offset = None;
-    for (i, line) in lines.enumerate_backward(None) {
-        if line.starts_with("output-version:") {
-            offset = Some(i);
-        }
-    }
-    let Some(mut offset) = offset else {
+    let Some((mut offset, _)) = lines
+        .enumerate_backward(None)
+        .find(|(_, line)| line.starts_with("output-version:"))
+    else {
         return Ok(None);
     };
     let start = offset;
@@ -763,6 +760,23 @@ mod tests {
             .downcast_ref::<UnsatisfiedAptConflicts>()
             .unwrap();
         assert_eq!(problem.relations, "libfoo:amd64 (<< 2.0)");
+    }
+
+    #[test]
+    fn test_find_cudf_output_last() {
+        let lines = vec![
+            "output-version: 1.2\n",
+            "native-architecture: amd64\n",
+            "report: []\n",
+            "\n",
+            "output-version: 1.2\n",
+            "native-architecture: arm64\n",
+            "report: []\n",
+            "\n",
+        ];
+        let (offsets, cudf) = find_cudf_output(&lines).unwrap().unwrap();
+        assert_eq!(offsets, vec![4, 5, 6]);
+        assert_eq!(cudf.native_architecture, "arm64");
     }
 
     #[test]
