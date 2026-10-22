@@ -531,8 +531,12 @@ pub fn find_autopkgtest_failure_description(
                         }
                     }
                 }
-                if msg == "autopkgtest" && lines[i + 1].trim_end() == ": error cleaning up:" {
-                    let description = lines[i - 1].trim_end().to_owned();
+                if msg == "autopkgtest"
+                    && lines
+                        .get(i + 1)
+                        .is_some_and(|l| l.trim_end() == ": error cleaning up:")
+                {
+                    let description = i.checked_sub(1).map(|p| lines[p].trim_end().to_owned());
                     // Point at the start of the current field's output, or
                     // at the ERROR line itself when outside of any field.
                     let offset = current_field.as_ref().map_or(i, |f| test_output[f].start);
@@ -542,7 +546,7 @@ pub fn find_autopkgtest_failure_description(
                             Some(Box::new(AutopkgtestTimedOut) as Box<dyn Problem>),
                         ),
                         testname: last_test.map(|x| x.to_owned()),
-                        description: Some(description),
+                        description,
                     }));
                 }
                 return Ok(Some(AutopkgtestFailure {
@@ -1277,6 +1281,34 @@ mod tests {
             Some(Box::new(AutopkgtestTimedOut)),
             Some("timed out"),
         );
+    }
+
+    #[test]
+    fn test_error_cleaning_up() {
+        let lines = vec![
+            "autopkgtest [06:59:00]: test phpunit: [-----------------------\n",
+            "running tests\n",
+            "timed out\n",
+            "autopkgtest [06:59:01]: ERROR: autopkgtest\n",
+            ": error cleaning up:\n",
+        ];
+        assert_autopkgtest_match(
+            lines,
+            vec![1],
+            Some("phpunit"),
+            Some(Box::new(AutopkgtestTimedOut)),
+            Some("timed out"),
+        );
+    }
+
+    #[test]
+    fn test_error_autopkgtest_last_line() {
+        let lines = vec![
+            "autopkgtest [06:59:00]: test phpunit: [-----------------------\n",
+            "running tests\n",
+            "autopkgtest [06:59:01]: ERROR: autopkgtest\n",
+        ];
+        assert_autopkgtest_match(lines, vec![2], Some("phpunit"), None, Some("autopkgtest"));
     }
 
     #[test]
