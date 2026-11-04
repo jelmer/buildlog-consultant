@@ -383,7 +383,7 @@ fn strip_section_header_timestamp(raw: &str) -> &str {
 pub fn parse_sbuild_log<R: BufRead>(
     mut reader: R,
 ) -> std::io::Result<impl Iterator<Item = SbuildLogSection>> {
-    let mut begin_offset = 1;
+    let mut begin_offset = 0;
     let mut lines = Vec::new();
     let mut title: Option<String> = None;
 
@@ -1749,6 +1749,31 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
 
         let space: Space = "n/a".parse().unwrap();
         assert_eq!(space, Space::NotAvailable);
+    }
+
+    #[test]
+    fn test_parse_sbuild_log_first_section_offsets() {
+        let sep = format!("+{}+", "-".repeat(78));
+        let log = format!("start\n{sep}\n| Build |\n{sep}\nbuilding\n");
+        let offsets: Vec<_> = parse_sbuild_log(log.as_bytes())
+            .unwrap()
+            .map(|s| (s.title, s.offsets))
+            .collect();
+        assert_eq!(
+            offsets,
+            vec![(None, (0, 1)), (Some("Build".to_string()), (4, 5))]
+        );
+
+        let log: SbuildLog = "start\n/bin/sh: 1: cmake: not found\n".parse().unwrap();
+        let failure = worker_failure_from_sbuild_log(&log).unwrap();
+        assert_eq!(
+            failure.error.as_deref(),
+            Some(&crate::problems::common::MissingCommand {
+                command: "cmake".to_owned()
+            } as &dyn Problem)
+        );
+        let lineno = failure.section.unwrap().offsets.0 + failure.r#match.unwrap().lineno();
+        assert_eq!(lineno, 2);
     }
 
     struct FailingReader;
