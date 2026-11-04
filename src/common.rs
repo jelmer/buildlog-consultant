@@ -28,6 +28,12 @@ fn node_module_missing(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> 
     })))
 }
 
+fn out_of_memory(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
+    Ok(Some(Box::new(OutOfMemory {
+        program: c.get(1).unwrap().as_str().to_string(),
+    })))
+}
+
 fn file_not_found(c: &Captures) -> Result<Option<Box<dyn Problem>>, Error> {
     let path = c.get(1).unwrap().as_str();
     if path.starts_with('/') && !path.starts_with("/<<PKGBUILDDIR>>") {
@@ -219,6 +225,33 @@ impl Matcher for HaskellMissingDependencyMatcher {
         };
         let p = MissingHaskellDependencies { deps };
         Ok(Some(Failure::new(m, Some(Box::new(p)))))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct CargoGitRevisionNotFoundMatcher;
+
+impl Matcher for CargoGitRevisionNotFoundMatcher {
+    fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
+        if !regex_is_match!(
+            r"^  revision [0-9a-f]+ not found$",
+            lines[offset].trim_end_matches('\n')
+        ) {
+            return Ok(None);
+        }
+
+        // Report the dependency at the head of cargo's "Caused by:" chain.
+        for i in (offset.saturating_sub(20)..offset).rev() {
+            if let Some((_, crate_name)) = regex_captures!(
+                r"^error: failed to get `(.*)` as a dependency of package `.*`",
+                lines[i].trim_end_matches('\n')
+            ) {
+                let m = SingleLineMatch::from_lines(lines, i, Some("cargo git dependency"));
+                let p = MissingCargoCrate::simple(crate_name.to_string());
+                return Ok(Some(Failure::new(m, Some(Box::new(p)))));
+            }
+        }
+        Ok(None)
     }
 }
 
@@ -848,6 +881,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r"^error: can't find Rust compiler", |_| Ok(Some(Box::new(MissingRustCompiler)))),
     regex_line_matcher!(r"^Found no assembler", |_| Ok(Some(Box::new(MissingAssembler)))),
     regex_line_matcher!(r"^error: failed to get `(.*)` as a dependency of package `(.*)`", |m| Ok(Some(Box::new(MissingCargoCrate::simple(m.get(1).unwrap().as_str().to_string()))))),
+    Box::new(CargoGitRevisionNotFoundMatcher),
     regex_line_matcher!(r"^configure: error: (.*) requires libkqueue \(or system kqueue\). .*", |_| Ok(Some(Box::new(MissingPkgConfig::simple("libkqueue".to_string()))))),
     regex_line_matcher!(r"^Did not find pkg-config by name 'pkg-config'", |_| Ok(Some(Box::new(MissingCommand { command: "pkg-config".to_string() })))),
     regex_line_matcher!(r"^configure: error: Required (.*) binary is missing. Please install (.*).", |m| Ok(Some(Box::new(MissingCommand { command: m.get(1).unwrap().as_str().to_string() })))),
@@ -1907,6 +1941,14 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(UnknownCertificateAuthority { url: m.get(1).unwrap().as_str().to_string() })))
     ),
     regex_line_matcher!(
+        r#"^go: ([^@\s]+)@[^:\s]+: Get ".*": dial tcp: "#,
+        |m| Ok(Some(Box::new(MissingGoPackage { package: m.get(1).unwrap().as_str().to_string() })))
+    ),
+    regex_line_matcher!(
+        r#"\.go:[0-9]+:[0-9]+: ([^@\s]+)@[^:\s]+: Get ".*": dial tcp: "#,
+        |m| Ok(Some(Box::new(MissingGoPackage { package: m.get(1).unwrap().as_str().to_string() })))
+    ),
+    regex_line_matcher!(
         r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
         |m| Ok(Some(Box::new(UnknownCertificateAuthority { url: m.get(1).unwrap().as_str().to_string() })))
     ),
@@ -2144,6 +2186,10 @@ lazy_static::lazy_static! {
         |_| Ok(Some(Box::new(MissingGoModFile)))
     ),
     regex_line_matcher!(r"go: updates to go.mod needed; to update it:", |_| Ok(Some(Box::new(OutdatedGoModFile)))),
+    regex_line_matcher!(r": fatal error: Killed signal terminated program (\S+)", out_of_memory),
+    regex_line_matcher!(r": internal compiler error: Killed \(program (\S+)\)", out_of_memory),
+    regex_line_matcher!(r"^collect2: fatal error: (\S+) terminated with signal 9 \[Killed\]", out_of_memory),
+    regex_line_matcher!(r"^(\S+): out of memory allocating [0-9]+ bytes after a total of [0-9]+ bytes", out_of_memory),
     regex_line_matcher!(r"(c\+\+|collect2|cc1|g\+\+): fatal error: .*"),
     regex_line_matcher!(r"fatal: making (.*): failed to create tests\/decode.trs"),
     // ocaml
@@ -5281,6 +5327,42 @@ mod tests {
     }
 
     #[test]
+    fn test_out_of_memory() {
+        assert_match(
+            vec![
+                "x86_64-linux-gnu-g++ -O2 -c -o big.o big.cpp",
+                "x86_64-linux-gnu-g++: fatal error: Killed signal terminated program cc1plus",
+                "compilation terminated.",
+            ],
+            2,
+            Some(OutOfMemory {
+                program: "cc1plus".to_owned(),
+            }),
+        );
+        assert_match(
+            vec!["g++: internal compiler error: Killed (program cc1plus)"],
+            1,
+            Some(OutOfMemory {
+                program: "cc1plus".to_owned(),
+            }),
+        );
+        assert_match(
+            vec!["collect2: fatal error: ld terminated with signal 9 [Killed]"],
+            1,
+            Some(OutOfMemory {
+                program: "ld".to_owned(),
+            }),
+        );
+        assert_match(
+            vec!["cc1plus: out of memory allocating 65536 bytes after a total of 145264640 bytes"],
+            1,
+            Some(OutOfMemory {
+                program: "cc1plus".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
     fn test_segmentation_fault() {
         assert_just_match(
             vec![
@@ -5647,6 +5729,43 @@ error: invalid command 'test'
     }
 
     #[test]
+    fn test_cargo_failed_to_get() {
+        assert_match(
+            vec![
+                "error: failed to get `gizmo-core` as a dependency of package `hello v0.1.0 (/<<PKGBUILDDIR>>)`",
+                "",
+                "Caused by:",
+                "  failed to load source for dependency `gizmo-core`",
+            ],
+            1,
+            Some(MissingCargoCrate::simple("gizmo-core".to_owned())),
+        );
+        assert_match(
+            vec![
+                "    Updating git repository `https://git.example.com/gizmo-core`",
+                "error: failed to get `gizmo-core` as a dependency of package `hello v0.1.0 (/<<PKGBUILDDIR>>)`",
+                "",
+                "Caused by:",
+                "  failed to load source for dependency `gizmo-core`",
+                "",
+                "Caused by:",
+                "  unable to update https://git.example.com/gizmo-core?rev=9f1e2d3c4b5a69788796a5b4c3d2e1f0a9b8c7d6",
+                "",
+                "Caused by:",
+                "  failed to clone into: /<<PKGBUILDDIR>>/debian/cargo_home/git/db/gizmo-core-3c5d7e9f1a2b4c6d",
+                "",
+                "Caused by:",
+                "  revision 9f1e2d3c4b5a69788796a5b4c3d2e1f0a9b8c7d6 not found",
+                "",
+                "Caused by:",
+                "  failed to resolve address for git.example.com: Temporary failure in name resolution; class=Net (12)",
+            ],
+            2,
+            Some(MissingCargoCrate::simple("gizmo-core".to_owned())),
+        );
+    }
+
+    #[test]
     fn test_go_missing() {
         assert_match(
             vec![
@@ -5655,6 +5774,29 @@ error: invalid command 'test'
             1,
             Some(MissingGoPackage {
                 package: "golang.org/x/xerrors".to_owned(),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_go_module_download_failed() {
+        assert_match(
+            vec![
+                "go: downloading example.com/foo v1.2.3",
+                r#"cmd/hello/main.go:3:8: example.com/foo@v1.2.3: Get "https://proxy.golang.org/example.com/foo/@v/v1.2.3.zip": dial tcp: lookup proxy.golang.org on [::1]:53: read udp [::1]:40125->[::1]:53: read: connection refused"#,
+            ],
+            2,
+            Some(MissingGoPackage {
+                package: "example.com/foo".to_owned(),
+            }),
+        );
+        assert_match(
+            vec![
+                r#"go: example.com/foo@v1.2.3: Get "https://proxy.golang.org/example.com/foo/@v/v1.2.3.mod": dial tcp: lookup proxy.golang.org: no such host"#,
+            ],
+            1,
+            Some(MissingGoPackage {
+                package: "example.com/foo".to_owned(),
             }),
         );
     }

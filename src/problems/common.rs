@@ -3102,6 +3102,24 @@ impl std::fmt::Display for TooManyOpenFiles {
     }
 }
 
+/// Problem representing a program that ran out of memory.
+///
+/// This struct is used when a program, such as a compiler, fails to
+/// allocate memory or is killed by the kernel's out-of-memory killer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutOfMemory {
+    /// The program that ran out of memory.
+    pub program: String,
+}
+
+crate::problem!(OutOfMemory, "out-of-memory", ["program"], universal);
+
+impl std::fmt::Display for OutOfMemory {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Out of memory: {}", self.program)
+    }
+}
+
 /// Problem representing a missing Makefile target.
 ///
 /// This struct is used when a build process tries to run a make target
@@ -4172,6 +4190,14 @@ mod tests {
             "too-many-open-files",
             json!({}),
             "Too many open files",
+        );
+        assert_wire_format(
+            &OutOfMemory {
+                program: "f0-value".to_string(),
+            },
+            "out-of-memory",
+            json!({"program": "f0-value"}),
+            "Out of memory: f0-value",
         );
         assert_wire_format(
             &MissingMakeTarget {
