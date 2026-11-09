@@ -632,7 +632,7 @@ pub fn find_preamble_failure_description(lines: &[&str]) -> Result<Option<Failur
         }
 
         if let Some((_, format, _, _, _)) = lazy_regex::regex_captures!(
-            r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC contains: (.*)\) at \(eval [0-9]+\) line [0-9]+\.",
+            r"dpkg-source: error: source package format \'(.*)\' is not supported: Can\'t locate (.*) in \@INC \(you may need to install the (.*) module\) \(\@INC (?:contains|entries checked): (.*)\) at \(eval [0-9]+\) line [0-9]+\.",
             line
         ) {
             let err = Some(Box::new(SourceFormatUnsupported {
