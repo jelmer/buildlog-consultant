@@ -1073,7 +1073,7 @@ lazy_static::lazy_static! {
     regex_line_matcher!(r".*: .*: No space left on device", |_m| Ok(Some(Box::new(NoSpaceOnDevice)))),
     regex_line_matcher!(r"^No space left on device.", |_m| Ok(Some(Box::new(NoSpaceOnDevice)))),
     regex_line_matcher!(
-        r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC contains: (.*)\) at .* line [0-9]+\.",
+        r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC (?:contains|entries checked): (.*)\) at .* line [0-9]+\.",
         |m| {
             let path = format!("{}.pm", m.get(1).unwrap().as_str());
             let inc = m.get(3).unwrap().as_str().split(' ').map(|s| s.to_string()).collect::<Vec<_>>();
@@ -1082,7 +1082,7 @@ lazy_static::lazy_static! {
         }
     ),
     regex_line_matcher!(
-        r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC contains: (.*)\)\.",
+        r".*Can't locate (.*).pm in @INC \(you may need to install the (.*) module\) \(@INC (?:contains|entries checked): (.*)\)\.",
         |m| {
             let path = format!("{}.pm", m.get(1).unwrap().as_str());
             let inc = m.get(3).unwrap().as_str().split(' ').map(|s| s.to_string()).collect::<Vec<_>>();
@@ -1124,7 +1124,7 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingPerlModule::simple(m.get(1).unwrap().as_str()))))),
 
     regex_line_matcher!(
-        r".*Can't locate (.*) in @INC \(@INC contains: (.*)\) at .* line .*.",
+        r".*Can't locate (.*) in @INC \(@INC (?:contains|entries checked): (.*)\) at .* line .*.",
         |m| {
             let inc = m.get(2).unwrap().as_str().split(' ').map(|s| s.to_string()).collect::<Vec<_>>();
             Ok(Some(Box::new(MissingPerlFile::new(m.get(1).unwrap().as_str().to_string(), Some(inc)))))
@@ -5171,6 +5171,22 @@ mod tests {
                     "/usr/lib/x86_64-linux-gnu/perl/5.32".to_owned(),
                     "/usr/share/perl/5.32".to_owned(),
                     "/usr/local/lib/site_perl".to_owned(),
+                ]),
+                minimum_version: None
+            }),
+        );
+        assert_match(
+            vec![
+                "dh_auto_clean: error: unable to load build system class 'pybuild': Can't locate Debian/Debhelper/Buildsystem/pybuild.pm in @INC (you may need to install the Debian::Debhelper::Buildsystem::pybuild module) (@INC entries checked: /etc/perl /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base) at (eval 3) line 1."
+            ],
+            1,
+            Some(MissingPerlModule {
+                filename: Some("Debian/Debhelper/Buildsystem/pybuild.pm".to_owned()),
+                module: "Debian::Debhelper::Buildsystem::pybuild".to_owned(),
+                inc: Some(vec![
+                    "/etc/perl".to_owned(),
+                    "/usr/share/perl5".to_owned(),
+                    "/usr/lib/x86_64-linux-gnu/perl-base".to_owned(),
                 ]),
                 minimum_version: None
             }),
