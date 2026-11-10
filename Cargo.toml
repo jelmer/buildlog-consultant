@@ -7,7 +7,7 @@ license = "GPL-2.0+"
 description = "buildlog parser and analyser"
 repository = "https://github.com/jelmer/buildlog-consultant.git"
 homepage = "https://github.com/jelmer/buildlog-consultant"
-exclude = [".github", "disperse.conf", ".gitignore", "MANIFEST", "MANIFEST.in"]
+exclude = [".github", ".gitignore", "MANIFEST", "MANIFEST.in"]
 
 [features]
 default = ["cli"]
