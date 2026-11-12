@@ -79,12 +79,13 @@ pub fn main() -> Result<(), i8> {
         std::fs::File::open(path)
             .expect("Failed to open log file")
             .try_into()
-            .expect("Failed to parse log file")
     } else {
-        std::io::BufReader::new(std::io::stdin().lock())
-            .try_into()
-            .expect("Failed to parse log file")
-    };
+        std::io::BufReader::new(std::io::stdin().lock()).try_into()
+    }
+    .map_err(|e: std::io::Error| {
+        log::error!("Failed to parse log file: {}", e);
+        1
+    })?;
 
     if args.debug {
         println!("{:?}", sbuildlog.summary());
