@@ -168,6 +168,10 @@ pub fn parse_summary(lines: &[&str]) -> Result<Summary, Error> {
         if line.trim() == "" {
             continue;
         }
+        // sbuild's closing lines follow a line of dashes.
+        if line.trim().chars().all(|c| c == '-') {
+            break;
+        }
         if let Some((key, value)) = line.trim_end().split_once(": ") {
             let value = value.trim();
             let secs = || parse_summary_value(key, value, offset).map(Duration::from_secs);
