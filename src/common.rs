@@ -2178,7 +2178,7 @@ lazy_static::lazy_static! {
         |m| Ok(Some(Box::new(MissingPkgConfig::simple(m.get(2).unwrap().as_str().to_string()))))
     ),
     regex_line_matcher!(
-        r"go: go.mod file not found in current directory or any parent directory; see \'go help modules\'",
+        r"go.mod file not found in current directory or any parent directory; see \'go help modules\'",
         |_| Ok(Some(Box::new(MissingGoModFile)))
     ),
     regex_line_matcher!(
@@ -3699,6 +3699,13 @@ mod tests {
         assert_match(
             vec![
                 "go: go.mod file not found in current directory or any parent directory; see 'go help modules'"
+            ],
+            1,
+            Some(MissingGoModFile),
+        );
+        assert_match(
+            vec![
+                "main.go:3:8: no required module provides package github.com/example/lib: go.mod file not found in current directory or any parent directory; see 'go help modules'"
             ],
             1,
             Some(MissingGoModFile),
