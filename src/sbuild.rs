@@ -1238,6 +1238,10 @@ pub fn find_failure_check_space(
 /// dependency resolver to install build dependencies.
 pub const DOSE3_SECTION: &str = "install dose3 build dependencies (aspcud-based resolver)";
 
+/// Section title for dose3 dependency resolution logs from the aptitude resolver.
+pub const APTITUDE_DOSE3_SECTION: &str =
+    "install dose3 build dependencies (aptitude-based resolver)";
+
 /// Examines sbuild logs for dependency installation failures.
 ///
 /// This function looks for failures during the dependency installation phase,
@@ -1253,14 +1257,16 @@ pub const DOSE3_SECTION: &str = "install dose3 build dependencies (aspcud-based 
 pub fn find_install_deps_failure_description(
     sbuildlog: &SbuildLog,
 ) -> Result<SectionFailure<'_>, Error> {
-    let dose3_lines = sbuildlog.get_section_lines(Some(DOSE3_SECTION));
-    if let Some(dose3_lines) = dose3_lines {
+    let dose3_section = [DOSE3_SECTION, APTITUDE_DOSE3_SECTION]
+        .into_iter()
+        .find_map(|title| Some((title, sbuildlog.get_section_lines(Some(title))?)));
+    if let Some((dose3_section, dose3_lines)) = dose3_section {
         let dose3 = crate::apt::find_cudf_output(&dose3_lines)?;
         if let Some((dose3_offsets, dose3_output)) = dose3 {
             let error = crate::apt::error_from_dose3_reports(dose3_output.report.as_slice())?;
             let r#match = crate::MultiLineMatch::from_lines(&dose3_lines, dose3_offsets, None);
             return Ok(SectionFailure {
-                section: Some(DOSE3_SECTION),
+                section: Some(dose3_section),
                 failure: Some(Failure::new(r#match, error)),
             });
         }
@@ -1739,6 +1745,59 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
         assert_eq!(
             err.to_string(),
             "invalid Space in summary: \"lots\" at line 2"
+        );
+    }
+
+    #[test]
+    fn test_find_failure_install_deps_aptitude() {
+        let sep = format!("+{}+", "-".repeat(78));
+        let log: SbuildLog = format!(
+            "{sep}
+| Install package build dependencies |
+{sep}
+
+Merged Build-Depends: debhelper-compat (= 13), python-all, build-essential
+{sep}
+| Install dose3 build dependencies (aptitude-based resolver) |
+{sep}
+
+output-version: 1.2
+native-architecture: amd64
+report:
+ -
+  package: sbuild-build-depends-main-dummy
+  version: 0.invalid.0
+  architecture: amd64
+  status: broken
+  reasons:
+   -
+    missing:
+     pkg:
+      package: sbuild-build-depends-main-dummy
+      version: 0.invalid.0
+      architecture: amd64
+      unsat-dependency: python-all:amd64
+background-packages: 77060
+{sep}
+| Summary |
+{sep}
+
+Fail-Stage: install-deps
+"
+        )
+        .parse()
+        .unwrap();
+        let failure = worker_failure_from_sbuild_log(&log).unwrap();
+        assert_eq!(failure.stage.as_deref(), Some("install-deps"));
+        assert_eq!(
+            failure.error.as_deref(),
+            Some(&UnsatisfiedAptDependencies {
+                relations: "python-all:amd64".to_owned()
+            } as &dyn Problem)
+        );
+        assert_eq!(
+            failure.section.unwrap().title.as_deref(),
+            Some("Install dose3 build dependencies (aptitude-based resolver)")
         );
     }
 
