@@ -2695,6 +2695,9 @@ lazy_static::lazy_static! {
 
 lazy_static::lazy_static! {
     static ref CMAKE_ERROR_MATCHERS: MatcherGroup = MatcherGroup::new(vec![
+        regex_para_matcher!(r"Compatibility with CMake < (\S+) has been removed from CMake\.",
+            |m| Ok(Some(Box::new(MinimumCMakeTooOld { minimum_version: m.get(1).unwrap().as_str().to_string() })))
+        ),
         regex_para_matcher!(r"Could NOT find (.*) \(missing:\s(.*)\)\s\(found\ssuitable\sversion\s.*",
             |m| Ok(Some(Box::new(MissingCMakeComponents{
                 name: m.get(1).unwrap().as_str().to_string(),
@@ -6123,6 +6126,30 @@ CMake Error at CMakeLists.txt:43 (include):
 """#.split_inclusive('\n').collect::<Vec<&str>>(),
             8,
             Some(CMakeFilesMissing{filenames:vec!["KDEGitCommitHooks.cmake".to_string()], version :None}),
+        );
+    }
+
+    #[test]
+    fn test_cmake_minimum_too_old() {
+        assert_match(
+            r#"CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 has been removed from CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+  Or, add -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to try configuring anyway.
+
+
+-- Configuring incomplete, errors occurred!
+"#
+            .split_inclusive('\n')
+            .collect::<Vec<&str>>(),
+            8,
+            Some(MinimumCMakeTooOld {
+                minimum_version: "3.5".to_string(),
+            }),
         );
     }
 
