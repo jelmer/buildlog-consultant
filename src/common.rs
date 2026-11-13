@@ -606,7 +606,7 @@ lazy_static::lazy_static! {
         regex_line_matcher!(
             "PytestConfigWarning: Unknown config (?:ini key|option): (.*)$",
             |m| Ok(Some(Box::new(UnsupportedPytestConfigOption { name: m.get(1).unwrap().as_str().to_string() })))),
-        regex_line_matcher!("^E   ImportError: cannot import name '(.*)' from '(.*)'", |m| {
+        regex_line_matcher!("^E   ImportError: cannot import name '([^']*)' from '([^']*)'", |m| {
             let name = m.get(1).unwrap().as_str();
             let module = m.get(2).unwrap().as_str();
             Ok(Some(Box::new(MissingPythonModule {
@@ -5710,6 +5710,13 @@ error: invalid command 'test'
             ],
             1,
             Some(MissingPythonModule::simple("msrest.polling.async_poller".to_owned())),
+        );
+        assert_match(
+            vec![
+                "E   ImportError: cannot import name 'dumpz' from 'json' (/usr/lib/python3.14/json/__init__.py). Did you mean: 'dump'?"
+            ],
+            1,
+            Some(MissingPythonModule::simple("json.dumpz".to_owned())),
         );
         assert_match(
             vec!["/usr/bin/python3: No module named sphinx"],
