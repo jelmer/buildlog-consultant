@@ -2391,6 +2391,14 @@ lazy_static::lazy_static! {
         })))
     ),
     regex_line_matcher!(
+        r"configure: error: (.*) >= (.*) is mandatory\.",
+        |m| Ok(Some(Box::new(MissingVagueDependency {
+            name: m.get(1).unwrap().as_str().to_string(),
+            minimum_version: Some(m.get(2).unwrap().as_str().to_string()),
+            url: None, current_version: None
+        })))
+    ),
+    regex_line_matcher!(
         r"configure: error: (.*) headers (could )?not (be )?found",
         |m| Ok(Some(Box::new(MissingVagueDependency::simple(m.get(1).unwrap().as_str()))))
     ),
@@ -3914,6 +3922,21 @@ mod tests {
             ],
             1,
             Some(MissingVagueDependency::simple("libpcap0.8")),
+        );
+        assert_match(
+            vec![
+                "/bin/bash: /w/nfc-tool/missing: No such file or directory",
+                "configure: WARNING: 'missing' script is too old or missing",
+                "checking for libnfc >= 1.7.0... no",
+                "configure: error: libnfc >= 1.7.0 is mandatory.",
+            ],
+            4,
+            Some(MissingVagueDependency {
+                name: "libnfc".to_owned(),
+                minimum_version: Some("1.7.0".to_owned()),
+                current_version: None,
+                url: None,
+            }),
         );
         assert_match(
             vec!["Error: Please install xml2 package"],
