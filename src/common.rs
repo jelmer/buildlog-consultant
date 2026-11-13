@@ -228,6 +228,38 @@ impl Matcher for HaskellMissingDependencyMatcher {
     }
 }
 
+/// wget gives the reason on the "Resolving" line before its own, which `-nv` leaves out.
+#[derive(Debug, Clone)]
+struct WgetResolveMatcher;
+
+impl Matcher for WgetResolveMatcher {
+    fn extract_from_lines(&self, lines: &[&str], offset: usize) -> MatchResult {
+        let Some((_, host)) = regex_captures!(
+            r"^wget: unable to resolve host address ['\u{2018}](.*)['\u{2019}]$",
+            lines[offset].trim_end_matches('\n')
+        ) else {
+            return Ok(None);
+        };
+        let host = Some(host.to_string());
+        let reason = offset.checked_sub(1).and_then(|i| {
+            regex_captures!(
+                r"^Resolving \S+ \(\S+\)\.\.\. failed: (.*)\.$",
+                lines[i].trim_end_matches('\n')
+            )
+            .map(|(_, reason)| reason)
+        });
+        let problem: Box<dyn Problem> = match reason {
+            Some("Temporary failure in name resolution") => {
+                Box::new(TemporaryNameResolutionFailure { host })
+            }
+            Some("Name or service not known") => Box::new(HostNameNotFound { host }),
+            _ => Box::new(NameResolutionFailed { host }),
+        };
+        let m = SingleLineMatch::from_lines(lines, offset, Some("wget resolve"));
+        Ok(Some(Failure::new(m, Some(problem))))
+    }
+}
+
 #[derive(Debug, Clone)]
 struct CargoGitRevisionNotFoundMatcher;
 
@@ -1951,6 +1983,87 @@ lazy_static::lazy_static! {
     regex_line_matcher!(
         r"fatal: unable to access '(.*)': server certificate verification failed. CAfile: none CRLfile: none",
         |m| Ok(Some(Box::new(UnknownCertificateAuthority { url: m.get(1).unwrap().as_str().to_string() })))
+    ),
+    regex_line_matcher!(
+        r"curl: \(6\) Could not resolve host: (\S+)",
+        |m| Ok(Some(Box::new(NameResolutionFailed { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"fatal: unable to access '.*': Could not resolve host: (\S+)",
+        |m| Ok(Some(Box::new(NameResolutionFailed { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    Box::new(WgetResolveMatcher),
+    regex_line_matcher!(
+        r"npm (?:ERR!|error) (?:network )?request to \S+ failed, reason: getaddrinfo EAI_AGAIN (\S+)",
+        |m| Ok(Some(Box::new(TemporaryNameResolutionFailure { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"Failed to open TCP connection to ([^:\s]+):[0-9]+ \(getaddrinfo: Temporary failure in name resolution\)",
+        |m| Ok(Some(Box::new(TemporaryNameResolutionFailure { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"HTTPS?ConnectionPool\(host='([^']+)', port=[0-9]+\): Max retries exceeded with url: .*\[Errno -3\] Temporary failure in name resolution",
+        |m| Ok(Some(Box::new(TemporaryNameResolutionFailure { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"urllib\.error\.URLError: <urlopen error \[Errno -3\] Temporary failure in name resolution>",
+        |_| Ok(Some(Box::new(TemporaryNameResolutionFailure { host: None })))
+    ),
+    regex_line_matcher!(
+        r"socket\.gaierror: \[Errno -3\] Temporary failure in name resolution",
+        |_| Ok(Some(Box::new(TemporaryNameResolutionFailure { host: None })))
+    ),
+    regex_line_matcher!(
+        r"npm (?:ERR!|error) (?:network )?request to \S+ failed, reason: getaddrinfo ENOTFOUND (\S+)",
+        |m| Ok(Some(Box::new(HostNameNotFound { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"npm (?:ERR!|error) (?:network )?request to \S+ failed, reason: getaddrinfo \S+ (\S+)",
+        |m| Ok(Some(Box::new(NameResolutionFailed { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"Failed to open TCP connection to ([^:\s]+):[0-9]+ \(getaddrinfo: Name or service not known\)",
+        |m| Ok(Some(Box::new(HostNameNotFound { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"HTTPS?ConnectionPool\(host='([^']+)', port=[0-9]+\): Max retries exceeded with url: .*\[Errno -2\] Name or service not known",
+        |m| Ok(Some(Box::new(HostNameNotFound { host: Some(m.get(1).unwrap().as_str().to_string()) })))
+    ),
+    regex_line_matcher!(
+        r"urllib\.error\.URLError: <urlopen error \[Errno -2\] Name or service not known>",
+        |_| Ok(Some(Box::new(HostNameNotFound { host: None })))
+    ),
+    regex_line_matcher!(
+        r"socket\.gaierror: \[Errno -2\] Name or service not known",
+        |_| Ok(Some(Box::new(HostNameNotFound { host: None })))
+    ),
+    regex_line_matcher!(
+        r"curl: \(7\) Failed to connect to (\S+) port ([0-9]+)",
+        |m| Ok(Some(Box::new(ConnectionFailed { host: Some(m.get(1).unwrap().as_str().to_string()), port: Some(m.get(2).unwrap().as_str().parse()?) })))
+    ),
+    regex_line_matcher!(
+        r"fatal: unable to access '.*': Failed to connect to (\S+) port ([0-9]+)",
+        |m| Ok(Some(Box::new(ConnectionFailed { host: Some(m.get(1).unwrap().as_str().to_string()), port: Some(m.get(2).unwrap().as_str().parse()?) })))
+    ),
+    regex_line_matcher!(
+        r"Connecting to \S+ \((\S+)\)\|[^|]+\|:([0-9]+)\.\.\. failed: Connection refused\.",
+        |m| Ok(Some(Box::new(ConnectionRefused { host: Some(m.get(1).unwrap().as_str().to_string()), port: Some(m.get(2).unwrap().as_str().parse()?) })))
+    ),
+    regex_line_matcher!(
+        r"Failed to open TCP connection to ([^:\s]+):([0-9]+) \(Connection refused",
+        |m| Ok(Some(Box::new(ConnectionRefused { host: Some(m.get(1).unwrap().as_str().to_string()), port: Some(m.get(2).unwrap().as_str().parse()?) })))
+    ),
+    regex_line_matcher!(
+        r"HTTPS?ConnectionPool\(host='([^']+)', port=([0-9]+)\): Max retries exceeded with url: .*\[Errno 111\] Connection refused",
+        |m| Ok(Some(Box::new(ConnectionRefused { host: Some(m.get(1).unwrap().as_str().to_string()), port: Some(m.get(2).unwrap().as_str().parse()?) })))
+    ),
+    regex_line_matcher!(
+        r"(?:ConnectionRefusedError: |urllib\.error\.URLError: <urlopen error )\[Errno 111\] Connection refused",
+        |_| Ok(Some(Box::new(ConnectionRefused { host: None, port: None })))
+    ),
+    regex_line_matcher!(
+        r"npm (?:ERR!|error) code ECONNREFUSED",
+        |_| Ok(Some(Box::new(ConnectionRefused { host: None, port: None })))
     ),
     regex_line_matcher!(
         r"curl: \(77\) error setting certificate verify locations:  CAfile: (.*) CApath: (.*)",
@@ -5309,6 +5422,135 @@ mod tests {
                 name: "use_test_base".to_owned(),
             }),
         );
+    }
+
+    #[test]
+    fn test_name_resolution_failed() {
+        for (line, host) in [
+            ("curl: (6) Could not resolve host: example.com", Some("example.com")),
+            ("fatal: unable to access 'https://github.com/example/foo.git/': Could not resolve host: github.com", Some("github.com")),
+        ] {
+            assert_match(
+                vec![line],
+                1,
+                Some(NameResolutionFailed {
+                    host: host.map(str::to_string),
+                }),
+            );
+        }
+    }
+
+    #[test]
+    fn test_temporary_name_resolution_failure() {
+        for (line, host) in [
+            ("npm ERR! request to https://registry.npmjs.org/left-pad failed, reason: getaddrinfo EAI_AGAIN registry.npmjs.org", Some("registry.npmjs.org")),
+            ("          Unable to download data from https://rubygems.org/ - Socket::ResolutionError: Failed to open TCP connection to rubygems.org:443 (getaddrinfo: Temporary failure in name resolution) (https://rubygems.org/specs.4.8.gz)", Some("rubygems.org")),
+            (r#"requests.exceptions.ConnectionError: HTTPSConnectionPool(host='example.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f255c88fe00>: Failed to resolve 'example.com' ([Errno -3] Temporary failure in name resolution)"))"#, Some("example.com")),
+            ("urllib.error.URLError: <urlopen error [Errno -3] Temporary failure in name resolution>", None),
+            ("socket.gaierror: [Errno -3] Temporary failure in name resolution", None),
+        ] {
+            assert_match(
+                vec![line],
+                1,
+                Some(TemporaryNameResolutionFailure {
+                    host: host.map(str::to_string),
+                }),
+            );
+        }
+    }
+
+    #[test]
+    fn test_host_name_not_found() {
+        for (line, host) in [
+            ("npm ERR! network request to https://nosuchhost.invalid/left-pad failed, reason: getaddrinfo ENOTFOUND nosuchhost.invalid", Some("nosuchhost.invalid")),
+            ("          Unable to download data from https://nosuchhost.invalid/ - Socket::ResolutionError: Failed to open TCP connection to nosuchhost.invalid:443 (getaddrinfo: Name or service not known) (https://nosuchhost.invalid/specs.4.8.gz)", Some("nosuchhost.invalid")),
+            (r#"requests.exceptions.ConnectionError: HTTPSConnectionPool(host='nosuchhost.invalid', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f287d987e00>: Failed to resolve 'nosuchhost.invalid' ([Errno -2] Name or service not known)"))"#, Some("nosuchhost.invalid")),
+            ("urllib.error.URLError: <urlopen error [Errno -2] Name or service not known>", None),
+            ("socket.gaierror: [Errno -2] Name or service not known", None),
+        ] {
+            assert_match(
+                vec![line],
+                1,
+                Some(HostNameNotFound {
+                    host: host.map(str::to_string),
+                }),
+            );
+        }
+    }
+
+    #[test]
+    fn test_wget_resolution_reason() {
+        assert_match(
+            vec![
+                "Resolving example.com (example.com)... failed: Temporary failure in name resolution.",
+                "wget: unable to resolve host address 'example.com'",
+            ],
+            2,
+            Some(TemporaryNameResolutionFailure {
+                host: Some("example.com".to_string()),
+            }),
+        );
+        assert_match(
+            vec![
+                "Resolving nosuchhost.invalid (nosuchhost.invalid)... failed: Name or service not known.",
+                "wget: unable to resolve host address 'nosuchhost.invalid'",
+            ],
+            2,
+            Some(HostNameNotFound {
+                host: Some("nosuchhost.invalid".to_string()),
+            }),
+        );
+        // wget -nv leaves out the "Resolving" line; its quotes follow the locale.
+        for line in [
+            "wget: unable to resolve host address 'example.com'",
+            "wget: unable to resolve host address \u{2018}example.com\u{2019}",
+        ] {
+            assert_match(
+                vec![line],
+                1,
+                Some(NameResolutionFailed {
+                    host: Some("example.com".to_string()),
+                }),
+            );
+        }
+    }
+
+    #[test]
+    fn test_connection_failed() {
+        for (line, host, port) in [
+            ("curl: (7) Failed to connect to localhost port 8123 after 0 ms: Could not connect to server", Some("localhost"), Some(8123)),
+            ("fatal: unable to access 'http://localhost:8123/foo.git/': Failed to connect to localhost port 8123 after 0 ms: Could not connect to server", Some("localhost"), Some(8123)),
+        ] {
+            assert_match(
+                vec![line],
+                1,
+                Some(ConnectionFailed {
+                    host: host.map(str::to_string),
+                    port,
+                }),
+            );
+        }
+    }
+
+    #[test]
+    fn test_connection_refused() {
+        for (line, host, port) in [
+            ("Connecting to localhost (localhost)|::1|:8123... failed: Connection refused.", Some("localhost"), Some(8123)),
+            (r#"          Unable to download data from http://localhost:8123/ - Errno::ECONNREFUSED: Failed to open TCP connection to localhost:8123 (Connection refused - connect(2) for "localhost" port 8123) (http://localhost:8123/specs.4.8.gz)"#, Some("localhost"), Some(8123)),
+            ("requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8123): Max retries exceeded with url: / (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f3ed0e4be00>: Failed to establish a new connection: [Errno 111] Connection refused'))", Some("localhost"), Some(8123)),
+            ("ConnectionRefusedError: [Errno 111] Connection refused", None, None),
+            ("urllib.error.URLError: <urlopen error [Errno 111] Connection refused>", None, None),
+            ("npm ERR! code ECONNREFUSED", None, None),
+        ] {
+            assert_match(
+                vec![line],
+                1,
+                Some(ConnectionRefused {
+                    host: host.map(str::to_string),
+                    port,
+                }),
+            );
+        }
     }
 
     #[test]
