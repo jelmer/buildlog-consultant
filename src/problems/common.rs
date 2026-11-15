@@ -2972,6 +2972,32 @@ impl std::fmt::Display for MinimumAutoconfTooOld {
     }
 }
 
+/// Problem representing a CMake minimum version older than CMake still supports.
+///
+/// This struct is used when CMake refuses a project because its
+/// cmake_minimum_required() asks for compatibility with a removed CMake version.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MinimumCMakeTooOld {
+    /// The oldest CMake version that CMake still supports.
+    pub minimum_version: String,
+}
+
+crate::problem!(
+    MinimumCMakeTooOld,
+    "minimum-cmake-too-old",
+    ["minimum_version"]
+);
+
+impl std::fmt::Display for MinimumCMakeTooOld {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "CMakeLists.txt should require newer CMake {}",
+            self.minimum_version
+        )
+    }
+}
+
 /// Problem representing a missing file in a Perl distribution.
 ///
 /// This struct is used when a Perl module build or installation process
@@ -4137,6 +4163,14 @@ mod tests {
             "minimum-autoconf-too-old",
             json!({"minimum_version": "f0-value"}),
             "configure.{ac,in} should require newer autoconf f0-value",
+        );
+        assert_wire_format(
+            &MinimumCMakeTooOld {
+                minimum_version: "f0-value".to_string(),
+            },
+            "minimum-cmake-too-old",
+            json!({"minimum_version": "f0-value"}),
+            "CMakeLists.txt should require newer CMake f0-value",
         );
         assert_wire_format(
             &MissingPerlDistributionFile {
