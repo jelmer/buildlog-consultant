@@ -2603,6 +2603,106 @@ impl std::fmt::Display for UnknownCertificateAuthority {
     }
 }
 
+/// Problem representing a failure to resolve a host name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NameResolutionFailed {
+    /// The host name that could not be resolved, if the log names it.
+    pub host: Option<String>,
+}
+
+crate::problem!(NameResolutionFailed, "name-resolution-failed", ["host"]);
+
+impl std::fmt::Display for NameResolutionFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.host {
+            Some(host) => write!(f, "Failed to resolve host name {}", host),
+            None => write!(f, "Failed to resolve a host name"),
+        }
+    }
+}
+
+/// Problem representing a temporary failure to resolve a host name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TemporaryNameResolutionFailure {
+    /// The host name that could not be resolved, if the log names it.
+    pub host: Option<String>,
+}
+
+crate::problem!(
+    TemporaryNameResolutionFailure,
+    "temporary-name-resolution-failure",
+    ["host"]
+);
+
+impl std::fmt::Display for TemporaryNameResolutionFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.host {
+            Some(host) => write!(f, "Temporary failure resolving host name {}", host),
+            None => write!(f, "Temporary failure in name resolution"),
+        }
+    }
+}
+
+/// Problem representing a host name that does not exist.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HostNameNotFound {
+    /// The host name that was not found, if the log names it.
+    pub host: Option<String>,
+}
+
+crate::problem!(HostNameNotFound, "host-name-not-found", ["host"]);
+
+impl std::fmt::Display for HostNameNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.host {
+            Some(host) => write!(f, "Host name {} not found", host),
+            None => write!(f, "Host name not found"),
+        }
+    }
+}
+
+/// Problem representing a failure to connect to a host.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConnectionFailed {
+    /// The host that could not be reached, if the log names it.
+    pub host: Option<String>,
+    /// The port that could not be reached, if the log names it.
+    pub port: Option<u16>,
+}
+
+crate::problem!(ConnectionFailed, "connection-failed", ["host", "port"]);
+
+impl std::fmt::Display for ConnectionFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match (&self.host, self.port) {
+            (Some(host), Some(port)) => write!(f, "Failed to connect to {} port {}", host, port),
+            (Some(host), None) => write!(f, "Failed to connect to {}", host),
+            (None, _) => write!(f, "Failed to connect"),
+        }
+    }
+}
+
+/// Problem representing a connection that the host refused.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConnectionRefused {
+    /// The host that refused the connection, if the log names it.
+    pub host: Option<String>,
+    /// The port that refused the connection, if the log names it.
+    pub port: Option<u16>,
+}
+
+crate::problem!(ConnectionRefused, "connection-refused", ["host", "port"]);
+
+impl std::fmt::Display for ConnectionRefused {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match (&self.host, self.port) {
+            (Some(host), Some(port)) => write!(f, "Connection to {} port {} refused", host, port),
+            (Some(host), None) => write!(f, "Connection to {} refused", host),
+            (None, _) => write!(f, "Connection refused"),
+        }
+    }
+}
+
 /// Problem representing a missing predeclared function in Perl.
 ///
 /// This struct is used when a Perl script tries to use a predeclared function
@@ -4022,6 +4122,48 @@ mod tests {
             "unknown-certificate-authority",
             json!({"url": "f0-value"}),
             "Unknown Certificate Authority for f0-value",
+        );
+        assert_wire_format(
+            &NameResolutionFailed {
+                host: Some("f0-value".to_string()),
+            },
+            "name-resolution-failed",
+            json!({"host": "f0-value"}),
+            "Failed to resolve host name f0-value",
+        );
+        assert_wire_format(
+            &TemporaryNameResolutionFailure {
+                host: Some("f0-value".to_string()),
+            },
+            "temporary-name-resolution-failure",
+            json!({"host": "f0-value"}),
+            "Temporary failure resolving host name f0-value",
+        );
+        assert_wire_format(
+            &HostNameNotFound {
+                host: Some("f0-value".to_string()),
+            },
+            "host-name-not-found",
+            json!({"host": "f0-value"}),
+            "Host name f0-value not found",
+        );
+        assert_wire_format(
+            &ConnectionRefused {
+                host: Some("f0-value".to_string()),
+                port: Some(8123),
+            },
+            "connection-refused",
+            json!({"host": "f0-value", "port": 8123}),
+            "Connection to f0-value port 8123 refused",
+        );
+        assert_wire_format(
+            &ConnectionFailed {
+                host: Some("f0-value".to_string()),
+                port: Some(8123),
+            },
+            "connection-failed",
+            json!({"host": "f0-value", "port": 8123}),
+            "Failed to connect to f0-value port 8123",
         );
         assert_wire_format(
             &MissingPerlPredeclared {
