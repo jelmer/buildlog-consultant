@@ -37,6 +37,19 @@ async fn pick_model(client: &Client) -> Result<String, Box<dyn std::error::Error
         .ok_or_else(|| "No Claude models available".into())
 }
 
+/// Returns the text of the first text block in a response.
+fn response_text(
+    content: &[ContentBlock],
+) -> Result<&str, Box<dyn std::error::Error + Send + Sync>> {
+    content
+        .iter()
+        .find_map(|block| match block {
+            ContentBlock::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .ok_or_else(|| "Claude response contained no text block".into())
+}
+
 /// Uses Claude to analyze log lines and identify the most likely error.
 ///
 /// Automatically selects the cheapest available model via the models API.
@@ -72,14 +85,7 @@ pub async fn analyze(
 
     let response = client.messages(request).await?;
 
-    let text = response
-        .content
-        .iter()
-        .find_map(|block| match block {
-            ContentBlock::Text { text } => Some(text.as_str()),
-            _ => None,
-        })
-        .unwrap_or("");
+    let text = response_text(&response.content)?;
 
     log::debug!("Claude raw response: {:?}", text);
 
@@ -89,5 +95,31 @@ pub async fn analyze(
             log::debug!("Unable to parse claude response: {:?}", text);
             Ok(None)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_response_text() {
+        let content = vec![ContentBlock::Text {
+            text: "42".to_string(),
+        }];
+        assert_eq!(response_text(&content).unwrap(), "42");
+    }
+
+    #[test]
+    fn test_response_text_missing() {
+        let content = vec![ContentBlock::Image {
+            source: "base64".to_string(),
+            media_type: "image/png".to_string(),
+            data: String::new(),
+        }];
+        assert_eq!(
+            response_text(&content).unwrap_err().to_string(),
+            "Claude response contained no text block"
+        );
     }
 }
