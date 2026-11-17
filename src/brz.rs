@@ -153,7 +153,7 @@ lazy_static::lazy_static! {
         regex_line_matcher!("Unknown mercurial extra fields in (.*): b'(.*)'.", |m, _| Ok(Some(Box::new(UnknownMercurialExtraFields { field: m.get(2).unwrap().as_str().to_string() })))),
         regex_line_matcher!("UScan failed to run: In watchfile (.*), reading webpage (.*) failed: 429 too many requests\\.", |m, _| Ok(Some(Box::new(UScanTooManyRequests { reason: m.get(2).unwrap().as_str().to_string() })))),
         regex_line_matcher!("UScan failed to run: OpenPGP signature did not verify..", |_, _| Ok(Some(Box::new(UpstreamPGPSignatureVerificationFailed)))),
-        regex_line_matcher!(r"Inconsistency between source format and version: version (?:\S+ )?is( not)? native, format (?:'[^']*' )?is( not)? native\.", |m, _| Ok(Some(Box::new(InconsistentSourceFormat{version: m.get(1).is_some(), source_format: m.get(2).is_some()})))),
+        regex_line_matcher!(r"Inconsistency between source format and version: version (?:(\S+) )?is( not)? native, format (?:'([^']*)' )?is( not)? native\.", |m, _| Ok(Some(Box::new(InconsistentSourceFormat{version: m.get(2).is_some(), source_format: m.get(4).is_some(), version_string: m.get(1).map(|v| v.as_str().to_string()), source_format_string: m.get(3).map(|f| f.as_str().to_string())})))),
         regex_line_matcher!(r"UScan failed to run: In (.*) no matching hrefs for version (.*) in watch line", |m, _| Ok(Some(Box::new(UScanRequestVersionMissing { version: m.get(2).unwrap().as_str().to_string() })))),
         regex_line_matcher!(r"UScan failed to run: In (.*) no matching files for version (.*) in watch line", |m, _| Ok(Some(Box::new(UScanRequestVersionMissing { version: m.get(2).unwrap().as_str().to_string() })))),
         regex_line_matcher!(r"UScan failed to run: In directory ., downloading (.*) failed: (.*)", |m, _| Ok(Some(Box::new(UScanFailed{url: m.get(1).unwrap().as_str().to_string(), reason: m.get(2).unwrap().as_str().to_string()})))),
@@ -284,7 +284,9 @@ mod tests {
         assert_eq!(
             Some(Box::new(InconsistentSourceFormat {
                 version: true,
-                source_format: false
+                source_format: false,
+                version_string: None,
+                source_format_string: None,
             }) as Box<dyn Problem>),
             err
         );
@@ -294,7 +296,9 @@ mod tests {
         assert_eq!(
             Some(Box::new(InconsistentSourceFormat {
                 version: false,
-                source_format: true
+                source_format: true,
+                version_string: Some("1.0".to_string()),
+                source_format_string: Some("3.0 (quilt)".to_string()),
             }) as Box<dyn Problem>),
             err
         );

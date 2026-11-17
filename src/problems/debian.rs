@@ -488,12 +488,21 @@ pub struct InconsistentSourceFormat {
     pub version: bool,
     /// Whether the source format is inconsistent with the version.
     pub source_format: bool,
+    /// The package version, if the error names it.
+    pub version_string: Option<String>,
+    /// The source format, if the error names it.
+    pub source_format_string: Option<String>,
 }
 
 crate::problem!(
     InconsistentSourceFormat,
     "inconsistent-source-format",
-    ["version", "source_format"]
+    [
+        "version",
+        "source_format",
+        "version_string",
+        "source_format_string"
+    ]
 );
 
 impl std::fmt::Display for InconsistentSourceFormat {
@@ -1233,9 +1242,11 @@ mod tests {
             &InconsistentSourceFormat {
                 version: true,
                 source_format: true,
+                version_string: None,
+                source_format_string: None,
             },
             "inconsistent-source-format",
-            json!({"source_format": true, "version": true}),
+            json!({"source_format": true, "source_format_string": null, "version": true, "version_string": null}),
             "Inconsistent source format between version and source format",
         );
         assert_wire_format(
