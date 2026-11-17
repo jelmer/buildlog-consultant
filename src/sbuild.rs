@@ -168,6 +168,10 @@ pub fn parse_summary(lines: &[&str]) -> Result<Summary, Error> {
         if line.trim() == "" {
             continue;
         }
+        // sbuild's closing lines follow a line of dashes.
+        if line.trim().chars().all(|c| c == '-') {
+            break;
+        }
         if let Some((key, value)) = line.trim_end().split_once(": ") {
             let value = value.trim();
             let secs = || parse_summary_value(key, value, offset).map(Duration::from_secs);
@@ -1701,6 +1705,9 @@ cd obj-x86_64-linux-gnu && tail -v -n \+0 meson-logs/meson-log.txt
             "Distribution: unstable",
             "Status: successful",
             "Build-Time: 3",
+            "--------------------------------------------------------------------------------",
+            "Finished at 2026-11-13T09:21:15Z",
+            "Build needed 00:00:19, 31428k disk space",
         ];
         let summary = parse_summary(summary_lines).unwrap();
         assert_eq!(summary.package, Some("rust-always-assert".to_string()));
