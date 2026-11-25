@@ -1336,9 +1336,16 @@ pub fn find_failure_install_deps(
     failed_stage: &str,
 ) -> Result<Option<SbuildFailure>, Error> {
     let SectionFailure {
-        section: focus_section,
-        failure,
+        section: mut focus_section,
+        mut failure,
     } = find_install_deps_failure_description(sbuildlog)?;
+    // Without the package lists from `apt-get update`, apt cannot install anything.
+    if failure.as_ref().and_then(|f| f.problem.as_ref()).is_none() {
+        if let Some(fetch_failure) = crate::apt::find_apt_get_update_fetch_warning(sbuildlog) {
+            focus_section = Some("update chroot");
+            failure = Some(fetch_failure);
+        }
+    }
     let (r#match, error) = Failure::split(failure);
     let description = if let Some(error) = error.as_ref() {
         error.to_string()
@@ -1805,6 +1812,52 @@ Fail-Stage: install-deps
         assert_eq!(
             failure.section.unwrap().title.as_deref(),
             Some("Install dose3 build dependencies (aptitude-based resolver)")
+        );
+    }
+
+    #[test]
+    fn test_find_failure_install_deps_apt() {
+        let sep = format!("+{}+", "-".repeat(78));
+        let log: SbuildLog = format!(
+            "{sep}
+| Update chroot |
+{sep}
+
+Err:1 http://deb.debian.org/debian unstable InRelease
+  Could not resolve 'apt-cache.invalid'
+W: Failed to fetch http://deb.debian.org/debian/dists/unstable/InRelease  Could not resolve 'apt-cache.invalid'
+W: Some index files failed to download. They have been ignored, or old ones used instead.
+{sep}
+| Install package build dependencies |
+{sep}
+
+The following packages have unmet dependencies:
+ sbuild-build-depends-main-dummy : Depends: debhelper-compat (= 13) but it is not installable
+E: Unable to satisfy dependencies. Reached two conflicting assignments:
+apt-get failed.
+E: Package installation failed
+E: Failed to explain bd-uninstallable
+{sep}
+| Summary |
+{sep}
+
+Fail-Stage: explain-bd-uninstallable
+"
+        )
+        .parse()
+        .unwrap();
+        let failure = worker_failure_from_sbuild_log(&log).unwrap();
+        assert_eq!(failure.stage.as_deref(), Some("explain-bd-uninstallable"));
+        assert_eq!(
+            failure.error.as_deref(),
+            Some(&AptFetchFailure {
+                url: Some("http://deb.debian.org/debian/dists/unstable/InRelease".to_owned()),
+                error: "Could not resolve 'apt-cache.invalid'".to_owned(),
+            } as &dyn Problem)
+        );
+        assert_eq!(
+            failure.section.unwrap().title.as_deref(),
+            Some("Update chroot")
         );
     }
 

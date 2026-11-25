@@ -221,6 +221,28 @@ pub fn find_apt_get_update_failure(
     }
 }
 
+/// Finds a "W: Failed to fetch" line in the "update chroot" section.
+pub(crate) fn find_apt_get_update_fetch_warning(
+    sbuildlog: &crate::sbuild::SbuildLog,
+) -> Option<Failure> {
+    let lines = sbuildlog.get_section_lines(Some("update chroot"))?;
+    for (lineno, line) in lines.enumerate_forward(None) {
+        if let Some((_, url, msg)) = lazy_regex::regex_captures!(
+            "^W: Failed to fetch ([^ ]+)  (.*)",
+            line.trim_end_matches('\n')
+        ) {
+            return Some(Failure::new(
+                SingleLineMatch::from_lines(&lines, lineno, Some("direct regex")),
+                Some(Box::new(AptFetchFailure {
+                    url: Some(url.to_string()),
+                    error: msg.to_string(),
+                })),
+            ));
+        }
+    }
+    None
+}
+
 /// Finds and parses CUDF output in a log.
 ///
 /// This function searches for and extracts CUDF (Common Upgradeability Description Format)
